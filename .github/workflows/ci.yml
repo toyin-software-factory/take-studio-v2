@@ -72,11 +72,9 @@ jobs:
       - name: Apply migrations
         run: pnpm db:migrate
 
-      - name: Build the Worker
-        run: pnpm build:worker
-
       - name: Dummy env for the preview Worker
         # Not secrets: placeholders so the env schema passes. R2 is checked on the deployed Worker only.
+        # Must run before the build: OpenNext bundles .env into the Worker at build time.
         run: |
           cat > .env <<ENV
           BETTER_AUTH_SECRET=ci-only-placeholder-secret-not-real-0123456789
@@ -89,6 +87,9 @@ jobs:
           R2_BUCKET=ci
           TRIGGER_SECRET_KEY=ci
           ENV
+
+      - name: Build the Worker
+        run: pnpm build:worker
 
       - name: Cache Playwright browsers
         id: playwright-cache

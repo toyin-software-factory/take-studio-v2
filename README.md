@@ -43,6 +43,8 @@ pnpm dev:web               # next dev only
 
 `pnpm preview` builds the Worker and serves it with workerd on http://localhost:8787, the same runtime as production. Run it before a deploy.
 
+OpenNext bundles `.env` into the Worker at build time, so create `.env` before `pnpm build:worker` or `pnpm preview`. In production, the Worker's secrets and vars come from Cloudflare instead.
+
 ## Scripts
 
 | Script                                        | What it does                                                                             |
