@@ -80,7 +80,7 @@ jobs:
         run: |
           cat > .env <<ENV
           BETTER_AUTH_SECRET=ci-only-placeholder-secret-not-real-0123456789
-          BETTER_AUTH_URL=http://localhost:8787
+          BETTER_AUTH_URL=http://127.0.0.1:8787
           GOOGLE_CLIENT_ID=ci
           GOOGLE_CLIENT_SECRET=ci
           R2_ACCOUNT_ID=ci
