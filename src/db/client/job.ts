@@ -23,6 +23,7 @@ export async function withJobDb<T>(databaseUrl: string, fn: (db: JobDb) => Promi
   }
 }
 
+/** Runs `select 1`, retrying with a growing delay while Neon wakes from scale to zero. */
 async function connectWithRetry(db: JobDb): Promise<void> {
   for (let attempt = 1; ; attempt++) {
     try {

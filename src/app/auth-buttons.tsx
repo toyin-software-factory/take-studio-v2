@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authClient } from "./auth-client";
 
+/** Runs a Better Auth client call, tracking pending state and a user facing error. */
 function useAuthAction() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,10 +27,12 @@ function useAuthAction() {
   return { pending, error, run };
 }
 
+/** Announces an auth error to screen readers and shows it on screen. */
 function ErrorMessage({ error }: { error: string | null }) {
   return error ? <p role="alert">{error}</p> : null;
 }
 
+/** Starts Google sign in through Better Auth. */
 export function SignInButton() {
   const { pending, error, run } = useAuthAction();
   return (
@@ -48,6 +51,7 @@ export function SignInButton() {
   );
 }
 
+/** Signs out, then refreshes the page so server components see the new session. */
 export function SignOutButton() {
   const router = useRouter();
   const { pending, error, run } = useAuthAction();

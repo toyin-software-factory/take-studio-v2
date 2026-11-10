@@ -31,6 +31,7 @@ export type R2Env = z.infer<typeof r2Schema>;
 
 type Source = Record<string, string | undefined>;
 
+/** Validates `source` against `schema`; on failure throws naming the bad variables, never their values. */
 function parseEnv<T extends z.ZodType>(schema: T, source: Source, label: string): z.infer<T> {
   const result = schema.safeParse(source);
   if (!result.success) {
@@ -41,10 +42,12 @@ function parseEnv<T extends z.ZodType>(schema: T, source: Source, label: string)
   return result.data;
 }
 
+/** Web (Worker) env: auth, Google, R2 and Trigger.dev variables. */
 export function parseWebEnv(source: Source = process.env): WebEnv {
   return parseEnv(webEnvSchema, source, "web");
 }
 
+/** Job (Trigger.dev task) env: database URL and R2 variables. */
 export function parseJobEnv(source: Source = process.env): JobEnv {
   return parseEnv(jobEnvSchema, source, "job");
 }

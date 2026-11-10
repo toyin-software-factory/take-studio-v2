@@ -10,6 +10,7 @@ export interface HealthReport {
   checks: { database: CheckResult; storage: CheckResult };
 }
 
+/** Runs one health check and turns any failure into "error", logging only its name and error class. */
 async function check(name: string, fn: () => Promise<boolean | void>): Promise<CheckResult> {
   try {
     const result = await fn();

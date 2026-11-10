@@ -7,6 +7,7 @@ export const metadata: Metadata = {
     "Upload a video take and get it back trimmed, with a studio background and a transcript.",
 };
 
+/** Root HTML shell for every page. */
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
