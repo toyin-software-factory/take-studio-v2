@@ -120,6 +120,7 @@ The scaffold sub task is done when all of these hold:
 
 - [ ] Toyin creates accounts and adds keys before the scaffold can deploy: Cloudflare (Workers paid plan, R2 bucket, Hyperdrive config), Neon project, Trigger.dev project, Google OAuth client (redirect URIs for localhost and the `*.workers.dev` URL), GitHub Actions secrets. Deepgram and Anthropic keys only from slices 2 and 5; set spending caps on both accounts from day one.
 - [ ] Slice 1 spec (core take loop) decides: email sender for magic links; multipart upload part size (16 or 32 MiB), retries and ETag handling; R2 CORS config kept in the repo; short link expiry (minutes for uploads, about an hour for downloads); server side checks of size, length and resolution in the job; failed job handling (`onFailure` writes failed, a scheduled cleanup for stuck runs, idempotent retries).
+- [ ] Slice 1 spec pins the ffmpeg build: the `ffmpeg()` extension currently installs a 2024 static git build (`N-71064-gd5e603ddc0-static`), not a tagged 7.x release; pin a tagged version in `trigger.config.ts` before relying on 7.x behaviour.
 - [ ] Feature 11 spec decides the 30 day deletion details (R2 lifecycle rules on `originals/` and `renders/` in versioned config, nightly reconcile, abort incomplete multipart uploads).
 - [ ] Later: custom domain, per PR previews, Dependabot or Renovate.
 - [ ] `/audit` (greenfield) records these conventions and the installed skills in root `AGENTS.md` right after the scaffold merges.
