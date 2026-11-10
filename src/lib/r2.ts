@@ -17,7 +17,11 @@ export function createR2(env: R2Env) {
   return {
     /** True when the bucket exists and these credentials can reach it. */
     async isReachable(): Promise<boolean> {
-      const res = await client.fetch(bucketUrl, { method: "HEAD" });
+      const res = await client.fetch(bucketUrl, {
+        method: "HEAD",
+        // Fail fast so a stalled R2 call can't hang /api/health.
+        signal: AbortSignal.timeout(5_000),
+      });
       return res.ok;
     },
   };
