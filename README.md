@@ -41,6 +41,8 @@ pnpm dev                   # next dev + trigger dev (needs a Trigger.dev login)
 pnpm dev:web               # next dev only
 ```
 
+`pnpm install` also sets up a git pre commit hook (`simple-git-hooks` plus `lint-staged`, config in `.lintstagedrc.json`). On each commit it runs ESLint and Prettier on your staged files only: Prettier fixes the formatting for you, and an ESLint error stops the commit until you fix it. It takes about two seconds. Typecheck and tests are not in the hook; run them before you push, and CI runs them too. The hook is not installed when `CI` is set. To skip it once, use `git commit --no-verify`. If you change the hook command in `package.json`, run `pnpm exec simple-git-hooks` to reinstall it.
+
 `pnpm preview` builds the Worker and serves it with workerd on http://localhost:8787, the same runtime as production. Run it before a deploy.
 
 OpenNext bundles `.env` into the Worker at build time, so create `.env` before `pnpm build:worker` or `pnpm preview`.
