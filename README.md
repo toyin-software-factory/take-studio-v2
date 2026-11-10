@@ -43,7 +43,9 @@ pnpm dev:web               # next dev only
 
 `pnpm preview` builds the Worker and serves it with workerd on http://localhost:8787, the same runtime as production. Run it before a deploy.
 
-OpenNext bundles `.env` into the Worker at build time, so create `.env` before `pnpm build:worker` or `pnpm preview`. In production, the Worker's secrets and vars come from Cloudflare instead.
+OpenNext bundles `.env` into the Worker at build time, so create `.env` before `pnpm build:worker` or `pnpm preview`.
+
+**Never build the production Worker with local env files present.** Values baked in from `.env*` act as a fallback for any Worker secret or var that is missing, so a missing `BETTER_AUTH_URL` would silently become `http://localhost:3000` and break sign in. Production deploys run from CI on a clean checkout (`deploy.yml` never writes `.env`). `pnpm run deploy` refuses to run while any `.env*` (other than `.env.example`) or `.dev.vars*` file exists.
 
 ## Scripts
 
