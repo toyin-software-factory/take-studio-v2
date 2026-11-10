@@ -1,0 +1,73 @@
+{
+  "name": "take-studio",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.34.9",
+  "engines": {
+    "node": ">=22.12.0 <23"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n next,trigger -c blue,magenta \"next dev\" \"trigger dev\"",
+    "dev:web": "next dev",
+    "build": "next build",
+    "build:worker": "opennextjs-cloudflare build",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "start": "next start",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "db:up": "docker compose up -d --wait postgres",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "auth:generate": "auth generate --config src/server/auth.cli.ts --output src/db/schema/auth.ts --yes",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "deploy:trigger": "trigger deploy"
+  },
+  "dependencies": {
+    "@opennextjs/cloudflare": "1.20.16",
+    "@trigger.dev/sdk": "4.8.3",
+    "aws4fetch": "1.0.20",
+    "better-auth": "1.7.19",
+    "drizzle-orm": "0.45.4",
+    "next": "16.4.6",
+    "postgres": "3.4.9",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "@trigger.dev/build": "4.8.3",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "auth": "1.7.19",
+    "concurrently": "^9",
+    "dotenv": "^17",
+    "drizzle-kit": "0.31.11",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.6",
+    "eslint-config-prettier": "^10",
+    "prettier": "3.9.10",
+    "trigger.dev": "4.8.3",
+    "typescript": "^5.9",
+    "vitest": "5.1.0",
+    "wrangler": "4.160.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@depot/cli",
+      "esbuild",
+      "workerd"
+    ],
+    "ignoredBuiltDependencies": [
+      "sharp",
+      "unrs-resolver"
+    ]
+  }
+}

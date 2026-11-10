@@ -1,0 +1,33 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "take-studio",
+  "main": ".open-next/worker.js",
+  // Pinned on purpose. Bump it in its own PR and run `pnpm preview` first.
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": ".open-next/assets",
+    "binding": "ASSETS",
+  },
+  "services": [
+    {
+      // Self reference used by OpenNext. Must match the worker name.
+      "binding": "WORKER_SELF_REFERENCE",
+      "service": "take-studio",
+    },
+  ],
+  "hyperdrive": [
+    {
+      // The web app reaches Neon only through Hyperdrive (spec 0001).
+      // Override locally with CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE.
+      "binding": "HYPERDRIVE",
+      "id": "REPLACE_WITH_HYPERDRIVE_ID",
+      "localConnectionString": "postgres://postgres:postgres@localhost:5432/take_studio",
+    },
+  ],
+  "observability": {
+    "enabled": true,
+  },
+}

@@ -1,32 +1,65 @@
-# factory-template
+# Take Studio
 
-Starter for a new project built by the JSM HQ agent team on VM 400, with the [jsmastery-pro/skills](https://github.com/jsmastery-pro/skills) workflow. **Replace this README once the project starts.**
+Upload a video take and get it back with the pauses trimmed, the green screen swapped for a studio background, and a transcript.
 
-What it holds:
-- `.claude/skills/` and `skills-lock.json`: the jsm skills (scope, architect, audit, develop, check, test, document, sync, debug), vendored so every agent has the same version. Refresh with `npx skills add jsmastery-pro/skills -a claude-code -y`.
-- `ROLE.md`: how the team works (order of work, questions to Toyin through Slack, Mobbin for UI, PR proof, retries, lead merges, security). JSM HQ loads it into every agent's role.
-- `.claude/skills/agent-browser/` and `scripts/agent-browser-setup.sh`: Vercel's agent-browser for checking the running app and capturing PR proof. Each agent runs the setup script once per sandbox. It needs the sandbox network rules for `googlechromelabs.github.io` and `storage.googleapis.com`, which are already allowed globally on VM 400 (`sbx policy allow network <host>`).
-- `scripts/pr-proof.sh`: publishes proof screenshots and videos to the `pr-assets` branch and prints the Markdown for the PR.
-- `.coderabbit.yaml`: CodeRabbit review, skipping the vendored skills.
-- No `AGENTS.md` or `CLAUDE.md` on purpose: `/audit` writes root `AGENTS.md` and its `CLAUDE.md` pointer once the stack is scaffolded, after asking the coding standards. Nested ones come from `/audit` and `/sync`.
+What we build: [`docs/scope/scope.md`](docs/scope/scope.md). How it is built: [`docs/specs/0001-stack-architecture/index.md`](docs/specs/0001-stack-architecture/index.md).
 
-## Start a new project
+## Stack
 
-1. On GitHub: **Use this template** → owner `toyin-software-factory`, public (the free plan only enforces rulesets on public repos).
-2. Fill in **The project** in `ROLE.md` and commit.
-3. Add the `protect-main` ruleset (copy it from an existing factory repo). Add required checks once the scaffold task has added CI.
-4. On VM 400, as `hq`:
-   ```
-   cd ~/src && gh repo clone toyin-software-factory/<name>
-   nano ~/.config/jsm-hq.env      # HQ_REPO=/home/hq/src/<name>
-   nano ~/.config/hq-slack.env    # HQ_REPO and GITHUB_REPO for the new project
-   systemctl --user restart jsm-hq hq-slack && hq-url
-   ```
-   HQ runs one project at a time on port 7420.
-5. In HQ (through the SSH tunnel): set up the team, then
-   - Settings → Workflow: review CodeRabbit, **Merge = lead**.
-   - Settings → MCP: Mobbin for the frontend agents (OAuth callback needs its port tunnelled too).
-   - Sandbox memory: about 2 GB for the lead, 3 GB per builder.
-   - Start team. Each agent signs in with **Claude account with subscription** (check with `/status`: "Claude Max account").
-6. Send the lead:
-   > Read ROLE.md. Run /scope with Toyin for this project. Ask every question with ask_user, one at a time, never in the terminal. When Toyin approves the scope, run /architect for the stack, then create a board for the scaffold task and assign it.
+One TypeScript repo, two deployables, one database, one bucket:
+
+- **Web app**: Next.js (App Router) on Cloudflare Workers via `@opennextjs/cloudflare`. Reaches Neon through Hyperdrive.
+- **Jobs**: Trigger.dev v4 tasks in `src/trigger/`, with ffmpeg 7. Reach Neon over the pooled URL.
+- **Database**: Neon Postgres, Drizzle ORM with postgres.js, migrations in `drizzle/`.
+- **Auth**: Better Auth (Google sign in for now).
+- **Files**: Cloudflare R2 over the S3 API (`aws4fetch`).
+
+## Layout
+
+| Path           | What lives there                                           |
+| -------------- | ---------------------------------------------------------- |
+| `src/app/`     | Routes (pages and route handlers)                          |
+| `src/server/`  | Server only web logic (auth, health, per request clients)  |
+| `src/lib/`     | Shared helpers (env, R2)                                   |
+| `src/db/`      | Drizzle schema and the two client factories (`web`, `job`) |
+| `src/trigger/` | Trigger.dev tasks                                          |
+| `drizzle/`     | Committed migrations                                       |
+| `tests/`       | Playwright smoke tests                                     |
+
+ESLint enforces the boundaries: `src/trigger` imports only `src/db`, `src/lib` and `src/trigger`; `src/app` and `src/server` never import task code or heavy SDKs.
+
+## Local dev
+
+You need Node 22 (`.nvmrc`), pnpm (`corepack enable`), and Docker.
+
+```sh
+pnpm install
+cp .env.example .env       # then fill in the values
+pnpm db:up                 # Postgres 17 in Docker
+pnpm db:migrate
+pnpm dev                   # next dev + trigger dev (needs TRIGGER_PROJECT_REF and a Trigger.dev login)
+pnpm dev:web               # next dev only
+```
+
+`pnpm preview` builds the Worker and serves it with workerd on http://localhost:8787, the same runtime as production. Run it before a deploy.
+
+## Scripts
+
+| Script                                        | What it does                                                                             |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `dev`, `dev:web`                              | Local dev server (with or without `trigger dev`)                                         |
+| `build`, `build:worker`                       | `next build`, or the full OpenNext Worker build                                          |
+| `preview`                                     | Build and serve the Worker locally                                                       |
+| `lint`, `format`, `format:check`, `typecheck` | ESLint, Prettier, `tsc --noEmit`                                                         |
+| `test`, `test:e2e`                            | Vitest unit tests, Playwright smoke tests (run `build:worker` first)                     |
+| `db:up`, `db:generate`, `db:migrate`          | Local Postgres, generate a migration, apply migrations                                   |
+| `auth:generate`                               | Regenerate Better Auth's Drizzle tables after changing its config or plugins             |
+| `deploy`                                      | Build and deploy the Worker (run as `pnpm run deploy`: `pnpm deploy` is a pnpm built in) |
+| `deploy:trigger`                              | Deploy the Trigger.dev tasks                                                             |
+
+## CI and deploy
+
+- **CI** (`.github/workflows/ci.yml`, every PR): install, lint, format check, typecheck, Vitest, a check that `drizzle-kit generate` makes no new migration, Worker build, then Playwright against the built Worker with Postgres as a service container.
+- **Deploy** (`.github/workflows/deploy.yml`, push to main, one at a time): migrate Neon, deploy Trigger.dev tasks, deploy the Worker. Migrations must be backward compatible.
+
+Secrets and where each one lives: spec 0001, "Where each key lives".

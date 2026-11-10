@@ -1,1 +1,39 @@
+# dependencies
+/node_modules
+/.pnpm-store/
+
+# testing
+/coverage
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+# next.js / opennext / wrangler / trigger
+/.next/
+/out/
+/build
+/.open-next/
+/.wrangler/
+/.trigger/
+/cloudflare-env.d.ts
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+.pnpm-debug.log*
+
+# env files
+.env*
+!.env.example
+.dev.vars*
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# PR proof (published to the pr-assets branch, never committed here)
 /proof/

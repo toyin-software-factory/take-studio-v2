@@ -1,0 +1,14 @@
+.claude/
+docs/
+pnpm-lock.yaml
+drizzle/meta/
+.next/
+.open-next/
+.wrangler/
+.trigger/
+playwright-report/
+test-results/
+skills-lock.json
+ROLE.md
+.jsmhq-role.md
+.pnpm-store/
