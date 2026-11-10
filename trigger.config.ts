@@ -1,14 +1,9 @@
 import { defineConfig } from "@trigger.dev/sdk";
 import { ffmpeg } from "@trigger.dev/build/extensions/core";
 
-// Not a secret (spec 0001). Read from TRIGGER_PROJECT_REF until the real ref is written here.
-const project = process.env.TRIGGER_PROJECT_REF;
-if (!project) {
-  throw new Error("TRIGGER_PROJECT_REF is not set. Add it to .env (local) or the deploy workflow.");
-}
-
 export default defineConfig({
-  project,
+  // Not a secret (spec 0001): the project ref lives here, not in env or CI.
+  project: "proj_myruzrkdrkciyulujiba",
   runtime: "node-22",
   dirs: ["./src/trigger"],
   tsconfig: "./tsconfig.json",

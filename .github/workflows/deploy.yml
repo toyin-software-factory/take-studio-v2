@@ -26,7 +26,6 @@ jobs:
       - id: check
         # Skips the deploy (instead of failing main) until every secret and ID exists. Names only.
         env:
-          TRIGGER_PROJECT_REF: ${{ vars.TRIGGER_PROJECT_REF }}
           DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
           TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -39,7 +38,7 @@ jobs:
           }
 
           missing=""
-          for name in DATABASE_URL_DIRECT TRIGGER_ACCESS_TOKEN CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID TRIGGER_PROJECT_REF; do
+          for name in DATABASE_URL_DIRECT TRIGGER_ACCESS_TOKEN CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID; do
             [ -n "${!name}" ] || missing="$missing $name"
           done
           if grep -q "REPLACE_WITH_HYPERDRIVE_ID" wrangler.jsonc; then
@@ -90,7 +89,6 @@ jobs:
         run: pnpm deploy:trigger --env prod
         env:
           TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
-          TRIGGER_PROJECT_REF: ${{ vars.TRIGGER_PROJECT_REF }}
 
       - name: 3. Build and deploy the Worker
         run: pnpm run deploy
