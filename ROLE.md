@@ -9,7 +9,7 @@ JSM HQ loads this file into every agent's role at start. It holds how the team w
 
 ## The project
 
-<!-- Replace this with one paragraph: what this project is, who it is for, and anything already decided. Everything else is decided with Toyin in /scope and /architect, never assumed. -->
+Upload a video take; get pauses trimmed, green screen swapped for a studio background, and a transcript.
 
 ## Context files: AGENTS.md is canonical
 
