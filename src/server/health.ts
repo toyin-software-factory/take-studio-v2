@@ -10,10 +10,30 @@ export interface HealthReport {
   checks: { database: CheckResult; storage: CheckResult };
 }
 
-/** Runs one health check and turns any failure into "error", logging only its name and error class. */
+/** Each check must settle within this, so a stalled connection can't hold up the report. */
+const CHECK_DEADLINE_MS = 5_000;
+
+class CheckTimeoutError extends Error {
+  override name = "CheckTimeoutError";
+}
+
+/** Resolves or rejects with `promise`, or rejects with CheckTimeoutError after `ms`. */
+async function withDeadline<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new CheckTimeoutError()), ms);
+  });
+  try {
+    return await Promise.race([promise, deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Runs one health check and turns any failure or timeout into "error", logging only its name and error class. */
 async function check(name: string, fn: () => Promise<boolean | void>): Promise<CheckResult> {
   try {
-    const result = await fn();
+    const result = await withDeadline(fn(), CHECK_DEADLINE_MS);
     if (result === false) {
       console.error("health check failed", { check: name, reason: "unreachable" });
       return "error";
