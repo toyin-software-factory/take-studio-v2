@@ -1,5 +1,5 @@
 {
-  "id": "72170684-ada3-40bc-a2b4-8921990869c6",
+  "id": "ee7f329d-ea3d-4fd3-92d9-091763cd736a",
   "prevId": "c05b0bde-de99-41c2-9808-9911110c101f",
   "version": "7",
   "dialect": "postgresql",
@@ -533,10 +533,6 @@
         "take_container_check": {
           "name": "take_container_check",
           "value": "\"take\".\"container\" IN ('mp4', 'mov')"
-        },
-        "take_failure_code_check": {
-          "name": "take_failure_code_check",
-          "value": "\"take\".\"failure_code\" IN ('internal_error', 'ffmpeg_error', 'trigger_failed', 'timeout', 'stale_run', 'provider_error', 'cancelled_before_start', 'invalid_media', 'too_long', 'too_large', 'resolution_exceeded', 'corrupt_upload', 'cancelled_while_running')"
         }
       },
       "isRLSEnabled": false
@@ -655,10 +651,6 @@
         "job_step_status_check": {
           "name": "job_step_status_check",
           "value": "\"job_step\".\"status\" IN ('pending', 'running', 'succeeded', 'failed', 'skipped')"
-        },
-        "job_step_failure_code_check": {
-          "name": "job_step_failure_code_check",
-          "value": "\"job_step\".\"failure_code\" IN ('internal_error', 'ffmpeg_error', 'trigger_failed', 'timeout', 'stale_run', 'provider_error', 'cancelled_before_start', 'invalid_media', 'too_long', 'too_large', 'resolution_exceeded', 'corrupt_upload', 'cancelled_while_running')"
         }
       },
       "isRLSEnabled": false
@@ -837,15 +829,11 @@
       "checkConstraints": {
         "processing_job_kind_check": {
           "name": "processing_job_kind_check",
-          "value": "\"processing_job\".\"kind\" IN ('initial', 'rerender')"
+          "value": "\"processing_job\".\"kind\" IN ('initial', 'rerender', 'reanalyse')"
         },
         "processing_job_seconds_charged_check": {
           "name": "processing_job_seconds_charged_check",
           "value": "\"processing_job\".\"seconds_charged\" >= 0"
-        },
-        "processing_job_failure_code_check": {
-          "name": "processing_job_failure_code_check",
-          "value": "\"processing_job\".\"failure_code\" IN ('internal_error', 'ffmpeg_error', 'trigger_failed', 'timeout', 'stale_run', 'provider_error', 'cancelled_before_start', 'invalid_media', 'too_long', 'too_large', 'resolution_exceeded', 'corrupt_upload', 'cancelled_while_running')"
         }
       },
       "isRLSEnabled": false

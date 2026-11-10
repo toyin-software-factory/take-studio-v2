@@ -17,8 +17,7 @@ CREATE TABLE "take" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "take_title_length_check" CHECK (char_length("take"."title") BETWEEN 1 AND 200),
-	CONSTRAINT "take_container_check" CHECK ("take"."container" IN ('mp4', 'mov')),
-	CONSTRAINT "take_failure_code_check" CHECK ("take"."failure_code" IN ('internal_error', 'ffmpeg_error', 'trigger_failed', 'timeout', 'stale_run', 'provider_error', 'cancelled_before_start', 'invalid_media', 'too_long', 'too_large', 'resolution_exceeded', 'corrupt_upload', 'cancelled_while_running'))
+	CONSTRAINT "take_container_check" CHECK ("take"."container" IN ('mp4', 'mov'))
 );
 --> statement-breakpoint
 CREATE TABLE "job_step" (
@@ -36,8 +35,7 @@ CREATE TABLE "job_step" (
 	CONSTRAINT "job_step_job_name_unique" UNIQUE("job_id","name"),
 	CONSTRAINT "job_step_progress_check" CHECK ("job_step"."progress" BETWEEN 0 AND 100),
 	CONSTRAINT "job_step_name_check" CHECK ("job_step"."name" IN ('trim', 'transcript', 'background', 'ai_edit', 'render')),
-	CONSTRAINT "job_step_status_check" CHECK ("job_step"."status" IN ('pending', 'running', 'succeeded', 'failed', 'skipped')),
-	CONSTRAINT "job_step_failure_code_check" CHECK ("job_step"."failure_code" IN ('internal_error', 'ffmpeg_error', 'trigger_failed', 'timeout', 'stale_run', 'provider_error', 'cancelled_before_start', 'invalid_media', 'too_long', 'too_large', 'resolution_exceeded', 'corrupt_upload', 'cancelled_while_running'))
+	CONSTRAINT "job_step_status_check" CHECK ("job_step"."status" IN ('pending', 'running', 'succeeded', 'failed', 'skipped'))
 );
 --> statement-breakpoint
 CREATE TABLE "processing_job" (
@@ -55,9 +53,8 @@ CREATE TABLE "processing_job" (
 	"finished_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "processing_job_kind_check" CHECK ("processing_job"."kind" IN ('initial', 'rerender')),
-	CONSTRAINT "processing_job_seconds_charged_check" CHECK ("processing_job"."seconds_charged" >= 0),
-	CONSTRAINT "processing_job_failure_code_check" CHECK ("processing_job"."failure_code" IN ('internal_error', 'ffmpeg_error', 'trigger_failed', 'timeout', 'stale_run', 'provider_error', 'cancelled_before_start', 'invalid_media', 'too_long', 'too_large', 'resolution_exceeded', 'corrupt_upload', 'cancelled_while_running'))
+	CONSTRAINT "processing_job_kind_check" CHECK ("processing_job"."kind" IN ('initial', 'rerender', 'reanalyse')),
+	CONSTRAINT "processing_job_seconds_charged_check" CHECK ("processing_job"."seconds_charged" >= 0)
 );
 --> statement-breakpoint
 CREATE TABLE "cut" (

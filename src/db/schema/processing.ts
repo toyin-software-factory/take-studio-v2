@@ -13,7 +13,6 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import { FAILURE_CODE_VALUES } from "@/lib/failure-codes";
 import { ACTIVE_JOB_STATUSES, JOB_KINDS, STEP_NAMES, STEP_STATUSES } from "@/lib/processing";
 import { inList, jobStatus, timestamps } from "./helpers";
 import { take } from "./take";
@@ -35,6 +34,7 @@ export const processingJob = pgTable(
     /** Usage account hash the charge counts against; null if nothing was charged. */
     chargedAccountHash: text("charged_account_hash"),
     refunded: boolean("refunded").notNull().default(false),
+    /** Open set: validated against the failure code registry in code, no DB CHECK. */
     failureCode: text("failure_code"),
     startedAt: timestamp("started_at", { withTimezone: true }),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
@@ -49,7 +49,6 @@ export const processingJob = pgTable(
     index("processing_job_status_updated_idx").on(t.status, t.updatedAt),
     check("processing_job_kind_check", inList(t.kind, JOB_KINDS)),
     check("processing_job_seconds_charged_check", sql`${t.secondsCharged} >= 0`),
-    check("processing_job_failure_code_check", inList(t.failureCode, FAILURE_CODE_VALUES)),
   ],
 );
 
@@ -67,6 +66,7 @@ export const jobStep = pgTable(
     progress: smallint("progress").notNull().default(0),
     startedAt: timestamp("started_at", { withTimezone: true }),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
+    /** Open set: validated against the failure code registry in code, no DB CHECK. */
     failureCode: text("failure_code"),
     ...timestamps,
   },
@@ -75,6 +75,5 @@ export const jobStep = pgTable(
     check("job_step_progress_check", sql`${t.progress} BETWEEN 0 AND 100`),
     check("job_step_name_check", inList(t.name, STEP_NAMES)),
     check("job_step_status_check", inList(t.status, STEP_STATUSES)),
-    check("job_step_failure_code_check", inList(t.failureCode, FAILURE_CODE_VALUES)),
   ],
 );

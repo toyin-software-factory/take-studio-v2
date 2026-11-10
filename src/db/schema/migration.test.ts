@@ -1,7 +1,6 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { FAILURE_CODE_VALUES } from "@/lib/failure-codes";
 
 /**
  * Checks the committed migrations (spec 0002, AC-1, AC-4, AC-10). drizzle-kit has dropped
@@ -50,11 +49,22 @@ describe("slice 1 migration", () => {
     expect(index).toContain(`WHERE "render"."is_latest"`);
   });
 
-  it("checks each failure_code column against the full registry", () => {
-    const list = FAILURE_CODE_VALUES.map((code) => `'${code}'`).join(", ");
-    for (const table of ["take", "processing_job", "job_step"]) {
-      expect(sql).toContain(`"${table}"."failure_code" IN (${list})`);
-    }
+  it("allows every value spec 0002 defines in the text CHECKs, later slices included", () => {
+    expect(sql).toContain(`"processing_job"."kind" IN ('initial', 'rerender', 'reanalyse')`);
+    expect(sql).toContain(
+      `"job_step"."name" IN ('trim', 'transcript', 'background', 'ai_edit', 'render')`,
+    );
+    expect(sql).toContain(
+      `"job_step"."status" IN ('pending', 'running', 'succeeded', 'failed', 'skipped')`,
+    );
+    expect(sql).toContain(`"cut"."kind" IN ('pause', 'false_start', 'filler', 'manual')`);
+    expect(sql).toContain(`"cut"."proposed_by" IN ('rules', 'ai', 'creator')`);
+    expect(sql).toContain(`"render"."status" IN ('pending', 'succeeded', 'failed')`);
+    expect(sql).toContain(`"take"."container" IN ('mp4', 'mov')`);
+  });
+
+  it("leaves failure_code unchecked, since it is an open set validated in code", () => {
+    expect(sql).not.toMatch(/failure_code_check|"failure_code" IN/);
   });
 
   it("has the spec's range and length checks", () => {

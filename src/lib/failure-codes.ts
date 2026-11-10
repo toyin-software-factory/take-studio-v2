@@ -1,8 +1,9 @@
 /**
  * Failure code registry (spec 0002, "Failure code registry"; AC-13).
- * Stored as text on take, processing_job and job_step. The `refundable` flag decides
- * whether finishing a job with this code gives the charged seconds back.
- * Add codes only; never rename or remove one (old rows keep their code).
+ * Stored as text on take, processing_job and job_step with NO database CHECK: this is an open
+ * set that grows, so writes validate against this registry in code and reads tolerate unknown
+ * codes. The `refundable` flag decides whether finishing a job with this code gives the
+ * charged seconds back. Add codes only; never rename or remove one (old rows keep their code).
  */
 export const FAILURE_CODES = {
   // Refundable: the failure is ours, not the creator's.

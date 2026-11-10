@@ -1,6 +1,5 @@
 import { sql } from "drizzle-orm";
 import { bigint, check, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-import { FAILURE_CODE_VALUES } from "@/lib/failure-codes";
 import { CONTAINERS, TAKE_TITLE_MAX, TAKE_TITLE_MIN } from "@/lib/processing";
 import { user } from "./auth";
 import { inList, takeStatus, timestamps } from "./helpers";
@@ -26,6 +25,7 @@ export const take = pgTable(
     height: integer("height"),
     /** Null until uploaded; upload time + 30 days, never extended. */
     videoExpiresAt: timestamp("video_expires_at", { withTimezone: true }),
+    /** Open set: validated against the failure code registry in code, no DB CHECK. */
     failureCode: text("failure_code"),
     ...timestamps,
   },
@@ -37,6 +37,5 @@ export const take = pgTable(
       sql`char_length(${t.title}) BETWEEN ${sql.raw(String(TAKE_TITLE_MIN))} AND ${sql.raw(String(TAKE_TITLE_MAX))}`,
     ),
     check("take_container_check", inList(t.container, CONTAINERS)),
-    check("take_failure_code_check", inList(t.failureCode, FAILURE_CODE_VALUES)),
   ],
 );
