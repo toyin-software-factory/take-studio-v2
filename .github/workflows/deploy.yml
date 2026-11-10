@@ -1,0 +1,99 @@
+name: Deploy
+
+# Ordered deploy on every push to main (spec 0001): migrate, then jobs, then the Worker.
+# Migrations must be backward compatible: old and new code run side by side during a deploy.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Check deploy secrets
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - id: check
+        # Skips the deploy (instead of failing main) until every secret and ID exists. Names only.
+        env:
+          TRIGGER_PROJECT_REF: ${{ vars.TRIGGER_PROJECT_REF }}
+          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
+          TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          skip() {
+            echo "::warning::Deploy skipped. $1"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          }
+
+          missing=""
+          for name in DATABASE_URL_DIRECT TRIGGER_ACCESS_TOKEN CLOUDFLARE_API_TOKEN CLOUDFLARE_ACCOUNT_ID TRIGGER_PROJECT_REF; do
+            [ -n "${!name}" ] || missing="$missing $name"
+          done
+          if grep -q "REPLACE_WITH_HYPERDRIVE_ID" wrangler.jsonc; then
+            missing="$missing HYPERDRIVE_ID(wrangler.jsonc)"
+          fi
+          [ -z "$missing" ] || skip "Missing GitHub secrets, variables or IDs:$missing"
+
+          # The Worker's own secrets live in Cloudflare, not GitHub. `wrangler secret list`
+          # prints names only, never values. Same wrangler version as package.json.
+          if ! listed=$(npx --yes wrangler@4.160.0 secret list --name take-studio --format json 2>/dev/null); then
+            skip "Worker take-studio does not exist yet or its secrets can't be listed. Create it with its secrets first (wrangler secret put <NAME> --name take-studio)."
+          fi
+          missing=""
+          for name in BETTER_AUTH_SECRET BETTER_AUTH_URL GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET TRIGGER_SECRET_KEY; do
+            echo "$listed" | jq -e --arg n "$name" 'any(.[]; .name == $n)' > /dev/null || missing="$missing $name"
+          done
+          [ -z "$missing" ] || skip "Missing Worker secrets on take-studio:$missing"
+
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy to production
+    needs: preflight
+    if: needs.preflight.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: 1. Migrate Neon (direct URL)
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
+
+      - name: 2. Deploy Trigger.dev tasks (prod)
+        run: pnpm deploy:trigger --env prod
+        env:
+          TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
+          TRIGGER_PROJECT_REF: ${{ vars.TRIGGER_PROJECT_REF }}
+
+      - name: 3. Build and deploy the Worker
+        run: pnpm run deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

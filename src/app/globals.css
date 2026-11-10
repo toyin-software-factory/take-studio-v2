@@ -1,0 +1,12 @@
+/* Bare minimum until the design system (scope feature 4) lands. */
+body {
+  margin: 0;
+  padding: 2rem 1rem;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+}
+
+main {
+  max-width: 40rem;
+  margin: 0 auto;
+}
