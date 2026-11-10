@@ -12,6 +12,7 @@ test("health reports the database reachable through Hyperdrive", async ({ reques
   expect(body.checks.database).toBe("ok");
   // Storage needs real R2 credentials, so it is only checked on the deployed Worker.
   expect(["ok", "error"]).toContain(body.checks.storage);
+  expect(res.status()).toBe(body.checks.storage === "ok" ? 200 : 503);
 });
 
 test("sign in starts the Google OAuth flow", async ({ request }) => {
