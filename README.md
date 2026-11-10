@@ -37,7 +37,7 @@ pnpm install
 cp .env.example .env       # then fill in the values
 pnpm db:up                 # Postgres 17 in Docker
 pnpm db:migrate
-pnpm dev                   # next dev + trigger dev (needs TRIGGER_PROJECT_REF and a Trigger.dev login)
+pnpm dev                   # next dev + trigger dev (needs a Trigger.dev login)
 pnpm dev:web               # next dev only
 ```
 

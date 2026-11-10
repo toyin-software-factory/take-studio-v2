@@ -23,7 +23,7 @@
       // The web app reaches Neon only through Hyperdrive (spec 0001).
       // Override locally with CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE.
       "binding": "HYPERDRIVE",
-      "id": "REPLACE_WITH_HYPERDRIVE_ID",
+      "id": "4a5f10f5e1ec4708a142a6878e001a35",
       "localConnectionString": "postgres://postgres:postgres@localhost:5432/take_studio",
     },
   ],
