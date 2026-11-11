@@ -6,6 +6,18 @@
 
 const MINUTE = 60 * 1000;
 
+/**
+ * The processing task's limits, in one place: `process-take` reads them for its own
+ * `maxDuration` and `retry`, and the stale job cut off below is derived from them, so the two
+ * can never disagree again.
+ */
+export const PROCESS_TAKE_LIMITS = {
+  /** `maxDuration` of one attempt, in seconds. */
+  maxDurationSeconds: 40 * 60,
+  /** `retry.maxAttempts`. */
+  maxAttempts: 2,
+} as const;
+
 export const CLEANUP = {
   /** How long a presigned upload link stays valid. */
   uploadLinkLifetimeMs: 60 * MINUTE,
@@ -13,9 +25,12 @@ export const CLEANUP = {
   uploadAbandonMarginMs: 15 * MINUTE,
   /** A job still `queued` after this was never picked up. */
   queuedStaleMs: 15 * MINUTE,
-  /** The processing task's maxDuration (trigger.config.ts `maxDuration` is 1800 s). */
-  jobMaxDurationMs: 30 * MINUTE,
-  /** Extra time after maxDuration before a `running` job counts as stale. */
+  /**
+   * How long a `running` job may legitimately last: every attempt can use the full
+   * maxDuration, and a retry keeps the first attempt's `started_at`.
+   */
+  jobMaxDurationMs: PROCESS_TAKE_LIMITS.maxAttempts * PROCESS_TAKE_LIMITS.maxDurationSeconds * 1000,
+  /** Extra time after that (retry back off, queue time) before a `running` job counts as stale. */
   runningStaleMarginMs: 5 * MINUTE,
   /**
    * An `uploading` take whose original is stored (the upload completed) but that was never

@@ -218,4 +218,29 @@ describe("progress (Flow step 6)", () => {
     await expect(progress.report(10)).resolves.toBeUndefined();
     await expect(progress.flush()).resolves.toBeUndefined();
   });
+
+  it("writes one at a time in order, and flush waits for writes still in flight", async () => {
+    let clock = 0;
+    const log: string[] = [];
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const progress = throttledProgress(
+      async (p) => {
+        log.push(`start ${p}`);
+        if (p === 10) await gate; // the first write is slow
+        log.push(`end ${p}`);
+      },
+      { now: () => clock },
+    );
+    void progress.report(10); // not awaited, like the ffmpeg callback
+    clock = 5_000;
+    void progress.report(50); // must wait for the 10 write
+    let flushed = false;
+    const flushing = progress.flush().then(() => (flushed = true));
+    await Promise.resolve();
+    expect(flushed).toBe(false);
+    release();
+    await flushing;
+    expect(log).toEqual(["start 10", "end 10", "start 50", "end 50"]);
+  });
 });
