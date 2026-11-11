@@ -27,7 +27,8 @@
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "deploy": "pnpm run deploy:check-env && opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "deploy:check-env": "if ls -a | grep -E '^\\.(env|dev\\.vars)' | grep -vx '.env.example' | grep -q .; then echo 'Refusing to deploy: OpenNext would bake local .env or .dev.vars values into the production Worker. Build from a clean checkout.' >&2; exit 1; fi",
-    "deploy:trigger": "trigger deploy"
+    "deploy:trigger": "trigger deploy",
+    "prepare": "[ -n \"$CI\" ] || { h=$(git rev-parse --git-path hooks/pre-commit 2>/dev/null); if [ -f \"$h\" ] && ! grep -q SIMPLE_GIT_HOOKS \"$h\"; then echo \"prepare: kept your own pre-commit hook at $h, so the lint-staged hook was not installed (see README).\" >&2; else simple-git-hooks; fi; }"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "1.20.16",
@@ -54,11 +55,17 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
     "eslint-config-prettier": "^10",
+    "lint-staged": "16.4.0",
     "prettier": "3.9.10",
+    "simple-git-hooks": "2.14.0",
     "trigger.dev": "4.8.3",
     "typescript": "^5.9",
     "vitest": "5.1.0",
     "wrangler": "4.160.0"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm exec lint-staged",
+    "preserveUnused": true
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -68,6 +75,7 @@
     ],
     "ignoredBuiltDependencies": [
       "sharp",
+      "simple-git-hooks",
       "unrs-resolver"
     ]
   }
