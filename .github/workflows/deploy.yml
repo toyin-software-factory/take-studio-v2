@@ -1,6 +1,8 @@
 name: Deploy
 
-# Ordered deploy on every push to main (spec 0001): migrate, then jobs, then the Worker.
+# Ordered deploy on every push to main (spec 0001): build and check the Worker first (nothing
+# ships), then migrate, then the jobs, and only then ship the Worker that was already built. So
+# a failing build, map upload or bundle check stops the deploy before production changes.
 # Migrations must be backward compatible: old and new code run side by side during a deploy.
 on:
   push:
@@ -80,26 +82,8 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: 1. Migrate Neon (direct URL)
-        run: pnpm db:migrate
-        env:
-          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
-          # Explicit opt in for the migration guard (scripts/db-guard.ts); CI=true also allows it.
-          MIGRATE_TARGET: prod
-
-      - name: 2. Deploy Trigger.dev tasks (prod)
-        run: pnpm deploy:trigger --env prod
-        env:
-          TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
-          # Sentry (spec 0005): source maps, release and environment for the jobs. Empty
-          # until the Sentry secrets exist; the deploy then simply runs without Sentry.
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
-          SENTRY_RELEASE: ${{ github.sha }}
-
-      - name: 3. Build and deploy the Worker
-        run: pnpm run deploy
+      - name: 1. Build and check the Worker (nothing ships yet)
+        run: pnpm run deploy:build
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -114,3 +98,28 @@ jobs:
           NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           NEXT_PUBLIC_SENTRY_ENVIRONMENT: production
           NEXT_PUBLIC_SENTRY_RELEASE: ${{ github.sha }}
+
+      - name: 2. Migrate Neon (direct URL)
+        run: pnpm db:migrate
+        env:
+          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
+          # Explicit opt in for the migration guard (scripts/db-guard.ts); CI=true also allows it.
+          MIGRATE_TARGET: prod
+
+      - name: 3. Deploy Trigger.dev tasks (prod)
+        run: pnpm deploy:trigger --env prod
+        env:
+          TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
+          # Sentry (spec 0005): source maps, release and environment for the jobs. Empty
+          # until the Sentry secrets exist; the deploy then simply runs without Sentry.
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+          SENTRY_RELEASE: ${{ github.sha }}
+
+      - name: 4. Ship the Worker (the bundle built and checked in step 1)
+        run: pnpm run deploy:ship
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SENTRY_RELEASE: ${{ github.sha }}
