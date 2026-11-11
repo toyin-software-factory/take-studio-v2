@@ -1,0 +1,54 @@
+# Fails a PR whose body has no filled-in "## Sync" section, so /sync can't be skipped silently.
+# Reruns when the PR body is edited. See ROLE.md → "Done means /sync ran".
+name: pr-sync
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+permissions: {}
+jobs:
+  sync-recorded:
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR body has a filled "## Sync" section
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        shell: python3 {0}
+        run: |
+          import os, re, sys
+          # A line-by-line pass that tracks HTML comments (invisible on GitHub, possibly unclosed) and fenced code
+          # (closed only by the same character, at least as long), so a Sync heading counts only where readers see it.
+          FENCE = re.compile(r"^[ \t]*(?:(?:[-*+]|\d{1,9}[.)])[ \t]+)*(`{3,}|~{3,})")
+          found, on, fence, comment, content = False, False, None, False, []
+          for raw in (os.environ.get("BODY") or "").replace("\r", "").split("\n"):
+              if fence:
+                  m = FENCE.match(raw)
+                  if m and m.group(1)[0] == fence[0] and len(m.group(1)) >= len(fence) and not raw[m.end():].strip():
+                      fence = None
+                  if on and raw.strip():
+                      content.append(raw)
+                  continue
+              line, rest = "", raw
+              while rest:
+                  if comment:
+                      i = rest.find("-->")
+                      comment, rest = (True, "") if i < 0 else (False, rest[i + 3:])
+                  else:
+                      i = rest.find("<!--")
+                      line, rest, comment = (line + rest, "", False) if i < 0 else (line + rest[:i], rest[i + 4:], True)
+              m = FENCE.match(line)
+              if m:
+                  fence = m.group(1)
+              elif re.match(r"^ {0,3}##[ \t]+sync(?:[ \t]+#*)?[ \t]*$", line, re.I):
+                  found, on = True, True
+                  continue
+              elif re.match(r"^ {0,3}#{1,2}([ \t]|$)", line):
+                  on = False
+                  continue
+              if on and line.strip():
+                  content.append(line)
+          if not content:
+              what = "is empty" if found else "is missing"
+              print(f"::error::The PR body's '## Sync' section {what}. Add what /sync changed (files) and how each Heads up item was cleared, or 'No changes', or 'Not needed: docs only'.")
+              sys.exit(1)
+          print("Sync section:\n" + "\n".join(content))
