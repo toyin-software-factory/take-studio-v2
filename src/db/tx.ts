@@ -9,6 +9,10 @@ class RollbackWith extends Error {
 }
 
 /**
+ * Lock order rule: creator, then take, then job, then the rows under them. Read it in
+ * src/db/AGENTS.md before locking two kinds of row in one transaction; the stress test
+ * src/server/lock-order.test.ts fails on a deadlock.
+ *
  * Runs `fn` in one transaction (a savepoint when `db` is already a transaction).
  * An `{ ok: false }` result rolls everything back and is returned as is; thrown errors
  * roll back and propagate.

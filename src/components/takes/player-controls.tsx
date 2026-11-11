@@ -1,6 +1,6 @@
 "use client";
 
-import { Maximize, Pause, Play, Volume2, VolumeX } from "lucide-react";
+import { Captions, Maximize, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Slider } from "@/components/ui/slider";
@@ -15,6 +15,7 @@ export function PlayerControls({
   current,
   duration,
   muted,
+  captions,
   onToggle,
   onSeek,
   onMute,
@@ -24,6 +25,8 @@ export function PlayerControls({
   readonly current: number;
   readonly duration: number;
   readonly muted: boolean;
+  /** The CC button (spec 0007, AC-5); null while there are no captions. */
+  readonly captions: { readonly on: boolean; readonly onToggle: () => void } | null;
   readonly onToggle: () => void;
   readonly onSeek: (seconds: number) => void;
   readonly onMute: () => void;
@@ -54,6 +57,18 @@ export function PlayerControls({
         {formatClock(current * 1000)}
         <span className="text-stage-text-muted"> / {formatClock(known ? duration * 1000 : 0)}</span>
       </span>
+      {captions ? (
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Captions"
+          aria-pressed={captions.on}
+          onClick={captions.onToggle}
+          className={captions.on ? "bg-selected-surface text-text" : undefined}
+        >
+          <Icon icon={Captions} size="stage" />
+        </Button>
+      ) : null}
       <Button variant="ghost" size="icon" aria-label={muted ? "Unmute" : "Mute"} onClick={onMute}>
         <Icon icon={muted ? VolumeX : Volume2} size="stage" />
       </Button>

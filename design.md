@@ -107,7 +107,7 @@ Product components (built in their slices, styled per this file):
 - **Take card and list**: 16:9 thumbnail, title, duration (mono), status badge (icon plus label), expiry note ("Video expires in 12 days"); newest first
 - **Video player (stage)**: 16:9 with letterbox, poster image while loading, custom controls with keyboard shortcuts (space play or pause, arrows seek, J K L), time in mono
 - **Cut timeline (stage)**: kept segments `--stage-accent`, removed cuts striped Brick Red with outline, playhead as above; each cut is a focusable button labelled like "Pause, 1.2 seconds, removed, proposed by AI: dead air"; Enter or tap toggles it with an Undo toast
-- **Transcript panel**: light panel; words in removed ranges struck through and muted; filler words underlined dotted; clicking a word seeks the player
+- **Transcript panel**: light panel beside the stage on desktop, below it on phones; one mono `m:ss` button per paragraph (the keyboard stop), words that seek on a click, filler words underlined dotted, the playing paragraph marked with `aria-current`; removed words are not shown until slice 4 (then struck through and muted). The player has a CC button (off by default, `aria-pressed`) and uses the take's thumbnail as its poster
 - **Background picker**: grid of 16:9 thumbnails, built ins first then the creator's uploads; selected item has a 2 px Brick Red ring with a 2 px white inner gap plus a check badge on a solid chip
 - **Phones (review screen)**: player full width at the top; Transcript and Cuts in tabs below; the timeline scrolls sideways with a zoom slider; tapping a cut opens a bottom sheet with its details and Keep or Remove
 
@@ -175,3 +175,11 @@ Upload and library:
 Processing state:
 
 - Synthesia transcribing progress: https://mobbin.com/screens/c87e9578-a8d1-4f44-b08d-4f2839f1df3e
+
+Transcript panel beside the player (spec 0007, S2T-T05):
+
+- Mistral AI speech to text, paragraphs with a play icon and mono timestamp: https://mobbin.com/screens/93863599-531f-447f-abde-03af324bb7bd
+- Descript script editor, dotted underlined filler words: https://mobbin.com/screens/6bf488ec-ca2f-47c2-a2fd-e906ba560a56
+- Canva course page, transcript under the player: https://mobbin.com/screens/d85366a6-602e-42ca-a84e-98a9ab23b9d8
+- Canva captions on video: https://mobbin.com/screens/c83042ea-10aa-4cdf-a671-e7c47b5258d0
+- Descript export dialog: https://mobbin.com/screens/1a19201c-754b-4a17-982b-e02c98c89998

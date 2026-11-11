@@ -6,24 +6,12 @@ import { StageLetterbox } from "@/components/stage";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
-import { mediaLinkSchema } from "@/lib/take-api";
-import { callApi } from "./browser-io";
+import { type PlayerBridge } from "./player-bridge";
 import { PlayerControls } from "./player-controls";
+import { type Link, playLink } from "./play-link";
+import { useCaptions } from "./use-captions";
+import { usePoster } from "./use-poster";
 import { usePlayerKeys } from "./use-player-keys";
-
-/** A fresh 1 hour play link, or an error. */
-async function playLink(takeId: string): Promise<Link> {
-  const reply = await callApi(`/api/takes/${takeId}/media?kind=play`, "GET").catch(() => null);
-  const parsed = mediaLinkSchema.safeParse(reply?.data);
-  return reply?.status === 200 && parsed.success
-    ? { kind: "ready", url: parsed.data.url }
-    : { kind: "error" };
-}
-
-type Link =
-  | { readonly kind: "loading" }
-  | { readonly kind: "ready"; readonly url: string }
-  | { readonly kind: "error" };
 
 /**
  * The stage player (AC-9; design.md Video player): plays through a 1 hour signed link from
@@ -31,7 +19,13 @@ type Link =
  * shortcuts (space or K play and pause, arrows seek 5 s, J and L seek 10 s). If the link has
  * expired, a fresh one is fetched once and playback resumes where it was.
  */
-export function TakePlayer({ takeId }: { readonly takeId: string }) {
+export function TakePlayer({
+  takeId,
+  bridge,
+}: {
+  readonly takeId: string;
+  readonly bridge: PlayerBridge;
+}) {
   const video = useRef<HTMLVideoElement>(null);
   const resumeAt = useRef(0);
   const refreshed = useRef(false);
@@ -41,6 +35,8 @@ export function TakePlayer({ takeId }: { readonly takeId: string }) {
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [muted, setMuted] = useState(false);
+  const captions = useCaptions(bridge, video, link.kind === "ready");
+  const poster = usePoster(takeId);
 
   const fetchLink = useCallback(() => {
     void playLink(takeId).then(setLink);
@@ -64,13 +60,23 @@ export function TakePlayer({ takeId }: { readonly takeId: string }) {
   }, []);
   const seekTo = useCallback((seconds: number) => {
     const v = video.current;
-    if (v) v.currentTime = Math.min(Math.max(0, seconds), v.duration || 0);
+    // Before the metadata loads the duration is NaN: keep the time (the browser applies it once it
+    // loads) instead of clamping it to 0, so a transcript click on a still loading video works.
+    if (v)
+      v.currentTime = Number.isFinite(v.duration)
+        ? Math.min(Math.max(0, seconds), v.duration)
+        : Math.max(0, seconds);
   }, []);
   const seekBy = useCallback(
     (delta: number) => seekTo((video.current?.currentTime ?? 0) + delta),
     [seekTo],
   );
   const onKeyDown = usePlayerKeys(toggle, seekBy);
+  // The transcript panel seeks through the bridge (times on the trimmed video, in ms).
+  useEffect(() => {
+    bridge.setSeek((ms) => seekTo(ms / 1000));
+    return () => bridge.setSeek(null);
+  }, [bridge, seekTo]);
 
   if (link.kind === "loading") return <Skeleton className="aspect-video w-full" />;
   if (link.kind === "error") {
@@ -101,6 +107,7 @@ export function TakePlayer({ takeId }: { readonly takeId: string }) {
         <video
           ref={video}
           src={link.url}
+          poster={poster ?? undefined}
           playsInline
           preload="metadata"
           className="size-full object-contain"
@@ -111,7 +118,10 @@ export function TakePlayer({ takeId }: { readonly takeId: string }) {
             // A pause while the new link is loading means: stay paused when it arrives.
             resumePlaying.current = false;
           }}
-          onTimeUpdate={(e) => setCurrent(e.currentTarget.currentTime)}
+          onTimeUpdate={(e) => {
+            setCurrent(e.currentTarget.currentTime);
+            bridge.setTime(e.currentTarget.currentTime * 1000);
+          }}
           onLoadedMetadata={(e) => {
             setDuration(e.currentTarget.duration);
             if (resumeAt.current > 0) e.currentTarget.currentTime = resumeAt.current;
@@ -128,13 +138,24 @@ export function TakePlayer({ takeId }: { readonly takeId: string }) {
             resumePlaying.current = video.current?.paused === false;
             fetchLink();
           }}
-        />
+        >
+          {captions.version ? (
+            <track
+              key={captions.version}
+              kind="captions"
+              srcLang="en"
+              label="English"
+              src={`/api/takes/${takeId}/transcript/vtt?v=${encodeURIComponent(captions.version)}`}
+            />
+          ) : null}
+        </video>
       </StageLetterbox>
       <PlayerControls
         playing={playing}
         current={current}
         duration={duration}
         muted={muted}
+        captions={captions.version ? { on: captions.on, onToggle: captions.toggle } : null}
         onToggle={toggle}
         onSeek={seekTo}
         onMute={() => {
