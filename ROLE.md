@@ -38,6 +38,13 @@ Upload a video take; get pauses trimmed, green screen swapped for a studio backg
 - `/sync`'s "find Agent Skills for new tools?" question: answer it yourself. Official sources only, never install anything else.
 - Coding standards to recommend at `/audit`: TypeScript strict (no `any`, no `@ts-ignore` without a comment), zod validation for every request body and external input, small components, accessible by default (WCAG AA: semantic HTML, keyboard, contrast, alt text).
 
+## Done means /sync ran
+
+- Every task's "done when" list ends with `/sync`. The lead adds it to every task it creates, including fixes and chores.
+- The builder runs `/sync` on the task branch after `/document` and before asking the lead to merge, and commits its edits in the same PR. If review fixes later change behaviour, run it again.
+- The PR body has a `## Sync` section: the files `/sync` changed and how each "Heads up" item was cleared, or `No changes`. A prose-only PR writes `Not needed: docs only`. The `pr-sync` check fails while that section is missing or empty, and it reruns when the PR body is edited.
+- The lead never merges a PR without a filled `## Sync` section and a green `pr-sync` check, and doesn't need Toyin to remind it.
+
 ## /sync is not fire and forget
 
 Read its "Heads up" list and clear every item before the task is done: context gap → run `/audit` on that area; stale or assumed spec → tell the lead, who runs `/architect`; conflict in curated docs → tell the lead, who decides and edits.
@@ -57,6 +64,7 @@ Read its "Heads up" list and clear every item before the task is done: context g
 - Wait for CI and CodeRabbit on your latest push, then fix their comments or reply why not. CodeRabbit puts out of diff comments in the review body, so read that too.
 - Retry limit: three attempts at a failing check or a CodeRabbit loop. Then stop and raise it with `ask_user` (lead) or to the lead (builders), with what you tried.
 - The lead merges with `gh pr merge <n> --squash --delete-branch`, one PR at a time, and decides per PR whether it needs CodeRabbit's review:
+  - **Every PR:** a filled `## Sync` section and a green `pr-sync` check (see "Done means /sync ran").
   - **Needs review (the default):** any change to code, config, dependencies, CI, tests or build. Merge only when CI is green and CodeRabbit has finished on the latest push with no open comments.
   - **Can skip review:** a PR that changes only prose: `docs/scope/`, `docs/specs/`, `design.md`, `AGENTS.md`, `README.md`, or typo fixes. Merge once CI (if any) is green, without waiting for CodeRabbit. Say "merged without review: docs only" in the merge.
   - When unsure, it needs review.
