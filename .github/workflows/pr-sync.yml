@@ -13,15 +13,25 @@ jobs:
       - name: PR body has a filled "## Sync" section
         env:
           BODY: ${{ github.event.pull_request.body }}
+        shell: python3 {0}
         run: |
-          section="$(printf '%s\n' "$BODY" | tr -d '\r' | awk '
-            { l = tolower($0) }
-            l ~ /^##[ \t]+sync[ \t]*$/ { on = 1; next }
-            l ~ /^#{1,2}[ \t]/ { on = 0 }
-            on' | sed '/<!--/,/-->/d' | grep -v '^[[:space:]]*$' || true)"
-          if [ -z "$section" ]; then
-            echo "::error::Add a '## Sync' section to the PR body: what /sync changed (files) and how each Heads up item was cleared, or 'No changes', or 'Not needed: docs only'."
-            exit 1
-          fi
-          echo "Sync section:"
-          printf '%s\n' "$section"
+          import os, re, sys
+          # HTML comments are invisible on GitHub, so they neither open a section nor count as content.
+          body = re.sub(r"<!--.*?-->", "", (os.environ.get("BODY") or "").replace("\r", ""), flags=re.S)
+          found, on, fence, content = False, False, False, []
+          for line in body.split("\n"):
+              if re.match(r"^ {0,3}(```|~~~)", line):
+                  fence = not fence
+              elif not fence and re.match(r"^ {0,3}##[ \t]+sync[ \t]*#*[ \t]*$", line, re.I):
+                  found, on = True, True
+                  continue
+              elif not fence and re.match(r"^ {0,3}#{1,2}([ \t]|$)", line):
+                  on = False
+                  continue
+              if on and line.strip():
+                  content.append(line)
+          if not content:
+              what = "is empty" if found else "is missing"
+              print(f"::error::The PR body's '## Sync' section {what}. Add what /sync changed (files) and how each Heads up item was cleared, or 'No changes', or 'Not needed: docs only'.")
+              sys.exit(1)
+          print("Sync section:\n" + "\n".join(content))
