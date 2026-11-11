@@ -27,7 +27,7 @@ export const PROBE_LIMITS = {
 } as const;
 
 export const CLEANUP = {
-  /** How long a presigned upload link stays valid. */
+  /** How long a whole upload may take (part links are issued for 15 minutes each, per part). */
   uploadLinkLifetimeMs: 60 * MINUTE,
   /** Extra time after the link expires before an `uploading` take counts as abandoned. */
   uploadAbandonMarginMs: 15 * MINUTE,
