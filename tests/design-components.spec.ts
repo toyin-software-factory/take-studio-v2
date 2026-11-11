@@ -28,10 +28,12 @@ test("menu opens and moves by keyboard", async ({ page }) => {
   await page.keyboard.press("Enter");
   const menu = page.getByRole("menu");
   await expect(menu).toBeVisible();
-  // The menu takes focus a moment after it shows; an arrow key pressed before that is lost.
+  // Opened from the keyboard, the menu first takes focus itself and then moves it to its first
+  // item. An arrow key pressed before the first item has focus lands one item too early, so wait
+  // for a menu item to be focused.
   await expect
-    .poll(() => page.evaluate(() => document.activeElement?.closest("[role=menu]") !== null))
-    .toBe(true);
+    .poll(() => page.evaluate(() => document.activeElement?.getAttribute("role")))
+    .toBe("menuitem");
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("menuitem", { name: "Download" })).toBeFocused();
   await page.keyboard.press("Escape");
