@@ -22,7 +22,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 | # | Feature | Phase | Status |
 |---|---------|-------|--------|
-| 1 | Stack & architecture | Foundation | in-progress |
+| 1 | Stack & architecture | Foundation | done |
 | 2 | Coding standards & tooling | Foundation | done |
 | 3 | Data model | Foundation | done |
 | 4 | Design system & UI foundation | Foundation | in-progress |
@@ -42,13 +42,13 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 ## Foundations
 
-### 1. Stack & architecture · in-progress
+### 1. Stack & architecture · done
 Decide the stack (web app, auth, storage for large video files, background processing jobs, video processing, speech to text, AI agent runtime, hosting) and scaffold a runnable project with CI.
 **Done when:** the stack is recorded in a spec, and the empty scaffold boots locally and passes lint, typecheck, test and build in CI.
 - [x] Decide the stack (spec): `/architect stack & architecture`
 - [x] Scaffold from the decision: `/develop stack & architecture` (PRs #3, #4; live at https://take-studio.jnr4u2.workers.dev)
-- [ ] Verify it: `/check verify stack & architecture`
-- [ ] Test it: `/test stack & architecture`
+- [x] Verify it: `/check verify stack & architecture`
+- [x] Test it: `/test stack & architecture`
 Spec [0001](../specs/0001-stack-architecture/index.md)
 
 ### 2. Coding standards & tooling · done

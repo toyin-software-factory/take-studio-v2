@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { parseJobEnv, parseUsageEnv, parseWebEnv } from "./env";
+import { readFileSync } from "node:fs";
+import {
+  jobEnvSchema,
+  parseJobEnv,
+  parseUsageEnv,
+  parseWebEnv,
+  usageEnvSchema,
+  webEnvSchema,
+} from "./env";
 
 const r2 = {
   R2_ACCOUNT_ID: "acct",
@@ -48,5 +56,14 @@ describe("env", () => {
         TRIGGER_SECRET_KEY: "tr_dev_x",
       }),
     ).not.toThrow();
+  });
+
+  it("lists every schema variable in .env.example (spec 0001 Runtime rules, Env)", () => {
+    const example = readFileSync(new URL("../../.env.example", import.meta.url), "utf8");
+    const names = [webEnvSchema, jobEnvSchema, usageEnvSchema].flatMap((schema) =>
+      Object.keys(schema.shape),
+    );
+    const missing = names.filter((name) => !new RegExp(`^${name}=`, "m").test(example));
+    expect(missing).toEqual([]);
   });
 });

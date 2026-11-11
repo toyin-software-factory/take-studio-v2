@@ -204,6 +204,50 @@ describe("takes.getForCreator, listForCreator and rename", () => {
     ]);
   });
 
+  it("picks the newest job and the is_latest render among several", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id);
+    const first = await jobs.start(db, {
+      creatorId: creator.id,
+      takeId: t.id,
+      usageSecret: SECRET,
+    });
+    if (!first.ok) throw new Error(first.error);
+    const firstRender = await renders.create(db, { takeId: t.id, jobId: first.data.id });
+    if (!firstRender.ok) throw new Error(firstRender.error);
+    await renders.completeLatest(db, { renderId: firstRender.data.id, durationMs: 9_000 });
+    await jobs.finish(db, { jobId: first.data.id, status: "succeeded" });
+
+    // A later re render that creates its own render, then fails.
+    const second = await jobs.start(db, {
+      creatorId: creator.id,
+      takeId: t.id,
+      usageSecret: SECRET,
+    });
+    if (!second.ok) throw new Error(second.error);
+    const secondRender = await renders.create(db, { takeId: t.id, jobId: second.data.id });
+    if (!secondRender.ok) throw new Error(secondRender.error);
+    await jobs.finish(db, { jobId: second.data.id, status: "failed", failureCode: "ffmpeg_error" });
+
+    const result = await getForCreator(db, creator.id, t.id);
+    expect(result.ok && result.data.latestJob?.id).toBe(second.data.id);
+    expect(result.ok && result.data.latestRender?.id).toBe(firstRender.data.id);
+  });
+
+  it("returns no latest render when the take only has a render that never became latest", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id);
+    const job = await jobs.start(db, { creatorId: creator.id, takeId: t.id, usageSecret: SECRET });
+    if (!job.ok) throw new Error(job.error);
+    const created = await renders.create(db, { takeId: t.id, jobId: job.data.id });
+    if (!created.ok) throw new Error(created.error);
+    await jobs.finish(db, { jobId: job.data.id, status: "failed", failureCode: "timeout" });
+
+    const result = await getForCreator(db, creator.id, t.id);
+    expect(result.ok && result.data.latestRender).toBeNull();
+    expect(result.ok && result.data.latestJob?.id).toBe(job.data.id);
+  });
+
   it("lists newest first across pages with no gaps or repeats", async () => {
     const creator = await createCreator(db);
     const base = Date.parse("2026-11-01T00:00:00Z");
