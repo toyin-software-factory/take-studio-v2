@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useNow } from "./use-now";
 import { Film } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
@@ -35,15 +36,26 @@ export function TakeLibrary({
   const [cursor, setCursor] = useState(initial.nextCursor);
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState(false);
+  const [sessionEnded, setSessionEnded] = useState(false);
   const now = useNow(nowIso);
+  const router = useRouter();
 
   const inFlight = takes.filter((t) => isInFlight(t.status)).map((t) => t.id);
   const pollKey = inFlight.join(",");
 
   const refresh = useCallback(async (): Promise<PollResult> => {
     const ids = pollKey.split(",").filter(Boolean);
-    const replies = await Promise.all(ids.map((id) => callApi(`/api/takes/${id}`, "GET")));
-    if (replies.some((r) => r.status === 401)) return "stop";
+    // Each request settles on its own: one that fails or times out counts as an error for the
+    // backoff, and the others still update their cards.
+    const replies = await Promise.all(
+      ids.map((id) =>
+        callApi(`/api/takes/${id}`, "GET").catch(() => ({ status: 0, data: null as unknown })),
+      ),
+    );
+    if (replies.some((r) => r.status === 401)) {
+      setSessionEnded(true);
+      return "stop";
+    }
     const gone = new Set(ids.filter((_, i) => replies[i]!.status === 404));
     const fresh = new Map(
       replies.flatMap((r) => {
@@ -105,6 +117,16 @@ export function TakeLibrary({
           <TakeCard key={take.id} take={take} now={now} onRetried={onRetried} />
         ))}
       </ul>
+      {sessionEnded ? (
+        <Alert variant="warning" title="Your session ended">
+          Sign in again to see the latest on your takes.
+          <div className="pt-2">
+            <Button size="sm" onClick={() => router.refresh()}>
+              Sign in
+            </Button>
+          </div>
+        </Alert>
+      ) : null}
       {moreError ? (
         <Alert variant="danger" title="More takes didn't load">
           Check your connection, then choose Show more takes again.

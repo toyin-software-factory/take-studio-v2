@@ -165,6 +165,26 @@ test.describe("library", () => {
     ).toHaveCount(0);
   });
 
+  test("a card refresh that gets 401 says the session ended, with a sign in action", async ({
+    page,
+    baseURL,
+  }) => {
+    const user = await signedIn(page, baseURL!);
+    await seedTakes(user.id, [
+      { title: "Quietly processing", status: "processing", minutesAgo: 1 },
+    ]);
+    // Only the take detail request (not its media links) answers 401, as an expired session does.
+    await page.route("**/api/takes/*", (route) =>
+      route.request().method() === "GET"
+        ? route.fulfill({ status: 401, json: { error: "unauthorized" } })
+        : route.continue(),
+    );
+    await page.goto("/");
+    const alert = page.getByRole("status").filter({ hasText: "Your session ended" });
+    await expect(alert).toBeVisible({ timeout: 20_000 });
+    await expect(alert.getByRole("button", { name: "Sign in" })).toBeVisible();
+  });
+
   test("refuses a file that isn't MP4 or MOV before uploading (AC-2)", async ({
     page,
     baseURL,

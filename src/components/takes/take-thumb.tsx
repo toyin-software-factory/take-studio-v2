@@ -55,7 +55,7 @@ export function TakeThumb({
       ref={box}
       className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-t-md bg-stage-bg text-stage-text-muted"
     >
-      {src && !failed ? (
+      {src && !failed && available ? (
         // eslint-disable-next-line @next/next/no-img-element -- images are unoptimized (spec 0001)
         <img
           src={src}
