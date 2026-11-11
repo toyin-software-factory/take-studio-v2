@@ -34,7 +34,7 @@ export function ButtonDemos() {
         <Button>Default</Button>
         <Button className="bg-primary-hover">Hover</Button>
         <Button className="bg-primary-active">Pressed</Button>
-        <Button className="outline-2 outline-offset-2 outline-ring">Focus</Button>
+        <Button className="outline-2 outline-offset-2 outline-ring outline-solid">Focus</Button>
         <Button disabled>Disabled</Button>
         <Button loading>Rendering</Button>
       </DemoBlock>
