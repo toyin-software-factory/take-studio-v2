@@ -1,0 +1,16 @@
+diff --git a/dist/cli/build/bundle-server.js b/dist/cli/build/bundle-server.js
+index 7420316008e9651c5a1e41d2edcc3d00b8d023f8..cf319f9c24bb97fc4b81d0d290a273768499182d 100644
+--- a/dist/cli/build/bundle-server.js
++++ b/dist/cli/build/bundle-server.js
+@@ -85,6 +85,11 @@ export async function bundleServer(buildOpts, projectOpts) {
+         minifyIdentifiers: false,
+         minifySyntax: projectOpts.minify && !debug,
+         legalComments: "none",
++        // Source maps for Sentry (spec 0005, AC-6): keep the maps inlined into the Next chunks
++        // (scripts/inline-server-maps.ts) as an inline map on handler.mjs, so wrangler's final
++        // bundle can map back to src/. Off unless the deploy sets WORKER_SOURCE_MAPS.
++        sourcemap: process.env.WORKER_SOURCE_MAPS ? "inline" : false,
++        sourcesContent: false,
+         metafile: true,
+         // Next traces files using the default conditions from `nft` (`node`, `require`, `import` and `default`)
+         //
