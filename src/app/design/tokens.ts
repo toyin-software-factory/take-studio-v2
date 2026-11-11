@@ -33,6 +33,7 @@ export const lightColours: readonly ColourToken[] = [
   { name: "primary-active", value: "#5a0000", use: "Primary pressed" },
   { name: "danger", value: "#9b0d18", use: "Errors, destructive buttons" },
   { name: "danger-hover", value: "#780000", use: "Destructive hover" },
+  { name: "danger-active", value: "#5a0000", use: "Destructive pressed (light and stage)" },
   { name: "danger-bg", value: "Error red 8%", use: "Inline error alerts" },
   { name: "success", value: "#2e6b3f", use: "Success label and icon" },
   { name: "success-bg", value: "Green 8%", use: "Success alerts" },
@@ -67,7 +68,11 @@ export const lightPairs: readonly ContrastPair[] = [
     ["bg", "surface"],
     "text",
   ),
-  ...on(["primary-fg"], ["primary", "primary-hover", "primary-active", "danger"], "text"),
+  ...on(
+    ["primary-fg"],
+    ["primary", "primary-hover", "primary-active", "danger", "danger-active"],
+    "text",
+  ),
   ...on(["border-strong", "focus"], ["bg", "surface"], "ui"),
   ...on(["border"], ["bg", "surface"], "decorative"),
 ];
