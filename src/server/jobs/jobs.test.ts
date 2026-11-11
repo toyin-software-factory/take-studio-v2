@@ -1,9 +1,10 @@
 import { createHmac } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { processingJob, render, storageDeletion, take } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
+import { startJob } from "@/db/data/jobs";
 import { cancel, finish, markRunning, start, updateStep } from ".";
 
 // Test value only; the real secret is USAGE_HASH_SECRET.
@@ -113,6 +114,80 @@ describe("jobs.start (AC-6, AC-7)", () => {
       .innerJoin(take, eq(take.id, processingJob.takeId))
       .where(eq(take.creatorId, creator.id));
     expect(jobs).toEqual([]);
+  });
+
+  it("never restarts a take that failed because of its media, even with a known length (AC-10)", async () => {
+    const creator = await createCreator(db);
+    for (const failureCode of [
+      "too_long",
+      "resolution_exceeded",
+      "invalid_media",
+      "corrupt_upload",
+    ]) {
+      const t = await seedTake(db, creator.id, {
+        status: "failed",
+        failureCode,
+        durationMs: 660_000,
+      });
+      expect(
+        await start(db, { creatorId: creator.id, takeId: t.id, usageSecret: SECRET }),
+        failureCode,
+      ).toEqual({ ok: false, error: "invalid_transition" });
+    }
+  });
+
+  it("retries a take whose failure was not the media's fault", async () => {
+    const creator = await createCreator(db);
+    for (const failureCode of ["timeout", "ffmpeg_error", "cancelled_while_running"]) {
+      const t = await seedTake(db, creator.id, { status: "failed", failureCode });
+      const retried = await start(db, { creatorId: creator.id, takeId: t.id, usageSecret: SECRET });
+      expect(retried.ok, failureCode).toBe(true);
+    }
+  });
+
+  it("refuses a failed take whose video has expired, and still starts one that has not", async () => {
+    const creator = await createCreator(db);
+    const base = { status: "failed" as const, failureCode: "timeout" };
+    const gone = await seedTake(db, creator.id, {
+      ...base,
+      videoExpiresAt: new Date(NOW.getTime() - 1000),
+    });
+    const atNow = await seedTake(db, creator.id, { ...base, videoExpiresAt: NOW });
+    const fresh = await seedTake(db, creator.id, {
+      ...base,
+      videoExpiresAt: new Date(NOW.getTime() + 60_000),
+    });
+    const startAt = (takeId: string) =>
+      start(db, { creatorId: creator.id, takeId, usageSecret: SECRET, now: NOW });
+    expect(await startAt(gone.id)).toEqual({ ok: false, error: "invalid_transition" });
+    expect(await startAt(atNow.id)).toEqual({ ok: false, error: "invalid_transition" });
+    expect((await startAt(fresh.id)).ok).toBe(true);
+    const rows = await db
+      .select()
+      .from(processingJob)
+      .where(inArray(processingJob.takeId, [gone.id, atNow.id]));
+    expect(rows).toEqual([]);
+  });
+
+  it("lets a caller restrict which take statuses may start (the probe: uploaded only)", async () => {
+    const creator = await createCreator(db);
+    const ready = await seedTake(db, creator.id, { status: "ready" });
+    expect(
+      await startJob(db, {
+        creatorId: creator.id,
+        takeId: ready.id,
+        usageSecret: SECRET,
+        fromStatuses: ["uploaded"],
+      }),
+    ).toEqual({ ok: false, error: "invalid_transition" });
+    const uploaded = await seedTake(db, creator.id, { status: "uploaded" });
+    const started = await startJob(db, {
+      creatorId: creator.id,
+      takeId: uploaded.id,
+      usageSecret: SECRET,
+      fromStatuses: ["uploaded"],
+    });
+    expect(started.ok).toBe(true);
   });
 
   it("re renders for free once an initial job succeeded", async () => {

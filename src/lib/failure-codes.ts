@@ -42,3 +42,20 @@ export function isFailureCode(value: string): value is FailureCode {
 export function isRefundable(code: string): boolean {
   return isFailureCode(code) && FAILURE_CODES[code].refundable;
 }
+
+/**
+ * Failures caused by the uploaded media itself (spec 0004 AC-10): the creator needs to upload
+ * another video, so these takes can't be retried. Other failures can ("Try again").
+ */
+export const MEDIA_FAILURE_CODES: ReadonlySet<string> = new Set([
+  "invalid_media",
+  "too_long",
+  "too_large",
+  "resolution_exceeded",
+  "corrupt_upload",
+  "upload_abandoned",
+]);
+
+export function isMediaFailure(code: string | null): boolean {
+  return code !== null && MEDIA_FAILURE_CODES.has(code);
+}

@@ -130,7 +130,14 @@ describe("takes.markUploaded (AC-5)", () => {
       sizeBytes: 1_000,
       probe: { ...probe, durationMs: 11 * 60 * 1000 },
     });
-    expect(result.ok && result.data).toMatchObject({ status: "failed", failureCode: "too_long" });
+    expect(result.ok && result.data).toMatchObject({
+      status: "failed",
+      failureCode: "too_long",
+      // The probe's facts are kept so the page can say "This video is 11 minutes long".
+      durationMs: 11 * 60 * 1000,
+      width: 1920,
+      height: 1080,
+    });
   });
 
   it("returns not_found for a missing take", async () => {

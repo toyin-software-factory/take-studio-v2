@@ -1,6 +1,6 @@
 import { defineConfig } from "@trigger.dev/sdk";
 import { esbuildPlugin } from "@trigger.dev/build/extensions";
-import { ffmpeg, syncEnvVars } from "@trigger.dev/build/extensions/core";
+import { type ffmpeg, syncEnvVars } from "@trigger.dev/build/extensions/core";
 import { sentryEsbuildPlugin } from "@sentry/esbuild-plugin";
 
 // Sentry (spec 0005): source maps are uploaded on deploy only when CI has a token
@@ -21,6 +21,47 @@ const sentryUpload = process.env.SENTRY_AUTH_TOKEN
       ),
     ]
   : [];
+
+type BuildExtension = ReturnType<typeof ffmpeg>;
+
+/**
+ * A pinned, tagged ffmpeg 7.1 static build (spec 0004 build plan step 2), instead of the
+ * built in `ffmpeg()` extension, which always installs the moving johnvansickle git snapshot.
+ * BtbN's GPL static build: libx264, libx265, libzimg (zscale), tonemap, silencedetect.
+ * The tarball is verified against its SHA-256 before install. To upgrade: pick a newer
+ * monthly `autobuild-*` release on github.com/BtbN/FFmpeg-Builds, update both constants,
+ * and prove it on a preview branch.
+ */
+const FFMPEG_BUILD = {
+  url: "https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2025-09-30-13-19/ffmpeg-n7.1.2-5-g8f77695e65-linux64-gpl-7.1.tar.xz",
+  sha256: "49df247d3908323bf1d99c00480fed8603506cc0cb2a10ad8f905a961c3ceab8",
+} as const;
+
+function pinnedFfmpeg(): BuildExtension {
+  return {
+    name: "pinned-ffmpeg",
+    onBuildComplete(context) {
+      // Dev runs use the machine's own ffmpeg (FFMPEG_PATH unset falls back to "ffmpeg").
+      if (context.target === "dev") return;
+      context.addLayer({
+        id: "pinned-ffmpeg",
+        image: {
+          instructions: [
+            "RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl xz-utils && " +
+              `curl -fsSL -o /tmp/ffmpeg.tar.xz ${FFMPEG_BUILD.url} && ` +
+              `echo "${FFMPEG_BUILD.sha256}  /tmp/ffmpeg.tar.xz" | sha256sum -c - && ` +
+              "tar -xJf /tmp/ffmpeg.tar.xz -C /usr/local/bin --strip-components=2 --wildcards '*/bin/ffmpeg' '*/bin/ffprobe' && " +
+              "rm /tmp/ffmpeg.tar.xz && apt-get clean && rm -rf /var/lib/apt/lists/*",
+          ],
+        },
+        deploy: {
+          env: { FFMPEG_PATH: "/usr/local/bin/ffmpeg", FFPROBE_PATH: "/usr/local/bin/ffprobe" },
+          override: true,
+        },
+      });
+    },
+  };
+}
 
 export default defineConfig({
   // Not a secret (spec 0001): the project ref lives here, not in env or CI.
@@ -44,7 +85,8 @@ export default defineConfig({
   },
   build: {
     extensions: [
-      ffmpeg({ version: "7" }),
+      // Pinned ffmpeg 7.1 (spec 0004), not the built in moving snapshot.
+      pinnedFfmpeg(),
       syncEnvVars(
         ({ environment }) => [
           { name: "SENTRY_ENVIRONMENT", value: environment === "prod" ? "production" : "preview" },

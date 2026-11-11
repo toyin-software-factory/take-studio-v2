@@ -67,7 +67,8 @@ export function checkUpload(sizeBytes: number, probe: Probe | null): ProbeVerdic
 /** Allowed take status transitions (spec 0002, "State transitions"). */
 export const TAKE_TRANSITIONS: Readonly<Record<TakeStatus, readonly TakeStatus[]>> = {
   uploading: ["uploaded", "failed"],
-  uploaded: ["processing", "expired"],
+  // `failed` when processing never got started (probe gave up after the upload was fine).
+  uploaded: ["processing", "expired", "failed"],
   processing: ["ready", "failed"],
   ready: ["processing", "expired"],
   failed: ["processing", "expired"],
@@ -102,6 +103,11 @@ export function titleFromFileName(fileName: string): string {
 /** Original upload key (spec 0001 prefixes): `originals/{takeId}/source.{container}`. */
 export function originalKey(takeId: string, container: Container): string {
   return `originals/${takeId}/source.${container}`;
+}
+
+/** Thumbnail key (spec 0004): `originals/{takeId}/thumb.jpg`, written by the probe. */
+export function thumbnailKey(takeId: string): string {
+  return `originals/${takeId}/thumb.jpg`;
 }
 
 /** When an uploaded video expires: completion time + retention days. */
