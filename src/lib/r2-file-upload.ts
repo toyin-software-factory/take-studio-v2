@@ -66,8 +66,10 @@ export async function uploadFileMultipart(
         const start = index * partSize;
         const length = Math.min(partSize, size - start);
         const buffer = new Uint8Array(new ArrayBuffer(length));
-        await file.read(buffer, 0, length, start);
         try {
+          const { bytesRead } = await file.read(buffer, 0, length, start);
+          // A file that shrank mid upload must not send a zero padded part.
+          if (bytesRead !== length) throw new Error("render file changed during upload");
           etags[index] = await withRetry(
             () => r2.uploadPart(key, uploadId, index + 1, buffer),
             attempts,
