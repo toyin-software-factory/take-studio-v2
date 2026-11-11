@@ -22,23 +22,45 @@ export type AbandonedUpload = {
 
 /**
  * Fails `uploading` takes older than the upload link lifetime plus a margin with
- * `upload_abandoned`, clears their upload ID and queues the original key (a completed but
- * never confirmed upload would otherwise linger). Returns what to abort in R2.
+ * `upload_abandoned`, clears their upload ID and queues the original key. Before each one it
+ * checks storage itself (`headObject`): a take whose original is stored at the stated size
+ * belongs to the stuck upload recovery and is never failed here, and a take whose storage
+ * cannot be checked is left for the next run. No run local list stands in for that check, so
+ * overlapping runs and the recovery batch limit cannot make a stored original look absent.
+ * Returns what to abort in R2.
  */
 export async function failAbandonedUploads(
   db: Executor,
   now: Date,
+  headObject: StuckUploadPorts["headObject"],
+  scan: ScanBudget = {},
 ): Promise<readonly AbandonedUpload[]> {
+  const clock = scan.clock ?? Date.now;
+  const stopAt = clock() + (scan.budgetMs ?? DEFAULT_SCAN_BUDGET_MS);
   const { abandonedUploadBefore } = cleanupCutoffs(now);
   const candidates = await db
-    .select({ id: take.id, originalKey: take.originalKey, uploadId: take.uploadId })
+    .select({
+      id: take.id,
+      originalKey: take.originalKey,
+      originalBytes: take.originalBytes,
+      uploadId: take.uploadId,
+    })
     .from(take)
     .where(and(eq(take.status, "uploading"), lt(take.createdAt, abandonedUploadBefore)))
-    .orderBy(asc(take.createdAt))
+    .orderBy(asc(take.updatedAt))
     .limit(CLEANUP.batchSize);
 
   const failed: AbandonedUpload[] = [];
   for (const candidate of candidates) {
+    if (clock() >= stopAt) break; // out of time budget: the next run continues
+    try {
+      const stored = await headObject(candidate.originalKey);
+      if (stored && stored.size === Number(candidate.originalBytes)) continue; // recovery's
+    } catch {
+      // Cannot tell: try again later rather than delete a stored original, behind the rest.
+      await backOff(db, candidate.id, now);
+      continue;
+    }
     const result = await runTx(db, async (tx) => {
       const moved = await transitionTake(tx, candidate.id, "uploading", "failed", {
         failureCode: "upload_abandoned",
@@ -135,4 +157,128 @@ export async function expireDueTakes(
     }
   }
   return { expired, queuedKeys };
+}
+
+/** Bounds for the storage scans, so slow R2 calls cannot use up the whole cleanup run. */
+export type ScanBudget = {
+  /** Stop starting storage checks after this long (default 2 minutes). */
+  readonly budgetMs?: number;
+  /** Clock for the budget (tests). */
+  readonly clock?: () => number;
+};
+const DEFAULT_SCAN_BUDGET_MS = 2 * 60 * 1000;
+
+/**
+ * A storage check failed: move the take to the back of the queue (`updated_at` is the sort key
+ * of both scans) so persistent HEAD errors on the oldest rows cannot starve later ones.
+ */
+async function backOff(db: Executor, takeId: string, now: Date): Promise<void> {
+  await db
+    .update(take)
+    .set({ updatedAt: now })
+    .where(and(eq(take.id, takeId), eq(take.status, "uploading")));
+}
+
+export type StuckUploadPorts = {
+  /** R2 HEAD of the original: its size, or null when the object does not exist. */
+  readonly headObject: (key: string) => Promise<{ readonly size: number } | null>;
+  /** Triggers the probe with key `probe-{takeId}-{redispatch}` (`probeKey`). */
+  readonly dispatchProbe: (takeId: string, redispatch: number) => Promise<void>;
+};
+
+export type StuckUploadRecovery = {
+  /** Takes whose probe was dispatched again (attempt number in `redispatchCount`). */
+  readonly redispatched: readonly string[];
+  /** Takes failed with `internal_error` after the last re-dispatch. */
+  readonly failed: readonly string[];
+};
+
+/**
+ * Recovers takes stuck in `uploading` after the probe dispatch failed (S1C-T09). `/complete`
+ * stored the original but the probe never ran, so the take waits and the client's delete gets
+ * a 409. A take counts when it is `uploading`, quiet for `stuckProbeAfterMs` (`updated_at`,
+ * which each re-dispatch bumps) and its original exists in R2 at the stated size; an upload
+ * that never completed has no object and stays with the abandoned rule.
+ *
+ * Each pass re-dispatches the probe once with a fresh idempotency key and counts it in
+ * `take.probe_attempts` (compare and swap, so two runs never both count). After
+ * `maxProbeRedispatches` re-dispatches the next pass fails the take with the refundable
+ * `internal_error` and queues the original. Nothing is charged before the probe, so there is
+ * nothing to refund. A probe that is just slow can be dispatched twice: the probe is safe to
+ * rerun (each step checks the take's state, and the job start is guarded).
+ */
+export async function recoverStuckUploads(
+  db: Executor,
+  now: Date,
+  ports: StuckUploadPorts,
+  scan: ScanBudget = {},
+): Promise<StuckUploadRecovery> {
+  const clock = scan.clock ?? Date.now;
+  const stopAt = clock() + (scan.budgetMs ?? DEFAULT_SCAN_BUDGET_MS);
+  const quietBefore = new Date(now.getTime() - CLEANUP.stuckProbeAfterMs);
+  const candidates = await db
+    .select({
+      id: take.id,
+      originalKey: take.originalKey,
+      originalBytes: take.originalBytes,
+      attempts: take.probeAttempts,
+      updatedAt: take.updatedAt,
+    })
+    .from(take)
+    .where(and(eq(take.status, "uploading"), lt(take.updatedAt, quietBefore)))
+    .orderBy(asc(take.updatedAt))
+    .limit(CLEANUP.batchSize);
+
+  const redispatched: string[] = [];
+  const failed: string[] = [];
+  for (const candidate of candidates) {
+    if (clock() >= stopAt) break; // out of time budget: the next run continues
+    let stored: { readonly size: number } | null;
+    try {
+      stored = await ports.headObject(candidate.originalKey);
+    } catch {
+      // Could not check: leave it, and move it behind the others so it cannot starve them.
+      await backOff(db, candidate.id, now);
+      continue;
+    }
+    if (!stored || stored.size !== Number(candidate.originalBytes)) continue;
+
+    if (candidate.attempts >= CLEANUP.maxProbeRedispatches) {
+      // The last dispatched probe may still be queued or retrying: protect the take (and its
+      // original) until that run can no longer be active.
+      const failBefore = new Date(now.getTime() - CLEANUP.lastProbeGraceMs);
+      if (candidate.updatedAt.getTime() >= failBefore.getTime()) continue;
+      const result = await runTx(db, async (tx) => {
+        const moved = await transitionTake(tx, candidate.id, "uploading", "failed", {
+          failureCode: "internal_error",
+          uploadId: null,
+        });
+        if (moved.ok) await queueDeletions(tx, [candidate.originalKey]);
+        return moved;
+      });
+      if (result.ok) failed.push(candidate.id);
+      continue;
+    }
+
+    const next = candidate.attempts + 1;
+    const [counted] = await db
+      .update(take)
+      .set({ probeAttempts: next })
+      .where(
+        and(
+          eq(take.id, candidate.id),
+          eq(take.status, "uploading"),
+          eq(take.probeAttempts, candidate.attempts),
+        ),
+      )
+      .returning({ id: take.id });
+    if (!counted) continue; // another run or the probe got there first
+    try {
+      await ports.dispatchProbe(candidate.id, next);
+    } catch {
+      // Counted anyway: the attempts are bounded, and the next pass tries again.
+    }
+    redispatched.push(candidate.id);
+  }
+  return { redispatched, failed };
 }
