@@ -23,7 +23,12 @@ test("without a DSN the app sends nothing to Sentry, even on a browser error", a
 });
 
 test("the Sentry check route is not found without the right token", async ({ request }) => {
-  for (const headers of [{}, { "x-sentry-check": "wrong" }, { "x-sentry-check": "" }]) {
+  const cases: Record<string, string>[] = [
+    {},
+    { "x-sentry-check": "wrong" },
+    { "x-sentry-check": "" },
+  ];
+  for (const headers of cases) {
     const res = await request.get("/api/sentry-check", { headers });
     expect(res.status()).toBe(404);
     expect(await res.text()).toBe("Not found");
