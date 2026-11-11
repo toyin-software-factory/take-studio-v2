@@ -29,6 +29,7 @@ import {
   work,
 } from "./harness";
 import { avSync, renderFacts } from "./inspect";
+import { transcriptScenarios } from "./transcript";
 
 type Check = { scenario: string; check: string; ok: boolean; detail: string };
 const checks: Check[] = [];
@@ -468,6 +469,18 @@ async function main() {
       list.json.takes,
     );
   }
+
+  // Spec 0007: transcripts end to end against real Deepgram (needs DEEPGRAM_API_KEY).
+  await transcriptScenarios({
+    a,
+    b,
+    check,
+    upload,
+    waitFinal,
+    downloadRender,
+    media,
+    noAudioTakeId: takes.silent,
+  });
 }
 
 let exitCode = 0;

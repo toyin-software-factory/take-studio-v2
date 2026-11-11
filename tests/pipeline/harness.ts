@@ -28,6 +28,8 @@ export const env = z
     R2_ACCESS_KEY_ID: z.string().min(1),
     R2_SECRET_ACCESS_KEY: z.string().min(1),
     R2_BUCKET: z.string().min(1),
+    /** Transcripts (spec 0007): real Deepgram, tiny synthetic fixtures. Reaches `trigger dev` through the shell env. */
+    DEEPGRAM_API_KEY: z.string().min(1),
   })
   .parse(process.env);
 if (new URL(env.PIPELINE_DATABASE_URL).hostname !== "localhost") {
@@ -139,6 +141,11 @@ export type Creator = {
     path: string,
     body?: unknown,
   ) => Promise<{ status: number; json: Record<string, unknown> }>;
+  /** A request whose body is read as text (downloads), with the response headers. */
+  readonly raw: (
+    method: string,
+    path: string,
+  ) => Promise<{ status: number; headers: Headers; text: string }>;
 };
 
 /** IDs of the creators this run made, recorded before the row exists, so cleanup removes only these. */
@@ -170,6 +177,10 @@ export async function createCreator(label: string): Promise<Creator> {
       });
       const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
       return { status: res.status, json };
+    },
+    raw: async (method, path) => {
+      const res = await fetch(`${base}${path}`, { method, headers: { cookie, origin: base } });
+      return { status: res.status, headers: res.headers, text: await res.text() };
     },
   };
 }
