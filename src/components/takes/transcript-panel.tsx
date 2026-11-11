@@ -9,6 +9,8 @@ import { TranscriptDownloads } from "./transcript-downloads";
 import { TranscriptParagraphs } from "./transcript-paragraphs";
 import { useTranscript } from "./use-transcript";
 
+const PANEL = "flex flex-col gap-3 rounded-lg border border-border bg-surface p-4";
+
 const SKIPPED: Readonly<Record<string, string>> = {
   not_english: "Transcripts are English only for now",
   no_speech: "No speech found in this take",
@@ -28,7 +30,7 @@ export function TranscriptPanel({
   readonly takeId: string;
   readonly bridge: PlayerBridge;
 }) {
-  const { view, loadError, starting, startError, make } = useTranscript(takeId);
+  const { view, loadError, stopped, starting, startError, make } = useTranscript(takeId);
   const paragraphs = view?.state === "ready" ? (view.paragraphs ?? []) : [];
   const current = useCurrentParagraph(
     bridge,
@@ -48,14 +50,24 @@ export function TranscriptPanel({
       We couldn&rsquo;t load the transcript. We&rsquo;ll keep trying.
     </p>
   ) : null;
+  if (stopped) {
+    // A 401 or 404 ends the checking for good, so say so and offer no retry.
+    return (
+      <section aria-labelledby="transcript-heading" className={PANEL}>
+        <h2 id="transcript-heading" className="text-h3 font-semibold">
+          Transcript
+        </h2>
+        <p role="alert">
+          We can&rsquo;t check on the transcript any more. Reload the page or sign in again.
+        </p>
+      </section>
+    );
+  }
   if (!view) return problem;
 
   const retryable = (view.state === "none" || view.state === "failed") && view.canMake;
   return (
-    <section
-      aria-labelledby="transcript-heading"
-      className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4"
-    >
+    <section aria-labelledby="transcript-heading" className={PANEL}>
       <h2 id="transcript-heading" className="text-h3 font-semibold">
         Transcript
       </h2>

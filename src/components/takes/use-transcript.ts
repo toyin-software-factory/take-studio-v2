@@ -38,7 +38,9 @@ export function useTranscript(takeId: string) {
     const reply = await callApi(`/api/takes/${takeId}/transcript`, "GET").catch(() => null);
     const parsed = transcriptViewSchema.safeParse(reply?.data);
     if (reply?.status === 401 || reply?.status === 404) {
+      // Final. Drop the old view too: it may say `making`, which would stay on screen forever.
       setLoadFailed(false);
+      setView(null);
       setStopped(true);
       return "stop";
     }
@@ -106,6 +108,7 @@ export function useTranscript(takeId: string) {
   return {
     view,
     loadError: loadFailed && !stopped,
+    stopped,
     starting,
     startError: startError?.message ?? null,
     make,

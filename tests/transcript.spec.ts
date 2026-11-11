@@ -178,6 +178,19 @@ test.describe("kept behaviour of the panel", () => {
     await expect(page.getByText("Making your transcript")).toBeVisible();
   });
 
+  test("a 404 while making ends the checking: no stale 'making', no promise of retries", async ({
+    page,
+    baseURL,
+  }) => {
+    const id = await readyTake(page, baseURL!);
+    await serve(page, [{ state: "making", canMake: false }, 404]);
+    await page.goto(`/takes/${id}`);
+    await expect(page.getByText("Making your transcript")).toBeVisible();
+    await expect(page.getByText(/can.t check on the transcript any more/)).toBeVisible();
+    await expect(page.getByText("Making your transcript")).toHaveCount(0);
+    await expect(page.getByText("keep trying")).toHaveCount(0);
+  });
+
   test("no 'we'll keep trying' after a 404", async ({ page, baseURL }) => {
     const id = await readyTake(page, baseURL!);
     await serve(page, [404]);
@@ -388,5 +401,18 @@ test.describe("ready: words, seek and captions", () => {
     await expect(panel.getByRole("link", { name: "Download text" })).toBeVisible();
     await expect(panel.getByRole("button", { name: "Make transcript" })).toHaveCount(0);
     await expectNoSeriousAxeIssues(page);
+  });
+});
+
+test.describe("touch targets on a phone", () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 800 } });
+
+  test("the paragraph timestamp button is at least 44 px", async ({ page, baseURL }) => {
+    const id = await readyTake(page, baseURL!);
+    await serve(page, [READY]);
+    await page.goto(`/takes/${id}`);
+    const box = await page.getByRole("button", { name: "Play from 0:01" }).boundingBox();
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+    expect(box?.width).toBeGreaterThanOrEqual(44);
   });
 });
