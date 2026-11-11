@@ -129,6 +129,20 @@ export function keepRanges(
   return keep;
 }
 
+/**
+ * Snaps keep ranges to the source's frame grid (spec 0004 AC-6). `trim` can only start a video
+ * segment on a frame, while `atrim` cuts audio anywhere, so an unaligned cut point leaves the
+ * audio up to one frame late after every cut. Aligning both to the same frame boundary removes
+ * that offset. Ranges that collapse to nothing are dropped. Times stay in (fractional) ms.
+ */
+export function alignToFrames(keep: readonly Range[], fps: number | null): Range[] {
+  const frameMs = 1000 / (fps && fps > 0 ? fps : 30);
+  const snap = (ms: number) => Math.round(ms / frameMs) * frameMs;
+  return keep
+    .map((r) => ({ startMs: snap(r.startMs), endMs: snap(r.endMs) }))
+    .filter((r) => r.endMs > r.startMs);
+}
+
 /** Total length of ranges in ms. */
 export function totalMs(ranges: readonly Range[]): number {
   return ranges.reduce((sum, r) => sum + (r.endMs - r.startMs), 0);
@@ -146,7 +160,13 @@ export function toneMapFilter(transfer: HdrTransfer): string {
   ].join(",");
 }
 
-const seconds = (ms: number) => (ms / 1000).toFixed(3);
+/** Seconds with microsecond precision (3 decimals would round frame times past the frame). */
+const seconds = (ms: number) => (ms / 1000).toFixed(6);
+/**
+ * Video cut points sit 1 µs before the boundary, so a frame exactly on it is kept at a segment
+ * start and dropped at a segment end, like `atrim` does for audio at the boundary itself.
+ */
+const videoSeconds = (ms: number) => (Math.max(0, ms - 0.001) / 1000).toFixed(6);
 
 /**
  * The `-filter_complex_script` for a render (AC-6): per keep range a `trim` and an `atrim` with
@@ -158,7 +178,7 @@ export function renderFilterScript(
   hdrTransfer: HdrTransfer | null,
 ): string {
   const lines = keep.flatMap((r, i) => [
-    `[0:v]trim=start=${seconds(r.startMs)}:end=${seconds(r.endMs)},setpts=PTS-STARTPTS[v${i}];`,
+    `[0:v]trim=start=${videoSeconds(r.startMs)}:end=${videoSeconds(r.endMs)},setpts=PTS-STARTPTS[v${i}];`,
     `[0:a]atrim=start=${seconds(r.startMs)}:end=${seconds(r.endMs)},asetpts=PTS-STARTPTS[a${i}];`,
   ]);
   const inputs = keep.map((_, i) => `[v${i}][a${i}]`).join("");

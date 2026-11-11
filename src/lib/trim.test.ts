@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  alignToFrames,
   cutsFromSilences,
   keepRanges,
   outputFps,
@@ -142,10 +143,10 @@ describe("keepRanges and the render graph (AC-6)", () => {
       "smpte2084",
     );
     expect(script.split("\n")).toEqual([
-      "[0:v]trim=start=1.400:end=3.250,setpts=PTS-STARTPTS[v0];",
-      "[0:a]atrim=start=1.400:end=3.250,asetpts=PTS-STARTPTS[a0];",
-      "[0:v]trim=start=4.250:end=17.600,setpts=PTS-STARTPTS[v1];",
-      "[0:a]atrim=start=4.250:end=17.600,asetpts=PTS-STARTPTS[a1];",
+      "[0:v]trim=start=1.399999:end=3.249999,setpts=PTS-STARTPTS[v0];",
+      "[0:a]atrim=start=1.400000:end=3.250000,asetpts=PTS-STARTPTS[a0];",
+      "[0:v]trim=start=4.249999:end=17.599999,setpts=PTS-STARTPTS[v1];",
+      "[0:a]atrim=start=4.250000:end=17.600000,asetpts=PTS-STARTPTS[a1];",
       "[v0][a0][v1][a1]concat=n=2:v=1:a=1[vc][aout];",
       "[vc]zscale=tin=smpte2084:min=bt2020nc:pin=bt2020:t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p[vout]",
     ]);
@@ -158,6 +159,30 @@ describe("keepRanges and the render graph (AC-6)", () => {
     expect(outputFps(29.97)).toBe("29.97");
     expect(outputFps(30)).toBe("30");
     expect(outputFps(null)).toBe("30");
+  });
+});
+
+describe("alignToFrames (AC-6 sync)", () => {
+  it("snaps every keep range to the frame grid so audio and video cut at the same instant", () => {
+    const aligned = alignToFrames(
+      [
+        { startMs: 1_401, endMs: 3_250 },
+        { startMs: 4_251, endMs: 8_250 },
+      ],
+      30,
+    );
+    const frame = 1000 / 30;
+    for (const r of aligned) {
+      expect(Math.abs(r.startMs / frame - Math.round(r.startMs / frame))).toBeLessThan(1e-9);
+      expect(Math.abs(r.endMs / frame - Math.round(r.endMs / frame))).toBeLessThan(1e-9);
+    }
+    expect(aligned[0]?.startMs).toBeCloseTo(1_400, 6);
+    expect(aligned[1]?.startMs).toBeCloseTo(4_266.667, 2);
+  });
+
+  it("drops a range shorter than half a frame and defaults to 30 fps", () => {
+    expect(alignToFrames([{ startMs: 1_000, endMs: 1_010 }], 30)).toEqual([]);
+    expect(alignToFrames([{ startMs: 0, endMs: 1_000 }], null)).toHaveLength(1);
   });
 });
 

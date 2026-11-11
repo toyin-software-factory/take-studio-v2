@@ -17,6 +17,7 @@ import { isFinalJobStatus, type StepName } from "@/lib/processing";
 import { type R2, createR2 } from "@/lib/r2";
 import { downloadToFile, uploadFileMultipart } from "@/lib/r2-file-upload";
 import {
+  alignToFrames,
   cutsFromSilences,
   keepRanges,
   outputFps,
@@ -142,7 +143,7 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
     const created = await db((d) => createRender(d, { takeId: t.id, jobId: job.id }));
     if (!created.ok) throw new Error(`render create failed: ${created.error}`);
     const renderId = created.data.id;
-    const keep = keepRanges(created.data.removedRanges, facts.durationMs);
+    const keep = alignToFrames(keepRanges(created.data.removedRanges, facts.durationMs), facts.fps);
     const expectedMs = totalMs(keep);
     const script = join(work, "graph.txt");
     await writeFile(script, renderFilterScript(keep, facts.hdrTransfer));
