@@ -93,6 +93,8 @@ describe("takeNote (AC-7)", () => {
 });
 
 describe("isRetryable (AC-10, spec 0002)", () => {
+  const now = new Date("2026-12-01T12:00:00Z");
+  const later = new Date("2026-12-20T00:00:00Z");
   it.each([
     ["internal_error", true],
     ["ffmpeg_error", true],
@@ -107,22 +109,47 @@ describe("isRetryable (AC-10, spec 0002)", () => {
     ["corrupt_upload", false],
     ["upload_abandoned", false],
   ])("failed with %s on a probed take → %s", (failureCode, retryable) => {
-    expect(isRetryable({ status: "failed", failureCode, durationMs: 60_000 })).toBe(retryable);
+    expect(
+      isRetryable(
+        { status: "failed", failureCode, durationMs: 60_000, videoExpiresAt: later },
+        now,
+      ),
+    ).toBe(retryable);
   });
   it("needs a failed, probed take", () => {
-    expect(
-      isRetryable({ status: "ready", failureCode: "internal_error", durationMs: 60_000 }),
-    ).toBe(false);
-    expect(isRetryable({ status: "failed", failureCode: "internal_error", durationMs: null })).toBe(
+    const failed = {
+      status: "failed",
+      failureCode: "internal_error",
+      durationMs: 60_000,
+      videoExpiresAt: later,
+    };
+    expect(isRetryable({ ...failed, status: "ready" }, now)).toBe(false);
+    expect(isRetryable({ ...failed, durationMs: null }, now)).toBe(false);
+  });
+  it("is not retryable once the video expired, even before the sweep marks it", () => {
+    const failed = {
+      status: "failed",
+      failureCode: "internal_error",
+      durationMs: 60_000,
+      videoExpiresAt: later,
+    };
+    expect(isRetryable({ ...failed, videoExpiresAt: now }, now)).toBe(false);
+    expect(isRetryable({ ...failed, videoExpiresAt: new Date(now.getTime() - 1) }, now)).toBe(
       false,
     );
+    expect(isRetryable({ ...failed, status: "expired" }, now)).toBe(false);
   });
 });
 
 describe("chooseMedia (AC-7, AC-9, AC-12)", () => {
   const now = new Date("2026-12-01T12:00:00Z");
   const later = new Date("2026-12-20T00:00:00Z");
-  const ready = { status: "ready", videoExpiresAt: later, originalKey: "originals/t/source.mov" };
+  const ready = {
+    id: "t",
+    status: "ready",
+    videoExpiresAt: later,
+    originalKey: "originals/t/source.mov",
+  };
   const render = { status: "succeeded", videoKey: "renders/t/r.mp4" };
 
   it("plays and downloads the render, and the original on request", () => {
@@ -156,6 +183,24 @@ describe("chooseMedia (AC-7, AC-9, AC-12)", () => {
     });
   });
 
+  it("serves the thumbnail by its derived key once the upload finished", () => {
+    expect(chooseMedia("thumb", ready, null, now)).toEqual({
+      ok: true,
+      file: "thumb",
+      key: "originals/t/thumb.jpg",
+    });
+    expect(chooseMedia("thumb", { ...ready, status: "processing" }, null, now)).toMatchObject({
+      ok: true,
+      key: "originals/t/thumb.jpg",
+    });
+    expect(
+      chooseMedia("thumb", { ...ready, status: "uploading", videoExpiresAt: null }, null, now),
+    ).toEqual({
+      ok: false,
+      error: "not_found",
+    });
+  });
+
   it("is not found while there is no file yet", () => {
     const processing = { ...ready, status: "processing" };
     expect(chooseMedia("download", processing, { status: "pending", videoKey: null }, now)).toEqual(
@@ -171,7 +216,7 @@ describe("chooseMedia (AC-7, AC-9, AC-12)", () => {
   });
 
   it("is gone once expired, whatever the kind (410)", () => {
-    for (const kind of ["play", "download", "original"] as const) {
+    for (const kind of ["play", "download", "original", "thumb"] as const) {
       expect(chooseMedia(kind, { ...ready, status: "expired" }, render, now)).toEqual({
         ok: false,
         error: "expired",

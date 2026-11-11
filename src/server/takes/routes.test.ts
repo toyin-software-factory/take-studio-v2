@@ -405,6 +405,24 @@ describe("POST /api/takes/{id}/retry (AC-10, spec 0002)", () => {
     expect(jobs).toHaveLength(1);
   });
 
+  it("refuses a retry once the video has expired, even before the sweep runs (CodeRabbit #35)", async () => {
+    const creator = await createCreator(db);
+    const t = await failedTake(creator.id, "internal_error");
+    await db
+      .update(take)
+      .set({ videoExpiresAt: new Date(Date.now() - 1000) })
+      .where(eq(take.id, t.id));
+    const triggered: string[] = [];
+    const res = await handleRetry(req("POST", "/x"), t.id, takeDeps(creator.id, triggered));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe("not_retryable");
+    expect(triggered).toEqual([]);
+
+    const card = await handleGet(req("GET", "/x"), t.id, takeDeps(creator.id));
+    const body = (await card.json()) as { take: { retryable: boolean; expired: boolean } };
+    expect(body.take).toMatchObject({ expired: true, retryable: false });
+  });
+
   it("refuses media failures with 409, so the page offers 'Upload another video'", async () => {
     const creator = await createCreator(db);
     const t = await failedTake(creator.id, "too_long");
@@ -499,6 +517,35 @@ describe("GET /api/takes/{id}/media (AC-9, AC-12)", () => {
     );
     expect(gone.status).toBe(410);
     expect((await gone.json()).error).toBe("expired");
+  });
+
+  it("serves the thumbnail inline for 1 hour, 404 when missing, and only to the owner", async () => {
+    const creator = await createCreator(db);
+    const other = await createCreator(db);
+    const t = await readyTake(creator.id, { render: "succeeded" });
+    const { deps, signed } = mediaDeps(creator.id);
+    const res = await handleMedia(req("GET", "/x?kind=thumb"), t.id, deps);
+    expect(res.status).toBe(200);
+    expect(signed).toEqual([
+      {
+        key: `originals/${t.id}/thumb.jpg`,
+        expiresSeconds: 3600,
+        type: "inline",
+        fileName: "thumbnail.jpg",
+      },
+    ]);
+
+    const missing = await handleMedia(
+      req("GET", "/x?kind=thumb"),
+      t.id,
+      mediaDeps(creator.id, new Set()).deps,
+    );
+    expect(missing.status).toBe(404);
+    expect(await missing.json()).toEqual(NOT_FOUND);
+
+    const foreign = await handleMedia(req("GET", "/x?kind=thumb"), t.id, mediaDeps(other.id).deps);
+    expect(foreign.status).toBe(404);
+    expect(await foreign.json()).toEqual(NOT_FOUND);
   });
 
   it("treats an unknown kind like a missing file", async () => {
