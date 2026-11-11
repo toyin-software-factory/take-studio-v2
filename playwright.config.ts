@@ -21,7 +21,7 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
-    command: `pnpm exec opennextjs-cloudflare preview --ip ${host} --port ${port}${galleryVar}`,
+    command: `./node_modules/.bin/opennextjs-cloudflare preview --ip ${host} --port ${port}${galleryVar}`,
     url: `http://${host}:${port}`,
     // Show the Worker logs in CI so a slow or failed start is visible.
     stdout: "pipe",
