@@ -1,9 +1,12 @@
 import { downloadBody, downloadFormatSchema, downloadHeaders } from "@/lib/transcript-download";
 import { type TakeHttpDeps, errorResponse, guard, json } from "../takes/http";
-import { getTranscriptView, getTrimmedForCreator } from ".";
+import { type MakeError, getTranscriptView, getTrimmedForCreator, makeTranscript } from ".";
 
 /** What the transcript routes need: the session and the app origin (reads skip the Origin check). */
-export type TranscriptHttpDeps = Pick<TakeHttpDeps, "getCreator" | "allowedOrigin" | "now">;
+export type TranscriptHttpDeps = Pick<TakeHttpDeps, "getCreator" | "allowedOrigin" | "now"> & {
+  /** Triggers `transcribe-take` for a job (global key `transcribe-{jobId}`); only POST needs it. */
+  readonly triggerTranscribe?: (jobId: string) => Promise<{ readonly id: string }>;
+};
 
 /**
  * GET /api/takes/{id}/transcript/{format} (spec 0007, AC-4, AC-5, AC-10): the transcript as
@@ -56,4 +59,51 @@ export async function handleGetTranscript(
   );
   if (!view.ok) return errorResponse("not_found");
   return json(view.data);
+}
+
+const MAKE_STATUS: Readonly<Record<MakeError, number>> = {
+  not_found: 404,
+  job_active: 409,
+  original_gone: 409,
+  already_done: 409,
+  not_ready: 409,
+  dispatch_failed: 503,
+};
+
+/** Friendly messages (spec 0007, AC-9). */
+export const MAKE_MESSAGES: Readonly<Record<MakeError, string>> = {
+  not_found: "We couldn't find that take.",
+  job_active: "Your transcript is still being made. Try again in a moment.",
+  original_gone: "This take's video has expired, so a transcript can't be made.",
+  already_done: "This take already has a transcript.",
+  not_ready: "This take isn't ready yet. Try again when it is.",
+  dispatch_failed: "The transcript didn't start. Please try again.",
+};
+
+/**
+ * POST /api/takes/{id}/transcript (spec 0007, AC-9, AC-11): Make transcript or Try again.
+ * Checks run in order: Origin (403), session (401), ownership (404), then the start refusals
+ * as 409 (`job_active`, `original_gone`, `already_done`, `not_ready`). 202 `{ state: "making" }`.
+ */
+export async function handleMakeTranscript(
+  request: Request,
+  takeId: string,
+  deps: TranscriptHttpDeps,
+): Promise<Response> {
+  const creator = await guard(request, deps, { checkOrigin: true });
+  if (creator instanceof Response) return creator;
+  if (!deps.triggerTranscribe) {
+    return json({ error: "dispatch_failed", message: MAKE_MESSAGES.dispatch_failed }, 503);
+  }
+  const made = await makeTranscript(
+    creator.db,
+    creator.creatorId,
+    takeId,
+    deps.triggerTranscribe,
+    deps.now?.() ?? new Date(),
+  );
+  if (!made.ok) {
+    return json({ error: made.error, message: MAKE_MESSAGES[made.error] }, MAKE_STATUS[made.error]);
+  }
+  return json({ state: "making" }, 202);
 }

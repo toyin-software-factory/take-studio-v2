@@ -5,6 +5,7 @@ import { removedRanges } from "@/lib/cut-rules";
 import { isRetryable, removedMs, takeNote } from "@/lib/take-media";
 import { getForCreator, listForCreator, rename } from ".";
 import { listForTake } from "../cuts";
+import { hasActiveTranscribe } from "../transcripts";
 import { start } from "../jobs";
 import { cardView, jobView, renderView, takeView } from "./views";
 
@@ -37,6 +38,7 @@ export type TakeError =
   | "invalid"
   | "invalid_cursor"
   | "job_in_progress"
+  | "transcript_running"
   | "not_retryable"
   | "dispatch_failed"
   | "unavailable"
@@ -50,6 +52,7 @@ const STATUS: Readonly<Record<TakeError, number>> = {
   invalid: 422,
   invalid_cursor: 400,
   job_in_progress: 409,
+  transcript_running: 409,
   not_retryable: 409,
   dispatch_failed: 503,
   unavailable: 503,
@@ -64,6 +67,7 @@ const MESSAGES: Readonly<Record<TakeError, string>> = {
   invalid: "Enter a title between 1 and 200 characters.",
   invalid_cursor: "That page of takes isn't available. Go back to your takes.",
   job_in_progress: "This take is already being processed.",
+  transcript_running: "Your transcript is still being made. Try again in a moment.",
   not_retryable: "This take can't be tried again. Upload another video instead.",
   dispatch_failed: "Processing didn't start. Please try again.",
   unavailable: "Processing isn't available right now. Please try again later.",
@@ -172,6 +176,8 @@ export async function handleRetry(
   const found = await getForCreator(creator.db, creator.creatorId, takeId);
   if (!found.ok) return errorResponse("not_found");
   const { take } = found.data;
+  // Spec 0007: any job start waits for a running transcript, with its own message.
+  if (await hasActiveTranscribe(creator.db, take.id)) return errorResponse("transcript_running");
   if (take.status === "processing") return errorResponse("job_in_progress");
   if (!isRetryable(take, deps.now?.() ?? new Date())) return errorResponse("not_retryable");
 

@@ -54,37 +54,60 @@ export const transcribeTakeTask = task({
     );
   },
   onFailure: async ({ payload, error }) => {
-    const code: FailureCode =
-      error instanceof DeepgramRejected
-        ? "provider_rejected"
-        : error instanceof DeepgramError
-          ? "provider_error"
-          : failureCodeFor(error);
     const env = parseJobEnv();
-    await withJobDb(env.DATABASE_URL, async (d) => {
-      const running = await d
-        .select({ name: jobStep.name, progress: jobStep.progress })
-        .from(jobStep)
-        .where(and(eq(jobStep.jobId, payload.jobId), eq(jobStep.status, "running")));
-      for (const s of running) {
-        await updateStep(d, {
-          jobId: payload.jobId,
-          name: s.name as "transcript",
-          status: "failed",
-          progress: s.progress,
-          failureCode: code,
-        });
-      }
-      await finish(d, { jobId: payload.jobId, status: "failed", failureCode: code });
-    });
+    await withJobDb(env.DATABASE_URL, (d) => failTranscribeJob(d, payload.jobId, error));
   },
 });
+
+/**
+ * Failure code for a final error (spec 0007, AC-8): a rejected request (4xx) is
+ * `provider_rejected`, a Deepgram timeout `timeout`, any other Deepgram failure (network, 429,
+ * 5xx after the retries) `provider_error`, the rest as for `process-take`.
+ */
+export function transcribeFailureCode(error: unknown): FailureCode {
+  if (error instanceof DeepgramRejected) return "provider_rejected";
+  if (error instanceof DeepgramTimeout) return "timeout";
+  if (error instanceof DeepgramError) return "provider_error";
+  return failureCodeFor(error);
+}
+
+/** The final failure of a transcribe job: the running step and the job get the code. The take stays Ready. */
+export async function failTranscribeJob(
+  d: Executor,
+  jobId: string,
+  error: unknown,
+): Promise<FailureCode> {
+  const code = transcribeFailureCode(error);
+  const running = await d
+    .select({ name: jobStep.name, progress: jobStep.progress })
+    .from(jobStep)
+    .where(and(eq(jobStep.jobId, jobId), eq(jobStep.status, "running")));
+  for (const s of running) {
+    await updateStep(d, {
+      jobId,
+      name: s.name as "transcript",
+      status: "failed",
+      progress: s.progress,
+      failureCode: code,
+    });
+  }
+  await finish(d, { jobId, status: "failed", failureCode: code });
+  return code;
+}
 
 /** Deepgram answered 5xx or 429, or the network failed: retried. Message holds no content. */
 export class DeepgramError extends Error {
   override name = "DeepgramError";
   constructor(readonly status: number | null) {
     super(`Deepgram request failed (${status ?? "network"})`);
+  }
+}
+
+/** The request outlived its 5 minute limit: retried, and `timeout` if it is the last attempt. */
+export class DeepgramTimeout extends DeepgramError {
+  override name = "DeepgramTimeout";
+  constructor() {
+    super(null);
   }
 }
 
@@ -115,7 +138,8 @@ export async function postToDeepgram(
       body: audio as BodyInit,
       signal: AbortSignal.timeout(5 * 60_000),
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") throw new DeepgramTimeout();
     throw new DeepgramError(null);
   }
   if (!response.ok) {

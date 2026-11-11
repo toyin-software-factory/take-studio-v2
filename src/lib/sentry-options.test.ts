@@ -56,6 +56,27 @@ describe("service tag (AC-1 to AC-3)", () => {
   );
 });
 
+describe("jobFailureTags provider status (spec 0007, AC-8)", () => {
+  const base = { task: "transcribe-take", runId: "run_1", attempt: 1, payload: { jobId: "j" } };
+
+  it("tags the HTTP status of a refused provider request, never the message", () => {
+    const tags = jobFailureTags({
+      ...base,
+      error: Object.assign(new Error("Deepgram rejected the request (402)"), { status: 402 }),
+    });
+    expect(tags.providerStatus).toBe("402");
+    expect(JSON.stringify(tags)).not.toContain("rejected");
+  });
+
+  it("adds no tag for an error without a numeric status", () => {
+    expect(jobFailureTags({ ...base, error: new Error("x") })).not.toHaveProperty("providerStatus");
+    expect(jobFailureTags({ ...base, error: { status: "402" } })).not.toHaveProperty(
+      "providerStatus",
+    );
+    expect(jobFailureTags(base)).not.toHaveProperty("providerStatus");
+  });
+});
+
 describe("jobFailureTags", () => {
   it("carries task, run, attempt and allowlisted IDs, never the payload (AC-3)", () => {
     const tags = jobFailureTags({

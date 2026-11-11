@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { type TranscriptViewData, transcriptViewSchema } from "@/lib/take-api";
+import { Button } from "@/components/ui/button";
+import { type TranscriptViewData, apiMessage, transcriptViewSchema } from "@/lib/take-api";
 import { POLL } from "@/lib/take-display";
 import { callApi } from "./browser-io";
 import { usePoll, type PollResult } from "./use-poll";
@@ -30,6 +31,8 @@ export function TranscriptPanel({ takeId }: { readonly takeId: string }) {
   const [view, setView] = useState<TranscriptViewData | null>(null);
   const [stopped, setStopped] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
   // `process-take` marks the video Ready a moment before it creates the transcript job, so a
   // first read can say `none`: keep checking for a short while before believing it.
   const noneChecks = useRef(0);
@@ -57,6 +60,26 @@ export function TranscriptPanel({ takeId }: { readonly takeId: string }) {
     return "stop";
   }, [takeId]);
 
+  /** Make transcript / Try again (spec 0007, AC-9): starts the job, then polls like any other. */
+  const make = useCallback(async () => {
+    setStarting(true);
+    setStartError(null);
+    try {
+      const reply = await callApi(`/api/takes/${takeId}/transcript`, "POST");
+      if (reply.status === 202) {
+        noneChecks.current = 0;
+        setNoneSeen(0);
+        setView((v) => (v ? { ...v, state: "making", canMake: false } : v));
+      } else {
+        setStartError(apiMessage(reply.data, "The transcript didn't start. Please try again."));
+      }
+    } catch {
+      setStartError("The transcript didn't start. Check your connection and try again.");
+    } finally {
+      setStarting(false);
+    }
+  }, [takeId]);
+
   usePoll(
     load,
     POLL.takeMs,
@@ -80,8 +103,14 @@ export function TranscriptPanel({ takeId }: { readonly takeId: string }) {
         Transcript
       </h2>
       {view.state === "making" ? <p role="status">Making your transcript</p> : null}
-      {view.state === "none" ? <p>No transcript for this take</p> : null}
+      {view.state === "none" && !view.canMake ? <p>No transcript for this take</p> : null}
       {view.state === "failed" ? <p>The transcript didn&rsquo;t finish</p> : null}
+      {(view.state === "none" || view.state === "failed") && view.canMake ? (
+        <Button type="button" onClick={make} disabled={starting} className="w-fit">
+          {view.state === "failed" ? "Try again" : "Make transcript"}
+        </Button>
+      ) : null}
+      {startError ? <p role="alert">{startError}</p> : null}
       {view.state === "skipped" ? <p>{SKIPPED[view.reason ?? ""] ?? "No transcript"}</p> : null}
       {view.state === "ready" && view.paragraphs?.length === 0 ? (
         <p>No words in this transcript</p>

@@ -88,18 +88,25 @@ export function jobFailureTags({
   runId,
   attempt,
   payload,
+  error,
 }: {
   readonly task: string;
   readonly runId: string;
   readonly attempt: number;
   readonly payload: unknown;
+  /** Only a numeric HTTP `status` on it is read (a provider's refusal); never its message. */
+  readonly error?: unknown;
 }): Record<string, string> {
+  const status = (error as { status?: unknown } | null | undefined)?.status;
   return {
     service: "jobs",
     runtime: "jobs",
     task,
     runId,
     attempt: String(attempt),
+    ...(typeof status === "number" && Number.isInteger(status)
+      ? { providerStatus: String(status) }
+      : {}),
     ...jobTagsFrom(payload),
   };
 }

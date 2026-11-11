@@ -9,6 +9,9 @@ import { parseTranscriptEnv } from "@/lib/env";
 import {
   DeepgramError,
   DeepgramRejected,
+  DeepgramTimeout,
+  failTranscribeJob,
+  transcribeFailureCode,
   type TranscribeIo,
   postToDeepgram,
   transcribeJob,
@@ -159,6 +162,68 @@ describe("transcribeJob (spec 0007, AC-6, AC-7)", () => {
     expect(seen).not.toContain("r2.test");
     expect(seen).not.toContain("originals/");
     spies.forEach((s) => s.mockRestore());
+  });
+});
+
+describe("the Deepgram error matrix (spec 0007, AC-8)", () => {
+  const attempt = (jobId: string, post: () => Promise<unknown>) =>
+    transcribeJob(db, jobId, "r", io({ post }).value);
+
+  it("retries a 500 and then succeeds on the same job, charging nothing", async () => {
+    const { take: t, jobId } = await job();
+    const down = (async () => new Response("{}", { status: 500 })) as unknown as typeof fetch;
+    // Attempt 1: Deepgram answers 500, the task throws so Trigger.dev retries.
+    await expect(attempt(jobId, () => postToDeepgram(new Uint8Array(), "k", down))).rejects.toThrow(
+      DeepgramError,
+    );
+    expect((await outcome(jobId)).job?.status).toBe("running");
+    // Attempt 2: success.
+    expect(await attempt(jobId, async () => dgBody())).toMatchObject({ outcome: "saved" });
+    expect((await outcome(jobId)).job).toMatchObject({ status: "succeeded", secondsCharged: 0 });
+    expect(await db.select().from(transcript).where(eq(transcript.takeId, t.id))).toHaveLength(1);
+  });
+
+  it("three 500s end failed provider_error, leave the take Ready and charge 0", async () => {
+    const { take: t, jobId } = await job();
+    const error = new DeepgramError(500);
+    for (let n = 0; n < 3; n++) {
+      await expect(attempt(jobId, async () => Promise.reject(error))).rejects.toBe(error);
+    }
+    expect(await failTranscribeJob(db, jobId, error)).toBe("provider_error");
+    const { job: j, step } = await outcome(jobId);
+    expect(j).toMatchObject({ status: "failed", failureCode: "provider_error", secondsCharged: 0 });
+    expect(step).toMatchObject({ status: "failed", failureCode: "provider_error" });
+    const [after] = await db.select().from(take).where(eq(take.id, t.id));
+    expect(after?.status).toBe("ready");
+    expect(await db.select().from(transcript).where(eq(transcript.takeId, t.id))).toHaveLength(0);
+  });
+
+  it("a 402 is not retried and fails at once as provider_rejected", async () => {
+    const { jobId } = await job();
+    const out = (async () => new Response("{}", { status: 402 })) as unknown as typeof fetch;
+    const error = await attempt(jobId, () => postToDeepgram(new Uint8Array(), "k", out)).catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(DeepgramRejected);
+    expect((error as DeepgramRejected).status).toBe(402);
+    expect(await failTranscribeJob(db, jobId, error)).toBe("provider_rejected");
+    expect((await outcome(jobId)).job).toMatchObject({
+      status: "failed",
+      failureCode: "provider_rejected",
+    });
+  });
+
+  it("maps a Deepgram timeout to timeout and a plain 429 or network failure to provider_error", async () => {
+    const timeout = (async () => {
+      throw new DOMException("took too long", "TimeoutError");
+    }) as unknown as typeof fetch;
+    const error = await postToDeepgram(new Uint8Array(), "k", timeout).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(DeepgramTimeout);
+    expect(transcribeFailureCode(error)).toBe("timeout");
+    expect(transcribeFailureCode(new DeepgramError(429))).toBe("provider_error");
+    expect(transcribeFailureCode(new DeepgramError(null))).toBe("provider_error");
+    expect(transcribeFailureCode(new Error("MAX_DURATION_EXCEEDED"))).toBe("timeout");
+    expect(transcribeFailureCode(new Error("boom"))).toBe("internal_error");
   });
 });
 

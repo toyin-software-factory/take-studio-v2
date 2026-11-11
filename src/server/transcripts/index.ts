@@ -1,5 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
+import { dispatchJob } from "@/db/data/dispatch";
+import { startTranscribeJob } from "@/db/data/jobs";
 import { getTranscriptByTake } from "@/db/data/transcripts";
 import { jobStep, processingJob, take as takeTable } from "@/db/schema";
 import type { Executor } from "@/db/types";
@@ -112,4 +114,45 @@ export async function getTranscriptView(
     return ok({ state: "none", canMake: mayStart });
   }
   return ok({ state: "failed", canMake: mayStart });
+}
+
+export type MakeError =
+  "not_found" | "job_active" | "original_gone" | "already_done" | "not_ready" | "dispatch_failed";
+
+/**
+ * Make transcript / Try again (spec 0007, AC-9): the creator's own take only, then
+ * `startTranscribeJob` (0 seconds charged, the take stays Ready) and the dispatch. A trigger
+ * that throws finishes the job `trigger_failed` at once (inside `dispatchJob`), so it never
+ * sits queued.
+ */
+export async function makeTranscript(
+  db: Executor,
+  creatorId: string,
+  takeId: string,
+  trigger: (jobId: string) => Promise<{ readonly id: string }>,
+  now: Date = new Date(),
+): Promise<Result<{ readonly jobId: string }, MakeError>> {
+  if (!z.uuid().safeParse(takeId).success) return err("not_found");
+  const [owned] = await db
+    .select({ id: takeTable.id })
+    .from(takeTable)
+    .where(and(eq(takeTable.id, takeId), eq(takeTable.creatorId, creatorId)));
+  if (!owned) return err("not_found");
+
+  const started = await startTranscribeJob(db, { takeId, now });
+  if (!started.ok) {
+    return err(started.error === "invalid_transition" ? "not_ready" : started.error);
+  }
+  const dispatched = await dispatchJob(db, { jobId: started.data.id, trigger });
+  if (!dispatched.ok) return err("dispatch_failed");
+  return ok({ jobId: started.data.id });
+}
+
+/** True when the take has a queued or running transcribe job (other job starts wait for it). */
+export async function hasActiveTranscribe(db: Executor, takeId: string): Promise<boolean> {
+  const rows = await db
+    .select({ status: processingJob.status })
+    .from(processingJob)
+    .where(and(eq(processingJob.takeId, takeId), eq(processingJob.kind, "transcribe")));
+  return rows.some((r) => (ACTIVE_JOB_STATUSES as readonly string[]).includes(r.status));
 }
