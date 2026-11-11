@@ -27,7 +27,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 3 | Data model | Foundation | done |
 | 4 | Design system & UI foundation | Foundation | in-progress |
 | 5 | Core take loop | Slice 1 | in-progress |
-| 6 | Error monitoring | Slice 1 | planned |
+| 6 | Error monitoring | Slice 1 | in-progress |
 | 7 | Transcript | Slice 2 | planned |
 | 8 | Studio background swap | Slice 3 | planned |
 | 9 | Cut review timeline | Slice 4 | planned |
@@ -99,10 +99,18 @@ The walking skeleton: sign in, upload a take, pauses are trimmed automatically i
 - [ ] Test it: `/test core take loop`
 Spec [0004](../specs/0004-core-take-loop/index.md)
 
-### 6. Error monitoring · needs a decision
+### 6. Error monitoring · in-progress
 Catch errors in the app and in processing jobs so failed takes are seen before creators report them.
 **Done when:** an error in the web app or a failed processing job is reported with enough context to debug, and no video content or secrets are sent.
-- [ ] Design it (spec): `/architect error monitoring`
+- [x] Design it (spec): `/architect error monitoring`
+- [ ] Build it: `/develop error monitoring`
+   - [ ] Scrubbing module with tests (AC-4)
+   - [ ] Web and browser reporting with source maps (AC-1, AC-2, AC-5, AC-6, AC-8)
+   - [ ] Job failure reporting with source maps (AC-3, AC-5, AC-6)
+   - [ ] Alert rules and a production check (AC-7)
+- [ ] Verify it: `/check verify error monitoring`
+- [ ] Test it: `/test error monitoring`
+Spec [0005](../specs/0005-error-monitoring.md)
 
 ## Slice 2: Transcript
 
