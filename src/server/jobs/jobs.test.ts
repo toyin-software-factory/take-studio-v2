@@ -315,6 +315,22 @@ describe("jobs.finish (AC-10, AC-11, AC-12, AC-13)", () => {
   });
 });
 
+describe("take failure code after a retry", () => {
+  it("clears the old failure code when the retry starts and when it succeeds", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id);
+    const first = await startOk(creator.id, t.id);
+    await finish(db, { jobId: first.id, status: "failed", failureCode: "stale_run" });
+    expect((await takeRow(t.id))?.failureCode).toBe("stale_run");
+
+    const retry = await startOk(creator.id, t.id);
+    expect((await takeRow(t.id))?.failureCode).toBeNull();
+    await seedRender(t.id, retry.id);
+    const done = await finish(db, { jobId: retry.id, status: "succeeded" });
+    expect(done.ok && done.data.take).toMatchObject({ status: "ready", failureCode: null });
+  });
+});
+
 describe("jobs.cancel (AC-13)", () => {
   it("refunds a cancel before the job runs", async () => {
     const creator = await createCreator(db);
