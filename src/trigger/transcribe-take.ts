@@ -44,47 +44,92 @@ export const transcribeTakeTask = task({
     }
     const env = parseJobEnv();
     const r2 = createR2(env);
-    return withJobDb(env.DATABASE_URL, (db) =>
-      transcribeJob(db, payload.jobId, ctx.run.id, {
-        r2,
-        probe: probeUrl,
-        extractAudio: extractWithFfmpeg,
-        post: (audio) => postToDeepgram(audio, transcriptEnv.DEEPGRAM_API_KEY),
-      }),
+    // Trigger.dev does not call `onFailure` when a run exceeds `maxDuration` (checked in a local
+    // run: the run ends TIMED_OUT and the job would stay active until stale cleanup), so the
+    // attempt stops itself a little earlier. The error then reaches `onFailure` like any other.
+    return withDeadline(
+      withJobDb(env.DATABASE_URL, (db) =>
+        transcribeJob(db, payload.jobId, ctx.run.id, {
+          r2,
+          probe: probeUrl,
+          extractAudio: extractWithFfmpeg,
+          post: (audio) => postToDeepgram(audio, transcriptEnv.DEEPGRAM_API_KEY),
+        }),
+      ),
+      (TRANSCRIBE_TAKE_LIMITS.maxDurationSeconds - ATTEMPT_MARGIN_SECONDS) * 1000,
     );
   },
   onFailure: async ({ payload, error }) => {
-    const code: FailureCode =
-      error instanceof DeepgramRejected
-        ? "provider_rejected"
-        : error instanceof DeepgramError
-          ? "provider_error"
-          : failureCodeFor(error);
     const env = parseJobEnv();
-    await withJobDb(env.DATABASE_URL, async (d) => {
-      const running = await d
-        .select({ name: jobStep.name, progress: jobStep.progress })
-        .from(jobStep)
-        .where(and(eq(jobStep.jobId, payload.jobId), eq(jobStep.status, "running")));
-      for (const s of running) {
-        await updateStep(d, {
-          jobId: payload.jobId,
-          name: s.name as "transcript",
-          status: "failed",
-          progress: s.progress,
-          failureCode: code,
-        });
-      }
-      await finish(d, { jobId: payload.jobId, status: "failed", failureCode: code });
-    });
+    await withJobDb(env.DATABASE_URL, (d) => failTranscribeJob(d, payload.jobId, error));
   },
 });
+
+/** Seconds before `maxDuration` at which an attempt gives up on its own. */
+const ATTEMPT_MARGIN_SECONDS = 30;
+
+/** Rejects with `DeepgramTimeout` (final code `timeout`) when `work` takes longer than `ms`. */
+export async function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new DeepgramTimeout()), ms);
+  });
+  try {
+    return await Promise.race([work, deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Failure code for a final error (spec 0007, AC-8): a rejected request (4xx) is
+ * `provider_rejected`, a Deepgram timeout `timeout`, any other Deepgram failure (network, 429,
+ * 5xx after the retries) `provider_error`, the rest as for `process-take`.
+ */
+export function transcribeFailureCode(error: unknown): FailureCode {
+  if (error instanceof DeepgramRejected) return "provider_rejected";
+  if (error instanceof DeepgramTimeout) return "timeout";
+  if (error instanceof DeepgramError) return "provider_error";
+  return failureCodeFor(error);
+}
+
+/** The final failure of a transcribe job: the running step and the job get the code. The take stays Ready. */
+export async function failTranscribeJob(
+  d: Executor,
+  jobId: string,
+  error: unknown,
+): Promise<FailureCode> {
+  const code = transcribeFailureCode(error);
+  const running = await d
+    .select({ name: jobStep.name, progress: jobStep.progress })
+    .from(jobStep)
+    .where(and(eq(jobStep.jobId, jobId), eq(jobStep.status, "running")));
+  for (const s of running) {
+    await updateStep(d, {
+      jobId,
+      name: s.name as "transcript",
+      status: "failed",
+      progress: s.progress,
+      failureCode: code,
+    });
+  }
+  await finish(d, { jobId, status: "failed", failureCode: code });
+  return code;
+}
 
 /** Deepgram answered 5xx or 429, or the network failed: retried. Message holds no content. */
 export class DeepgramError extends Error {
   override name = "DeepgramError";
   constructor(readonly status: number | null) {
     super(`Deepgram request failed (${status ?? "network"})`);
+  }
+}
+
+/** The request outlived its 5 minute limit: retried, and `timeout` if it is the last attempt. */
+export class DeepgramTimeout extends DeepgramError {
+  override name = "DeepgramTimeout";
+  constructor() {
+    super(null);
   }
 }
 
@@ -115,7 +160,8 @@ export async function postToDeepgram(
       body: audio as BodyInit,
       signal: AbortSignal.timeout(5 * 60_000),
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.name === "TimeoutError") throw new DeepgramTimeout();
     throw new DeepgramError(null);
   }
   if (!response.ok) {
@@ -124,7 +170,9 @@ export async function postToDeepgram(
   }
   try {
     return await response.json();
-  } catch {
+  } catch (error) {
+    // The 5 minute signal also covers reading the body: a stalled body is a timeout, not bad JSON.
+    if (error instanceof Error && error.name === "TimeoutError") throw new DeepgramTimeout();
     throw new DeepgramError(response.status);
   }
 }

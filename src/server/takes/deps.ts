@@ -1,6 +1,6 @@
 import { parseUsageEnv, parseWebEnv } from "@/lib/env";
 import { createR2 } from "@/lib/r2";
-import { triggerForJob } from "@/lib/trigger-runs";
+import { triggerForJob, triggerForTranscribe } from "@/lib/trigger-runs";
 import { createAuth } from "../auth";
 import type { MediaHttpDeps } from "../media";
 import { getDb } from "../request";
@@ -40,5 +40,9 @@ export function mediaHttpDeps(): MediaHttpDeps {
 }
 
 export function transcriptHttpDeps(): TranscriptHttpDeps {
-  return { allowedOrigin: new URL(parseWebEnv().BETTER_AUTH_URL).origin, getCreator };
+  return {
+    allowedOrigin: new URL(parseWebEnv().BETTER_AUTH_URL).origin,
+    getCreator,
+    triggerTranscribe: triggerForTranscribe(),
+  };
 }

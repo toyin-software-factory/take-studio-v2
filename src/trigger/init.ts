@@ -24,7 +24,13 @@ Sentry.init({
  */
 tasks.onFailure(async ({ task, ctx, payload, error }) => {
   Sentry.captureException(error, {
-    tags: jobFailureTags({ task, runId: ctx.run.id, attempt: ctx.attempt.number, payload }),
+    tags: jobFailureTags({
+      task,
+      runId: ctx.run.id,
+      attempt: ctx.attempt.number,
+      payload,
+      error,
+    }),
   });
   // Tasks can end right after this hook; send before the process is frozen.
   await Sentry.flush(2000);

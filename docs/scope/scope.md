@@ -134,7 +134,7 @@ Every processed take gets an English transcript, shown in the app with timestamp
 - [ ] Build it: `/develop transcript`
    - [x] Job groundwork: transcript table, `transcribe` job kind that never moves the take, no emails, stale and expiry rules (AC-1, AC-8, AC-9, AC-10)
    - [x] First thread: the `transcribe-take` task with Deepgram, started after the video, shown as plain paragraphs (AC-1, AC-6, AC-7, AC-11)
-   - [ ] Trimmed timeline, captions and downloads, then failures, retry and Make transcript (AC-2, AC-3, AC-4, AC-8, AC-9, AC-10, AC-11)
+   - [x] Trimmed timeline, captions and downloads, then failures, retry and Make transcript (AC-2, AC-3, AC-4, AC-8, AC-9, AC-10, AC-11)
    - [ ] Take page transcript panel and player CC, then end to end tests with real Deepgram (AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-10, AC-12)
 - [ ] Verify it: `/check verify transcript`
 - [ ] Test it: `/test transcript`
