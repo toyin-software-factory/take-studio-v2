@@ -115,6 +115,35 @@ describe("jobs.start (AC-6, AC-7)", () => {
     expect(jobs).toEqual([]);
   });
 
+  it("never restarts a take that failed because of its media, even with a known length (AC-10)", async () => {
+    const creator = await createCreator(db);
+    for (const failureCode of [
+      "too_long",
+      "resolution_exceeded",
+      "invalid_media",
+      "corrupt_upload",
+    ]) {
+      const t = await seedTake(db, creator.id, {
+        status: "failed",
+        failureCode,
+        durationMs: 660_000,
+      });
+      expect(
+        await start(db, { creatorId: creator.id, takeId: t.id, usageSecret: SECRET }),
+        failureCode,
+      ).toEqual({ ok: false, error: "invalid_transition" });
+    }
+  });
+
+  it("retries a take whose failure was not the media's fault", async () => {
+    const creator = await createCreator(db);
+    for (const failureCode of ["timeout", "ffmpeg_error", "cancelled_while_running"]) {
+      const t = await seedTake(db, creator.id, { status: "failed", failureCode });
+      const retried = await start(db, { creatorId: creator.id, takeId: t.id, usageSecret: SECRET });
+      expect(retried.ok, failureCode).toBe(true);
+    }
+  });
+
   it("re renders for free once an initial job succeeded", async () => {
     const creator = await createCreator(db);
     const t = await seedTake(db, creator.id);

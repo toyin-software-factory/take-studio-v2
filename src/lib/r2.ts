@@ -162,6 +162,21 @@ export function createR2(env: R2Env) {
       return signed.url;
     },
 
+    /** Writes a small object in one request (e.g. a thumbnail). */
+    async putObject(
+      key: string,
+      body: Uint8Array<ArrayBuffer>,
+      contentType: string,
+    ): Promise<void> {
+      const res = await client.fetch(objectUrl(key), {
+        method: "PUT",
+        headers: { "content-type": contentType },
+        body,
+        signal: AbortSignal.timeout(30_000),
+      });
+      if (!res.ok) throw new Error(`R2 put failed: HTTP ${res.status}`);
+    },
+
     /** True when the bucket exists and these credentials can reach it. */
     async isReachable(): Promise<boolean> {
       const res = await healthClient.fetch(bucketUrl, {

@@ -104,6 +104,11 @@ export function originalKey(takeId: string, container: Container): string {
   return `originals/${takeId}/source.${container}`;
 }
 
+/** Thumbnail key (spec 0004): `originals/{takeId}/thumb.jpg`, written by the probe. */
+export function thumbnailKey(takeId: string): string {
+  return `originals/${takeId}/thumb.jpg`;
+}
+
 /** When an uploaded video expires: completion time + retention days. */
 export function videoExpiresAt(uploadedAt: Date): Date {
   return new Date(uploadedAt.getTime() + VIDEO_RETENTION_DAYS * 24 * 60 * 60 * 1000);

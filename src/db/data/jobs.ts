@@ -1,19 +1,29 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
-import { refundSeconds } from "@/lib/billing";
+import { chargeSeconds, chargedMonth, refundSeconds } from "@/lib/billing";
 import { renderKey } from "@/lib/cut-rules";
-import { type FailureCode, isFailureCode } from "@/lib/failure-codes";
+import { type FailureCode, isFailureCode, isMediaFailure } from "@/lib/failure-codes";
 import {
   ACTIVE_JOB_STATUSES,
   STEP_NAMES,
   STEP_STATUSES,
   type StepName,
   type StepStatus,
+  type JobKind,
+  stepsFor,
 } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
-import { jobStep, processingJob, render, storageDeletion } from "../schema";
+import { usageAccountHash } from "@/lib/usage-hash";
+import { jobStep, processingJob, render, storageDeletion, take, user } from "../schema";
 import { runTx } from "../tx";
-import type { Executor, JobStep, ProcessingJob, Take, Tx } from "../types";
+import {
+  type Executor,
+  type JobStep,
+  type ProcessingJob,
+  type Take,
+  type Tx,
+  pgErrorCode,
+} from "../types";
 import { transitionTake } from "./takes";
 
 /**
@@ -298,4 +308,127 @@ export async function queueDeletions(tx: Executor, keys: readonly string[]): Pro
   await tx
     .insert(storageDeletion)
     .values(keys.map((objectKey) => ({ id: crypto.randomUUID(), objectKey })));
+}
+
+export type StartedJob = ProcessingJob & { readonly steps: readonly JobStep[] };
+
+export type StartError = "not_found" | "job_in_progress" | "invalid_transition";
+
+/**
+ * Whether a take may start a job: `uploaded` or `ready`, or `failed` when the failure was not
+ * the media's fault (AC-10: media failures need a new upload, other failures can be retried).
+ * Either way the take must have been probed (it has a length).
+ */
+function canStart(t: {
+  readonly status: string;
+  readonly durationMs: number | null;
+  readonly failureCode: string | null;
+}): boolean {
+  if (t.durationMs === null) return false;
+  if (t.status === "uploaded" || t.status === "ready") return true;
+  return t.status === "failed" && !isMediaFailure(t.failureCode);
+}
+
+/**
+ * `startJob` (`jobs.start`, AC-6), one transaction, so nothing is charged if any part fails:
+ * 1. lock the creator's take (`FOR UPDATE`, so concurrent starts queue up);
+ * 2. derive the kind: `initial` unless the take already has a succeeded initial job;
+ * 3. charge `ceil(duration_ms / 1000)` seconds for an initial run unless an earlier initial
+ *    run was charged and not refunded, else 0, recording the UTC month and account hash;
+ * 4. create the job (`queued`) and its ordered live steps;
+ * 5. move the take to `processing` (compare and swap).
+ * The usage limit check (`limit_exceeded`) arrives in slice 6; the charge is recorded now.
+ * `usageSecret` is USAGE_HASH_SECRET from `parseUsageEnv()`.
+ */
+export async function startJob(
+  db: Executor,
+  input: {
+    readonly creatorId: string;
+    readonly takeId: string;
+    readonly usageSecret: string;
+    readonly now?: Date;
+  },
+): Promise<Result<StartedJob, StartError>> {
+  if (!z.uuid().safeParse(input.takeId).success) return err("not_found");
+  const now = input.now ?? new Date();
+
+  try {
+    return await runTx(db, async (tx) => {
+      const [locked] = await tx
+        .select({ take, email: user.email })
+        .from(take)
+        .innerJoin(user, eq(user.id, take.creatorId))
+        .where(and(eq(take.id, input.takeId), eq(take.creatorId, input.creatorId)))
+        .for("update", { of: take });
+      if (!locked) return err("not_found");
+      const current = locked.take;
+
+      if (current.status === "processing") return err("job_in_progress");
+      if (current.durationMs === null || !canStart(current)) return err("invalid_transition");
+
+      const priorInitial = await tx
+        .select({
+          status: processingJob.status,
+          secondsCharged: processingJob.secondsCharged,
+          refunded: processingJob.refunded,
+        })
+        .from(processingJob)
+        .where(and(eq(processingJob.takeId, current.id), eq(processingJob.kind, "initial")));
+
+      const kind: JobKind = priorInitial.some((job) => job.status === "succeeded")
+        ? "rerender"
+        : "initial";
+      const alreadyPaid = priorInitial.some((job) => job.secondsCharged > 0 && !job.refunded);
+      const secondsCharged =
+        kind === "initial" && !alreadyPaid ? chargeSeconds(current.durationMs) : 0;
+      const charged = secondsCharged > 0;
+
+      const jobId = crypto.randomUUID();
+      const [job] = await tx
+        .insert(processingJob)
+        .values({
+          id: jobId,
+          takeId: current.id,
+          kind,
+          status: "queued",
+          secondsCharged,
+          chargedMonth: charged ? chargedMonth(now) : null,
+          chargedAccountHash: charged
+            ? await usageAccountHash(locked.email, input.usageSecret)
+            : null,
+        })
+        .returning();
+      if (!job) return err("job_in_progress");
+
+      const names = stepsFor(kind);
+      const steps = await tx
+        .insert(jobStep)
+        .values(
+          names.map((name, position) => ({
+            id: crypto.randomUUID(),
+            jobId,
+            name,
+            position,
+            status: "pending",
+            progress: 0,
+          })),
+        )
+        .returning();
+
+      // A retry clears the previous failure code.
+      const moved = await transitionTake(tx, current.id, current.status, "processing", {
+        failureCode: null,
+      });
+      if (!moved.ok) return err(moved.error);
+
+      return ok({ ...job, steps: [...steps].sort((a, b) => a.position - b.position) });
+    });
+  } catch (error) {
+    // Belt and braces for AC-4: the partial unique index refuses a second active job.
+    const { code, constraint } = pgErrorCode(error);
+    if (code === "23505" && constraint === "processing_job_one_active_per_take_uidx") {
+      return err("job_in_progress");
+    }
+    throw error;
+  }
 }
