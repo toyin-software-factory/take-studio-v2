@@ -3,6 +3,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { take } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
+import * as jobs from "../jobs";
+import * as renders from "../renders";
 import {
   attachUpload,
   create,
@@ -22,6 +24,7 @@ beforeAll(async () => {
 });
 afterAll(() => testDb?.close());
 
+const SECRET = "test-usage-hash-secret-0123456789abcdef";
 const probe = { durationMs: 61_500, width: 1920, height: 1080, container: "mp4" };
 
 describe("takes.create", () => {
@@ -179,6 +182,70 @@ describe("takes.getForCreator, listForCreator and rename", () => {
       latestRender: null,
       latestJob: null,
     });
+  });
+
+  it("reads the latest job with its steps in order, and the latest render, after a run", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id);
+    const job = await jobs.start(db, { creatorId: creator.id, takeId: t.id, usageSecret: SECRET });
+    if (!job.ok) throw new Error(job.error);
+    const created = await renders.create(db, { takeId: t.id, jobId: job.data.id });
+    if (!created.ok) throw new Error(created.error);
+    await renders.completeLatest(db, { renderId: created.data.id, durationMs: 9_000 });
+    await jobs.finish(db, { jobId: job.data.id, status: "succeeded" });
+
+    const result = await getForCreator(db, creator.id, t.id);
+    expect(result.ok && result.data.take.status).toBe("ready");
+    expect(result.ok && result.data.latestRender?.id).toBe(created.data.id);
+    expect(result.ok && result.data.latestJob?.id).toBe(job.data.id);
+    expect(result.ok && result.data.latestJob?.steps.map((s) => s.name)).toEqual([
+      "trim",
+      "render",
+    ]);
+  });
+
+  it("picks the newest job and the is_latest render among several", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id);
+    const first = await jobs.start(db, {
+      creatorId: creator.id,
+      takeId: t.id,
+      usageSecret: SECRET,
+    });
+    if (!first.ok) throw new Error(first.error);
+    const firstRender = await renders.create(db, { takeId: t.id, jobId: first.data.id });
+    if (!firstRender.ok) throw new Error(firstRender.error);
+    await renders.completeLatest(db, { renderId: firstRender.data.id, durationMs: 9_000 });
+    await jobs.finish(db, { jobId: first.data.id, status: "succeeded" });
+
+    // A later re render that creates its own render, then fails.
+    const second = await jobs.start(db, {
+      creatorId: creator.id,
+      takeId: t.id,
+      usageSecret: SECRET,
+    });
+    if (!second.ok) throw new Error(second.error);
+    const secondRender = await renders.create(db, { takeId: t.id, jobId: second.data.id });
+    if (!secondRender.ok) throw new Error(secondRender.error);
+    await jobs.finish(db, { jobId: second.data.id, status: "failed", failureCode: "ffmpeg_error" });
+
+    const result = await getForCreator(db, creator.id, t.id);
+    expect(result.ok && result.data.latestJob?.id).toBe(second.data.id);
+    expect(result.ok && result.data.latestRender?.id).toBe(firstRender.data.id);
+  });
+
+  it("returns no latest render when the take only has a render that never became latest", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id);
+    const job = await jobs.start(db, { creatorId: creator.id, takeId: t.id, usageSecret: SECRET });
+    if (!job.ok) throw new Error(job.error);
+    const created = await renders.create(db, { takeId: t.id, jobId: job.data.id });
+    if (!created.ok) throw new Error(created.error);
+    await jobs.finish(db, { jobId: job.data.id, status: "failed", failureCode: "timeout" });
+
+    const result = await getForCreator(db, creator.id, t.id);
+    expect(result.ok && result.data.latestRender).toBeNull();
+    expect(result.ok && result.data.latestJob?.id).toBe(job.data.id);
   });
 
   it("lists newest first across pages with no gaps or repeats", async () => {

@@ -22,12 +22,12 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 | # | Feature | Phase | Status |
 |---|---------|-------|--------|
-| 1 | Stack & architecture | Foundation | in-progress |
+| 1 | Stack & architecture | Foundation | done |
 | 2 | Coding standards & tooling | Foundation | done |
-| 3 | Data model | Foundation | in-progress |
+| 3 | Data model | Foundation | done |
 | 4 | Design system & UI foundation | Foundation | in-progress |
-| 5 | Core take loop | Slice 1 | planned |
-| 6 | Error monitoring | Slice 1 | planned |
+| 5 | Core take loop | Slice 1 | in-progress |
+| 6 | Error monitoring | Slice 1 | in-progress |
 | 7 | Transcript | Slice 2 | planned |
 | 8 | Studio background swap | Slice 3 | planned |
 | 9 | Cut review timeline | Slice 4 | planned |
@@ -42,13 +42,13 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 ## Foundations
 
-### 1. Stack & architecture · in-progress
+### 1. Stack & architecture · done
 Decide the stack (web app, auth, storage for large video files, background processing jobs, video processing, speech to text, AI agent runtime, hosting) and scaffold a runnable project with CI.
 **Done when:** the stack is recorded in a spec, and the empty scaffold boots locally and passes lint, typecheck, test and build in CI.
 - [x] Decide the stack (spec): `/architect stack & architecture`
 - [x] Scaffold from the decision: `/develop stack & architecture` (PRs #3, #4; live at https://take-studio.jnr4u2.workers.dev)
-- [ ] Verify it: `/check verify stack & architecture`
-- [ ] Test it: `/test stack & architecture`
+- [x] Verify it: `/check verify stack & architecture`
+- [x] Test it: `/test stack & architecture`
 Spec [0001](../specs/0001-stack-architecture/index.md)
 
 ### 2. Coding standards & tooling · done
@@ -57,18 +57,18 @@ Capture conventions and tooling from the real scaffolded project into root `AGEN
 - [x] Capture conventions + tooling choices: `/audit` (PR #6)
 - [x] Install the tooling: `/develop tooling` (pre commit hook: format and lint staged files, PR #8)
 
-### 3. Data model · in-progress
+### 3. Data model · done
 Core entities every slice builds on: creators, takes, processing jobs and their steps, cuts, backgrounds, transcripts, usage.
 **Done when:** the entities support every later slice (review, retention, usage limit, API access) without a breaking migration, and each creator can only reach their own data.
 - [x] Design it (spec): `/architect data model`
-- [ ] Build it: `/develop data model`
+- [x] Build it: `/develop data model`
    - [x] Shared helpers, registries and slice 1 migration (AC-1, AC-4, AC-7, AC-8, AC-10, AC-13, AC-16)
-   - [ ] Takes and jobs data functions, atomic start and finish (AC-2, AC-3, AC-5, AC-6, AC-11, AC-12, AC-13)
-   - [ ] Cuts and renders data functions (AC-8, AC-9, AC-10)
-   - [ ] Deletion queue, account deletion hook, cleanup schedule (AC-17, AC-18)
-- [ ] Verify it: `/check verify data model`
-- [ ] Test it: `/test data model`
-Spec [0002](../specs/0002-data-model/index.md) · code in `src/db/schema/`, `src/lib/`
+   - [x] Takes and jobs data functions, atomic start and finish (AC-2, AC-3, AC-5, AC-6, AC-11, AC-12, AC-13)
+   - [x] Cuts and renders data functions (AC-8, AC-9, AC-10)
+   - [x] Deletion queue, account deletion hook, cleanup schedule (AC-17, AC-18)
+- [x] Verify it: `/check verify data model`
+- [x] Test it: `/test data model`
+Spec [0002](../specs/0002-data-model/index.md) · code in `src/db/`, `src/lib/`, `src/server/{takes,jobs,cuts,renders,account}/`, `src/trigger/`
 
 ### 4. Design system & UI foundation · in-progress
 Visual language, layout and base components (upload, progress, video player, timeline, download), with Mobbin references in `design.md`.
@@ -85,15 +85,32 @@ Spec [0003](../specs/0003-design-system.md) · rules in [design.md](../../design
 
 ## Slice 1: Core take loop
 
-### 5. Core take loop · needs a decision
+### 5. Core take loop · in-progress
 The walking skeleton: sign in, upload a take, pauses are trimmed automatically in the background, see progress, download the trimmed video. A plain list of your takes so you can find it again. No transcript, background or review yet.
 **Done when:** a signed in creator uploads an MP4 or MOV within the limits (10 min, 2 GB, 1080p), sees processing progress, and downloads a video with long pauses removed; uploads over the limits are refused with a clear message; a failed job shows an error and can be retried.
-- [ ] Design it (spec): `/architect core take loop`
+- [x] Design it (spec): `/architect core take loop`
+- [ ] Build it: `/develop core take loop`
+   - [ ] R2 helpers, CORS and upload routes, render timing spike (AC-3, AC-4, AC-12)
+   - [ ] Pinned ffmpeg and the probe task (AC-4)
+   - [ ] The process-take task: trim, render, edge cases (AC-5, AC-6, AC-7, AC-10)
+   - [ ] Take routes and media links; library and take pages (AC-1, AC-2, AC-8, AC-9, AC-11, AC-12, AC-13)
+   - [ ] End to end tests with fixtures (AC-2, AC-4, AC-6, AC-7, AC-11, AC-13)
+- [ ] Verify it: `/check verify core take loop`
+- [ ] Test it: `/test core take loop`
+Spec [0004](../specs/0004-core-take-loop/index.md)
 
-### 6. Error monitoring · needs a decision
+### 6. Error monitoring · in-progress
 Catch errors in the app and in processing jobs so failed takes are seen before creators report them.
 **Done when:** an error in the web app or a failed processing job is reported with enough context to debug, and no video content or secrets are sent.
-- [ ] Design it (spec): `/architect error monitoring`
+- [x] Design it (spec): `/architect error monitoring`
+- [ ] Build it: `/develop error monitoring`
+   - [ ] Scrubbing module with tests (AC-4)
+   - [ ] Web and browser reporting with source maps (AC-1, AC-2, AC-5, AC-6, AC-8)
+   - [ ] Job failure reporting with source maps (AC-3, AC-5, AC-6)
+   - [ ] Alert rules and a production check (AC-7)
+- [ ] Verify it: `/check verify error monitoring`
+- [ ] Test it: `/test error monitoring`
+Spec [0005](../specs/0005-error-monitoring.md)
 
 ## Slice 2: Transcript
 

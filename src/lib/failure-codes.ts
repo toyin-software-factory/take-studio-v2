@@ -21,6 +21,8 @@ export const FAILURE_CODES = {
   resolution_exceeded: { refundable: false },
   corrupt_upload: { refundable: false },
   cancelled_while_running: { refundable: false },
+  // The upload never completed within the upload link lifetime (cleanup task).
+  upload_abandoned: { refundable: false },
 } as const satisfies Readonly<Record<string, { readonly refundable: boolean }>>;
 
 export type FailureCode = keyof typeof FAILURE_CODES;

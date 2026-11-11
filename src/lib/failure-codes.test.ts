@@ -18,6 +18,7 @@ const NOT_REFUNDABLE = [
   "resolution_exceeded",
   "corrupt_upload",
   "cancelled_while_running",
+  "upload_abandoned",
 ];
 
 describe("failure code registry (AC-13)", () => {

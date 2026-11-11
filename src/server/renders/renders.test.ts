@@ -4,7 +4,7 @@ import { render, storageDeletion } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { addManual, setApplied } from "../cuts";
-import { finish, start } from "../jobs";
+import { cancel, finish, start } from "../jobs";
 import { completeLatest, create, getForCreator } from ".";
 
 const SECRET = "test-usage-hash-secret-0123456789abcdef";
@@ -132,6 +132,61 @@ describe("renders.completeLatest (AC-10)", () => {
       .from(storageDeletion)
       .where(eq(storageDeletion.objectKey, oldKey));
     expect(queued).toHaveLength(1);
+  });
+});
+
+describe("renders of a job that did not succeed (AC-10)", () => {
+  it("clears and queues the file of a completed render whose job then failed", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id);
+    const first = await renderRun(creator.id, t.id);
+
+    // A re render completes its render, then the job fails.
+    const job = await startJob(creator.id, t.id);
+    const created = await create(db, { takeId: t.id, jobId: job.id });
+    if (!created.ok) throw new Error(created.error);
+    const completed = await completeLatest(db, { renderId: created.data.id, durationMs: 9_000 });
+    expect(completed.ok && completed.data.videoKey).toBe(`renders/${t.id}/${created.data.id}.mp4`);
+    const failed = await finish(db, {
+      jobId: job.id,
+      status: "failed",
+      failureCode: "ffmpeg_error",
+    });
+
+    const key = `renders/${t.id}/${created.data.id}.mp4`;
+    expect(failed.ok && failed.data).toMatchObject({
+      take: { status: "ready" },
+      queuedKeys: [key],
+    });
+    const renders = await db.select().from(render).where(eq(render.takeId, t.id));
+    // Only the latest render keeps a video file.
+    expect(renders.filter((r) => r.videoKey !== null).map((r) => r.id)).toEqual([first.render.id]);
+    expect(renders.find((r) => r.isLatest)?.id).toBe(first.render.id);
+    const queued = await db
+      .select()
+      .from(storageDeletion)
+      .where(eq(storageDeletion.objectKey, key));
+    expect(queued).toHaveLength(1);
+    // The latest render's file must not be queued. (The queue table is shared with other test
+    // files running in parallel, so check this take's keys rather than the whole table.)
+    const latestKey = first.render.videoKey ?? "";
+    expect(
+      await db.select().from(storageDeletion).where(eq(storageDeletion.objectKey, latestKey)),
+    ).toEqual([]);
+  });
+
+  it("queues the key of a pending render when its job is cancelled, and marks it failed", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id);
+    const job = await startJob(creator.id, t.id);
+    const pending = await create(db, { takeId: t.id, jobId: job.id });
+    if (!pending.ok) throw new Error(pending.error);
+
+    const cancelled = await cancel(db, { creatorId: creator.id, jobId: job.id });
+    const key = `renders/${t.id}/${pending.data.id}.mp4`;
+    expect(cancelled.ok && cancelled.data.queuedKeys).toEqual([key]);
+    const [row] = await db.select().from(render).where(eq(render.id, pending.data.id));
+    expect(row).toMatchObject({ status: "failed", videoKey: null, isLatest: false });
   });
 });
 

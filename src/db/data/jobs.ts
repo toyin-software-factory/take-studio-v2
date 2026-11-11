@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { refundSeconds } from "@/lib/billing";
+import { renderKey } from "@/lib/cut-rules";
 import { type FailureCode, isFailureCode } from "@/lib/failure-codes";
 import {
   ACTIVE_JOB_STATUSES,
@@ -144,6 +145,48 @@ export async function flipLatestRender(
   return oldKeys;
 }
 
+/**
+ * For a job that ended without success (AC-10): its renders never become the latest, so none
+ * may keep a video file. Every non latest render of the job gets its `video_key` cleared and
+ * its derived key (`renders/{takeId}/{renderId}.mp4`) queued for deletion, in the caller's
+ * transaction. The derived key also covers a file uploaded before the render recorded
+ * success; deleting a key that was never written is a no op. `pending` renders become
+ * `failed`. Returns the queued keys.
+ */
+export async function discardJobRenders(
+  tx: Tx,
+  input: { readonly takeId: string; readonly jobId: string },
+): Promise<readonly string[]> {
+  const rows = await tx
+    .select({ id: render.id, status: render.status })
+    .from(render)
+    .where(
+      and(
+        eq(render.takeId, input.takeId),
+        eq(render.jobId, input.jobId),
+        eq(render.isLatest, false),
+      ),
+    )
+    .for("update");
+  if (rows.length === 0) return [];
+
+  const keys = rows.map((row) => renderKey(input.takeId, row.id));
+  await queueDeletions(tx, keys);
+  await tx
+    .update(render)
+    .set({
+      videoKey: null,
+      status: sql`case when ${render.status} = 'pending' then 'failed' else ${render.status} end`,
+    })
+    .where(
+      inArray(
+        render.id,
+        rows.map((row) => row.id),
+      ),
+    );
+  return keys;
+}
+
 export type FinishStatus = "succeeded" | "failed" | "cancelled";
 
 export type FinishResult = {
@@ -169,6 +212,7 @@ type FinishInput = {
  * `jobs.finish` (AC-11, AC-12, AC-13), one transaction:
  * 1. job compare and swap from `queued`/`running` to the final status (`already_final` on repeat);
  * 2. on success, this job's render becomes the latest (old key queued for deletion);
+ *    otherwise the job's renders lose their video files (keys queued for deletion);
  * 3. take `processing` → `ready` on success, or on failure when a latest render exists,
  *    else → `failed` with the job's failure code;
  * 4. refund once (`refunded` compare and swap) when the failure code is refundable.
@@ -207,11 +251,11 @@ export async function finishInTx(
     return err(exists ? "already_final" : "not_found");
   }
 
-  // 2. Latest render flip on success.
+  // 2. On success this job's render becomes the latest; otherwise its renders' files go.
   const queuedKeys =
     input.status === "succeeded"
       ? await flipLatestRender(tx, { takeId: job.takeId, jobId: job.id })
-      : [];
+      : await discardJobRenders(tx, { takeId: job.takeId, jobId: job.id });
 
   // 3. Take transition.
   const [latest] = await tx

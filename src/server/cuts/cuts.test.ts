@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { cut } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
@@ -168,6 +168,118 @@ describe("cuts.reanalyse (AC-9)", () => {
         proposed: [{ startMs: 0, endMs: 10, kind: "manual" as "pause", proposedBy: "ai" }],
       }),
     ).toEqual({ ok: false, error: "invalid" });
+  });
+});
+
+/**
+ * Polls Postgres until some session waits on a lock while running a `take ... FOR UPDATE`
+ * query, i.e. the re analysis is blocked on the take row. False after `timeoutMs`.
+ */
+async function waitForTakeLockWait(timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const [row] = await db.execute<{ waiting: number }>(
+      sql`select count(*)::int as waiting from pg_stat_activity
+          where datname = current_database() and wait_event_type = 'Lock'
+            and query ilike '%from "take"%for update%'`,
+    );
+    if ((row?.waiting ?? 0) > 0) return true;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return false;
+}
+
+describe("creator edits racing a re analysis (AC-9)", () => {
+  it("keeps the cut when the creator's edit lands before the re analysis", async () => {
+    const { creatorId, takeId } = await setup();
+    const first = await reanalyse(db, {
+      takeId,
+      proposed: [{ startMs: 0, endMs: 500, kind: "pause", proposedBy: "rules" }],
+    });
+    if (!first.ok) throw new Error(first.error);
+    const cutId = first.data.cuts[0]?.id ?? "";
+
+    expect((await setApplied(db, { creatorId, cutId, applied: false })).ok).toBe(true);
+    await reanalyse(db, { takeId, proposed: [] });
+
+    const [row] = await db.select().from(cut).where(eq(cut.id, cutId));
+    expect(row).toMatchObject({ applied: false });
+  });
+
+  it("reports not_found when the re analysis replaced the cut before the creator's edit", async () => {
+    const { creatorId, takeId } = await setup();
+    const first = await reanalyse(db, {
+      takeId,
+      proposed: [{ startMs: 0, endMs: 500, kind: "pause", proposedBy: "rules" }],
+    });
+    if (!first.ok) throw new Error(first.error);
+    const cutId = first.data.cuts[0]?.id ?? "";
+
+    await reanalyse(db, { takeId, proposed: [] });
+    expect(await setApplied(db, { creatorId, cutId, applied: false })).toEqual({
+      ok: false,
+      error: "not_found",
+    });
+  });
+
+  it("makes a re analysis wait for a creator edit holding the take lock, then keep the cut", async () => {
+    const { creatorId, takeId } = await setup();
+    const first = await reanalyse(db, {
+      takeId,
+      proposed: [{ startMs: 0, endMs: 500, kind: "pause", proposedBy: "rules" }],
+    });
+    if (!first.ok) throw new Error(first.error);
+    const cutId = first.data.cuts[0]?.id ?? "";
+
+    let reanalysis: ReturnType<typeof reanalyse> | undefined;
+    let settled = false;
+    await db.transaction(async (tx) => {
+      // The real setApplied, inside the held transaction: it takes the take row lock.
+      expect((await setApplied(tx, { creatorId, cutId, applied: false })).ok).toBe(true);
+
+      reanalysis = reanalyse(db, { takeId, proposed: [] });
+      void reanalysis.then(() => (settled = true));
+      // Wait (up to 5 s) until Postgres shows the re analysis blocked on the take row lock.
+      expect(await waitForTakeLockWait(5_000)).toBe(true);
+      // Still blocked on the take lock while the edit is uncommitted.
+      expect(settled).toBe(false);
+    });
+
+    const result = await reanalysis;
+    expect(result?.ok).toBe(true);
+    const [row] = await db.select().from(cut).where(eq(cut.id, cutId));
+    expect(row).toMatchObject({ applied: false });
+  });
+
+  it("never deletes a cut the creator touched: either the change survives or it reports not_found", async () => {
+    for (let round = 0; round < 5; round++) {
+      const { creatorId, takeId } = await setup();
+      const first = await reanalyse(db, {
+        takeId,
+        proposed: [{ startMs: 0, endMs: 500, kind: "pause", proposedBy: "rules" }],
+      });
+      if (!first.ok) throw new Error(first.error);
+      const cutId = first.data.cuts[0]?.id ?? "";
+
+      const [edit] = await Promise.all([
+        setApplied(db, { creatorId, cutId, applied: false }),
+        reanalyse(db, {
+          takeId,
+          proposed: [{ startMs: 1000, endMs: 1500, kind: "pause", proposedBy: "ai" }],
+        }),
+      ]);
+
+      const [row] = await db.select().from(cut).where(eq(cut.id, cutId));
+      if (edit.ok) {
+        // The edit committed first, so the re analysis had to keep the touched cut.
+        expect(row).toMatchObject({ applied: false });
+        expect(row?.creatorChangedAt).toBeInstanceOf(Date);
+      } else {
+        // The re analysis replaced the untouched cut first; the edit saw it gone.
+        expect(edit).toEqual({ ok: false, error: "not_found" });
+        expect(row).toBeUndefined();
+      }
+    }
   });
 });
 
