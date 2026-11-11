@@ -5,6 +5,7 @@ import { finish, startTranscribeJob } from "@/db/data/jobs";
 import { jobStep, processingJob, take, transcript } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
+import { DeadlineExceeded, runWithDeadline } from "@/lib/deadline";
 import { parseTranscriptEnv } from "@/lib/env";
 import {
   DeepgramError,
@@ -12,7 +13,6 @@ import {
   DeepgramTimeout,
   failTranscribeJob,
   transcribeFailureCode,
-  withDeadline,
   type TranscribeIo,
   postToDeepgram,
   transcribeJob,
@@ -239,12 +239,57 @@ describe("the Deepgram error matrix (spec 0007, AC-8)", () => {
   });
 });
 
-describe("withDeadline (maxDuration does not reach onFailure)", () => {
-  it("passes a result through and rejects a slow attempt as a timeout", async () => {
-    expect(await withDeadline(Promise.resolve(7), 1000)).toBe(7);
-    const slow = new Promise((resolve) => setTimeout(resolve, 200));
-    const error = await withDeadline(slow, 10).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(DeepgramTimeout);
+describe("a stalled attempt stops at the deadline (S2T-T07)", () => {
+  it("ends the job failed with timeout, take Ready, 0 charged, nothing left open or on disk", async () => {
+    const { take: t, jobId } = await job();
+    let extractStopped = false;
+    const stalled = io({
+      extractAudio: async (_link, out, signal) => {
+        const { writeFile } = await import("node:fs/promises");
+        await writeFile(out, "partial"); // a temp file the attempt must clean up
+        await new Promise<void>((resolve) => {
+          signal?.addEventListener(
+            "abort",
+            () => {
+              extractStopped = true; // ffmpeg killed
+              resolve();
+            },
+            { once: true },
+          );
+        });
+        throw signal?.reason;
+      },
+    }).value;
+
+    const error = await runWithDeadline(100, (signal) =>
+      transcribeJob(db, jobId, "r", stalled, signal),
+    ).catch((e: unknown) => e);
+
+    expect(error).toBeInstanceOf(DeadlineExceeded);
+    expect(extractStopped).toBe(true);
+    expect(await failTranscribeJob(db, jobId, error)).toBe("timeout");
+    const { job: j, step } = await outcome(jobId);
+    expect(j).toMatchObject({ status: "failed", failureCode: "timeout", secondsCharged: 0 });
+    expect(step).toMatchObject({ status: "failed", failureCode: "timeout" });
+    const [after] = await db.select().from(take).where(eq(take.id, t.id));
+    expect(after?.status).toBe("ready");
+    // The work directory is gone.
+    const { readdir } = await import("node:fs/promises");
+    const { tmpdir } = await import("node:os");
+    expect((await readdir(tmpdir())).filter((n) => n.startsWith(`transcribe-${t.id}-`))).toEqual(
+      [],
+    );
+  });
+
+  it("aborts the Deepgram fetch itself and reports the deadline, not a Deepgram failure", async () => {
+    const hang = ((_url: string, init?: RequestInit) =>
+      new Promise((_, reject) => {
+        init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), { once: true });
+      })) as unknown as typeof fetch;
+    const error = await runWithDeadline(30, (signal) =>
+      postToDeepgram(new Uint8Array(), "k", hang, signal),
+    ).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(DeadlineExceeded);
     expect(transcribeFailureCode(error)).toBe("timeout");
   });
 });

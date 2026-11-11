@@ -33,15 +33,18 @@ function runTool(
   tool: "ffprobe" | "ffmpeg",
   args: readonly string[],
   timeoutMs: number,
+  signal?: AbortSignal,
 ): Promise<string> {
   const bin = tool === "ffprobe" ? FFPROBE : FFMPEG;
   return new Promise((resolve, reject) => {
     execFile(
       bin,
       [...args],
-      { timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024, killSignal: "SIGKILL" },
+      { timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024, killSignal: "SIGKILL", signal },
       (error, stdout) => {
         if (!error) return resolve(stdout);
+        // Stopped by the job deadline: report why, not as a tool failure.
+        if (signal?.aborted) return reject(signal.reason);
         const code = typeof error.code === "number" ? error.code : null;
         reject(new MediaToolError(tool, code, error.killed === true));
       },
@@ -57,11 +60,12 @@ const HTTP_INPUT = ["-rw_timeout", "30000000", "-reconnect", "1", "-reconnect_st
  * usable video (the take then fails as corrupt). Throws MediaToolError when ffprobe itself
  * failed, so the caller can tell a bad file from a flaky read.
  */
-export async function probeUrl(url: string): Promise<ProbeFacts | null> {
+export async function probeUrl(url: string, signal?: AbortSignal): Promise<ProbeFacts | null> {
   const stdout = await runTool(
     "ffprobe",
     ["-v", "error", ...HTTP_INPUT, "-print_format", "json", "-show_format", "-show_streams", url],
     60_000,
+    signal,
   );
   try {
     return parseFfprobe(JSON.parse(stdout));
@@ -121,9 +125,16 @@ export async function thumbnailFromUrl(
  */
 export function runFfmpeg(
   args: readonly string[],
-  options: { readonly timeoutMs: number; readonly onOutTimeMs?: (ms: number) => void },
+  options: {
+    readonly timeoutMs: number;
+    readonly onOutTimeMs?: (ms: number) => void;
+    /** The job deadline: ffmpeg is killed and the promise rejects with the signal's reason. */
+    readonly signal?: AbortSignal;
+  },
 ): Promise<string> {
   return new Promise((resolve, reject) => {
+    const { signal } = options;
+    if (signal?.aborted) return reject(signal.reason);
     const child = spawn(FFMPEG, ["-hide_banner", "-nostats", "-progress", "pipe:1", ...args], {
       stdio: ["ignore", "pipe", "pipe"],
     });
@@ -133,6 +144,8 @@ export function runFfmpeg(
       timedOut = true;
       child.kill("SIGKILL");
     }, options.timeoutMs);
+    const onAbort = () => child.kill("SIGKILL");
+    signal?.addEventListener("abort", onAbort, { once: true });
     child.stdout.setEncoding("utf8");
     child.stdout.on("data", (chunk: string) => {
       const ms = progressOutTimeMs(chunk);
@@ -145,10 +158,14 @@ export function runFfmpeg(
     });
     child.on("error", () => {
       clearTimeout(timer);
-      reject(new MediaToolError("ffmpeg", null, false));
+      signal?.removeEventListener("abort", onAbort);
+      reject(signal?.aborted ? signal.reason : new MediaToolError("ffmpeg", null, false));
     });
+    // Settles only once the process has exited, so nothing is left running after an abort.
     child.on("close", (code) => {
       clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      if (signal?.aborted) return reject(signal.reason);
       if (code === 0 && !timedOut) resolve(stderr);
       else reject(new MediaToolError("ffmpeg", code, timedOut));
     });
@@ -156,11 +173,12 @@ export function runFfmpeg(
 }
 
 /** Probes a local file (no network options). */
-export async function probeFile(path: string): Promise<ProbeFacts | null> {
+export async function probeFile(path: string, signal?: AbortSignal): Promise<ProbeFacts | null> {
   const stdout = await runTool(
     "ffprobe",
     ["-v", "error", "-print_format", "json", "-show_format", "-show_streams", path],
     60_000,
+    signal,
   );
   try {
     return parseFfprobe(JSON.parse(stdout));

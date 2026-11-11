@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DeadlineExceeded } from "@/lib/deadline";
 import { MediaToolError } from "./media";
 import { failureCodeFor } from "./process-take";
 
@@ -13,6 +14,11 @@ describe("failureCodeFor (spec 0004 Flow step 5)", () => {
   it("maps a run past maxDuration to timeout", () => {
     expect(failureCodeFor({ name: "Error", message: "MAX_DURATION_EXCEEDED" })).toBe("timeout");
     expect(failureCodeFor(new Error("Run exceeded maxDuration of 2400 seconds"))).toBe("timeout");
+  });
+
+  it("maps a run that stopped itself before maxDuration to timeout, ahead of any tool error", () => {
+    expect(failureCodeFor(new DeadlineExceeded())).toBe("timeout");
+    expect(failureCodeFor({ name: "DeadlineExceeded", message: "x" })).toBe("timeout");
   });
 
   it("maps anything else (download, upload, database) to internal_error", () => {

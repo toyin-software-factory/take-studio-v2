@@ -36,6 +36,7 @@ import {
   totalMs,
 } from "@/lib/trim";
 import { triggerForTranscribe } from "@/lib/trigger-runs";
+import { deadlineMs, isDeadlineExceeded, runWithDeadline } from "@/lib/deadline";
 import { PROCESS_TAKE_LIMITS } from "@/lib/cleanup-rules";
 import { RENDER_UPLOAD } from "@/lib/uploads";
 import { queueTakeEmail } from "./email/queue";
@@ -64,8 +65,12 @@ export const processTakeTask = task({
     const r2 = createR2(env);
     // One job client for the whole run (progress writes every few seconds would otherwise
     // open a connection each time); postgres.js reconnects if the pooler drops it while idle.
-    return withJobDb(env.DATABASE_URL, (client) =>
-      processJob(client, payload.jobId, ctx.run.id, r2),
+    // Stops itself 60 s before maxDuration (Trigger.dev skips onFailure past it): work is
+    // aborted, temp files go, then DeadlineExceeded reaches onFailure as `timeout`.
+    return runWithDeadline(deadlineMs(PROCESS_TAKE_LIMITS.maxDurationSeconds), (signal) =>
+      withJobDb(env.DATABASE_URL, (client) =>
+        processJob(client, payload.jobId, ctx.run.id, r2, signal),
+      ),
     );
   },
   onFailure: async ({ payload, error }) => {
@@ -98,7 +103,13 @@ export const processTakeTask = task({
 });
 
 /** The work of one attempt, on one database client. */
-async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
+async function processJob(
+  client: JobDb,
+  jobId: string,
+  runId: string,
+  r2: R2,
+  signal: AbortSignal,
+) {
   const db = <T>(fn: (d: JobDb) => Promise<T>) => fn(client);
   const payload = { jobId };
   const ctx = { run: { id: runId } };
@@ -126,8 +137,12 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
   try {
     // Download and re probe the original locally.
     const source = join(work, `source.${t.container}`);
-    await downloadToFile(await r2.presignGet(t.originalKey, { expiresSeconds: 60 * 60 }), source);
-    const facts = await probeFile(source);
+    await downloadToFile(
+      await r2.presignGet(t.originalKey, { expiresSeconds: 60 * 60 }),
+      source,
+      signal,
+    );
+    const facts = await probeFile(source, signal);
     if (!facts) throw new MediaToolError("ffprobe", null, false);
 
     // Trim.
@@ -146,6 +161,7 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
       ["-i", source, "-vn", "-af", silencedetectFilter(), "-f", "null", "-"],
       {
         timeoutMs: 15 * 60_000,
+        signal,
         onOutTimeMs: (ms) => void trimProgress.report((ms / facts.durationMs) * 100),
       },
     );
@@ -214,6 +230,7 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
       ],
       {
         timeoutMs: 38 * 60_000,
+        signal,
         // Encoding is most of the render step; the upload takes the last few points.
         onOutTimeMs: (ms) => void renderProgress.report((ms / expectedMs) * 95),
       },
@@ -221,12 +238,13 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
     await rm(source, { force: true });
     await renderProgress.flush();
 
-    const rendered = await probeFile(output);
+    const rendered = await probeFile(output, signal);
     if (!rendered) throw new MediaToolError("ffprobe", null, false);
     await uploadFileMultipart(r2, renderKey(t.id, renderId), output, {
       contentType: "video/mp4",
       partSize: RENDER_UPLOAD.partSize,
       attempts: RENDER_UPLOAD.attempts,
+      signal,
     });
     const completed = await db((d) =>
       completeLatest(d, { renderId, durationMs: rendered.durationMs }),
@@ -298,6 +316,8 @@ async function startTranscript(client: JobDb, takeId: string): Promise<void> {
 
 /** Failure code for a final error (spec 0004 Flow step 5). All three are refundable. */
 export function failureCodeFor(error: unknown): FailureCode {
+  // The attempt stopped itself before maxDuration (src/lib/deadline.ts).
+  if (isDeadlineExceeded(error)) return "timeout";
   if (
     error instanceof MediaToolError ||
     (error as { name?: string } | null)?.name === "MediaToolError"

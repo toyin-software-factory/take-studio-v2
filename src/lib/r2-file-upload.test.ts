@@ -1,8 +1,9 @@
 import { mkdtemp, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type MultipartTarget, uploadFileMultipart } from "./r2-file-upload";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { DeadlineExceeded } from "./deadline";
+import { type MultipartTarget, downloadToFile, uploadFileMultipart } from "./r2-file-upload";
 import { partCount } from "./uploads";
 
 let dir: string;
@@ -144,5 +145,52 @@ describe("partCount", () => {
     expect(partCount(16 * MiB + 1)).toBe(2);
     expect(partCount(1)).toBe(1);
     expect(partCount(2 * 1024 ** 3)).toBe(128);
+  });
+});
+
+describe("the job deadline (S2T-T07)", () => {
+  it("stops taking parts, aborts the multipart upload and throws the signal's reason", async () => {
+    const { target, log } = fakeTarget();
+    const controller = new AbortController();
+    const uploadPart = target.uploadPart;
+    let sent = 0;
+    target.uploadPart = async (...args) => {
+      sent += 1;
+      controller.abort(new DeadlineExceeded());
+      return uploadPart(...args);
+    };
+    const error = await uploadFileMultipart(target, "k", filePath, {
+      contentType: "video/mp4",
+      partSize: 1_000,
+      concurrency: 1,
+      signal: controller.signal,
+    }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(DeadlineExceeded);
+    expect(sent).toBe(1);
+    expect(log).toEqual(["abort"]);
+  });
+
+  it("aborts an open download and keeps the URL out of the error", async () => {
+    const controller = new AbortController();
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(
+      (_url, init) =>
+        new Promise((_, reject) => {
+          init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), {
+            once: true,
+          });
+        }),
+    );
+    try {
+      setTimeout(() => controller.abort(new DeadlineExceeded()), 20);
+      const error = await downloadToFile(
+        "https://r2.test/x?X-Amz-Signature=SECRET",
+        join(dir, "out.mp4"),
+        controller.signal,
+      ).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(DeadlineExceeded);
+      expect(JSON.stringify(error)).not.toContain("SECRET");
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 });
