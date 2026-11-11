@@ -13,6 +13,7 @@ import { TakeHeader } from "./take-header";
 import { TakeResult } from "./take-result";
 import { TakeSkeleton } from "./take-skeleton";
 import { TakeStage } from "./take-stage";
+import { TranscriptPanel } from "./transcript-panel";
 import { usePoll, type PollResult } from "./use-poll";
 
 type Stop = "signed_out" | "not_found" | null;
@@ -111,6 +112,7 @@ export function TakeView({
           />
           <TakeStage detail={detail} onRetried={onRetried} />
           <TakeResult detail={detail} />
+          {detail.take.status === "ready" ? <TranscriptPanel takeId={detail.take.id} /> : null}
           <EmailSwitch initial={takeEmails} />
         </>
       ) : stop === null ? (

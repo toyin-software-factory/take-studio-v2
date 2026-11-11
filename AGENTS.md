@@ -59,6 +59,7 @@ Spec 0001 chose OpenNext: where a Cloudflare skill suggests vinext, OpenNext win
 - [cloudflare](.claude/skills/cloudflare/), [workers-best-practices](.claude/skills/workers-best-practices/), [workers-development](.claude/skills/workers-development/), [wrangler](.claude/skills/wrangler/), [nextjs-on-cloudflare](.claude/skills/nextjs-on-cloudflare/): `cloudflare/skills`, Workers, R2, Hyperdrive, local dev and deploy
 - [trigger-setup](.claude/skills/trigger-setup/), [trigger-tasks](.claude/skills/trigger-tasks/): `triggerdotdev/skills`, task code, retries, queues, config
 - [vercel-react-best-practices](.claude/skills/vercel-react-best-practices/), [vercel-composition-patterns](.claude/skills/vercel-composition-patterns/), [web-design-guidelines](.claude/skills/web-design-guidelines/): `vercel-labs/agent-skills`, React and Next.js performance, composition, UI review
+- [speech-to-text](.claude/skills/speech-to-text/): `deepgram/skills`, Deepgram transcription (`/v1/listen`, Nova-3 options, response shape); spec 0007 uses plain `fetch`, not the SDK
 - [playwright-cli](.claude/skills/playwright-cli/): `microsoft/playwright-cli`, browser tests
 
 MCP servers: Neon, Cloudflare, Trigger.dev (recommended, not connected yet)

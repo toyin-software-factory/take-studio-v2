@@ -80,3 +80,21 @@ export function cardFromDetail(detail: TakeDetail): TakeCard {
     expired: take.expired,
   };
 }
+
+/** GET /api/takes/{id}/transcript (spec 0007): state, optional skip reason, plain paragraphs. */
+export const transcriptViewSchema = z.object({
+  state: z.enum(["none", "making", "ready", "skipped", "failed"]),
+  reason: z.enum(["not_english", "no_speech", "original_gone"]).optional(),
+  canMake: z.boolean(),
+  paragraphs: z
+    .array(
+      z.object({
+        startMs: z.number(),
+        words: z.array(
+          z.object({ w: z.string(), startMs: z.number(), endMs: z.number(), filler: z.boolean() }),
+        ),
+      }),
+    )
+    .optional(),
+});
+export type TranscriptViewData = z.infer<typeof transcriptViewSchema>;

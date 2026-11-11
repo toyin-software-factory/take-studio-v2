@@ -1,0 +1,204 @@
+import { eq } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { logger } from "@trigger.dev/sdk";
+import { startTranscribeJob } from "@/db/data/jobs";
+import { jobStep, processingJob, take, transcript } from "@/db/schema";
+import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
+import type { Db } from "@/db/types";
+import { parseTranscriptEnv } from "@/lib/env";
+import {
+  DeepgramError,
+  DeepgramRejected,
+  type TranscribeIo,
+  postToDeepgram,
+  transcribeJob,
+} from "./transcribe-take";
+
+let testDb: TestDb;
+let db: Db;
+beforeAll(async () => {
+  testDb = await openTestDb();
+  db = testDb.db;
+});
+afterAll(() => testDb?.close());
+
+const SECRET_TEXT = "secret words spoken";
+const dgBody = (language = "en-GB", words = true) => ({
+  results: {
+    channels: [
+      {
+        detected_language: language,
+        alternatives: [
+          {
+            transcript: SECRET_TEXT,
+            words: words
+              ? [
+                  { word: "secret", punctuated_word: "Secret", start: 0, end: 0.5, confidence: 1 },
+                  { word: "words", punctuated_word: "words", start: 0.6, end: 1, confidence: 1 },
+                ]
+              : [],
+            paragraphs: { paragraphs: [{ start: 0 }] },
+          },
+        ],
+      },
+    ],
+  },
+});
+
+async function job() {
+  const creator = await createCreator(db);
+  const t = await seedTake(db, creator.id, { status: "ready" });
+  const started = await startTranscribeJob(db, { takeId: t.id });
+  if (!started.ok) throw new Error("start refused");
+  return { take: t, jobId: started.data.id };
+}
+
+function io(over: Partial<TranscribeIo> = {}) {
+  const post = vi.fn(async () => dgBody());
+  const value: TranscribeIo = {
+    r2: {
+      headObject: async () => ({ size: 1 }),
+      presignGet: async () => "https://r2.test/x?sig=1",
+    },
+    probe: async () => ({ hasAudio: true, fps: 29.97 }) as never,
+    extractAudio: async (_link, out) => {
+      const { writeFile } = await import("node:fs/promises");
+      await writeFile(out, "ogg");
+    },
+    post,
+    ...over,
+  };
+  return { value, post };
+}
+
+async function outcome(jobId: string) {
+  const [j] = await db.select().from(processingJob).where(eq(processingJob.id, jobId));
+  const [s] = await db.select().from(jobStep).where(eq(jobStep.jobId, jobId));
+  return { job: j, step: s };
+}
+
+describe("transcribeJob (spec 0007, AC-6, AC-7)", () => {
+  it("saves the transcript for English (en-GB), leaves the take ready and charges nothing", async () => {
+    const { take: t, jobId } = await job();
+    const { value } = io();
+    const result = await transcribeJob(db, jobId, "run_1", value);
+    expect(result).toMatchObject({ outcome: "saved", words: 2 });
+    const [row] = await db.select().from(transcript).where(eq(transcript.takeId, t.id));
+    expect(row).toMatchObject({ language: "en", model: "nova-3", sourceFps: 29.97 });
+    const { job: j, step } = await outcome(jobId);
+    expect(j).toMatchObject({ status: "succeeded", secondsCharged: 0 });
+    expect(step?.status).toBe("succeeded");
+    const [after] = await db.select().from(take).where(eq(take.id, t.id));
+    expect(after?.status).toBe("ready");
+  });
+
+  it("skips not_english without storing a transcript", async () => {
+    const { take: t, jobId } = await job();
+    await transcribeJob(db, jobId, "r", io({ post: async () => dgBody("es") }).value);
+    const { job: j, step } = await outcome(jobId);
+    expect(j?.status).toBe("succeeded");
+    expect(step).toMatchObject({ status: "skipped", failureCode: "not_english" });
+    expect(await db.select().from(transcript).where(eq(transcript.takeId, t.id))).toHaveLength(0);
+  });
+
+  it("skips no_speech when Deepgram finds no words", async () => {
+    const { jobId } = await job();
+    await transcribeJob(db, jobId, "r", io({ post: async () => dgBody("en", false) }).value);
+    expect((await outcome(jobId)).step).toMatchObject({
+      status: "skipped",
+      failureCode: "no_speech",
+    });
+  });
+
+  it("never calls Deepgram for a take with no audio stream", async () => {
+    const { jobId } = await job();
+    const { value, post } = io({ probe: async () => ({ hasAudio: false, fps: 30 }) as never });
+    await transcribeJob(db, jobId, "r", value);
+    expect(post).not.toHaveBeenCalled();
+    expect((await outcome(jobId)).step).toMatchObject({
+      status: "skipped",
+      failureCode: "no_speech",
+    });
+  });
+
+  it("skips original_gone quietly when the original is missing, without calling Deepgram", async () => {
+    const { jobId } = await job();
+    const { value, post } = io({
+      r2: { headObject: async () => null, presignGet: async () => "x" },
+    });
+    await transcribeJob(db, jobId, "r", value);
+    expect(post).not.toHaveBeenCalled();
+    expect((await outcome(jobId)).step).toMatchObject({
+      status: "skipped",
+      failureCode: "original_gone",
+    });
+  });
+
+  it("does nothing for a job that is already final", async () => {
+    const { jobId } = await job();
+    await transcribeJob(db, jobId, "r", io().value);
+    const { value, post } = io();
+    expect(await transcribeJob(db, jobId, "r2", value)).toMatchObject({ outcome: "skipped" });
+    expect(post).not.toHaveBeenCalled();
+  });
+
+  it("lets a bad response retry (DeepgramError) instead of saving", async () => {
+    const { jobId } = await job();
+    await expect(
+      transcribeJob(db, jobId, "r", io({ post: async () => ({ nope: 1 }) }).value),
+    ).rejects.toBeInstanceOf(DeepgramError);
+  });
+
+  it("logs and returns no transcript text, keys or links", async () => {
+    const spies = [vi.spyOn(logger, "info"), vi.spyOn(logger, "warn"), vi.spyOn(logger, "error")];
+    const { jobId } = await job();
+    const result = await transcribeJob(db, jobId, "r", io().value);
+    const seen = JSON.stringify([...spies.flatMap((s) => s.mock.calls), result]);
+    expect(seen).not.toContain("Secret");
+    expect(seen).not.toContain(SECRET_TEXT);
+    expect(seen).not.toContain("r2.test");
+    expect(seen).not.toContain("originals/");
+    spies.forEach((s) => s.mockRestore());
+  });
+});
+
+describe("postToDeepgram", () => {
+  const reply = (status: number, json: unknown = {}) =>
+    (async () => new Response(JSON.stringify(json), { status })) as unknown as typeof fetch;
+
+  it("sends the audio with the key and returns the body", async () => {
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ a: 1 })));
+    expect(await postToDeepgram(new Uint8Array([1]), "KEY", fetchImpl as never)).toEqual({ a: 1 });
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toContain("mip_opt_out=true");
+    expect(init.headers).toMatchObject({ authorization: "Token KEY", "content-type": "audio/ogg" });
+  });
+
+  it.each([429, 500, 503])("retries (DeepgramError) on %i", async (status) => {
+    await expect(postToDeepgram(new Uint8Array(), "k", reply(status))).rejects.toBeInstanceOf(
+      DeepgramError,
+    );
+  });
+
+  it("retries on a network failure", async () => {
+    const down = (async () => {
+      throw new Error("boom");
+    }) as unknown as typeof fetch;
+    await expect(postToDeepgram(new Uint8Array(), "k", down)).rejects.toBeInstanceOf(DeepgramError);
+  });
+
+  it.each([400, 402, 413])("does not retry %i (DeepgramRejected, status only)", async (status) => {
+    const error = (await postToDeepgram(new Uint8Array(), "k", reply(status)).catch(
+      (e: unknown) => e,
+    )) as Error;
+    expect(error).toBeInstanceOf(DeepgramRejected);
+    expect(error.message).toBe(`Deepgram rejected the request (${status})`);
+  });
+});
+
+describe("transcriptEnvSchema", () => {
+  it("names the variable, never a value", () => {
+    expect(() => parseTranscriptEnv({})).toThrow("Invalid transcript env: DEEPGRAM_API_KEY");
+    expect(parseTranscriptEnv({ DEEPGRAM_API_KEY: "k" })).toEqual({ DEEPGRAM_API_KEY: "k" });
+  });
+});

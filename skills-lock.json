@@ -92,6 +92,12 @@
       "skillPath": "skills/scope/SKILL.md",
       "computedHash": "cc3683a45b96c1b0ecb23f9aba64263be096cb3ef2487662c0fe7e7c3200fb70"
     },
+    "speech-to-text": {
+      "source": "deepgram/skills",
+      "sourceType": "github",
+      "skillPath": "skills/speech-to-text/SKILL.md",
+      "computedHash": "4335b19344bb6b016b37cbba6dd4297b2818345406b9525ecaf161175eaeacc0"
+    },
     "sync": {
       "source": "jsmastery-pro/skills",
       "sourceType": "github",

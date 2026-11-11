@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, lt, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, lt, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { type DeletedTakes, deleteTakesInTx } from "@/db/data/deletion";
 import { markUploaded, transition } from "@/db/data/takes";
@@ -113,7 +113,8 @@ export async function getForCreator(
   const [latestJob] = await db
     .select()
     .from(processingJob)
-    .where(eq(processingJob.takeId, takeId))
+    // Transcribe jobs have their own panel; the progress view follows video jobs only.
+    .where(and(eq(processingJob.takeId, takeId), ne(processingJob.kind, "transcribe")))
     .orderBy(desc(processingJob.createdAt))
     .limit(1);
   const steps = latestJob
