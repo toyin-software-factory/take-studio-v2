@@ -72,4 +72,50 @@ describe("whileJobActive", () => {
     }));
     expect(unknown).toEqual({ ok: false, error: "job_final" });
   });
+
+  it("rolls the write back when the deadline fires while it runs (aborted)", async () => {
+    const { takeId, jobId } = await runningJob();
+    const controller = new AbortController();
+    const result = await whileJobActive(
+      db,
+      jobId,
+      async (tx) => {
+        const written = await reanalyse(tx, { takeId, proposed });
+        controller.abort(new Error("deadline")); // fires during the write
+        return written;
+      },
+      controller.signal,
+    );
+    expect(result).toEqual({ ok: false, error: "aborted" });
+    expect(await cutsOf(takeId)).toHaveLength(0);
+  });
+
+  it("does not even start the write when the signal is already aborted", async () => {
+    const { takeId, jobId } = await runningJob();
+    let ran = false;
+    const result = await whileJobActive(
+      db,
+      jobId,
+      async (tx) => {
+        ran = true;
+        return reanalyse(tx, { takeId, proposed });
+      },
+      AbortSignal.abort(new Error("deadline")),
+    );
+    expect(result).toEqual({ ok: false, error: "aborted" });
+    expect(ran).toBe(false);
+  });
+
+  it("takes the job lock first, so a finish and a guarded write queue up instead of deadlocking", async () => {
+    const { takeId, jobId } = await runningJob();
+    // Both run at once many times; a crosswise lock order would make Postgres abort one.
+    const outcomes = await Promise.all(
+      Array.from({ length: 8 }, async (_, i) =>
+        i % 2 === 0
+          ? whileJobActive(db, jobId, (tx) => reanalyse(tx, { takeId, proposed }))
+          : finish(db, { jobId, status: "failed", failureCode: "timeout" }),
+      ),
+    );
+    expect(outcomes.every((o) => typeof o.ok === "boolean")).toBe(true);
+  });
 });

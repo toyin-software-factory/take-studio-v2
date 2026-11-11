@@ -234,6 +234,8 @@ export async function transcribeJob(
   }
 
   const skip = async (reason: SkipReason) => {
+    // A timed out attempt must not write: no skip after the deadline.
+    signal?.throwIfAborted();
     await updateStep(client, {
       jobId,
       name: "transcript",

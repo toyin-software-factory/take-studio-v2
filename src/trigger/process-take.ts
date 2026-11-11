@@ -170,7 +170,7 @@ async function processJob(
     const proposed = cutsFromSilences(parseSilences(stderr, facts.durationMs), facts.durationMs);
     signal.throwIfAborted();
     const analysed = await db((d) =>
-      whileJobActive(d, job.id, (tx) => reanalyse(tx, { takeId: t.id, proposed })),
+      whileJobActive(d, job.id, (tx) => reanalyse(tx, { takeId: t.id, proposed }), signal),
     );
     if (!analysed.ok) throw new Error(`reanalyse failed: ${analysed.error}`);
     await trimProgress.flush();
@@ -188,7 +188,7 @@ async function processJob(
     // Render.
     await step("render", "running", 0);
     const created = await db((d) =>
-      whileJobActive(d, job.id, (tx) => createRender(tx, { takeId: t.id, jobId: job.id })),
+      whileJobActive(d, job.id, (tx) => createRender(tx, { takeId: t.id, jobId: job.id }), signal),
     );
     if (!created.ok) throw new Error(`render create failed: ${created.error}`);
     const renderId = created.data.id;
@@ -255,8 +255,11 @@ async function processJob(
       signal,
     });
     const completed = await db((d) =>
-      whileJobActive(d, job.id, (tx) =>
-        completeLatest(tx, { renderId, durationMs: rendered.durationMs }),
+      whileJobActive(
+        d,
+        job.id,
+        (tx) => completeLatest(tx, { renderId, durationMs: rendered.durationMs }),
+        signal,
       ),
     );
     if (!completed.ok) {

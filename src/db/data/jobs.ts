@@ -563,32 +563,35 @@ export async function startTranscribeJob(
 
 /**
  * Runs `fn` in one transaction only while the job is still queued or running (S2T-T07). The
- * take is locked first and then the job, the same order as take deletion, and the status is
- * checked under that lock, so a timed out or cancelled attempt whose job was already finished
- * (by `onFailure`, the stale cleanup or a cancel) writes nothing: `job_final` and the
- * transaction rolls back. Used for the writes an attempt makes beyond its own job rows (cuts,
- * renders), like `saveTranscriptAndFinish` does for the transcript.
+ * job row is locked first and then the take, the same order as `finishInTx`, so a guarded
+ * write and a concurrent finish (the `onFailure` hook, the stale cleanup, a cancel) never wait
+ * on each other crosswise. The status is checked under that lock, so an attempt whose job was
+ * already finished writes nothing: `job_final`, and the transaction rolls back. With `signal`,
+ * a deadline that fired while `fn` ran also rolls the writes back (`aborted`), before the
+ * commit. Used for the writes an attempt makes beyond its own job rows (cuts, renders);
+ * `saveTranscriptAndFinish` does the same for the transcript.
  */
 export async function whileJobActive<T, E extends string>(
   db: Executor,
   jobId: string,
   fn: (tx: Tx) => Promise<Result<T, E>>,
-): Promise<Result<T, E | "job_final">> {
-  return runTx<T, E | "job_final">(db, async (tx) => {
-    const [owner] = await tx
-      .select({ takeId: processingJob.takeId })
-      .from(processingJob)
-      .where(eq(processingJob.id, jobId));
-    if (!owner) return err("job_final");
-    await tx.select({ id: take.id }).from(take).where(eq(take.id, owner.takeId)).for("update");
+  signal?: AbortSignal,
+): Promise<Result<T, E | "job_final" | "aborted">> {
+  return runTx<T, E | "job_final" | "aborted">(db, async (tx) => {
     const [job] = await tx
-      .select({ status: processingJob.status })
+      .select({ status: processingJob.status, takeId: processingJob.takeId })
       .from(processingJob)
       .where(eq(processingJob.id, jobId))
       .for("update");
     if (!job || !(ACTIVE_JOB_STATUSES as readonly string[]).includes(job.status)) {
       return err("job_final");
     }
-    return fn(tx);
+    // The write itself locks the take where it needs it; this keeps the order job, then take.
+    await tx.select({ id: take.id }).from(take).where(eq(take.id, job.takeId)).for("update");
+    if (signal?.aborted) return err("aborted");
+    const result = await fn(tx);
+    // The deadline fired during the write: undo it rather than commit after the deadline.
+    if (signal?.aborted) return err("aborted");
+    return result;
   });
 }

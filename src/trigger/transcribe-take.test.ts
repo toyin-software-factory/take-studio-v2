@@ -305,6 +305,29 @@ describe("a stalled attempt stops at the deadline (S2T-T07)", () => {
   });
 });
 
+describe("no write after the deadline (S2T-T07)", () => {
+  it("does not skip the job when the original is found missing after the deadline", async () => {
+    const { jobId } = await job();
+    const controller = new AbortController();
+    const gone = io({
+      r2: {
+        headObject: async () => {
+          controller.abort(new DeadlineExceeded());
+          return null;
+        },
+        presignGet: async () => "x",
+      },
+    }).value;
+    const error = await transcribeJob(db, jobId, "r", gone, controller.signal).catch(
+      (e: unknown) => e,
+    );
+    expect(error).toBeInstanceOf(DeadlineExceeded);
+    const { job: j, step } = await outcome(jobId);
+    expect(j?.status).toBe("running");
+    expect(step?.status).toBe("running");
+  });
+});
+
 describe("a job that is already final (spec 0007, atomic save)", () => {
   it("publishes no transcript when cleanup failed the job while the run worked", async () => {
     const { take: t, jobId } = await job();
