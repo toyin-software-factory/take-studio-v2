@@ -26,7 +26,7 @@ Verified on official pages (2026-11-11): the free Developer plan has 5,000 error
 - **AC-1**: An unhandled error in a route handler, server component or the Worker reaches Sentry with environment (`production`, `preview`, `development`), release (git commit SHA) and a `runtime: web` tag.
 - **AC-2**: An unhandled error in the browser reaches Sentry with the same release and a `runtime: browser` tag.
 - **AC-3**: A Trigger.dev task's final failure reaches Sentry with `runtime: jobs`, the task name, run ID, attempt, and only these IDs as tags: `takeId`, `jobId`, `renderId` when present. The task payload is never attached.
-- **AC-4**: No personal or secret data is sent: `sendDefaultPii` off; the user is set to `{ id }` only; request bodies, cookies, `authorization` headers and query strings are removed; any URL containing `X-Amz-` or `r2.cloudflarestorage.com` is redacted in events and breadcrumbs; take titles, file names, emails and transcript text are never added. Proven by unit tests on the scrubbing functions.
+- **AC-4**: No personal or secret data is sent: the SDK's default personal data collection is off (`sendDefaultPii: false` in SDK v10, every `dataCollection` category off in v11); the user is set to `{ id }` only; request bodies, cookies, `authorization` headers and query strings are removed; any URL containing `X-Amz-` or `r2.cloudflarestorage.com` is redacted in events and breadcrumbs; take titles, file names, emails and transcript text are never added. Proven by unit tests on the scrubbing functions.
 - **AC-5**: Errors only: tracing sample rate 0, no session replay, no user feedback widget, no profiling.
 - **AC-6**: Source maps for the web app and the jobs are uploaded during the CI deploy, so production stack traces show original file names and lines; source maps are not served publicly.
 - **AC-7**: Alert rules exist in Sentry: email Toyin when an issue is first seen; email at most once a day when any issue had events that day.
@@ -62,7 +62,7 @@ One project with a `runtime` tag keeps everything in the free plan and one view.
 - `next.config` wrapped with `withSentryConfig` for source map upload in CI only; source maps deleted from the deployed output after upload.
 
 **Jobs (Trigger.dev)**:
-- `@sentry/node` initialised in `src/trigger/init.ts` with `defaultIntegrations: false`, `sendDefaultPii: false`.
+- `@sentry/node` initialised in `src/trigger/init.ts` with `defaultIntegrations: false` and default personal data collection off.
 - `tasks.onFailure` captures the error with tags from an allowlist (task, run ID, attempt, `takeId`, `jobId`, `renderId`); the payload object is never passed.
 - `@sentry/esbuild-plugin` via `esbuildPlugin(..., { placement: "last", target: "deploy" })` uploads source maps on deploy.
 
