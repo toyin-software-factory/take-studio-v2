@@ -212,8 +212,15 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
     );
     if (!completed.ok) {
       // The job was cancelled or finished while we uploaded: the file is not tracked by any
-      // render row, so queue its key (a no op if the cancel already queued it).
-      await db((d) => queueDeletions(d, [renderKey(t.id, renderId)])).catch(() => {});
+      // render row. Queue its key (a no op if the cancel already queued it); if the queue
+      // write fails, delete the object now. If that fails too, the error surfaces (the run
+      // fails visibly) instead of the file being forgotten.
+      const key = renderKey(t.id, renderId);
+      try {
+        await db((d) => queueDeletions(d, [key]));
+      } catch {
+        await r2.deleteObject(key);
+      }
       throw new Error(`render complete failed: ${completed.error}`);
     }
     await step("render", "succeeded", 100);
