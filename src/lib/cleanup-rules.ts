@@ -17,6 +17,13 @@ export const CLEANUP = {
   jobMaxDurationMs: 30 * MINUTE,
   /** Extra time after maxDuration before a `running` job counts as stale. */
   runningStaleMarginMs: 5 * MINUTE,
+  /**
+   * An `uploading` take whose original is stored (the upload completed) but that was never
+   * probed is re-dispatched once it has been quiet this long (S1C-T09).
+   */
+  stuckProbeAfterMs: 5 * MINUTE,
+  /** Re-dispatches of the probe for one take before it fails with `internal_error`. */
+  maxProbeRedispatches: 3,
   /** Rows handled per cleanup step per run (the next run picks up the rest). */
   batchSize: 100,
 } as const;
