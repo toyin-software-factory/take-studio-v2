@@ -34,9 +34,16 @@ describe("CI workflows", () => {
     expect(files.length).toBeGreaterThan(0);
     for (const file of files) {
       const text = withoutComments(readFileSync(`.github/workflows/${file}`, "utf8"));
-      const runners = [...text.matchAll(/^\s*runs-on:\s*(\S+)\s*$/gm)].map((m) => m[1]);
+      // The whole value of every runs-on line, inline comment removed. A bare `runs-on:` (a
+      // list or a block) or any key that is not parsed below makes the counts differ and fails.
+      const runners = [...text.matchAll(/^\s*runs-on:[ \t]*(.+?)[ \t]*$/gm)].map((m) =>
+        m[1]!.replace(/\s+#.*$/, ""),
+      );
       expect(runners.length, `${file} has at least one job`).toBeGreaterThan(0);
-      // Every job, not just one: a single other value (or a list or expression) fails.
+      expect(runners.length, `${file}: every runs-on must be a single value`).toBe(
+        (text.match(/runs-on:/g) ?? []).length,
+      );
+      // Every job, not just one: any other value, matrix expression or list fails.
       expect(runners, file).toEqual(runners.map(() => RUNNER));
       expect(text, file).not.toMatch(/ubuntu-latest/);
     }
