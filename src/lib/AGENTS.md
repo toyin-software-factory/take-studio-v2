@@ -9,6 +9,7 @@ Mostly pure modules used by the web app, the browser, the Worker and the jobs. S
 - Storage and jobs: `r2` (S3 API through aws4fetch), `r2-file-upload` (Node only, for jobs), `trigger-runs`.
 - API shapes and wording: `take-api` (zod), `take-display`, `take-messages`, `upload-client`.
 - Email (spec 0006): `email/send` (Resend, the only network edge), `email/templates` (pure), `email-links` (signed turn off links, Web Crypto). Used by the Worker and by the `notify-take` job.
+- Transcript read time (spec 0007): `transcript-timeline` (stored word times to the trimmed video with the render's own `alignToFrames(keepRanges(...))`, caption cues, SRT, VTT, plain text; all pure) and `transcript-download` (formats, file body, `Content-Disposition` with a safe name). The CC track, the SRT and the text all come from the same cues and paragraphs; never build captions anywhere else.
 - Config: `env` (zod parsers), `worker-deploy-config`, `server-source-maps`, `sentry-*` (options, scrubbing, check guard, debug ID).
 - Small helpers: `result`, `utils`, `usage-hash`, `fonts`, `auth-client`.
 
