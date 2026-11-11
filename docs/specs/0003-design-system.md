@@ -29,7 +29,7 @@ Decided with Toyin: design source is a direction proposed from Mobbin; direction
 - **AC-4**: An app shell exists per `design.md`: 240 px left sidebar (active item tint plus left bar, user menu with sign out) collapsing under 768 px to a top bar with a menu sheet, a "Skip to content" link and landmarks, page gutters, and a `Stage` container that applies the stage tokens including the cream focus ring.
 - **AC-5**: Every component is keyboard operable with a visible 2 px focus ring (Brick Red on light, cream inside the `Stage`); dialogs trap and restore focus; icon only buttons have accessible names; touch targets are at least 44 px under `pointer: coarse`.
 - **AC-6**: Every text colour pair used meets WCAG AA (4.5:1, or 3:1 for large text and UI controls); Steel Blue is never text on the light app, Brick Red never text or focus ring on the stage; status always shows an icon plus a label; links in text are underlined.
-- **AC-7**: A component gallery page (`/design`) shows every base component and state on both the light app and the stage; it exists only in development and preview builds (returns not found in production) and is `noindex`; automated axe checks on it pass with no serious or critical issues.
+- **AC-7**: A component gallery page (`/design`) shows every base component and state on both the light app and the stage; it is served only when `NODE_ENV` is development or the Worker has the runtime var `DESIGN_GALLERY=1` (set by the Playwright web server and `pnpm preview`, never on the live Worker), otherwise returns not found; it has no sign in gate and is `noindex`; automated axe checks on it pass with no serious or critical issues.
 - **AC-8**: Animations respect `prefers-reduced-motion`.
 
 ## Options considered
@@ -60,7 +60,7 @@ The stage split answers the product's central tension: creators judge colour on 
 1. Tailwind CSS v4 (CSS first `@theme`) and shadcn/ui setup with pinned versions; tokens from `design.md` as CSS variables mapped to shadcn's names; Inter and JetBrains Mono via `next/font/google` (build time, self hosted); reduced motion handling; confirm the OpenNext build stays green, satisfies **AC-1**, **AC-2**, **AC-8**.
 2. Base components in `src/components/ui/` themed with the tokens, with focus rings and accessible names, satisfies **AC-3**, **AC-5**, **AC-6**.
 3. App shell (sidebar collapsing to top bar, page gutters) and the `Stage` container, applied to the existing placeholder pages, satisfies **AC-4**, **AC-6**.
-4. `/design` gallery page (signed in only) with every component and state on light and stage; Playwright axe check on it, satisfies **AC-7**, **AC-5**.
+4. `/design` gallery page (no sign in gate) with every component and state on light and stage; Playwright axe check on it, satisfies **AC-7**, **AC-5**.
 
 ## Consequences
 
