@@ -5,7 +5,8 @@ import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/t
 import type { Db } from "@/db/types";
 import { pgErrorCode } from "@/db/types";
 import { reanalyse } from "@/db/data/cuts";
-import { finish, markRunning, startJob, whileJobActive } from "@/db/data/jobs";
+import { finish, markRunning, startJob, startTranscribeJob, whileJobActive } from "@/db/data/jobs";
+import { saveTranscriptAndFinish } from "@/db/data/transcripts";
 
 /**
  * The lock order rule (src/db/AGENTS.md): creator, then take, then job, then the rows under
@@ -42,7 +43,18 @@ async function runningVideoJob() {
   return { creatorId: creator.id, takeId: t.id, jobId: started.data.id };
 }
 
-type Op = (ctx: Awaited<ReturnType<typeof runningVideoJob>>) => Promise<unknown>;
+/** A running transcribe job on a Ready take (it never moves the take). */
+async function runningTranscribeJob() {
+  const creator = await createCreator(db);
+  const t = await seedTake(db, creator.id, { status: "ready", durationMs: 10_000 });
+  const started = await startTranscribeJob(db, { takeId: t.id });
+  if (!started.ok) throw new Error(`start refused: ${started.error}`);
+  await markRunning(db, { jobId: started.data.id, triggerRunId: "run" });
+  return { creatorId: creator.id, takeId: t.id, jobId: started.data.id };
+}
+
+type Ctx = Awaited<ReturnType<typeof runningVideoJob>>;
+type Op = (ctx: Ctx) => Promise<unknown>;
 const ops = {
   finish: ((c) => finish(db, { jobId: c.jobId, status: "failed", failureCode: "timeout" })) as Op,
   cancel: ((c) => cancel(db, { creatorId: c.creatorId, jobId: c.jobId })) as Op,
@@ -53,12 +65,26 @@ const ops = {
       return written;
     })) as Op,
   deleteTake: ((c) => deleteTake(db, c.creatorId, c.takeId, noAfter)) as Op,
+  saveTranscript: (async (c) => {
+    return saveTranscriptAndFinish(db, c.jobId, {
+      takeId: c.takeId,
+      language: "en",
+      text: "hello",
+      words: [{ w: "hello", startMs: 0, endMs: 100, conf: 1, filler: false, para: true }],
+      sourceFps: 30,
+      model: "nova-3",
+    });
+  }) as Op,
 };
 
-async function deadlocks(first: Op, second: Op): Promise<number> {
+async function deadlocks(
+  first: Op,
+  second: Op,
+  makeCtx: () => Promise<Ctx> = runningVideoJob,
+): Promise<number> {
   let found = 0;
   for (let i = 0; i < ROUNDS; i++) {
-    const ctx = await runningVideoJob();
+    const ctx = await makeCtx();
     const settled = await Promise.allSettled([first(ctx), second(ctx)]);
     for (const s of settled) {
       if (s.status === "rejected" && pgErrorCode(s.reason).code === "40P01") found += 1;
@@ -79,6 +105,22 @@ describe("lock order: take before job (no deadlocks)", () => {
     "%s and %s at the same time",
     async (a, b) => {
       expect(await deadlocks(ops[a], ops[b])).toBe(0);
+    },
+    60_000,
+  );
+});
+
+describe("lock order with the transcript save", () => {
+  const pairs: ReadonlyArray<readonly [keyof typeof ops, keyof typeof ops]> = [
+    ["saveTranscript", "finish"],
+    ["saveTranscript", "cancel"],
+    ["saveTranscript", "deleteTake"],
+    ["saveTranscript", "guardedWrite"],
+  ];
+  it.each(pairs)(
+    "%s and %s at the same time (transcribe job)",
+    async (a, b) => {
+      expect(await deadlocks(ops[a], ops[b], runningTranscribeJob)).toBe(0);
     },
     60_000,
   );
