@@ -115,6 +115,23 @@ describe("toTrimmedTranscript", () => {
     // Times are not required to be sorted in the input; paragraphs follow the input order.
   });
 
+  it("keeps each word's own time when the input is out of order", () => {
+    const out = toTrimmedTranscript(
+      [
+        word("late", 9000, 9400),
+        word("early", 1000, 1400, { para: true }),
+        word("middle", 5000, 5400),
+      ],
+      { ...base, removedRanges: [] },
+    );
+    const words = out.flatMap((p) => p.words);
+    expect(words.map((w) => [w.w, w.startMs])).toEqual([
+      ["early", 1000],
+      ["middle", 5000],
+      ["late", 9000],
+    ]);
+  });
+
   it("treats the first word as a paragraph start even when it is not flagged", () => {
     const out = toTrimmedTranscript([word("a", 100, 300), word("b", 300, 500)], {
       ...base,

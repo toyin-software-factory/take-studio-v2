@@ -81,6 +81,17 @@ describe("contentDisposition file names", () => {
     expect(contentDisposition("txt", "🎬🎬")).toContain('filename="take.txt"');
   });
 
+  it("never cuts a character in half when it shortens the title", () => {
+    // 199 letters then an emoji (two UTF-16 units): the cut must keep or drop the whole emoji.
+    const value = contentDisposition("txt", `${"a".repeat(199)}\u{1F3AC}b`);
+    expect(value).toContain("%F0%9F%8E%AC.txt");
+    expect(() => contentDisposition("txt", `${"a".repeat(199)}\u{1F3AC}`)).not.toThrow();
+  });
+
+  it("does not throw on a lone surrogate in the title", () => {
+    expect(() => contentDisposition("txt", "bad \uD83C title")).not.toThrow();
+  });
+
   it("cuts a very long title to 200 characters", () => {
     const value = contentDisposition("srt", "a".repeat(500));
     expect(value).toContain(`filename="${"a".repeat(200)}.srt"`);

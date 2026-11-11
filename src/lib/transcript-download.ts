@@ -26,12 +26,17 @@ const MAX_TITLE_CHARS = 200;
 
 /** The title as a file name stem: no controls or path characters, at most 200 characters. */
 function fileStem(title: string): string {
-  const cleaned = title
-    .replace(/[\u0000-\u001f\u007f]/g, " ")
-    .replace(/[/\\:*?"<>|]/g, "_")
-    .replace(/\s+/g, " ")
-    .trim()
+  const cleaned = Array.from(
+    title
+      .toWellFormed()
+      .replace(/[\u0000-\u001f\u007f]/g, " ")
+      .replace(/[/\\:*?"<>|]/g, "_")
+      .replace(/\s+/g, " ")
+      .trim(),
+  )
+    // By code point, so a character made of two UTF-16 units is never cut in half.
     .slice(0, MAX_TITLE_CHARS)
+    .join("")
     .trim();
   return cleaned === "" ? "take" : cleaned;
 }

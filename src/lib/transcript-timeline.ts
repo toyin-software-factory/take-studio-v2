@@ -78,7 +78,10 @@ export function toTrimmedTranscript(
   const groups: TrimmedWord[][] = [];
   let group = -1;
   let lastStart = 0;
-  words.forEach((word, index) => {
+  // Chronological on the original take (a stable sort), so a word out of order keeps its own
+  // time instead of being pushed after the word before it.
+  const ordered = [...words].sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs);
+  ordered.forEach((word, index) => {
     if (word.para || index === 0) {
       group += 1;
       groups.push([]);
