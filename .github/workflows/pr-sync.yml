@@ -1,0 +1,27 @@
+# Fails a PR whose body has no filled-in "## Sync" section, so /sync can't be skipped silently.
+# Reruns when the PR body is edited. See ROLE.md → "Done means /sync ran".
+name: pr-sync
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+permissions: {}
+jobs:
+  sync-recorded:
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR body has a filled "## Sync" section
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          section="$(printf '%s\n' "$BODY" | tr -d '\r' | awk '
+            { l = tolower($0) }
+            l ~ /^##[ \t]+sync[ \t]*$/ { on = 1; next }
+            l ~ /^#{1,2}[ \t]/ { on = 0 }
+            on' | sed '/<!--/,/-->/d' | grep -v '^[[:space:]]*$' || true)"
+          if [ -z "$section" ]; then
+            echo "::error::Add a '## Sync' section to the PR body: what /sync changed (files) and how each Heads up item was cleared, or 'No changes', or 'Not needed: docs only'."
+            exit 1
+          fi
+          echo "Sync section:"
+          printf '%s\n' "$section"
