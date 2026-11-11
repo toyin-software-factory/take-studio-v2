@@ -14,10 +14,13 @@ import { callApi } from "./browser-io";
 export function TakeThumb({
   takeId,
   available,
+  status,
 }: {
   readonly takeId: string;
   /** False while there can be no thumbnail yet (still uploading) or any more (expired). */
   readonly available: boolean;
+  /** Changes when the take moves on (processing to ready), so a missed lookup is tried again. */
+  readonly status: string;
 }) {
   const box = useRef<HTMLDivElement>(null);
   const [src, setSrc] = useState<string | null>(null);
@@ -45,7 +48,7 @@ export function TakeThumb({
       live = false;
       observer.disconnect();
     };
-  }, [takeId, available, src]);
+  }, [takeId, available, status, src]);
 
   return (
     <div

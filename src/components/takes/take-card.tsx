@@ -29,7 +29,11 @@ export function TakeCard({
 
   return (
     <li className="relative flex flex-col rounded-md bg-surface shadow-card transition-shadow focus-within:shadow-overlay hover:shadow-overlay">
-      <TakeThumb takeId={take.id} available={take.status !== "uploading" && !take.expired} />
+      <TakeThumb
+        takeId={take.id}
+        available={take.status !== "uploading" && !take.expired}
+        status={take.status}
+      />
       <div className="flex flex-1 flex-col gap-2 p-4">
         <h3 className="text-body font-semibold">
           <Link

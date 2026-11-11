@@ -97,7 +97,11 @@ export function formatClock(ms: number | null): string {
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const SHORT_DATE = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
+const SHORT_DATE = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  timeZone: "UTC",
+});
 
 /** "3 Dec" (design.md Voice). UTC, so server and browser agree. */
 export function shortDate(iso: string): string {
@@ -106,7 +110,8 @@ export function shortDate(iso: string): string {
 
 /**
  * Expiry note for a card or page (AC-1, design.md Expired video): "Video expires in 12 days",
- * "Video expires today", "Video expired on 3 Dec"; null before the upload completes.
+ * "Video expires today" (the same UTC date), "Video expires tomorrow" (under a day left but the
+ * next UTC date), "Video expired on 3 Dec"; null before the upload completes.
  */
 export function expiryNote(
   videoExpiresAt: string | null,
@@ -117,7 +122,10 @@ export function expiryNote(
   const left = new Date(videoExpiresAt).getTime() - now.getTime();
   if (expired || left <= 0) return `Video expired on ${shortDate(videoExpiresAt)}`;
   const days = Math.floor(left / DAY_MS);
-  if (days === 0) return "Video expires today";
+  if (days === 0) {
+    const sameUtcDate = videoExpiresAt.slice(0, 10) === now.toISOString().slice(0, 10);
+    return sameUtcDate ? "Video expires today" : "Video expires tomorrow";
+  }
   return `Video expires in ${days} ${days === 1 ? "day" : "days"}`;
 }
 

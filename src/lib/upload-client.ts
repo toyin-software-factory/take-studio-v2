@@ -65,6 +65,7 @@ const createdBody = z.object({
   partSize: z.number().int().positive(),
   partCount: z.number().int().positive(),
 });
+const sizeMismatch = z.object({ error: z.literal("size_mismatch") });
 const linksBody = z.object({
   parts: z.array(z.object({ partNumber: z.number().int(), url: z.string() })),
   expiresInSeconds: z.number().positive(),
@@ -149,6 +150,11 @@ export async function uploadFile(
       return link.url;
     };
 
+    // When one worker gives up, the others are stopped and awaited before this returns, so a
+    // late progress callback can't touch the next upload's percentage.
+    const stop = new AbortController();
+    const workSignal = AbortSignal.any([signal, stop.signal]);
+
     const sent: number[] = Array.from({ length: partCount }, () => 0);
     const etags: string[] = Array.from({ length: partCount }, () => "");
     const report = () => events.onProgress?.(uploadPercent(sent, file.size));
@@ -166,32 +172,40 @@ export async function uploadFile(
               sent[n - 1] = bytes;
               report();
             },
-            signal,
+            workSignal,
           );
           sent[n - 1] = end - start;
           report();
           return;
         } catch (error) {
-          if (signal.aborted || error instanceof UploadFailure) throw error;
+          if (workSignal.aborted || error instanceof UploadFailure) throw error;
           sent[n - 1] = 0;
           report();
           if (attempt >= PART_ATTEMPTS) throw new UploadFailure(GENERIC_FAILURE);
           // R2 answers 403 to an expired link: drop it so the retry asks for a new one.
           if (error instanceof PartError && error.status === 403) links.delete(n);
-          await io.sleep(retryDelayMs(attempt), signal);
+          await io.sleep(retryDelayMs(attempt), workSignal);
         }
       }
     };
 
     let next = 1;
+    const failures: unknown[] = [];
     const worker = async () => {
-      while (next <= partCount) {
-        const n = next;
-        next += 1;
-        await uploadPart(n);
+      try {
+        while (next <= partCount && !workSignal.aborted) {
+          const n = next;
+          next += 1;
+          await uploadPart(n);
+        }
+      } catch (error) {
+        failures.push(error);
+        stop.abort();
       }
     };
     await Promise.all(Array.from({ length: Math.min(PART_CONCURRENCY, partCount) }, worker));
+    // The first failure is the cause; the rest are the others being stopped.
+    if (failures.length > 0) throw failures[0];
 
     events.onPhase?.("completing");
     const parts = etags.map((etag, i) => ({ partNumber: i + 1, etag }));
@@ -201,8 +215,9 @@ export async function uploadFile(
       const done = await io.api(`/api/uploads/${id}/complete`, "POST", { parts });
       if (done.status === 200) return { ok: true, takeId: id };
       if (done.status !== 503 || attempt >= PART_ATTEMPTS) {
-        // The server failed the take itself on a size mismatch; nothing left to abandon.
-        takeId = null;
+        // The server failed the take itself on a size mismatch, so there is nothing left to
+        // abandon. Any other refusal (bad_parts, a retry limit) leaves the take uploading.
+        if (done.status === 422 && sizeMismatch.safeParse(done.data).success) takeId = null;
         throw new UploadFailure(messageOf(done));
       }
       await io.sleep(retryDelayMs(attempt), signal);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   expiryNote,
+  shortDate,
   failureMessage,
   formatClock,
   isInFlight,
@@ -36,6 +37,7 @@ describe("expiryNote (AC-1)", () => {
     ["2026-11-23T13:00:00Z", false, "Video expires in 12 days"],
     ["2026-11-12T13:00:00Z", false, "Video expires in 1 day"],
     ["2026-11-11T18:00:00Z", false, "Video expires today"],
+    ["2026-11-12T10:00:00Z", false, "Video expires tomorrow"],
     ["2026-11-10T09:00:00Z", false, "Video expired on 10 Nov"],
     ["2026-12-03T09:00:00Z", true, "Video expired on 3 Dec"],
   ])("%s (expired %s) → %s", (at, expired, text) => {
@@ -101,5 +103,11 @@ describe("tab titles and polling (AC-8, Flow step 7)", () => {
 
   it("backs off from 2 s to at most 10 s", () => {
     expect([0, 1, 2, 3].map((n) => pollDelay(2000, n))).toEqual([2000, 4000, 8000, 10_000]);
+  });
+});
+
+describe("shortDate", () => {
+  it("shows the UTC date whatever the host time zone", () => {
+    expect(shortDate("2026-12-03T00:30:00Z")).toBe("3 Dec");
   });
 });

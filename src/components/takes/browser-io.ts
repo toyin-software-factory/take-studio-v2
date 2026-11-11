@@ -7,6 +7,9 @@ import { PartError, type ApiReply, type UploadIo } from "@/lib/upload-client";
  * has no upload progress), the clock and an abortable sleep.
  */
 
+/** Upload API calls give up after this long, so cleanup after a cancel or failure can finish. */
+const API_TIMEOUT_MS = 30_000;
+
 /** A JSON request to our own API. The body, if any, is sent as JSON; `data` is null if none. */
 export async function callApi(
   path: string,
@@ -17,6 +20,7 @@ export async function callApi(
     method,
     credentials: "same-origin",
     cache: "no-store",
+    signal: AbortSignal.timeout(API_TIMEOUT_MS),
     headers: body === undefined ? undefined : { "content-type": "application/json" },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -31,6 +35,8 @@ function putPart(
   signal: AbortSignal,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
+    // A cancel can land while the link was being fetched: no abort event will come, so stop here.
+    if (signal.aborted) return reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
     const xhr = new XMLHttpRequest();
     const onAbort = () => xhr.abort();
     xhr.open("PUT", url);

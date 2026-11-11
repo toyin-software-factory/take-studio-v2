@@ -35,6 +35,7 @@ export function TakePlayer({ takeId }: { readonly takeId: string }) {
   const video = useRef<HTMLVideoElement>(null);
   const resumeAt = useRef(0);
   const refreshed = useRef(false);
+  const resumePlaying = useRef(false);
   const [link, setLink] = useState<Link>({ kind: "loading" });
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
@@ -110,6 +111,9 @@ export function TakePlayer({ takeId }: { readonly takeId: string }) {
           onLoadedMetadata={(e) => {
             setDuration(e.currentTarget.duration);
             if (resumeAt.current > 0) e.currentTarget.currentTime = resumeAt.current;
+            // A replacement link loads paused; carry on if it was playing when the link failed.
+            if (resumePlaying.current) void e.currentTarget.play().catch(() => undefined);
+            resumePlaying.current = false;
           }}
           onVolumeChange={(e) => setMuted(e.currentTarget.muted)}
           onError={() => {
@@ -117,6 +121,7 @@ export function TakePlayer({ takeId }: { readonly takeId: string }) {
             if (refreshed.current) return setLink({ kind: "error" });
             refreshed.current = true;
             resumeAt.current = video.current?.currentTime ?? 0;
+            resumePlaying.current = video.current?.paused === false;
             fetchLink();
           }}
         />
