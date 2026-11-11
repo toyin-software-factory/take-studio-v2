@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { AppShell } from "@/components/shell/app-shell";
 import { TakeView } from "@/components/takes/take-view";
 import { tabTitle } from "@/lib/take-display";
+import { getTakeEmails } from "@/db/data/email-prefs";
 import { getDb, getSession } from "@/server/request";
 import { getForCreator } from "@/server/takes";
 
@@ -34,10 +35,16 @@ export default async function TakePage({ params }: Props) {
   const { session, take } = await loadTake((await params).id);
   if (!session) redirect("/");
   if (!take) notFound();
+  const takeEmails = (await getTakeEmails(await getDb(), session.user.id)) ?? true;
 
   return (
     <AppShell user={{ name: session.user.name, email: session.user.email }}>
-      <TakeView takeId={take.id} initialTitle={take.title} initialStatus={take.status} />
+      <TakeView
+        takeId={take.id}
+        initialTitle={take.title}
+        initialStatus={take.status}
+        takeEmails={takeEmails}
+      />
     </AppShell>
   );
 }
