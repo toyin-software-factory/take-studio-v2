@@ -137,6 +137,8 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
       await step("render", "skipped", 0);
       await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
       await queueTakeEmail(job.id, job.kind);
+      // The transcript job skips it as `no_speech` without calling Deepgram (spec 0007, AC-7).
+      await startTranscript(client, t.id);
       return { jobId: job.id, takeId: t.id, outcome: "no_audio" as const };
     }
     const trimProgress = throttledProgress((p) => step("trim", "running", p));
