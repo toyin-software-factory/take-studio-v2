@@ -49,7 +49,6 @@ async function Library({ creatorId }: { readonly creatorId: string }) {
         takes: page.data.rows.map((row) => cardView(row, now)),
         nextCursor: page.data.nextCursor,
       }}
-      thumbs={{}}
       nowIso={now.toISOString()}
     />
   );

@@ -134,6 +134,37 @@ test.describe("library", () => {
     await expect(page).toHaveURL(/\/takes\//);
   });
 
+  test("cards load their thumbnail through a signed link, else keep the placeholder", async ({
+    page,
+    baseURL,
+  }) => {
+    const user = await signedIn(page, baseURL!);
+    await seedTakes(user.id, [
+      { title: "With thumbnail", status: "ready", durationMs: 5000, minutesAgo: 1 },
+      { title: "Still uploading", status: "uploading", expiresInDays: null, minutesAgo: 2 },
+    ]);
+    const asked: string[] = [];
+    await page.route("**/api/takes/*/media?kind=thumb", (route) => {
+      asked.push(route.request().url());
+      return route.fulfill({ json: { url: `${R2}/thumb.jpg`, expiresInSeconds: 3600 } });
+    });
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==",
+      "base64",
+    );
+    await page.route(`${R2}/thumb.jpg`, (route) =>
+      route.fulfill({ body: png, contentType: "image/png" }),
+    );
+    await page.goto("/");
+    const card = page.getByRole("listitem").filter({ hasText: "With thumbnail" });
+    await expect(card.locator("img")).toBeVisible();
+    // No link is requested for the take that is still uploading.
+    expect(asked).toHaveLength(1);
+    await expect(
+      page.getByRole("listitem").filter({ hasText: "Still uploading" }).locator("img"),
+    ).toHaveCount(0);
+  });
+
   test("refuses a file that isn't MP4 or MOV before uploading (AC-2)", async ({
     page,
     baseURL,

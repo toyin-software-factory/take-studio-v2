@@ -16,12 +16,10 @@ import { useRetry } from "./use-retry";
  */
 export function TakeCard({
   take,
-  thumbUrl,
   now,
   onRetried,
 }: {
   readonly take: TakeCardData;
-  readonly thumbUrl: string | null;
   readonly now: Date;
   readonly onRetried: (id: string) => void;
 }) {
@@ -31,7 +29,7 @@ export function TakeCard({
 
   return (
     <li className="relative flex flex-col rounded-md bg-surface shadow-card transition-shadow focus-within:shadow-overlay hover:shadow-overlay">
-      <TakeThumb src={thumbUrl} />
+      <TakeThumb takeId={take.id} available={take.status !== "uploading" && !take.expired} />
       <div className="flex flex-1 flex-col gap-2 p-4">
         <h3 className="text-body font-semibold">
           <Link

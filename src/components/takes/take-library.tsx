@@ -25,11 +25,9 @@ import { usePoll, type PollResult } from "./use-poll";
  */
 export function TakeLibrary({
   initial,
-  thumbs,
   nowIso,
 }: {
   readonly initial: TakeList;
-  readonly thumbs: Readonly<Record<string, string>>;
   readonly nowIso: string;
 }) {
   const [takes, setTakes] = useState<readonly TakeCardData[]>(initial.takes);
@@ -103,13 +101,7 @@ export function TakeLibrary({
     <div className="flex flex-col gap-6">
       <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {takes.map((take) => (
-          <TakeCard
-            key={take.id}
-            take={take}
-            thumbUrl={thumbs[take.id] ?? null}
-            now={now}
-            onRetried={onRetried}
-          />
+          <TakeCard key={take.id} take={take} now={now} onRetried={onRetried} />
         ))}
       </ul>
       {moreError ? (
