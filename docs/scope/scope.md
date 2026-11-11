@@ -104,11 +104,11 @@ Spec [0004](../specs/0004-core-take-loop/index.md) · code in `src/server/upload
 Catch errors in the app and in processing jobs so failed takes are seen before creators report them.
 **Done when:** an error in the web app or a failed processing job is reported with enough context to debug, and no video content or secrets are sent.
 - [x] Design it (spec): `/architect error monitoring`
-- [ ] Build it: `/develop error monitoring`
+- [x] Build it: `/develop error monitoring`
    - [x] Scrubbing module with tests (AC-4) (S1C-T06)
-   - [ ] Web and browser reporting with source maps (AC-1, AC-2, AC-5, AC-6, AC-8) (S1C-T06: built and checked locally without a DSN and against a fake ingest; source maps and the production check wait for the Sentry keys)
-   - [ ] Job failure reporting with source maps (AC-3, AC-5, AC-6) (S1C-T06: built; production check waits for the Sentry keys)
-   - [ ] Alert rules and a production check (AC-7)
+   - [x] Web and browser reporting with source maps (AC-1, AC-2, AC-5, AC-6, AC-8) (S1C-T06, S1C-T11, S1C-T14: proven in production, see `docs/reviews/0005-error-monitoring-verify.md`)
+   - [x] Job failure reporting with source maps (AC-3, AC-5, AC-6) (S1C-T06, S1C-T12, S1C-T14: proven in production, see the verify report)
+   - [x] Alert rules and a production check (AC-7) (first seen and spike rules enabled; production checks done for web, browser and jobs; the weekly report setting is owed, see the verify report)
 - [ ] Verify it: `/check verify error monitoring`
 - [x] Test it: `/test error monitoring`
 Spec [0005](../specs/0005-error-monitoring.md) · code in `src/lib/sentry-*.ts`, `src/worker.ts`, `src/instrumentation*.ts`, `src/trigger/init.ts`, `src/trigger/sentry-check.ts`
