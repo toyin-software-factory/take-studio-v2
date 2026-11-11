@@ -39,6 +39,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 15 | Landing page & SEO | Launch | planned |
 | 16 | Privacy & terms pages | Launch | planned |
 | 17 | Product analytics | Launch | planned |
+| 18 | Email sign in and take ready email | Slice 1 | in-progress |
 
 ## Foundations
 
@@ -111,6 +112,18 @@ Catch errors in the app and in processing jobs so failed takes are seen before c
 - [ ] Verify it: `/check verify error monitoring`
 - [ ] Test it: `/test error monitoring`
 Spec [0005](../specs/0005-error-monitoring.md) · code in `src/lib/sentry-*.ts`, `src/worker.ts`, `src/instrumentation*.ts`, `src/trigger/init.ts`
+
+### 18. Email sign in and take ready email · in-progress
+Follow up to the core take loop (from spec 0004): sign in with a one time email link alongside Google, and an email when a take is ready or failed, with one click opt out.
+**Done when:** a creator can sign in by email link (once, 15 minutes), Google and email are one account, and each finished run sends one ready or failed email that can be turned off.
+- [x] Design it (spec): `/architect email sign in and take ready email`
+- [ ] Build it: `/develop email sign in and take ready email`
+   - [ ] Resend client and email templates (AC-7)
+   - [ ] Magic link sign in with linking and rate limits (AC-1, AC-2, AC-3, AC-4, AC-8)
+   - [ ] Take emails with opt out (AC-5, AC-6, AC-8)
+- [ ] Verify it: `/check verify email sign in and take ready email`
+- [ ] Test it: `/test email sign in and take ready email`
+Spec [0006](../specs/0006-email-sign-in-and-ready-email.md)
 
 ## Slice 2: Transcript
 
