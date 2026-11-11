@@ -118,8 +118,8 @@ Follow up to the core take loop (from spec 0004): sign in with a one time email 
 **Done when:** a creator can sign in by email link (once, 15 minutes), Google and email are one account, and each finished run sends one ready or failed email that can be turned off.
 - [x] Design it (spec): `/architect email sign in and take ready email`
 - [ ] Build it: `/develop email sign in and take ready email`
-   - [ ] Resend client and email templates (AC-7)
-   - [ ] Magic link sign in with linking and rate limits (AC-1, AC-2, AC-3, AC-4, AC-8)
+   - [x] Resend client and email templates (AC-7) (templates and sender tested; the SPF and DKIM check needs a real email from mail.vowmory.com)
+   - [ ] Magic link sign in with linking and rate limits (AC-1, AC-2, AC-3, AC-4, AC-8) (S1C-T08 sign in PR: built and tested; real email received is the last check)
    - [ ] Take emails with opt out (AC-5, AC-6, AC-8)
 - [ ] Verify it: `/check verify email sign in and take ready email`
 - [ ] Test it: `/test email sign in and take ready email`
