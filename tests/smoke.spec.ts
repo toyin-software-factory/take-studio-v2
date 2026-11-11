@@ -1,9 +1,9 @@
 import { expect, test } from "@playwright/test";
 
-test("landing placeholder renders with a sign in button", async ({ page }) => {
+test("landing placeholder renders with a sign in link", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1, name: "Take Studio" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Sign in with Google" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
 });
 
 test("health reports the database reachable through Hyperdrive", async ({ request }) => {
