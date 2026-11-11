@@ -124,12 +124,25 @@ describe("toTrimmedTranscript", () => {
       ],
       { ...base, removedRanges: [] },
     );
-    const words = out.flatMap((p) => p.words);
-    expect(words.map((w) => [w.w, w.startMs])).toEqual([
-      ["early", 1000],
-      ["middle", 5000],
-      ["late", 9000],
+    const time = new Map(out.flatMap((p) => p.words).map((w) => [w.w, w.startMs]));
+    expect(Object.fromEntries(time)).toEqual({ late: 9000, early: 1000, middle: 5000 });
+  });
+
+  it("keeps each word in its paragraph when the input is out of order", () => {
+    const out = toTrimmedTranscript(
+      [
+        word("A", 1000, 1400, { para: true }),
+        word("B", 9000, 9400),
+        word("C", 5000, 5400, { para: true }),
+        word("D", 9500, 9900),
+      ],
+      { ...base, removedRanges: [] },
+    );
+    expect(out.map((p) => p.words.map((w) => w.w))).toEqual([
+      ["A", "B"],
+      ["C", "D"],
     ]);
+    expect(out.map((p) => p.startMs)).toEqual([1000, 5000]);
   });
 
   it("treats the first word as a paragraph start even when it is not flagged", () => {

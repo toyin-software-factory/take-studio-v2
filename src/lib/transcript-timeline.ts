@@ -75,28 +75,33 @@ export function toTrimmedTranscript(
     sum += range.endMs - range.startMs;
   }
 
-  const groups: TrimmedWord[][] = [];
-  let group = -1;
+  // Paragraph membership follows the input order (the flags say where a paragraph starts).
+  const paragraphOf = words.map((word, index) => (word.para || index === 0 ? 1 : 0));
+  let paragraph = -1;
+  const groupOf = paragraphOf.map((starts) => {
+    paragraph += starts;
+    return paragraph;
+  });
+
+  // Times follow the original take: walk the words chronologically (a stable sort), so a word
+  // out of order keeps its own time, while the trimmed times never go backwards.
+  const chronological = words
+    .map((word, index) => ({ word, index }))
+    .sort((a, b) => a.word.startMs - b.word.startMs || a.word.endMs - b.word.endMs);
+  const groups: TrimmedWord[][] = Array.from({ length: paragraph + 1 }, () => []);
   let lastStart = 0;
-  // Chronological on the original take (a stable sort), so a word out of order keeps its own
-  // time instead of being pushed after the word before it.
-  const ordered = [...words].sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs);
-  ordered.forEach((word, index) => {
-    if (word.para || index === 0) {
-      group += 1;
-      groups.push([]);
-    }
+  for (const { word, index } of chronological) {
     const mid = (word.startMs + word.endMs) / 2;
     const at = keep.findIndex((range) => mid >= range.startMs && mid < range.endMs);
     const range = keep[at];
     const offset = offsets[at];
-    if (range === undefined || offset === undefined) return;
+    if (range === undefined || offset === undefined) continue;
     const clamp = (ms: number) => Math.min(Math.max(ms, range.startMs), range.endMs);
     const startMs = Math.max(Math.round(offset + clamp(word.startMs) - range.startMs), lastStart);
     const endMs = Math.max(Math.round(offset + clamp(word.endMs) - range.startMs), startMs + 1);
     lastStart = startMs;
-    groups[group]?.push({ w: word.w, startMs, endMs, filler: word.filler });
-  });
+    groups[groupOf[index] ?? 0]?.push({ w: word.w, startMs, endMs, filler: word.filler });
+  }
 
   return groups.flatMap((kept) => {
     const first = kept[0];
