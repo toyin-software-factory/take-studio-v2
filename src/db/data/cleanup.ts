@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNotNull, lt, lte, notInArray, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, lt, lte, or } from "drizzle-orm";
 import { CLEANUP, cleanupCutoffs } from "@/lib/cleanup-rules";
 import { processingJob, take } from "../schema";
 import { runTx } from "../tx";
@@ -22,31 +22,39 @@ export type AbandonedUpload = {
 
 /**
  * Fails `uploading` takes older than the upload link lifetime plus a margin with
- * `upload_abandoned` (except those in `skipTakeIds`), clears their upload ID and queues the original key (a completed but
- * never confirmed upload would otherwise linger). Returns what to abort in R2.
+ * `upload_abandoned`, clears their upload ID and queues the original key. Before each one it
+ * checks storage itself (`headObject`): a take whose original is stored at the stated size
+ * belongs to the stuck upload recovery and is never failed here, and a take whose storage
+ * cannot be checked is left for the next run. No run local list stands in for that check, so
+ * overlapping runs and the recovery batch limit cannot make a stored original look absent.
+ * Returns what to abort in R2.
  */
 export async function failAbandonedUploads(
   db: Executor,
   now: Date,
-  /** Takes the stuck upload recovery owns (original stored): never abandoned here. */
-  skipTakeIds: readonly string[] = [],
+  headObject: StuckUploadPorts["headObject"],
 ): Promise<readonly AbandonedUpload[]> {
   const { abandonedUploadBefore } = cleanupCutoffs(now);
   const candidates = await db
-    .select({ id: take.id, originalKey: take.originalKey, uploadId: take.uploadId })
+    .select({
+      id: take.id,
+      originalKey: take.originalKey,
+      originalBytes: take.originalBytes,
+      uploadId: take.uploadId,
+    })
     .from(take)
-    .where(
-      and(
-        eq(take.status, "uploading"),
-        lt(take.createdAt, abandonedUploadBefore),
-        skipTakeIds.length > 0 ? notInArray(take.id, [...skipTakeIds]) : undefined,
-      ),
-    )
+    .where(and(eq(take.status, "uploading"), lt(take.createdAt, abandonedUploadBefore)))
     .orderBy(asc(take.createdAt))
     .limit(CLEANUP.batchSize);
 
   const failed: AbandonedUpload[] = [];
   for (const candidate of candidates) {
+    try {
+      const stored = await headObject(candidate.originalKey);
+      if (stored && stored.size === Number(candidate.originalBytes)) continue; // recovery's
+    } catch {
+      continue; // cannot tell: try again next run rather than delete a stored original
+    }
     const result = await runTx(db, async (tx) => {
       const moved = await transitionTake(tx, candidate.id, "uploading", "failed", {
         failureCode: "upload_abandoned",
@@ -157,8 +165,6 @@ export type StuckUploadRecovery = {
   readonly redispatched: readonly string[];
   /** Takes failed with `internal_error` after the last re-dispatch. */
   readonly failed: readonly string[];
-  /** Take IDs recovery owns this run: their original is stored (or could not be checked). */
-  readonly owned: readonly string[];
 };
 
 /**
@@ -187,6 +193,7 @@ export async function recoverStuckUploads(
       originalKey: take.originalKey,
       originalBytes: take.originalBytes,
       attempts: take.probeAttempts,
+      updatedAt: take.updatedAt,
     })
     .from(take)
     .where(and(eq(take.status, "uploading"), lt(take.updatedAt, quietBefore)))
@@ -195,20 +202,20 @@ export async function recoverStuckUploads(
 
   const redispatched: string[] = [];
   const failed: string[] = [];
-  const owned: string[] = [];
   for (const candidate of candidates) {
     let stored: { readonly size: number } | null;
     try {
       stored = await ports.headObject(candidate.originalKey);
     } catch {
-      // Could not check: leave it alone this run, and do not let the abandoned rule take it.
-      owned.push(candidate.id);
-      continue;
+      continue; // could not check: leave it alone this run
     }
     if (!stored || stored.size !== Number(candidate.originalBytes)) continue;
-    owned.push(candidate.id);
 
     if (candidate.attempts >= CLEANUP.maxProbeRedispatches) {
+      // The last dispatched probe may still be queued or retrying: protect the take (and its
+      // original) until that run can no longer be active.
+      const failBefore = new Date(now.getTime() - CLEANUP.lastProbeGraceMs);
+      if (candidate.updatedAt.getTime() >= failBefore.getTime()) continue;
       const result = await runTx(db, async (tx) => {
         const moved = await transitionTake(tx, candidate.id, "uploading", "failed", {
           failureCode: "internal_error",
@@ -241,5 +248,5 @@ export async function recoverStuckUploads(
     }
     redispatched.push(candidate.id);
   }
-  return { redispatched, failed, owned };
+  return { redispatched, failed };
 }

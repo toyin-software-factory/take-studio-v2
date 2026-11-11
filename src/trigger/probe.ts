@@ -7,6 +7,7 @@ import { markUploaded, transitionTake } from "@/db/data/takes";
 import { processingJob, take } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { parseJobEnv, parseUsageEnv } from "@/lib/env";
+import { PROBE_LIMITS } from "@/lib/cleanup-rules";
 import { createR2 } from "@/lib/r2";
 import { thumbnailKey } from "@/lib/take-rules";
 import { triggerForJob } from "@/lib/trigger-runs";
@@ -24,12 +25,12 @@ import { MediaToolError, probeUrl, thumbnailFromUrl } from "./media";
  * Safe to rerun: each step checks the take's state first. A missing take is a clean abort.
  * If the run fails for good, `onFailure` fails a still uploading take with `internal_error`.
  */
-const PROBE_ATTEMPTS = 3;
+const PROBE_ATTEMPTS = PROBE_LIMITS.maxAttempts;
 
 export const probeTask = task({
   id: "probe",
   machine: "small-2x",
-  maxDuration: 300,
+  maxDuration: PROBE_LIMITS.maxDurationSeconds,
   retry: { maxAttempts: PROBE_ATTEMPTS },
   run: async (payload: { readonly takeId: string }, { ctx }) => {
     const env = parseJobEnv();

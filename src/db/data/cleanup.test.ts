@@ -1,6 +1,6 @@
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { CLEANUP, cleanupCutoffs } from "@/lib/cleanup-rules";
+import { CLEANUP, PROBE_LIMITS, cleanupCutoffs } from "@/lib/cleanup-rules";
 import { thumbnailKey } from "@/lib/take-rules";
 import { cut, processingJob, render, storageDeletion, take } from "../schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "../testing/test-db";
@@ -53,6 +53,9 @@ async function seedJob(takeId: string, values: Partial<typeof processingJob.$inf
   return row;
 }
 
+/** Storage that has no object: an upload that never completed. */
+const notStored = async () => null;
+
 async function queuedKeys(): Promise<string[]> {
   const rows = await db.select({ key: storageDeletion.objectKey }).from(storageDeletion);
   return rows.map((row) => row.key).sort();
@@ -75,7 +78,7 @@ describe("cleanup: abandoned uploads (AC-18)", () => {
       createdAt: minutes(limit - 1),
     });
 
-    const abandoned = await failAbandonedUploads(db, NOW);
+    const abandoned = await failAbandonedUploads(db, NOW, notStored);
 
     expect(abandoned).toEqual([
       { takeId: old.id, originalKey: old.originalKey, uploadId: "mpu-old" },
@@ -280,7 +283,7 @@ describe("cleanup edges (AC-17, AC-18)", () => {
   it("leaves an old take alone once its upload has completed", async () => {
     const creator = await createCreator(db);
     const done = await seedTake(db, creator.id, { status: "uploaded", createdAt: minutes(500) });
-    expect(await failAbandonedUploads(db, NOW)).toEqual([]);
+    expect(await failAbandonedUploads(db, NOW, notStored)).toEqual([]);
     const [row] = await db.select().from(take).where(eq(take.id, done.id));
     expect(row?.status).toBe("uploaded");
   });
@@ -368,7 +371,7 @@ describe("cleanup: takes stuck in uploading after a failed probe dispatch (S1C-T
     const stuck = await seedStuck(creator.id);
     const p = ports();
     const result = await recoverStuckUploads(db, NOW, p);
-    expect(result).toEqual({ redispatched: [stuck.id], failed: [], owned: [stuck.id] });
+    expect(result).toEqual({ redispatched: [stuck.id], failed: [] });
     expect(p.dispatched).toEqual([{ takeId: stuck.id, redispatch: 1 }]);
     const row = await probeAttemptsOf(stuck.id);
     expect(row).toMatchObject({ status: "uploading", probeAttempts: 1 });
@@ -377,8 +380,9 @@ describe("cleanup: takes stuck in uploading after a failed probe dispatch (S1C-T
   it("is picked up within one cleanup run even when older than the abandoned cut off", async () => {
     const creator = await createCreator(db);
     const old = await seedStuck(creator.id, {}, 200); // way past link lifetime + margin
-    const recovery = await recoverStuckUploads(db, NOW, ports());
-    const abandoned = await failAbandonedUploads(db, NOW, recovery.owned);
+    const p = ports();
+    const recovery = await recoverStuckUploads(db, NOW, p);
+    const abandoned = await failAbandonedUploads(db, NOW, p.headObject);
     expect(recovery.redispatched).toEqual([old.id]);
     expect(abandoned).toEqual([]);
     expect((await probeAttemptsOf(old.id)).status).toBe("uploading");
@@ -387,10 +391,11 @@ describe("cleanup: takes stuck in uploading after a failed probe dispatch (S1C-T
 
   it("counts each pass, and fails the take refundably with internal_error after 3 re-dispatches", async () => {
     const creator = await createCreator(db);
-    const stuck = await seedStuck(creator.id, { probeAttempts: 3 });
+    const grace = CLEANUP.lastProbeGraceMs / 60_000;
+    const stuck = await seedStuck(creator.id, { probeAttempts: 3 }, 200, grace + 1);
     const p = ports();
     const result = await recoverStuckUploads(db, NOW, p);
-    expect(result).toEqual({ redispatched: [], failed: [stuck.id], owned: [stuck.id] });
+    expect(result).toEqual({ redispatched: [], failed: [stuck.id] });
     expect(p.dispatched).toEqual([]);
     expect(await probeAttemptsOf(stuck.id)).toMatchObject({
       status: "failed",
@@ -425,11 +430,7 @@ describe("cleanup: takes stuck in uploading after a failed probe dispatch (S1C-T
     const fresh = await seedStuck(creator.id, {}, 30, 1); // updated a minute ago
     const incomplete = await seedStuck(creator.id);
     const p = ports({ stored: false });
-    expect(await recoverStuckUploads(db, NOW, p)).toEqual({
-      redispatched: [],
-      failed: [],
-      owned: [],
-    });
+    expect(await recoverStuckUploads(db, NOW, p)).toEqual({ redispatched: [], failed: [] });
     expect(p.dispatched).toEqual([]);
     expect((await probeAttemptsOf(fresh.id)).probeAttempts).toBe(0);
     // The abandoned rule still handles the one that never completed (once old enough).
@@ -437,7 +438,7 @@ describe("cleanup: takes stuck in uploading after a failed probe dispatch (S1C-T
       .update(take)
       .set({ createdAt: minutes(200) })
       .where(eq(take.id, incomplete.id));
-    const abandoned = await failAbandonedUploads(db, NOW, []);
+    const abandoned = await failAbandonedUploads(db, NOW, p.headObject);
     expect(abandoned.map((a) => a.takeId)).toEqual([incomplete.id]);
   });
 
@@ -447,7 +448,6 @@ describe("cleanup: takes stuck in uploading after a failed probe dispatch (S1C-T
     const uploaded = await seedTake(db, creator.id, { updatedAt: minutes(60) });
     const result = await recoverStuckUploads(db, NOW, ports());
     expect(result.redispatched).toEqual([]);
-    expect(result.owned).toEqual([]);
     expect((await probeAttemptsOf(wrongSize.id)).probeAttempts).toBe(0);
     expect((await probeAttemptsOf(uploaded.id)).status).toBe("uploaded");
   });
@@ -460,12 +460,13 @@ describe("cleanup: takes stuck in uploading after a failed probe dispatch (S1C-T
     expect((await probeAttemptsOf(stuck.id)).probeAttempts).toBe(1);
   });
 
-  it("skips a take it cannot check and keeps the abandoned rule off it this run", async () => {
+  it("skips a take it cannot check, and the abandoned rule leaves it too", async () => {
     const creator = await createCreator(db);
     const unknown = await seedStuck(creator.id, {}, 200);
     const recovery = await recoverStuckUploads(db, NOW, ports({ headFails: true }));
-    expect(recovery).toEqual({ redispatched: [], failed: [], owned: [unknown.id] });
-    expect(await failAbandonedUploads(db, NOW, recovery.owned)).toEqual([]);
+    expect(recovery).toEqual({ redispatched: [], failed: [] });
+    // The abandoned rule checks storage itself and cannot tell either: it leaves the take.
+    expect(await failAbandonedUploads(db, NOW, ports({ headFails: true }).headObject)).toEqual([]);
     expect((await probeAttemptsOf(unknown.id)).status).toBe("uploading");
   });
 
@@ -480,5 +481,62 @@ describe("cleanup: takes stuck in uploading after a failed probe dispatch (S1C-T
     await Promise.all([recoverStuckUploads(db, now, p), recoverStuckUploads(db, now, p)]);
     expect((await probeAttemptsOf(stuck.id)).probeAttempts).toBe(1);
     expect(p.dispatched).toHaveLength(1);
+  });
+
+  it("keeps the take while the last re-dispatched probe may still be running (grace period)", async () => {
+    const creator = await createCreator(db);
+    const grace = CLEANUP.lastProbeGraceMs / 60_000;
+    const waiting = await seedStuck(creator.id, { probeAttempts: 3 }, 200, grace - 1);
+    const p = ports();
+    expect(await recoverStuckUploads(db, NOW, p)).toEqual({ redispatched: [], failed: [] });
+    expect((await probeAttemptsOf(waiting.id)).status).toBe("uploading");
+    expect(await queuedKeys()).toEqual([]);
+    // Once the grace has passed, the next pass fails it.
+    const later = new Date(NOW.getTime() + 2 * 60_000);
+    expect((await recoverStuckUploads(db, later, p)).failed).toEqual([waiting.id]);
+  });
+
+  it("derives the grace from the probe's own limits (attempts x maxDuration + margin)", () => {
+    expect(CLEANUP.lastProbeGraceMs).toBe(
+      PROBE_LIMITS.maxAttempts * PROBE_LIMITS.maxDurationSeconds * 1000 + 5 * 60_000,
+    );
+  });
+
+  it("never fails a stored original as abandoned, even beyond the recovery batch limit", async () => {
+    const creator = await createCreator(db);
+    // More stored, old takes than one recovery batch: the ones recovery does not reach this
+    // run must still be safe, because the abandoned rule checks storage itself.
+    const total = CLEANUP.batchSize + 5;
+    await db.insert(take).values(
+      Array.from({ length: total }, (_, n) => {
+        const id = crypto.randomUUID();
+        return {
+          id,
+          creatorId: creator.id,
+          title: "Stuck",
+          status: "uploading" as const,
+          originalKey: `originals/${id}/source.mp4`,
+          originalBytes: 1_000_000,
+          uploadId: "upload-1",
+          container: "mp4",
+          createdAt: minutes(500 - n),
+          updatedAt: minutes(10),
+        };
+      }),
+    );
+    const p = ports();
+    const recovery = await recoverStuckUploads(db, NOW, p);
+    expect(recovery.redispatched).toHaveLength(CLEANUP.batchSize);
+    expect(await failAbandonedUploads(db, NOW, p.headObject)).toEqual([]);
+    const rows = await db.select({ status: take.status }).from(take);
+    expect(rows.every((row) => row.status === "uploading")).toBe(true);
+    expect(await queuedKeys()).toEqual([]);
+  });
+
+  it("still fails a stored original of the wrong size as abandoned", async () => {
+    const creator = await createCreator(db);
+    const bad = await seedStuck(creator.id, { originalBytes: 5 }, 200);
+    const abandoned = await failAbandonedUploads(db, NOW, ports().headObject);
+    expect(abandoned.map((a) => a.takeId)).toEqual([bad.id]);
   });
 });

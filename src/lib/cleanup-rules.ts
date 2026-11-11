@@ -18,6 +18,14 @@ export const PROCESS_TAKE_LIMITS = {
   maxAttempts: 2,
 } as const;
 
+/** The probe task's limits, shared by the task and the stuck upload recovery's grace period. */
+export const PROBE_LIMITS = {
+  /** `maxDuration` of one attempt, in seconds. */
+  maxDurationSeconds: 300,
+  /** `retry.maxAttempts`. */
+  maxAttempts: 3,
+} as const;
+
 export const CLEANUP = {
   /** How long a presigned upload link stays valid. */
   uploadLinkLifetimeMs: 60 * MINUTE,
@@ -39,6 +47,11 @@ export const CLEANUP = {
   stuckProbeAfterMs: 5 * MINUTE,
   /** Re-dispatches of the probe for one take before it fails with `internal_error`. */
   maxProbeRedispatches: 3,
+  /**
+   * After the last re-dispatch a take is failed only once it has been quiet this long: the
+   * dispatched probe may still be queued or retrying (every attempt of it can use maxDuration).
+   */
+  lastProbeGraceMs: PROBE_LIMITS.maxAttempts * PROBE_LIMITS.maxDurationSeconds * 1000 + 5 * MINUTE,
   /** Rows handled per cleanup step per run (the next run picks up the rest). */
   batchSize: 100,
 } as const;

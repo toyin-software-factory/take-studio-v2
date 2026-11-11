@@ -15,8 +15,8 @@ import { storageDeletionTask } from "./storage-deletion";
  * Scheduled cleanup every 15 minutes (spec 0002, AC-18):
  * 0. recover takes stuck in `uploading` whose original is stored but never probed (S1C-T09):
  *    dispatch the probe again with a fresh key; after 3 re-dispatches fail them (`internal_error`);
- * 1. fail abandoned uploads (`upload_abandoned`) and abort their multipart uploads (never the
- *    takes recovery owns);
+ * 1. fail abandoned uploads (`upload_abandoned`) and abort their multipart uploads (each one is
+ *    checked against storage first: a stored original is never abandoned);
  * 2. fail stuck jobs with the refundable `stale_run` (and cancel their runs);
  * 3. expire takes past `video_expires_at`, queuing their video files;
  * 4. drain the file deletion queue.
@@ -38,7 +38,7 @@ export const cleanupTask = schedules.task({
         headObject: (key) => r2.headObject(key),
         dispatchProbe: triggerProbe,
       });
-      const abandoned = await failAbandonedUploads(db, now, recovery.owned);
+      const abandoned = await failAbandonedUploads(db, now, (key) => r2.headObject(key));
       let abortFailures = 0;
       for (const upload of abandoned) {
         if (upload.uploadId === null) continue;
