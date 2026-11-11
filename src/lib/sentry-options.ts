@@ -38,7 +38,11 @@ export function minimalDataCollection() {
   };
 }
 
-/** The options every runtime shares. Spread into the runtime's own init. */
+/**
+ * The options every runtime shares. Spread into the runtime's own init. Every event carries
+ * `service` (web, browser or jobs, spec 0005 AC-1 to AC-3). `runtime` stays too, but Sentry
+ * replaces it with the Node runtime context on job events, so searches use `service`.
+ */
 export function sentryOptions({
   dsn,
   environment,
@@ -59,7 +63,7 @@ export function sentryOptions({
     // Errors only (AC-5): no tracing, no profiling; replay and feedback are never added.
     tracesSampleRate: 0,
     dataCollection: minimalDataCollection(),
-    initialScope: { tags: { runtime } },
+    initialScope: { tags: { runtime, service: runtime } },
     beforeSend: <E extends object>(event: E): E => scrubEvent(event),
     beforeBreadcrumb: <B extends object>(breadcrumb: B): B => scrubBreadcrumb(breadcrumb),
   };
@@ -76,7 +80,7 @@ export function workerSentryOptions(options: Parameters<typeof sentryOptions>[0]
 }
 
 /**
- * Tags for a job's final failure (AC-3): runtime, task, run ID, attempt, and only the
+ * Tags for a job's final failure (AC-3): service, runtime, task, run ID, attempt, and only the
  * allowlisted IDs found in the payload. The payload itself is never returned.
  */
 export function jobFailureTags({
@@ -91,6 +95,7 @@ export function jobFailureTags({
   readonly payload: unknown;
 }): Record<string, string> {
   return {
+    service: "jobs",
     runtime: "jobs",
     task,
     runId,

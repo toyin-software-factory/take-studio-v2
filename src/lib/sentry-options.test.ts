@@ -22,7 +22,7 @@ describe("sentryOptions", () => {
     });
     expect(options.enabled).toBe(true);
     expect(options.tracesSampleRate).toBe(0);
-    expect(options.initialScope.tags).toEqual({ runtime: "browser" });
+    expect(options.initialScope.tags).toEqual({ runtime: "browser", service: "browser" });
     expect(options.dataCollection.userInfo).toBe(false);
     expect(options.dataCollection.httpBodies).toEqual([]);
     expect(options.dataCollection.cookies).toBe(false);
@@ -46,6 +46,16 @@ describe("sentryEnvironment", () => {
   });
 });
 
+describe("service tag (AC-1 to AC-3)", () => {
+  it.each(["web", "browser", "jobs"] as const)(
+    "every %s event starts with service: %s",
+    (runtime) => {
+      const options = sentryOptions({ dsn: "x", environment: "production", runtime });
+      expect(options.initialScope.tags.service).toBe(runtime);
+    },
+  );
+});
+
 describe("jobFailureTags", () => {
   it("carries task, run, attempt and allowlisted IDs, never the payload (AC-3)", () => {
     const tags = jobFailureTags({
@@ -55,6 +65,7 @@ describe("jobFailureTags", () => {
       payload: { takeId: "take_1", title: "My holiday", r2Key: "takes/x/original.mov" },
     });
     expect(tags).toEqual({
+      service: "jobs",
       runtime: "jobs",
       task: "trim-take",
       runId: "run_abc",
@@ -81,7 +92,7 @@ describe("workerSentryOptions", () => {
       enabled: true,
       environment: "production",
       tracesSampleRate: 0,
-      initialScope: { tags: { runtime: "web" } },
+      initialScope: { tags: { runtime: "web", service: "web" } },
     });
   });
 });

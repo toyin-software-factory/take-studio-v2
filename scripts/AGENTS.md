@@ -8,5 +8,6 @@
 - The Worker runs with Sentry Dedupe off (`workerSentryOptions`) so every route error counts.
 - Other scripts: `db-guard.ts` (see root `AGENTS.md`), `r2-cors.ts` (`pnpm r2:cors`), `pr-proof.sh` (publishes PR proof files).
 - The pre commit hook runs ESLint and Prettier on staged files only; typecheck and tests stay in CI.
+- Every Sentry event carries a `service` tag (`web`, `browser`, `jobs`, set in `src/lib/sentry-options.ts`). Search and alert by `service`, because Sentry replaces the `runtime` tag on job events with the Node runtime.
 
 _Drafted by /sync from a catch up over the merged work, worth a quick human pass._
