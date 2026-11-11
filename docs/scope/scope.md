@@ -119,8 +119,8 @@ Follow up to the core take loop (from spec 0004): sign in with a one time email 
 - [x] Design it (spec): `/architect email sign in and take ready email`
 - [ ] Build it: `/develop email sign in and take ready email`
    - [x] Resend client and email templates (AC-7) (templates and sender tested; the SPF and DKIM check needs a real email from mail.vowmory.com)
-   - [ ] Magic link sign in with linking and rate limits (AC-1, AC-2, AC-3, AC-4, AC-8) (S1C-T08 sign in PR: built and tested; real email received is the last check)
-   - [ ] Take emails with opt out (AC-5, AC-6, AC-8)
+   - [x] Magic link sign in with linking and rate limits (AC-1, AC-2, AC-3, AC-4, AC-8) (merged in #64; SPF and DKIM checked on a real email; one real sign in on production is still to try)
+   - [x] Take emails with opt out (AC-5, AC-6, AC-8) (S1C-T08 part 2 PR: notify task, turn off link, take page switch, tested)
 - [ ] Verify it: `/check verify email sign in and take ready email`
 - [ ] Test it: `/test email sign in and take ready email`
 Spec [0006](../specs/0006-email-sign-in-and-ready-email.md)
