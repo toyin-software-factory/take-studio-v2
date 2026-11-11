@@ -70,11 +70,18 @@ function req(
 }
 
 /** A take that failed with `code` through the real job path (charged, then refunded if refundable). */
-async function failedTake(creatorId: string, code: "internal_error" | "too_long") {
+async function failedTake(
+  creatorId: string,
+  code: "internal_error" | "too_long" | "cancelled_while_running",
+) {
   const t = await seedTake(db, creatorId, { status: "uploaded" });
   const job = await start(db, { creatorId, takeId: t.id, usageSecret: SECRET });
   if (!job.ok) throw new Error(job.error);
-  const done = await finish(db, { jobId: job.data.id, status: "failed", failureCode: code });
+  const done = await finish(db, {
+    jobId: job.data.id,
+    status: code === "cancelled_while_running" ? "cancelled" : "failed",
+    failureCode: code,
+  });
   if (!done.ok) throw new Error(done.error);
   return t;
 }
@@ -336,8 +343,8 @@ describe("PATCH /api/takes/{id}", () => {
   });
 });
 
-describe("POST /api/takes/{id}/retry (AC-10)", () => {
-  it("starts and dispatches a new run after a refundable failure, without a second live charge", async () => {
+describe("POST /api/takes/{id}/retry (AC-10, spec 0002)", () => {
+  it("starts and dispatches a new run after a non media failure, without a second live charge", async () => {
     const creator = await createCreator(db);
     const t = await failedTake(creator.id, "internal_error");
     const triggered: string[] = [];
@@ -354,6 +361,48 @@ describe("POST /api/takes/{id}/retry (AC-10)", () => {
     expect(jobs.find((j) => j.status === "failed")?.refunded).toBe(true);
     const [row] = await db.select().from(take).where(eq(take.id, t.id));
     expect(row?.status).toBe("processing");
+  });
+
+  it("retries a take that was cancelled while running (not a media failure)", async () => {
+    const creator = await createCreator(db);
+    const t = await failedTake(creator.id, "cancelled_while_running");
+    const [before] = await db.select().from(take).where(eq(take.id, t.id));
+    expect(before).toMatchObject({ status: "failed", failureCode: "cancelled_while_running" });
+    const triggered: string[] = [];
+    const res = await handleRetry(req("POST", "/x"), t.id, takeDeps(creator.id, triggered));
+    expect(res.status).toBe(202);
+    expect(triggered).toHaveLength(1);
+  });
+
+  it("refuses a failed take that was never probed (409)", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, {
+      status: "failed",
+      failureCode: "internal_error",
+      durationMs: null,
+    });
+    const res = await handleRetry(req("POST", "/x"), t.id, takeDeps(creator.id));
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toBe("not_retryable");
+  });
+
+  it("answers a friendly 503, not a 500, when USAGE_HASH_SECRET is missing, and starts nothing", async () => {
+    const creator = await createCreator(db);
+    const t = await failedTake(creator.id, "internal_error");
+    const deps: TakeHttpDeps = {
+      ...takeDeps(creator.id),
+      usageSecret: () => {
+        throw new Error("Invalid usage env: USAGE_HASH_SECRET");
+      },
+    };
+    const res = await handleRetry(req("POST", "/x"), t.id, deps);
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({
+      error: "unavailable",
+      message: "Processing isn't available right now. Please try again later.",
+    });
+    const jobs = await db.select().from(processingJob).where(eq(processingJob.takeId, t.id));
+    expect(jobs).toHaveLength(1);
   });
 
   it("refuses media failures with 409, so the page offers 'Upload another video'", async () => {

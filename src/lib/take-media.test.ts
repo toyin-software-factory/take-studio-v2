@@ -92,23 +92,30 @@ describe("takeNote (AC-7)", () => {
   });
 });
 
-describe("isRetryable (AC-10)", () => {
+describe("isRetryable (AC-10, spec 0002)", () => {
   it.each([
     ["internal_error", true],
     ["ffmpeg_error", true],
     ["timeout", true],
     ["trigger_failed", true],
-    ["too_long", false],
-    ["corrupt_upload", false],
+    ["cancelled_while_running", true],
+    ["some_future_code", true],
     ["invalid_media", false],
+    ["too_long", false],
+    ["too_large", false],
+    ["resolution_exceeded", false],
+    ["corrupt_upload", false],
     ["upload_abandoned", false],
-    ["some_future_code", false],
-  ])("failed with %s → %s", (failureCode, retryable) => {
-    expect(isRetryable({ status: "failed", failureCode })).toBe(retryable);
+  ])("failed with %s on a probed take → %s", (failureCode, retryable) => {
+    expect(isRetryable({ status: "failed", failureCode, durationMs: 60_000 })).toBe(retryable);
   });
-  it("is never retryable unless failed", () => {
-    expect(isRetryable({ status: "ready", failureCode: "internal_error" })).toBe(false);
-    expect(isRetryable({ status: "failed", failureCode: null })).toBe(false);
+  it("needs a failed, probed take", () => {
+    expect(
+      isRetryable({ status: "ready", failureCode: "internal_error", durationMs: 60_000 }),
+    ).toBe(false);
+    expect(isRetryable({ status: "failed", failureCode: "internal_error", durationMs: null })).toBe(
+      false,
+    );
   });
 });
 

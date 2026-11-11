@@ -1,5 +1,3 @@
-import { isRefundable } from "./failure-codes";
-
 /**
  * Pure rules behind the take routes (spec 0004 API surface, AC-7, AC-9, AC-10, AC-12):
  * download file names, expiry, "Removed m:ss", the AC-7 note, retryability and which stored
@@ -78,14 +76,34 @@ export function takeNote(job: JobFacts | null, hasRender: boolean): "no_audio" |
 }
 
 /**
- * Retry is allowed only for a failed take whose failure was ours, i.e. a refundable code
- * (spec 0002, take transitions); media problems mean "Upload another video" instead.
+ * Failures caused by the uploaded media itself: the creator must upload another video.
+ * Same set as `isMediaFailure` in #32 (src/lib/failure-codes.ts); switch to that import once
+ * it lands, so there is one definition.
+ */
+const MEDIA_FAILURE_CODES: ReadonlySet<string> = new Set([
+  "invalid_media",
+  "too_long",
+  "too_large",
+  "resolution_exceeded",
+  "corrupt_upload",
+  "upload_abandoned",
+]);
+
+/**
+ * Retry (AC-10, spec 0002 `failed → processing`): any failure that isn't a media failure, on a
+ * take that was probed (it has a length). So a take cancelled while running can be tried
+ * again; media problems mean "Upload another video" instead.
  */
 export function isRetryable(take: {
   readonly status: string;
   readonly failureCode: string | null;
+  readonly durationMs: number | null;
 }): boolean {
-  return take.status === "failed" && take.failureCode !== null && isRefundable(take.failureCode);
+  return (
+    take.status === "failed" &&
+    take.durationMs !== null &&
+    !(take.failureCode !== null && MEDIA_FAILURE_CODES.has(take.failureCode))
+  );
 }
 
 export type MediaChoice =

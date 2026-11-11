@@ -39,6 +39,7 @@ export type TakeError =
   | "job_in_progress"
   | "not_retryable"
   | "dispatch_failed"
+  | "unavailable"
   | "expired"
   | "storage_error";
 
@@ -51,6 +52,7 @@ const STATUS: Readonly<Record<TakeError, number>> = {
   job_in_progress: 409,
   not_retryable: 409,
   dispatch_failed: 503,
+  unavailable: 503,
   expired: 410,
   storage_error: 503,
 };
@@ -64,6 +66,7 @@ const MESSAGES: Readonly<Record<TakeError, string>> = {
   job_in_progress: "This take is already being processed.",
   not_retryable: "This take can't be tried again. Upload another video instead.",
   dispatch_failed: "Processing didn't start. Please try again.",
+  unavailable: "Processing isn't available right now. Please try again later.",
   expired: "This video has expired. Videos are kept for 30 days.",
   storage_error: "Storage is having a problem right now. Please try again.",
 };
@@ -154,9 +157,10 @@ export async function handleRename(
 }
 
 /**
- * POST /api/takes/{id}/retry: a new run for a take that failed with a refundable code
- * (AC-10). Media failures and takes already processing get 409. `jobs.start` decides the
- * charge, so a refunded failure is not charged twice.
+ * POST /api/takes/{id}/retry: a new run for a probed take that failed for a reason other
+ * than its media (AC-10, spec 0002), including one cancelled while running. Media failures
+ * and takes already processing get 409. `jobs.start` decides the charge, so a retry is not
+ * charged again while an earlier initial charge stands.
  */
 export async function handleRetry(
   request: Request,
@@ -171,10 +175,19 @@ export async function handleRetry(
   if (take.status === "processing") return errorResponse("job_in_progress");
   if (!isRetryable(take)) return errorResponse("not_retryable");
 
+  // A missing USAGE_HASH_SECRET is a configuration problem: a friendly 503 before any job
+  // starts (so nothing is charged), never a 500.
+  let usageSecret: string;
+  try {
+    usageSecret = deps.usageSecret();
+  } catch {
+    return errorResponse("unavailable");
+  }
+
   const started = await start(creator.db, {
     creatorId: creator.creatorId,
     takeId: take.id,
-    usageSecret: deps.usageSecret(),
+    usageSecret,
   });
   if (!started.ok) {
     return errorResponse(started.error === "invalid_transition" ? "not_retryable" : started.error);
