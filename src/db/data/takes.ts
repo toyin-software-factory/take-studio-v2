@@ -78,10 +78,16 @@ export async function markUploaded(
   const verdict = checkUpload(input.sizeBytes, input.probe);
 
   if (!verdict.ok) {
+    // Keep what the probe found, so the page can name the problem ("14 minutes long").
+    // A media failure is never retryable (startJob refuses it), so this can't lead to a charge.
+    const facts = input.probe
+      ? { durationMs: input.probe.durationMs, width: input.probe.width, height: input.probe.height }
+      : {};
     return transitionTake(db, input.takeId, "uploading", "failed", {
       failureCode: verdict.failureCode,
       originalBytes: input.sizeBytes,
       uploadId: null,
+      ...facts,
     });
   }
   return transitionTake(db, input.takeId, "uploading", "uploaded", {
