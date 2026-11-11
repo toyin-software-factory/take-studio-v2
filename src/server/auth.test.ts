@@ -4,7 +4,7 @@ import { account, rateLimit, session, signInEmailAttempt, user, verification } f
 import { type TestDb, openTestDb } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { type AuthDeps, createAuth } from "./auth";
-import type { OutgoingEmail } from "./email/send";
+import type { OutgoingEmail } from "@/lib/email/send";
 
 // Test values only.
 const ENV = {

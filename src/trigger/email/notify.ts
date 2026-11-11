@@ -5,8 +5,8 @@ import { unsubscribeUrl } from "@/lib/email-links";
 import { type Result, err, ok } from "@/lib/result";
 import { failureMessage } from "@/lib/take-display";
 import { isRetryable, removedMs, takeNote } from "@/lib/take-media";
-import type { EmailSender } from "./send";
-import { takeFailedEmail, takeReadyEmail } from "./templates";
+import type { EmailSender } from "@/lib/email/send";
+import { takeFailedEmail, takeReadyEmail } from "@/lib/email/templates";
 
 /**
  * "Your take is ready" or "didn't finish" email for one finished job (spec 0006, AC-5, AC-6,
