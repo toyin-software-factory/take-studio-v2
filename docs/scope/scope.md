@@ -25,7 +25,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 1 | Stack & architecture | Foundation | in-progress |
 | 2 | Coding standards & tooling | Foundation | in-progress |
 | 3 | Data model | Foundation | in-progress |
-| 4 | Design system & UI foundation | Foundation | planned |
+| 4 | Design system & UI foundation | Foundation | in-progress |
 | 5 | Core take loop | Slice 1 | planned |
 | 6 | Error monitoring | Slice 1 | planned |
 | 7 | Transcript | Slice 2 | planned |
@@ -70,10 +70,18 @@ Core entities every slice builds on: creators, takes, processing jobs and their 
 - [ ] Test it: `/test data model`
 Spec [0002](../specs/0002-data-model/index.md)
 
-### 4. Design system & UI foundation · needs a decision
+### 4. Design system & UI foundation · in-progress
 Visual language, layout and base components (upload, progress, video player, timeline, download), with Mobbin references in `design.md`.
 **Done when:** `design.md` covers type, color, spacing and components with Mobbin references, and base components meet WCAG AA (keyboard, focus, contrast).
-- [ ] Design it (spec): `/architect design system & UI foundation`
+- [x] Design it (spec): `/architect design system & UI foundation`
+- [ ] Build it: `/develop design system & UI foundation`
+   - [ ] Tailwind v4 + shadcn/ui setup, tokens and fonts (AC-1, AC-2, AC-8)
+   - [ ] Base components with every state (AC-3, AC-5, AC-6)
+   - [ ] App shell and Stage container (AC-4, AC-6)
+   - [ ] `/design` gallery with axe checks (AC-5, AC-7)
+- [ ] Verify it: `/check verify design system & UI foundation`
+- [ ] Test it: `/test design system & UI foundation`
+Spec [0003](../specs/0003-design-system.md) · rules in [design.md](../../design.md)
 
 ## Slice 1: Core take loop
 
