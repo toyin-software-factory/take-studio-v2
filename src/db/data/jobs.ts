@@ -11,6 +11,7 @@ import {
   type StepStatus,
   type JobKind,
   stepsFor,
+  type TakeStatus,
 } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
 import { usageAccountHash } from "@/lib/usage-hash";
@@ -347,6 +348,8 @@ export async function startJob(
     readonly takeId: string;
     readonly usageSecret: string;
     readonly now?: Date;
+    /** Take statuses this caller may start from (checked under the lock); default: any startable. */
+    readonly fromStatuses?: readonly TakeStatus[];
   },
 ): Promise<Result<StartedJob, StartError>> {
   if (!z.uuid().safeParse(input.takeId).success) return err("not_found");
@@ -365,6 +368,9 @@ export async function startJob(
 
       if (current.status === "processing") return err("job_in_progress");
       if (current.durationMs === null || !canStart(current)) return err("invalid_transition");
+      if (input.fromStatuses && !input.fromStatuses.includes(current.status)) {
+        return err("invalid_transition");
+      }
 
       const priorInitial = await tx
         .select({

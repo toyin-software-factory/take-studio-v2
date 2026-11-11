@@ -89,7 +89,7 @@ Overall progress shown to creators is the average of step progress (weights can 
 - `uploading` → `uploaded` (size checked and probed within limits) · `uploading` → `failed` (rejected media or abandoned upload; probe facts such as duration are kept so the message can name the limit)
 - `uploaded` → `processing` (job start) · `uploaded` → `expired`
 - `processing` → `ready` (job succeeded, or job failed while a latest render exists) · `processing` → `failed` (job failed, no render yet)
-- `ready` → `processing` (re render or re analyse) · `failed` → `processing` (retry; only when the take's `failure_code` is refundable, i.e. not a media problem)
+- `ready` → `processing` (re render or re analyse) · `failed` → `processing` (retry; allowed for any `failure_code` that is not a media failure (`invalid_media`, `too_long`, `too_large`, `resolution_exceeded`, `corrupt_upload`, `upload_abandoned`), and only when the take has been probed; the retry is not charged again while an earlier initial charge stands)
 - `ready` / `failed` → `expired` (video expiry passed; skipped while `processing`, retried next sweep)
 - `expired`: no further video work; read only (title rename still allowed).
 

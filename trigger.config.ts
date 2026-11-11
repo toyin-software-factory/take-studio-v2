@@ -1,5 +1,26 @@
 import { defineConfig } from "@trigger.dev/sdk";
-import type { ffmpeg } from "@trigger.dev/build/extensions/core";
+import { esbuildPlugin } from "@trigger.dev/build/extensions";
+import { type ffmpeg, syncEnvVars } from "@trigger.dev/build/extensions/core";
+import { sentryEsbuildPlugin } from "@sentry/esbuild-plugin";
+
+// Sentry (spec 0005): source maps are uploaded on deploy only when CI has a token
+// (deploy.yml), then deleted from the image; the deploy also tells the jobs their Sentry
+// environment and release (the git commit SHA).
+const sentryUpload = process.env.SENTRY_AUTH_TOKEN
+  ? [
+      esbuildPlugin(
+        sentryEsbuildPlugin({
+          org: process.env.SENTRY_ORG,
+          project: process.env.SENTRY_PROJECT,
+          authToken: process.env.SENTRY_AUTH_TOKEN,
+          telemetry: false,
+          release: { name: process.env.SENTRY_RELEASE },
+          sourcemaps: { filesToDeleteAfterUpload: ["**/*.map"] },
+        }),
+        { placement: "last", target: "deploy" },
+      ),
+    ]
+  : [];
 
 type BuildExtension = ReturnType<typeof ffmpeg>;
 
@@ -63,6 +84,19 @@ export default defineConfig({
     },
   },
   build: {
-    extensions: [pinnedFfmpeg()],
+    extensions: [
+      // Pinned ffmpeg 7.1 (spec 0004), not the built in moving snapshot.
+      pinnedFfmpeg(),
+      syncEnvVars(
+        ({ environment }) => [
+          { name: "SENTRY_ENVIRONMENT", value: environment === "prod" ? "production" : "preview" },
+          ...(process.env.SENTRY_RELEASE
+            ? [{ name: "SENTRY_RELEASE", value: process.env.SENTRY_RELEASE }]
+            : []),
+        ],
+        { override: true },
+      ),
+      ...sentryUpload,
+    ],
   },
 });

@@ -104,13 +104,13 @@ Catch errors in the app and in processing jobs so failed takes are seen before c
 **Done when:** an error in the web app or a failed processing job is reported with enough context to debug, and no video content or secrets are sent.
 - [x] Design it (spec): `/architect error monitoring`
 - [ ] Build it: `/develop error monitoring`
-   - [ ] Scrubbing module with tests (AC-4)
-   - [ ] Web and browser reporting with source maps (AC-1, AC-2, AC-5, AC-6, AC-8)
-   - [ ] Job failure reporting with source maps (AC-3, AC-5, AC-6)
+   - [x] Scrubbing module with tests (AC-4) (S1C-T06)
+   - [ ] Web and browser reporting with source maps (AC-1, AC-2, AC-5, AC-6, AC-8) (S1C-T06: built and checked locally without a DSN and against a fake ingest; source maps and the production check wait for the Sentry keys)
+   - [ ] Job failure reporting with source maps (AC-3, AC-5, AC-6) (S1C-T06: built; production check waits for the Sentry keys)
    - [ ] Alert rules and a production check (AC-7)
 - [ ] Verify it: `/check verify error monitoring`
 - [ ] Test it: `/test error monitoring`
-Spec [0005](../specs/0005-error-monitoring.md)
+Spec [0005](../specs/0005-error-monitoring.md) · code in `src/lib/sentry-*.ts`, `src/worker.ts`, `src/instrumentation*.ts`, `src/trigger/init.ts`
 
 ## Slice 2: Transcript
 

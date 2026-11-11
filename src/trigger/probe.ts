@@ -24,12 +24,14 @@ import { MediaToolError, probeUrl, thumbnailFromUrl } from "./media";
  * Safe to rerun: each step checks the take's state first. A missing take is a clean abort.
  * If the run fails for good, `onFailure` fails a still uploading take with `internal_error`.
  */
+const PROBE_ATTEMPTS = 3;
+
 export const probeTask = task({
   id: "probe",
   machine: "small-2x",
   maxDuration: 300,
-  retry: { maxAttempts: 3 },
-  run: async (payload: { readonly takeId: string }) => {
+  retry: { maxAttempts: PROBE_ATTEMPTS },
+  run: async (payload: { readonly takeId: string }, { ctx }) => {
     const env = parseJobEnv();
     const { USAGE_HASH_SECRET: usageSecret } = parseUsageEnv();
     const r2 = createR2(env);
@@ -43,12 +45,35 @@ export const probeTask = task({
 
       if (found.status === "uploading") {
         const url = await r2.presignGet(found.originalKey, { expiresSeconds: 10 * 60 });
-        let facts: Awaited<ReturnType<typeof probeUrl>>;
+        let facts: Awaited<ReturnType<typeof probeUrl>> | null = null;
         try {
           facts = await probeUrl(url);
         } catch (error) {
-          // ffprobe couldn't read it. If the object is there, the file is bad; else retry.
-          if (error instanceof MediaToolError && (await r2.headObject(found.originalKey))) {
+          // A timeout or a flaky read must not mark good media as bad. Timeouts retry via
+          // Trigger.dev. A read failure is tried once more here (dev has no run retries);
+          // only a repeat failure on the last attempt (or in dev), with the object there,
+          // is corrupt.
+          const readFailure = error instanceof MediaToolError && !error.timedOut;
+          const finalAttempt =
+            ctx.attempt.number >= PROBE_ATTEMPTS || ctx.environment.type === "DEVELOPMENT";
+          let second: unknown = error;
+          if (readFailure && finalAttempt) {
+            try {
+              facts = await probeUrl(url);
+              second = null;
+            } catch (again) {
+              second = again;
+            }
+          }
+          if (second === null) {
+            // The second read worked: use it.
+          } else if (
+            readFailure &&
+            finalAttempt &&
+            second instanceof MediaToolError &&
+            !second.timedOut &&
+            (await r2.headObject(found.originalKey))
+          ) {
             facts = null;
           } else {
             throw error;
@@ -72,7 +97,12 @@ export const probeTask = task({
           sizeBytes: found.originalBytes,
           probe: facts,
         });
-        if (!marked.ok) return { takeId: found.id, outcome: marked.error };
+        if (!marked.ok) {
+          // Deleted meanwhile: don't leave the thumbnail we just wrote behind.
+          if (marked.error === "not_found")
+            await r2.deleteObject(thumbnailKey(found.id)).catch(() => {});
+          return { takeId: found.id, outcome: marked.error };
+        }
         if (marked.data.status === "failed") {
           return {
             takeId: found.id,
@@ -87,12 +117,26 @@ export const probeTask = task({
   },
   onFailure: async ({ payload }) => {
     const env = parseJobEnv();
-    await withJobDb(env.DATABASE_URL, (db) =>
-      transitionTake(db, payload.takeId, "uploading", "failed", {
+    await withJobDb(env.DATABASE_URL, async (db) => {
+      // Never probed: fail the upload.
+      const fromUploading = await transitionTake(db, payload.takeId, "uploading", "failed", {
         failureCode: "internal_error",
         uploadId: null,
-      }),
-    );
+      });
+      if (fromUploading.ok) return;
+      // Probed but no job ever started (start or dispatch kept failing): fail it with a
+      // refundable code so the creator gets "Try again". A take that has a job keeps it.
+      const [job] = await db
+        .select({ id: processingJob.id })
+        .from(processingJob)
+        .where(eq(processingJob.takeId, payload.takeId))
+        .limit(1);
+      if (!job) {
+        await transitionTake(db, payload.takeId, "uploaded", "failed", {
+          failureCode: "internal_error",
+        });
+      }
+    });
   },
 });
 
@@ -102,7 +146,14 @@ export const probeTask = task({
  */
 async function startAndDispatch(db: Db, takeId: string, creatorId: string, usageSecret: string) {
   const trigger = triggerForJob("process-take");
-  const started = await startJob(db, { creatorId, takeId, usageSecret });
+  // The probe only ever starts the first job of a freshly uploaded take; re runs and
+  // retries are the creator's call. Checked again inside startJob's lock.
+  const started = await startJob(db, {
+    creatorId,
+    takeId,
+    usageSecret,
+    fromStatuses: ["uploaded"],
+  });
   if (started.ok) {
     const dispatched = await dispatchJob(db, { jobId: started.data.id, trigger });
     return {
@@ -130,5 +181,5 @@ async function startAndDispatch(db: Db, takeId: string, creatorId: string, usage
     }
     return { takeId, outcome: "already_processing" as const };
   }
-  return { takeId, outcome: started.error };
+  return { takeId, outcome: "not_started" as const, reason: started.error };
 }
