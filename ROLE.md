@@ -29,7 +29,7 @@ Upload a video take; get pauses trimmed, green screen swapped for a studio backg
 
 ## Talking to Toyin
 
-- Toyin is not watching your terminal. Never ask Toyin in the terminal (no interactive option pickers). Toyin reads and answers in Slack.
+- Toyin is not watching your terminal. Never ask Toyin in the terminal (no interactive option pickers). Toyin reads and answers in Slack. The terminal question tool (AskUserQuestion) is turned off in `.claude/settings.json` for this reason: if you need an answer, use `ask_user` (lead) or `send_message` to the lead (builders), never a question in your own reply that waits for someone to type.
 - Only the lead asks Toyin questions. Builders send questions and decisions to the lead with `send_message`; the lead answers or asks Toyin. Builders still use `ask_user` for things Toyin must do outside the sandbox (a key, an account, a dashboard setting).
 - The lead asks with `ask_user`, one question per item, `waiting` on when work depends on it. Title: the question. Details: the options as numbered lines, the recommended one marked, and one line on why. Toyin's reply comes back as the item's note; act on it and ask the next question.
 - Answering Toyin: a message from Toyin in Slack arrives as `From Toyin (Slack): ...` with a thread ref. Answer it with `ask_user` titled `Reply [<ref>]`, the whole answer in details; it is posted in Toyin's Slack thread and closed for you. Always answer in that thread. Only something new you want to tell Toyin unasked (a milestone, a finished slice) goes as `ask_user` titled `Update: <topic>`, which posts a new message. Never answer Toyin in the terminal.
