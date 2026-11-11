@@ -7,6 +7,7 @@ Mostly pure modules used by the web app, the browser, the Worker and the jobs. S
 - Rules and registries: `take-rules`, `take-media`, `cleanup-rules`, `cut-rules`, `cuts`, `billing`, `processing`, `failure-codes`, `uploads`, `upload-rules`.
 - Media: `probe` (ffprobe JSON to facts), `trim` (silence to cuts, ffmpeg filter scripts, progress).
 - Storage and jobs: `r2` (S3 API through aws4fetch), `r2-file-upload` (Node only, for jobs), `trigger-runs`.
+- `deadline` (pure): `runWithDeadline` aborts a job attempt 90 s before `maxDuration`, waits for the work to clean up, then throws `DeadlineExceeded` (mapped to `timeout`); see `src/trigger/AGENTS.md`.
 - API shapes and wording: `take-api` (zod), `take-display`, `take-messages`, `upload-client`.
 - Email (spec 0006): `email/send` (Resend, the only network edge), `email/templates` (pure), `email-links` (signed turn off links, Web Crypto). Used by the Worker and by the `notify-take` job.
 - Transcript read time (spec 0007): `transcript-timeline` (stored word times to the trimmed video with the render's own `alignToFrames(keepRanges(...))`, caption cues, SRT, VTT, plain text; all pure) and `transcript-download` (formats, file body, `Content-Disposition` with a safe name). The CC track, the SRT and the text all come from the same cues and paragraphs; never build captions anywhere else.

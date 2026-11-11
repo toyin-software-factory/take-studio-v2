@@ -54,12 +54,19 @@ export function cancel(
   if (!z.uuid().safeParse(input.jobId).success) return Promise.resolve(err("not_found"));
 
   return runTx(db, async (tx) => {
+    // Lock order (src/db/AGENTS.md): the take, then the job. The ownership check is the take lock.
+    const [owned] = await tx
+      .select({ id: take.id })
+      .from(take)
+      .innerJoin(processingJob, eq(processingJob.takeId, take.id))
+      .where(and(eq(processingJob.id, input.jobId), eq(take.creatorId, input.creatorId)))
+      .for("update", { of: take });
+    if (!owned) return err("not_found");
     const [row] = await tx
       .select({ status: processingJob.status })
       .from(processingJob)
-      .innerJoin(take, eq(take.id, processingJob.takeId))
-      .where(and(eq(processingJob.id, input.jobId), eq(take.creatorId, input.creatorId)))
-      .for("update", { of: processingJob });
+      .where(eq(processingJob.id, input.jobId))
+      .for("update");
     if (!row) return err("not_found");
     if (row.status !== "queued" && row.status !== "running") return err("already_final");
 

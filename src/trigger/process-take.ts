@@ -13,6 +13,7 @@ import {
   queueDeletions,
   startTranscribeJob,
   updateStep,
+  whileJobActive,
 } from "@/db/data/jobs";
 import { completeLatest, create as createRender } from "@/db/data/renders";
 import { jobStep, processingJob, take } from "@/db/schema";
@@ -36,6 +37,7 @@ import {
   totalMs,
 } from "@/lib/trim";
 import { triggerForTranscribe } from "@/lib/trigger-runs";
+import { deadlineMs, isDeadlineExceeded, runWithDeadline } from "@/lib/deadline";
 import { PROCESS_TAKE_LIMITS } from "@/lib/cleanup-rules";
 import { RENDER_UPLOAD } from "@/lib/uploads";
 import { queueTakeEmail } from "./email/queue";
@@ -64,8 +66,12 @@ export const processTakeTask = task({
     const r2 = createR2(env);
     // One job client for the whole run (progress writes every few seconds would otherwise
     // open a connection each time); postgres.js reconnects if the pooler drops it while idle.
-    return withJobDb(env.DATABASE_URL, (client) =>
-      processJob(client, payload.jobId, ctx.run.id, r2),
+    // Stops itself 90 s before maxDuration (Trigger.dev skips onFailure past it): work is
+    // aborted, temp files go, then DeadlineExceeded reaches onFailure as `timeout`.
+    return runWithDeadline(deadlineMs(PROCESS_TAKE_LIMITS.maxDurationSeconds), (signal) =>
+      withJobDb(env.DATABASE_URL, (client) =>
+        processJob(client, payload.jobId, ctx.run.id, r2, signal),
+      ),
     );
   },
   onFailure: async ({ payload, error }) => {
@@ -98,7 +104,13 @@ export const processTakeTask = task({
 });
 
 /** The work of one attempt, on one database client. */
-async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
+async function processJob(
+  client: JobDb,
+  jobId: string,
+  runId: string,
+  r2: R2,
+  signal: AbortSignal,
+) {
   const db = <T>(fn: (d: JobDb) => Promise<T>) => fn(client);
   const payload = { jobId };
   const ctx = { run: { id: runId } };
@@ -126,8 +138,12 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
   try {
     // Download and re probe the original locally.
     const source = join(work, `source.${t.container}`);
-    await downloadToFile(await r2.presignGet(t.originalKey, { expiresSeconds: 60 * 60 }), source);
-    const facts = await probeFile(source);
+    await downloadToFile(
+      await r2.presignGet(t.originalKey, { expiresSeconds: 60 * 60 }),
+      source,
+      signal,
+    );
+    const facts = await probeFile(source, signal);
     if (!facts) throw new MediaToolError("ffprobe", null, false);
 
     // Trim.
@@ -135,6 +151,7 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
     if (!facts.hasAudio) {
       await step("trim", "skipped", 0);
       await step("render", "skipped", 0);
+      signal.throwIfAborted();
       await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
       await queueTakeEmail(job.id, job.kind);
       // The transcript job skips it as `no_speech` without calling Deepgram (spec 0007, AC-7).
@@ -146,17 +163,22 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
       ["-i", source, "-vn", "-af", silencedetectFilter(), "-f", "null", "-"],
       {
         timeoutMs: 15 * 60_000,
+        signal,
         onOutTimeMs: (ms) => void trimProgress.report((ms / facts.durationMs) * 100),
       },
     );
     const proposed = cutsFromSilences(parseSilences(stderr, facts.durationMs), facts.durationMs);
-    const analysed = await db((d) => reanalyse(d, { takeId: t.id, proposed }));
+    signal.throwIfAborted();
+    const analysed = await db((d) =>
+      whileJobActive(d, job.id, (tx) => reanalyse(tx, { takeId: t.id, proposed }), signal),
+    );
     if (!analysed.ok) throw new Error(`reanalyse failed: ${analysed.error}`);
     await trimProgress.flush();
     await step("trim", "succeeded", 100);
 
     if (!analysed.data.cuts.some((c) => c.applied)) {
       await step("render", "skipped", 0);
+      signal.throwIfAborted();
       await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
       await queueTakeEmail(job.id, job.kind);
       await startTranscript(client, t.id);
@@ -165,7 +187,9 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
 
     // Render.
     await step("render", "running", 0);
-    const created = await db((d) => createRender(d, { takeId: t.id, jobId: job.id }));
+    const created = await db((d) =>
+      whileJobActive(d, job.id, (tx) => createRender(tx, { takeId: t.id, jobId: job.id }), signal),
+    );
     if (!created.ok) throw new Error(`render create failed: ${created.error}`);
     const renderId = created.data.id;
     const keep = alignToFrames(keepRanges(created.data.removedRanges, facts.durationMs), facts.fps);
@@ -214,6 +238,7 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
       ],
       {
         timeoutMs: 38 * 60_000,
+        signal,
         // Encoding is most of the render step; the upload takes the last few points.
         onOutTimeMs: (ms) => void renderProgress.report((ms / expectedMs) * 95),
       },
@@ -221,15 +246,21 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
     await rm(source, { force: true });
     await renderProgress.flush();
 
-    const rendered = await probeFile(output);
+    const rendered = await probeFile(output, signal);
     if (!rendered) throw new MediaToolError("ffprobe", null, false);
     await uploadFileMultipart(r2, renderKey(t.id, renderId), output, {
       contentType: "video/mp4",
       partSize: RENDER_UPLOAD.partSize,
       attempts: RENDER_UPLOAD.attempts,
+      signal,
     });
     const completed = await db((d) =>
-      completeLatest(d, { renderId, durationMs: rendered.durationMs }),
+      whileJobActive(
+        d,
+        job.id,
+        (tx) => completeLatest(tx, { renderId, durationMs: rendered.durationMs }),
+        signal,
+      ),
     );
     if (!completed.ok) {
       // The job was cancelled or finished while we uploaded: the file is not tracked by any
@@ -245,6 +276,7 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
       throw new Error(`render complete failed: ${completed.error}`);
     }
     await step("render", "succeeded", 100);
+    signal.throwIfAborted();
     const finished = await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
     if (!finished.ok) throw new Error(`finish failed: ${finished.error}`);
     await queueTakeEmail(job.id, job.kind);
@@ -298,6 +330,8 @@ async function startTranscript(client: JobDb, takeId: string): Promise<void> {
 
 /** Failure code for a final error (spec 0004 Flow step 5). All three are refundable. */
 export function failureCodeFor(error: unknown): FailureCode {
+  // The attempt stopped itself before maxDuration (src/lib/deadline.ts).
+  if (isDeadlineExceeded(error)) return "timeout";
   if (
     error instanceof MediaToolError ||
     (error as { name?: string } | null)?.name === "MediaToolError"

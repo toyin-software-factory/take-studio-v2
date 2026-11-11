@@ -8,6 +8,7 @@ import type { Executor } from "@/db/types";
 import { finish, markRunning, updateStep } from "@/db/data/jobs";
 import { saveTranscriptAndFinish } from "@/db/data/transcripts";
 import { jobStep, processingJob, take } from "@/db/schema";
+import { deadlineMs, runWithDeadline } from "@/lib/deadline";
 import { TRANSCRIBE_TAKE_LIMITS } from "@/lib/cleanup-rules";
 import { DEEPGRAM_MODEL, deepgramUrl, parseDeepgramResponse } from "@/lib/deepgram";
 import { type TranscriptEnv, parseJobEnv, parseTranscriptEnv } from "@/lib/env";
@@ -44,19 +45,25 @@ export const transcribeTakeTask = task({
     }
     const env = parseJobEnv();
     const r2 = createR2(env);
-    // Trigger.dev does not call `onFailure` when a run exceeds `maxDuration` (checked in a local
-    // run: the run ends TIMED_OUT and the job would stay active until stale cleanup), so the
-    // attempt stops itself a little earlier. The error then reaches `onFailure` like any other.
-    return withDeadline(
+    // Stops itself 90 s before maxDuration (Trigger.dev skips onFailure past it): ffmpeg is
+    // killed, the Deepgram fetch aborted, temp files removed, then DeadlineExceeded reaches
+    // onFailure as `timeout`.
+    return runWithDeadline(deadlineMs(TRANSCRIBE_TAKE_LIMITS.maxDurationSeconds), (signal) =>
       withJobDb(env.DATABASE_URL, (db) =>
-        transcribeJob(db, payload.jobId, ctx.run.id, {
-          r2,
-          probe: probeUrl,
-          extractAudio: extractWithFfmpeg,
-          post: (audio) => postToDeepgram(audio, transcriptEnv.DEEPGRAM_API_KEY),
-        }),
+        transcribeJob(
+          db,
+          payload.jobId,
+          ctx.run.id,
+          {
+            r2,
+            probe: probeUrl,
+            extractAudio: extractWithFfmpeg,
+            post: (audio, stop) =>
+              postToDeepgram(audio, transcriptEnv.DEEPGRAM_API_KEY, fetch, stop),
+          },
+          signal,
+        ),
       ),
-      (TRANSCRIBE_TAKE_LIMITS.maxDurationSeconds - ATTEMPT_MARGIN_SECONDS) * 1000,
     );
   },
   onFailure: async ({ payload, error }) => {
@@ -64,22 +71,6 @@ export const transcribeTakeTask = task({
     await withJobDb(env.DATABASE_URL, (d) => failTranscribeJob(d, payload.jobId, error));
   },
 });
-
-/** Seconds before `maxDuration` at which an attempt gives up on its own. */
-const ATTEMPT_MARGIN_SECONDS = 30;
-
-/** Rejects with `DeepgramTimeout` (final code `timeout`) when `work` takes longer than `ms`. */
-export async function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const deadline = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new DeepgramTimeout()), ms);
-  });
-  try {
-    return await Promise.race([work, deadline]);
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 /**
  * Failure code for a final error (spec 0007, AC-8): a rejected request (4xx) is
@@ -151,6 +142,7 @@ export async function postToDeepgram(
   audio: Uint8Array,
   apiKey: string,
   fetchImpl: typeof fetch = fetch,
+  signal?: AbortSignal,
 ): Promise<unknown> {
   let response: Response;
   try {
@@ -158,9 +150,13 @@ export async function postToDeepgram(
       method: "POST",
       headers: { authorization: `Token ${apiKey}`, "content-type": "audio/ogg" },
       body: audio as BodyInit,
-      signal: AbortSignal.timeout(5 * 60_000),
+      signal: signal
+        ? AbortSignal.any([AbortSignal.timeout(5 * 60_000), signal])
+        : AbortSignal.timeout(5 * 60_000),
     });
   } catch (error) {
+    // Stopped by the job deadline: not a Deepgram failure.
+    if (signal?.aborted) throw signal.reason;
     if (error instanceof Error && error.name === "TimeoutError") throw new DeepgramTimeout();
     throw new DeepgramError(null);
   }
@@ -182,11 +178,15 @@ export type TranscribeIo = {
   readonly r2: Pick<R2, "headObject" | "presignGet">;
   readonly probe: typeof probeUrl;
   /** Writes the mono 16 kHz Opus file for the link to `outPath`. */
-  readonly extractAudio: (link: string, outPath: string) => Promise<void>;
-  readonly post: (audio: Uint8Array) => Promise<unknown>;
+  readonly extractAudio: (link: string, outPath: string, signal?: AbortSignal) => Promise<void>;
+  readonly post: (audio: Uint8Array, signal?: AbortSignal) => Promise<unknown>;
 };
 
-async function extractWithFfmpeg(link: string, outPath: string): Promise<void> {
+async function extractWithFfmpeg(
+  link: string,
+  outPath: string,
+  signal?: AbortSignal,
+): Promise<void> {
   await runFfmpeg(
     [
       "-y",
@@ -209,7 +209,7 @@ async function extractWithFfmpeg(link: string, outPath: string): Promise<void> {
       "32k",
       outPath,
     ],
-    { timeoutMs: 10 * 60_000 },
+    { timeoutMs: 10 * 60_000, signal },
   );
 }
 
@@ -218,6 +218,7 @@ export async function transcribeJob(
   jobId: string,
   runId: string,
   io: TranscribeIo,
+  signal?: AbortSignal,
 ) {
   const { r2 } = io;
   const [job] = await client.select().from(processingJob).where(eq(processingJob.id, jobId));
@@ -233,6 +234,8 @@ export async function transcribeJob(
   }
 
   const skip = async (reason: SkipReason) => {
+    // A timed out attempt must not write: no skip after the deadline.
+    signal?.throwIfAborted();
     await updateStep(client, {
       jobId,
       name: "transcript",
@@ -251,19 +254,20 @@ export async function transcribeJob(
   const work = await mkdtemp(join(tmpdir(), `transcribe-${t.id}-`));
   try {
     const link = await r2.presignGet(t.originalKey, { expiresSeconds: 60 * 60 });
-    const facts = await io.probe(link);
+    const facts = await io.probe(link, signal);
     if (!facts) throw new MediaToolError("ffprobe", null, false);
     if (!facts.hasAudio) return skip("no_speech");
 
     const audioPath = join(work, "audio.ogg");
-    await io.extractAudio(link, audioPath);
+    await io.extractAudio(link, audioPath, signal);
     await updateStep(client, { jobId, name: "transcript", status: "running", progress: 40 });
 
-    const body = await io.post(new Uint8Array(await readFile(audioPath)));
+    const body = await io.post(new Uint8Array(await readFile(audioPath)), signal);
     const parsed = parseDeepgramResponse(body);
     if (parsed.kind === "invalid") throw new DeepgramError(200);
     if (parsed.kind !== "words") return skip(parsed.kind);
 
+    signal?.throwIfAborted();
     const saved = await saveTranscriptAndFinish(client, jobId, {
       takeId: t.id,
       language: parsed.language,
