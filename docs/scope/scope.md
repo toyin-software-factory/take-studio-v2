@@ -93,7 +93,7 @@ The walking skeleton: sign in, upload a take, pauses are trimmed automatically i
 - [ ] Build it: `/develop core take loop`
    - [x] R2 helpers, CORS and upload routes, render timing spike (AC-3, AC-4, AC-12)
    - [x] Pinned ffmpeg and the probe task (AC-4)
-   - [ ] The process-take task: trim, render, edge cases (AC-5, AC-6, AC-7, AC-10)
+   - [x] The process-take task: trim, render, edge cases (AC-5, AC-6, AC-7, AC-10)
    - [x] Take routes and media links; library and take pages (AC-1, AC-2, AC-8, AC-9, AC-11, AC-12, AC-13) (S1C-T04: take routes and media links, with the `thumb` kind; S1C-T05: library and take pages, upload client, browser e2e)
    - [ ] End to end tests with fixtures (AC-2, AC-4, AC-6, AC-7, AC-11, AC-13)
 - [ ] Verify it: `/check verify core take loop`

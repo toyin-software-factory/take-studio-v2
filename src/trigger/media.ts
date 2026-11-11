@@ -1,8 +1,11 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type HdrTransfer, type ProbeFacts, parseFfprobe, thumbnailSeconds } from "@/lib/probe";
+import { type ProbeFacts, parseFfprobe, thumbnailSeconds } from "@/lib/probe";
+import { progressOutTimeMs, toneMapFilter } from "@/lib/trim";
+
+export { toneMapFilter };
 
 /**
  * ffprobe and ffmpeg runners for media read over a presigned URL (spec 0004, Flow step 4).
@@ -67,18 +70,6 @@ export async function probeUrl(url: string): Promise<ProbeFacts | null> {
   }
 }
 
-/** zscale tone map from an HDR transfer to BT.709 (zscale needs the input transfer spelled out). */
-export function toneMapFilter(transfer: HdrTransfer): string {
-  return [
-    `zscale=tin=${transfer}:min=bt2020nc:pin=bt2020:t=linear:npl=100`,
-    "format=gbrpf32le",
-    "zscale=p=bt709",
-    "tonemap=tonemap=hable:desat=0",
-    "zscale=t=bt709:m=bt709:r=tv",
-    "format=yuv420p",
-  ].join(",");
-}
-
 /**
  * A 640 px wide JPEG of the frame at 1 s (0 for short clips), tone mapped when HDR, rotated as
  * displayed. Returns the image bytes.
@@ -121,5 +112,59 @@ export async function thumbnailFromUrl(
     );
   } finally {
     await rm(out, { force: true });
+  }
+}
+
+/**
+ * Runs ffmpeg, streaming `-progress pipe:1` to `onOutTimeMs` (output time so far, ms), and
+ * returns stderr (where `silencedetect` reports). Errors carry the exit code only.
+ */
+export function runFfmpeg(
+  args: readonly string[],
+  options: { readonly timeoutMs: number; readonly onOutTimeMs?: (ms: number) => void },
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(FFMPEG, ["-hide_banner", "-nostats", "-progress", "pipe:1", ...args], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stderr = "";
+    let timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGKILL");
+    }, options.timeoutMs);
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      const ms = progressOutTimeMs(chunk);
+      if (ms !== null) options.onOutTimeMs?.(ms);
+    });
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk: string) => {
+      // Keep the tail only; silencedetect lines are short and frequent.
+      stderr = (stderr + chunk).slice(-4 * 1024 * 1024);
+    });
+    child.on("error", () => {
+      clearTimeout(timer);
+      reject(new MediaToolError("ffmpeg", null, false));
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      if (code === 0 && !timedOut) resolve(stderr);
+      else reject(new MediaToolError("ffmpeg", code, timedOut));
+    });
+  });
+}
+
+/** Probes a local file (no network options). */
+export async function probeFile(path: string): Promise<ProbeFacts | null> {
+  const stdout = await runTool(
+    "ffprobe",
+    ["-v", "error", "-print_format", "json", "-show_format", "-show_streams", path],
+    60_000,
+  );
+  try {
+    return parseFfprobe(JSON.parse(stdout));
+  } catch {
+    return null;
   }
 }

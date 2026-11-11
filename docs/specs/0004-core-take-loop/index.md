@@ -103,7 +103,7 @@ Tracer Bullet: one thin thread first (upload → trim → download), then thicke
 
 1. [x] R2 helpers (multipart, presign, HEAD, abort, job uploader), CORS JSON and `pnpm r2:cors`; upload routes (create, parts, complete, abort) with limits, idempotency and ownership; a timing spike of the render on `large-1x` with a 10 minute 1080p fixture (record the result in the PR), satisfies **AC-3**, **AC-4**, **AC-12**.
 2. [x] Pin a tagged ffmpeg 7.x build with `libx264`, `zscale` and `silencedetect`; `probe` task (ranged ffprobe, rotation, audio, HDR, thumbnail, `markUploaded`, auto `jobs.start` and dispatch), satisfies **AC-4**.
-3. `process-take` task: trim rules, no cut and no audio paths, render with sync, CFR, HDR tone map, faststart, multipart upload, progress throttling, retries and failure codes; deletion of `thumb.jpg` added to delete and expiry, satisfies **AC-5**, **AC-6**, **AC-7**, **AC-10**.
+3. [x] `process-take` task: trim rules, no cut and no audio paths, render with sync, CFR, HDR tone map, faststart, multipart upload, progress throttling, retries and failure codes; deletion of `thumb.jpg` added to delete and expiry, satisfies **AC-5**, **AC-6**, **AC-7**, **AC-10**.
 4. [x] Library and take pages with upload area (states, cancel, leave warning), cards, polling, player, downloads, rename, retry, tab titles, not found page, media routes, satisfies **AC-1**, **AC-2**, **AC-8**, **AC-9**, **AC-11**, **AC-12**, **AC-13**.
 5. End to end tests with small fixtures (pauses, portrait MOV, HDR, silent, no pauses), ownership and limit tests, axe on both pages, satisfies **AC-2**, **AC-4**, **AC-6**, **AC-7**, **AC-11**, **AC-13**.
 
