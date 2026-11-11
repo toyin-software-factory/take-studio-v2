@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { cut, take } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
@@ -171,6 +171,24 @@ describe("cuts.reanalyse (AC-9)", () => {
   });
 });
 
+/**
+ * Polls Postgres until some session waits on a lock while running a `take ... FOR UPDATE`
+ * query, i.e. the re analysis is blocked on the take row. False after `timeoutMs`.
+ */
+async function waitForTakeLockWait(timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const [row] = await db.execute<{ waiting: number }>(
+      sql`select count(*)::int as waiting from pg_stat_activity
+          where datname = current_database() and wait_event_type = 'Lock'
+            and query ilike '%from "take"%for update%'`,
+    );
+    if ((row?.waiting ?? 0) > 0) return true;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return false;
+}
+
 describe("creator edits racing a re analysis (AC-9)", () => {
   it("keeps the cut when the creator's edit lands before the re analysis", async () => {
     const { creatorId, takeId } = await setup();
@@ -225,7 +243,8 @@ describe("creator edits racing a re analysis (AC-9)", () => {
 
       reanalysis = reanalyse(db, { takeId, proposed: [] });
       void reanalysis.then(() => (settled = true));
-      await new Promise((resolve) => setTimeout(resolve, 300));
+      // Wait (up to 5 s) until Postgres shows the re analysis blocked on the take row lock.
+      expect(await waitForTakeLockWait(5_000)).toBe(true);
       // Still blocked on the take lock while the edit is uncommitted.
       expect(settled).toBe(false);
     });
