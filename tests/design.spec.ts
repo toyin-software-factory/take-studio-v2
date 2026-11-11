@@ -10,7 +10,7 @@ test.describe("design gallery (preview)", () => {
   test("shows the tokens on light and stage and is noindex", async ({ page }) => {
     const res = await page.goto("/design");
     expect(res?.status()).toBe(200);
-    await expect(page.getByRole("heading", { level: 1, name: "Design tokens" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Design system" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Light app colours" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Stage colours" })).toBeVisible();
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
