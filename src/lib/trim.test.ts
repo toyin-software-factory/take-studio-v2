@@ -210,4 +210,12 @@ describe("progress (Flow step 6)", () => {
     await progress.flush(); // 99 written
     expect(written).toEqual([0, 5, 42, 99]);
   });
+
+  it("never lets a failed progress write reject (best effort)", async () => {
+    const progress = throttledProgress(async () => {
+      throw new Error("db down");
+    });
+    await expect(progress.report(10)).resolves.toBeUndefined();
+    await expect(progress.flush()).resolves.toBeUndefined();
+  });
 });

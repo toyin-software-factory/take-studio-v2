@@ -371,6 +371,15 @@ export async function startJob(
       if (input.fromStatuses && !input.fromStatuses.includes(current.status)) {
         return err("invalid_transition");
       }
+      // A failed take whose video has expired has nothing left to process (matches the
+      // page's and the retry route's retryable check).
+      if (
+        current.status === "failed" &&
+        current.videoExpiresAt !== null &&
+        current.videoExpiresAt.getTime() <= now.getTime()
+      ) {
+        return err("invalid_transition");
+      }
 
       const priorInitial = await tx
         .select({
