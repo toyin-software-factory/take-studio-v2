@@ -41,7 +41,10 @@ export function deadlineMs(maxDurationSeconds: number): number {
  * Runs `work` with a signal that aborts after `ms`. `work` must honour the signal (kill its
  * child process, abort its fetches) and clean up in its own `finally`. After the abort this
  * waits for `work` to settle (at most `windDownMs`), then throws `DeadlineExceeded`, whatever
- * `work` itself threw while stopping. Work that finishes in time returns or throws as usual.
+ * `work` itself threw while stopping and even if it resolved during the wind down (a late
+ * success is rejected; the tasks also check the signal before they commit a success and guard
+ * their writes by the job still being active). Work that finishes in time returns or throws
+ * as usual.
  */
 export async function runWithDeadline<T>(
   ms: number,
@@ -66,7 +69,9 @@ export async function runWithDeadline<T>(
   running.catch(() => undefined);
   stuck.catch(() => undefined);
   try {
-    return await Promise.race([running, stuck]);
+    const result = await Promise.race([running, stuck]);
+    if (controller.signal.aborted) throw new DeadlineExceeded();
+    return result;
   } catch (error) {
     if (controller.signal.aborted) throw new DeadlineExceeded();
     throw error;

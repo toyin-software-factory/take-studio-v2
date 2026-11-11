@@ -13,6 +13,7 @@ import {
   queueDeletions,
   startTranscribeJob,
   updateStep,
+  whileJobActive,
 } from "@/db/data/jobs";
 import { completeLatest, create as createRender } from "@/db/data/renders";
 import { jobStep, processingJob, take } from "@/db/schema";
@@ -150,6 +151,7 @@ async function processJob(
     if (!facts.hasAudio) {
       await step("trim", "skipped", 0);
       await step("render", "skipped", 0);
+      signal.throwIfAborted();
       await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
       await queueTakeEmail(job.id, job.kind);
       // The transcript job skips it as `no_speech` without calling Deepgram (spec 0007, AC-7).
@@ -166,13 +168,17 @@ async function processJob(
       },
     );
     const proposed = cutsFromSilences(parseSilences(stderr, facts.durationMs), facts.durationMs);
-    const analysed = await db((d) => reanalyse(d, { takeId: t.id, proposed }));
+    signal.throwIfAborted();
+    const analysed = await db((d) =>
+      whileJobActive(d, job.id, (tx) => reanalyse(tx, { takeId: t.id, proposed })),
+    );
     if (!analysed.ok) throw new Error(`reanalyse failed: ${analysed.error}`);
     await trimProgress.flush();
     await step("trim", "succeeded", 100);
 
     if (!analysed.data.cuts.some((c) => c.applied)) {
       await step("render", "skipped", 0);
+      signal.throwIfAborted();
       await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
       await queueTakeEmail(job.id, job.kind);
       await startTranscript(client, t.id);
@@ -181,7 +187,9 @@ async function processJob(
 
     // Render.
     await step("render", "running", 0);
-    const created = await db((d) => createRender(d, { takeId: t.id, jobId: job.id }));
+    const created = await db((d) =>
+      whileJobActive(d, job.id, (tx) => createRender(tx, { takeId: t.id, jobId: job.id })),
+    );
     if (!created.ok) throw new Error(`render create failed: ${created.error}`);
     const renderId = created.data.id;
     const keep = alignToFrames(keepRanges(created.data.removedRanges, facts.durationMs), facts.fps);
@@ -247,7 +255,9 @@ async function processJob(
       signal,
     });
     const completed = await db((d) =>
-      completeLatest(d, { renderId, durationMs: rendered.durationMs }),
+      whileJobActive(d, job.id, (tx) =>
+        completeLatest(tx, { renderId, durationMs: rendered.durationMs }),
+      ),
     );
     if (!completed.ok) {
       // The job was cancelled or finished while we uploaded: the file is not tracked by any
@@ -263,6 +273,7 @@ async function processJob(
       throw new Error(`render complete failed: ${completed.error}`);
     }
     await step("render", "succeeded", 100);
+    signal.throwIfAborted();
     const finished = await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
     if (!finished.ok) throw new Error(`finish failed: ${finished.error}`);
     await queueTakeEmail(job.id, job.kind);

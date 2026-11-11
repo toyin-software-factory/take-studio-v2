@@ -193,4 +193,29 @@ describe("the job deadline (S2T-T07)", () => {
       fetchSpy.mockRestore();
     }
   });
+
+  it("starts no further attempt and ends the back off once the deadline fires", async () => {
+    const { target, log } = fakeTarget();
+    const controller = new AbortController();
+    let tries = 0;
+    target.uploadPart = async () => {
+      tries += 1;
+      // The part fails; during the (long) back off the deadline fires.
+      setTimeout(() => controller.abort(new DeadlineExceeded()), 20);
+      throw new Error("R2 upload part failed: HTTP 500");
+    };
+    const started = Date.now();
+    const error = await uploadFileMultipart(target, "k", filePath, {
+      contentType: "video/mp4",
+      partSize: 1_000,
+      concurrency: 1,
+      attempts: 5,
+      backoffMs: 30_000,
+      signal: controller.signal,
+    }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(DeadlineExceeded);
+    expect(tries).toBe(1);
+    expect(Date.now() - started).toBeLessThan(5_000);
+    expect(log).toEqual(["abort"]);
+  });
 });

@@ -265,6 +265,7 @@ export async function transcribeJob(
     if (parsed.kind === "invalid") throw new DeepgramError(200);
     if (parsed.kind !== "words") return skip(parsed.kind);
 
+    signal?.throwIfAborted();
     const saved = await saveTranscriptAndFinish(client, jobId, {
       takeId: t.id,
       language: parsed.language,

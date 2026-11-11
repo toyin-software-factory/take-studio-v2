@@ -560,3 +560,35 @@ export async function startTranscribeJob(
     throw error;
   }
 }
+
+/**
+ * Runs `fn` in one transaction only while the job is still queued or running (S2T-T07). The
+ * take is locked first and then the job, the same order as take deletion, and the status is
+ * checked under that lock, so a timed out or cancelled attempt whose job was already finished
+ * (by `onFailure`, the stale cleanup or a cancel) writes nothing: `job_final` and the
+ * transaction rolls back. Used for the writes an attempt makes beyond its own job rows (cuts,
+ * renders), like `saveTranscriptAndFinish` does for the transcript.
+ */
+export async function whileJobActive<T, E extends string>(
+  db: Executor,
+  jobId: string,
+  fn: (tx: Tx) => Promise<Result<T, E>>,
+): Promise<Result<T, E | "job_final">> {
+  return runTx<T, E | "job_final">(db, async (tx) => {
+    const [owner] = await tx
+      .select({ takeId: processingJob.takeId })
+      .from(processingJob)
+      .where(eq(processingJob.id, jobId));
+    if (!owner) return err("job_final");
+    await tx.select({ id: take.id }).from(take).where(eq(take.id, owner.takeId)).for("update");
+    const [job] = await tx
+      .select({ status: processingJob.status })
+      .from(processingJob)
+      .where(eq(processingJob.id, jobId))
+      .for("update");
+    if (!job || !(ACTIVE_JOB_STATUSES as readonly string[]).includes(job.status)) {
+      return err("job_final");
+    }
+    return fn(tx);
+  });
+}

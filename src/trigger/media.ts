@@ -37,18 +37,23 @@ function runTool(
 ): Promise<string> {
   const bin = tool === "ffprobe" ? FFPROBE : FFMPEG;
   return new Promise((resolve, reject) => {
-    execFile(
+    if (signal?.aborted) return reject(signal.reason);
+    // Not the `signal` option of execFile: that rejects at once, before the process is gone.
+    // The child is killed here and the callback (which waits for the exit) settles the promise.
+    const child = execFile(
       bin,
       [...args],
-      { timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024, killSignal: "SIGKILL", signal },
+      { timeout: timeoutMs, maxBuffer: 16 * 1024 * 1024, killSignal: "SIGKILL" },
       (error, stdout) => {
-        if (!error) return resolve(stdout);
-        // Stopped by the job deadline: report why, not as a tool failure.
+        signal?.removeEventListener("abort", onAbort);
         if (signal?.aborted) return reject(signal.reason);
+        if (!error) return resolve(stdout);
         const code = typeof error.code === "number" ? error.code : null;
         reject(new MediaToolError(tool, code, error.killed === true));
       },
     );
+    const onAbort = () => child.kill("SIGKILL");
+    signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
 

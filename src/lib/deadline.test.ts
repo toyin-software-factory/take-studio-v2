@@ -53,6 +53,15 @@ describe("runWithDeadline (S2T-T07)", () => {
     expect(error).toBeInstanceOf(DeadlineExceeded);
   });
 
+  it("rejects work that resolves during the wind down", async () => {
+    const error = await runWithDeadline(10, async (signal) => {
+      await new Promise((resolve) => signal.addEventListener("abort", resolve, { once: true }));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return "late success";
+    }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(DeadlineExceeded);
+  });
+
   it("does not wait forever for work that ignores the signal", async () => {
     const started = Date.now();
     const error = await runWithDeadline(10, () => new Promise(() => undefined), {

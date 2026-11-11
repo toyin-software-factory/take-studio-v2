@@ -69,18 +69,21 @@ describe("media tools and the job deadline (S2T-T07)", () => {
     ).rejects.toBe(reason);
   });
 
-  it("reports an aborted ffprobe as the deadline, not a tool failure", async () => {
+  it("reports an aborted ffprobe as the deadline and settles only after the process is gone", async () => {
     const dir = await mkdtemp(join(tmpdir(), "fake-ffprobe-"));
     try {
       const fake = join(dir, "ffprobe");
-      await writeFile(fake, "#!/bin/sh\nexec sleep 30\n");
+      const pidFile = join(dir, "pid");
+      await writeFile(fake, `#!/bin/sh\necho $$ > ${pidFile}\nexec sleep 30\n`);
       await chmod(fake, 0o755);
       vi.stubEnv("FFPROBE_PATH", fake);
       const { probeFile } = await import("./media");
       const controller = new AbortController();
-      setTimeout(() => controller.abort(new DeadlineExceeded()), 200);
+      setTimeout(() => controller.abort(new DeadlineExceeded()), 300);
       const error = await probeFile("/x.mp4", controller.signal).catch((e: unknown) => e);
       expect(error).toBeInstanceOf(DeadlineExceeded);
+      const pid = Number((await readFile(pidFile, "utf8")).trim());
+      expect(() => process.kill(pid, 0)).toThrow(); // already dead when the promise settled
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

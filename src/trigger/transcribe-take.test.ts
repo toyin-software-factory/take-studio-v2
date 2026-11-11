@@ -243,11 +243,17 @@ describe("a stalled attempt stops at the deadline (S2T-T07)", () => {
   it("ends the job failed with timeout, take Ready, 0 charged, nothing left open or on disk", async () => {
     const { take: t, jobId } = await job();
     let extractStopped = false;
+    // A barrier: the deadline fires only once the extraction is waiting for the abort.
+    let markReady: () => void = () => undefined;
+    const extractionReady = new Promise<void>((resolve) => {
+      markReady = resolve;
+    });
     const stalled = io({
       extractAudio: async (_link, out, signal) => {
         const { writeFile } = await import("node:fs/promises");
         await writeFile(out, "partial"); // a temp file the attempt must clean up
         await new Promise<void>((resolve) => {
+          if (signal?.aborted) return resolve();
           signal?.addEventListener(
             "abort",
             () => {
@@ -256,14 +262,19 @@ describe("a stalled attempt stops at the deadline (S2T-T07)", () => {
             },
             { once: true },
           );
+          markReady();
         });
         throw signal?.reason;
       },
     }).value;
 
-    const error = await runWithDeadline(100, (signal) =>
-      transcribeJob(db, jobId, "r", stalled, signal),
-    ).catch((e: unknown) => e);
+    const controller = new AbortController();
+    const running = transcribeJob(db, jobId, "r", stalled, controller.signal).catch(
+      (e: unknown) => e,
+    );
+    await extractionReady;
+    controller.abort(new DeadlineExceeded());
+    const error = await running;
 
     expect(error).toBeInstanceOf(DeadlineExceeded);
     expect(extractStopped).toBe(true);

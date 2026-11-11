@@ -112,6 +112,22 @@ export async function uploadFileMultipart(
   }
 }
 
+/** Waits `ms`, or ends early with the signal's reason when it aborts. */
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(signal?.reason);
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
 /** Runs `fn` up to `attempts` times, waiting `backoffMs * 2^n` between tries. */
 async function withRetry<T>(
   fn: () => Promise<T>,
@@ -120,12 +136,14 @@ async function withRetry<T>(
   signal?: AbortSignal,
 ): Promise<T> {
   for (let attempt = 1; ; attempt++) {
+    // Never start another attempt once the deadline has fired.
+    signal?.throwIfAborted();
     try {
       return await fn();
     } catch (error) {
       signal?.throwIfAborted();
       if (attempt >= attempts) throw error;
-      await new Promise((resolve) => setTimeout(resolve, backoffMs * 2 ** (attempt - 1)));
+      await sleep(backoffMs * 2 ** (attempt - 1), signal);
     }
   }
 }
