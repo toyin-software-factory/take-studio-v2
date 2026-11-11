@@ -86,10 +86,10 @@ Before slice 6, `seconds_charged` and the charged month and hash are recorded on
 Overall progress shown to creators is the average of step progress (weights can be tuned later).
 
 **State transitions** (`take.status`, each a compare and swap):
-- `uploading` → `uploaded` (size checked and probed within limits) · `uploading` → `failed` (rejected media or abandoned upload)
+- `uploading` → `uploaded` (size checked and probed within limits) · `uploading` → `failed` (rejected media or abandoned upload; probe facts such as duration are kept so the message can name the limit)
 - `uploaded` → `processing` (job start) · `uploaded` → `expired`
 - `processing` → `ready` (job succeeded, or job failed while a latest render exists) · `processing` → `failed` (job failed, no render yet)
-- `ready` → `processing` (re render or re analyse) · `failed` → `processing` (retry; probed takes only)
+- `ready` → `processing` (re render or re analyse) · `failed` → `processing` (retry; only when the take's `failure_code` is refundable, i.e. not a media problem)
 - `ready` / `failed` → `expired` (video expiry passed; skipped while `processing`, retried next sweep)
 - `expired`: no further video work; read only (title rename still allowed).
 
