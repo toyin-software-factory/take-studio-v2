@@ -2,7 +2,7 @@
 
 **Verdict: PASS, with three small things owed.** All eight acceptance criteria are met, each with evidence from a run. Nothing failed. Three checks could not be done the way the task asked, and they are listed under "Owed" so nobody reads them as covered.
 
-These production proofs were made in the owner's account before a dedicated test account existed; future production checks use the test inbox.
+Jim's production proofs on #64 and #69 were made in the owner's account, before a dedicated test account existed; future production checks use the test inbox.
 
 Run on 2026-11-11 against the live app (`https://take-studio.jnr4u2.workers.dev`), a local build of main for the one flow that needs a session, the unit and integration tests, and Jim's production proofs on #64 and #69. No personal data and no secrets are in this report: it uses run IDs, PR links and test addresses only.
 
@@ -25,7 +25,7 @@ All built: `/sign-in` (with Google and email form), `/sign-in/link-expired`, `/e
 
 ## Owed (not a failure)
 
-- **The switch on production, by me.** I did not sign in on production (no test inbox yet). The switch is shown on production in [Jim's screenshots on #69](https://github.com/toyin-software-factory/take-studio-v2/pull/69#issuecomment-6797606331) and in my local browser run of main with a seeded user; if the dedicated test inbox arrives, one more click there would be a fresh look.
+- **The switch on production is seen, but not by me.** [Jim's screenshots on #69](https://github.com/toyin-software-factory/take-studio-v2/pull/69#issuecomment-6797606331) show it clicked in a browser on production, on, off, on again, at desktop and phone width, with the saved value read back each time. I did not sign in on production, and my own click through ran on a local build of main with a seeded user. Nothing is missing here; a click with the dedicated test inbox would only repeat it.
 - **AC-3 on production.** Needs Google and a link for the same address. It rests on the integration test with a real database.
 - **Not forced on production:** a real Resend failure (AC-8), a failed take email (AC-5), and the rate limit (AC-4). All three are covered by tests; breaking them on purpose in production would have emailed people or burned a limit.
 - **The mail app's own Unsubscribe button.** The headers are pinned by tests, but nobody has looked at them in a real inbox. Toyin can check that Gmail shows its "Unsubscribe" next to the sender on the next ready email.
