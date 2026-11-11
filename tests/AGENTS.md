@@ -7,6 +7,6 @@
 - Manual checks: `tests/probe-check.ts` and `tests/process-check.ts`, run as `DATABASE_URL_DIRECT=postgres://postgres:postgres@localhost:5432/take_studio pnpm tsx tests/probe-check.ts`.
 - Fixtures: `tests/fixtures/media/` is committed. Regenerate with `bash tests/fixtures/make-media.sh` and `bash tests/fixtures/make-pause-media.sh`; the pause fixtures depend on exact tone and flash timings written in the script comments.
 - In CI Playwright retries once and `forbidOnly` is on.
-- Keyboard tests on Radix menus must wait for `[data-overlays-ready='true']` (set by `OverlayDemos` after its effects run) before pressing keys: Radix only learns a menu was opened from the keyboard through a document listener added in an effect, and an early Enter leaves focus on the menu instead of the first item. Never fix this with a sleep or a retry.
+- Keyboard tests on a Radix menu must wait for a readiness signal that is set after the page's effects have run before pressing keys: Radix only learns a menu was opened from the keyboard through a document listener added in an effect, and an early Enter leaves focus on the menu instead of the first item. On the `/design` gallery that signal is `[data-overlays-ready='true']`, set by `OverlayDemos`; a menu on any other page needs its own signal. Never fix this with a sleep or a retry.
 
 _Drafted by /sync from a catch up over the merged work, worth a quick human pass._
