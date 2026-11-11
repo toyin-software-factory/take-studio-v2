@@ -5,7 +5,7 @@ import { logger, task } from "@trigger.dev/sdk";
 import { and, eq } from "drizzle-orm";
 import { type JobDb, withJobDb } from "@/db/client/job";
 import { reanalyse } from "@/db/data/cuts";
-import { discardJobRenders, finish, markRunning, updateStep } from "@/db/data/jobs";
+import { discardJobRenders, finish, markRunning, queueDeletions, updateStep } from "@/db/data/jobs";
 import { completeLatest, create as createRender } from "@/db/data/renders";
 import { jobStep, processingJob, take } from "@/db/schema";
 import { runTx } from "@/db/tx";
@@ -27,6 +27,7 @@ import {
   throttledProgress,
   totalMs,
 } from "@/lib/trim";
+import { PROCESS_TAKE_LIMITS } from "@/lib/cleanup-rules";
 import { RENDER_UPLOAD } from "@/lib/uploads";
 import { MediaToolError, probeFile, runFfmpeg } from "./media";
 
@@ -46,8 +47,8 @@ import { MediaToolError, probeFile, runFfmpeg } from "./media";
 export const processTakeTask = task({
   id: "process-take",
   machine: "large-1x",
-  maxDuration: 40 * 60,
-  retry: { maxAttempts: 2 },
+  maxDuration: PROCESS_TAKE_LIMITS.maxDurationSeconds,
+  retry: { maxAttempts: PROCESS_TAKE_LIMITS.maxAttempts },
   run: async (payload: { readonly jobId: string }, { ctx }) => {
     const env = parseJobEnv();
     const r2 = createR2(env);
@@ -90,7 +91,9 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
     if (!job || isFinalJobStatus(job.status)) return null;
     const [t] = await d.select().from(take).where(eq(take.id, job.takeId));
     if (!t) return null;
-    await markRunning(d, { jobId: job.id, triggerRunId: ctx.run.id });
+    // Rejected means the job was cancelled or finished meanwhile: stop, do no work.
+    const running = await markRunning(d, { jobId: job.id, triggerRunId: ctx.run.id });
+    if (!running.ok) return null;
     // A retry starts the render again: drop what an earlier attempt left behind.
     await runTx(d, async (tx) => ok(await discardJobRenders(tx, { takeId: t.id, jobId: job.id })));
     return { job, take: t };
@@ -130,6 +133,7 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
     const proposed = cutsFromSilences(parseSilences(stderr, facts.durationMs), facts.durationMs);
     const analysed = await db((d) => reanalyse(d, { takeId: t.id, proposed }));
     if (!analysed.ok) throw new Error(`reanalyse failed: ${analysed.error}`);
+    await trimProgress.flush();
     await step("trim", "succeeded", 100);
 
     if (!analysed.data.cuts.some((c) => c.applied)) {
@@ -206,7 +210,12 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
     const completed = await db((d) =>
       completeLatest(d, { renderId, durationMs: rendered.durationMs }),
     );
-    if (!completed.ok) throw new Error(`render complete failed: ${completed.error}`);
+    if (!completed.ok) {
+      // The job was cancelled or finished while we uploaded: the file is not tracked by any
+      // render row, so queue its key (a no op if the cancel already queued it).
+      await db((d) => queueDeletions(d, [renderKey(t.id, renderId)])).catch(() => {});
+      throw new Error(`render complete failed: ${completed.error}`);
+    }
     await step("render", "succeeded", 100);
     const finished = await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
     if (!finished.ok) throw new Error(`finish failed: ${finished.error}`);
