@@ -77,6 +77,39 @@ describe("uploadFileMultipart (render upload)", () => {
   });
 });
 
+describe("uploadFileMultipart stops cleanly on failure", () => {
+  it("stops the other workers and uploads nothing after the abort", async () => {
+    const events: string[] = [];
+    const target: MultipartTarget = {
+      createMultipartUpload: async () => "up-1",
+      uploadPart: async (_k, _u, partNumber) => {
+        events.push(`start ${partNumber}`);
+        await new Promise((resolve) => setTimeout(resolve, 5));
+        if (partNumber === 2) throw new Error("R2 upload part failed: HTTP 500");
+        events.push(`done ${partNumber}`);
+        return `etag-${partNumber}`;
+      },
+      completeMultipartUpload: async () => void events.push("complete"),
+      abortMultipartUpload: async () => void events.push("abort"),
+    };
+    await expect(
+      uploadFileMultipart(target, "k", filePath, {
+        contentType: "video/mp4",
+        partSize: 100, // 25 parts
+        attempts: 2,
+        backoffMs: 1,
+        concurrency: 3,
+      }),
+    ).rejects.toThrow("HTTP 500");
+
+    const abortAt = events.indexOf("abort");
+    expect(abortAt).toBe(events.length - 1);
+    expect(events).not.toContain("complete");
+    // Far fewer than 25 parts were started: the workers stopped after the failure.
+    expect(events.filter((e) => e.startsWith("start")).length).toBeLessThan(10);
+  });
+});
+
 describe("partCount", () => {
   it("is ceil(size / 16 MiB), at least 1", () => {
     const MiB = 1024 * 1024;
