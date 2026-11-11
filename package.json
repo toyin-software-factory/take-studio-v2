@@ -32,6 +32,8 @@
   },
   "dependencies": {
     "@opennextjs/cloudflare": "1.20.16",
+    "@sentry/nextjs": "11.12.0",
+    "@sentry/node": "11.12.0",
     "@trigger.dev/sdk": "4.8.3",
     "aws4fetch": "1.0.20",
     "better-auth": "1.7.19",
@@ -49,6 +51,7 @@
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.65.0",
+    "@sentry/esbuild-plugin": "11.12.0",
     "@tailwindcss/postcss": "4.3.5",
     "@trigger.dev/build": "4.8.3",
     "@types/node": "^22",
