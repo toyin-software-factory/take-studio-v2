@@ -131,11 +131,11 @@ Spec [0006](../specs/0006-email-sign-in-and-ready-email.md)
 Every processed take gets an English transcript, shown in the app with timestamps and timed to the trimmed video.
 **Done when:** the transcript appears beside the video with timestamps, and downloads as plain text and as SRT captions that line up with the trimmed video.
 - [x] Design it (spec): `/architect transcript`
-- [ ] Build it: `/develop transcript`
+- [x] Build it: `/develop transcript`
    - [x] Job groundwork: transcript table, `transcribe` job kind that never moves the take, no emails, stale and expiry rules (AC-1, AC-8, AC-9, AC-10)
    - [x] First thread: the `transcribe-take` task with Deepgram, started after the video, shown as plain paragraphs (AC-1, AC-6, AC-7, AC-11)
    - [x] Trimmed timeline, captions and downloads, then failures, retry and Make transcript (AC-2, AC-3, AC-4, AC-8, AC-9, AC-10, AC-11)
-   - [ ] Take page transcript panel and player CC, then end to end tests with real Deepgram (AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-10, AC-12)
+   - [x] Take page transcript panel and player CC, then end to end tests with real Deepgram (AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-10, AC-12)
 - [ ] Verify it: `/check verify transcript`
 - [ ] Test it: `/test transcript`
 Spec [0007](../specs/0007-transcript.md) · code in `src/trigger/transcribe-take.ts`, `src/lib/transcript-timeline.ts`, `src/db/data/jobs.ts`, `src/app/api/takes/[id]/transcript/`, `src/components/takes/`
