@@ -58,21 +58,33 @@ export async function uploadFileMultipart(
   try {
     const etags = new Array<string>(count);
     let next = 0;
+    // Set on the first failure, so the other workers stop taking parts.
+    let stopped = false;
     const worker = async () => {
-      while (next < count) {
+      while (!stopped && next < count) {
         const index = next++;
         const start = index * partSize;
         const length = Math.min(partSize, size - start);
         const buffer = new Uint8Array(new ArrayBuffer(length));
         await file.read(buffer, 0, length, start);
-        etags[index] = await withRetry(
-          () => r2.uploadPart(key, uploadId, index + 1, buffer),
-          attempts,
-          backoffMs,
-        );
+        try {
+          etags[index] = await withRetry(
+            () => r2.uploadPart(key, uploadId, index + 1, buffer),
+            attempts,
+            backoffMs,
+          );
+        } catch (error) {
+          stopped = true;
+          throw error;
+        }
       }
     };
-    await Promise.all(Array.from({ length: Math.min(concurrency, count) }, worker));
+    // Wait for every worker to stop before aborting or closing the file.
+    const results = await Promise.allSettled(
+      Array.from({ length: Math.min(concurrency, count) }, worker),
+    );
+    const failure = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+    if (failure) throw failure.reason;
     await r2.completeMultipartUpload(
       key,
       uploadId,

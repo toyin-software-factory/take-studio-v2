@@ -241,6 +241,7 @@ export async function completeUpload(
 /**
  * `DELETE /api/uploads/{takeId}`: the creator cancels an upload in progress. Aborts the
  * multipart upload (freeing its parts), then fails the take with `upload_abandoned`.
+ * An upload that already completed (the object exists) is not cancelled: 409.
  */
 export async function abortUpload(
   deps: UploadDeps,
@@ -251,12 +252,13 @@ export async function abortUpload(
   if (!t) return err("not_found");
   if (t.status !== "uploading") return err("not_uploading");
 
-  if (t.uploadId) {
-    try {
-      await deps.r2.abortMultipartUpload(t.originalKey, t.uploadId);
-    } catch {
-      return err("storage_error");
-    }
+  try {
+    // complete may have finished while the take is still `uploading` (the probe hasn't run
+    // yet). Then there's nothing to cancel: the spec's 409 "already completed".
+    if (await deps.r2.headObject(t.originalKey)) return err("not_uploading");
+    if (t.uploadId) await deps.r2.abortMultipartUpload(t.originalKey, t.uploadId);
+  } catch {
+    return err("storage_error");
   }
   const failed = await transitionTake(deps.db, t.id, "uploading", "failed", {
     failureCode: "upload_abandoned",

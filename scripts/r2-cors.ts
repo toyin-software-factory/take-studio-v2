@@ -20,16 +20,22 @@ const headers = {
   "content-type": "application/json",
 };
 
+const envelope = z.object({
+  success: z.boolean().optional(),
+  errors: z.unknown().optional(),
+  result: z.unknown().optional(),
+});
+
 async function call(method: "GET" | "PUT", body?: string): Promise<unknown> {
   const res = await fetch(url, { method, headers, body });
   if (method === "GET" && res.status === 404) return "No CORS configuration on this bucket yet.";
-  const json = (await res.json()) as { success?: boolean; errors?: unknown; result?: unknown };
-  if (!res.ok || json.success === false) {
-    throw new Error(
-      `Cloudflare API ${method} failed: HTTP ${res.status} ${JSON.stringify(json.errors)}`,
-    );
+  // A non JSON body (e.g. a proxy's HTML error page) counts as absent; the status still shows.
+  const parsed = envelope.safeParse(await res.json().catch(() => null));
+  if (!res.ok || !parsed.success || parsed.data.success === false) {
+    const errors = parsed.success ? JSON.stringify(parsed.data.errors) : "(no JSON body)";
+    throw new Error(`Cloudflare API ${method} failed: HTTP ${res.status} ${errors}`);
   }
-  return json.result;
+  return parsed.data.result;
 }
 
 if (!process.argv.includes("--check")) {

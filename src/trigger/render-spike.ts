@@ -3,7 +3,8 @@ import { mkdtemp, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
-import { logger, task } from "@trigger.dev/sdk";
+import { logger, schemaTask } from "@trigger.dev/sdk";
+import { z } from "zod";
 
 const run = promisify(execFile);
 
@@ -17,14 +18,18 @@ const run = promisify(execFile);
  * `zscale` + `tonemap=hable`, `libx264 -preset fast -crf 18 -pix_fmt yuv420p`, AAC 192 kb/s,
  * `+faststart`. Output: timings and sizes only.
  */
-export const renderSpikeTask = task({
+const spikePayload = z.object({
+  seconds: z.number().positive().max(7200).default(600),
+  cuts: z.number().int().min(0).max(500).default(40),
+});
+
+export const renderSpikeTask = schemaTask({
   id: "render-spike",
   machine: "large-1x",
   maxDuration: 3600,
   retry: { maxAttempts: 1 },
-  run: async (payload: { readonly seconds?: number; readonly cuts?: number }) => {
-    const seconds = payload.seconds ?? 600;
-    const cuts = payload.cuts ?? 40;
+  schema: spikePayload,
+  run: async ({ seconds, cuts }) => {
     const ffmpeg = process.env.FFMPEG_PATH ?? "ffmpeg";
     const dir = await mkdtemp(join(tmpdir(), "spike-"));
     try {
