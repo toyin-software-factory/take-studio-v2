@@ -2,7 +2,7 @@ import { logger, task } from "@trigger.dev/sdk";
 import { and, eq, inArray } from "drizzle-orm";
 import { withJobDb } from "@/db/client/job";
 import { dispatchJob } from "@/db/data/dispatch";
-import { startJob } from "@/db/data/jobs";
+import { queueDeletions, startJob } from "@/db/data/jobs";
 import { markUploaded, transitionTake } from "@/db/data/takes";
 import { processingJob, take } from "@/db/schema";
 import type { Db } from "@/db/types";
@@ -99,8 +99,12 @@ export const probeTask = task({
         });
         if (!marked.ok) {
           // Deleted meanwhile: don't leave the thumbnail we just wrote behind.
-          if (marked.error === "not_found")
-            await r2.deleteObject(thumbnailKey(found.id)).catch(() => {});
+          if (marked.error === "not_found") {
+            // If the delete fails too, queue the key so the drain retries it: never orphaned.
+            await r2
+              .deleteObject(thumbnailKey(found.id))
+              .catch(() => queueDeletions(db, [thumbnailKey(found.id)]));
+          }
           return { takeId: found.id, outcome: marked.error };
         }
         if (marked.data.status === "failed") {
