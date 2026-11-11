@@ -42,6 +42,8 @@ export function TranscriptPanel({ takeId }: { readonly takeId: string }) {
     const reply = await callApi(`/api/takes/${takeId}/transcript`, "GET").catch(() => null);
     const parsed = transcriptViewSchema.safeParse(reply?.data);
     if (reply?.status === 401 || reply?.status === 404) {
+      // Final: the take page already says signed out or not found, so no retry promise here.
+      setLoadFailed(false);
       setStopped(true);
       return "stop";
     }
@@ -92,16 +94,17 @@ export function TranscriptPanel({ takeId }: { readonly takeId: string }) {
     },
   );
 
-  if (!view) {
-    return loadFailed ? (
+  const loadError =
+    loadFailed && !stopped ? (
       <p role="alert">We couldn&rsquo;t load the transcript. We&rsquo;ll keep trying.</p>
     ) : null;
-  }
+  if (!view) return loadError;
   return (
     <section aria-labelledby="transcript-heading" className="flex flex-col gap-3">
       <h2 id="transcript-heading" className="text-h3 font-semibold">
         Transcript
       </h2>
+      {loadError}
       {view.state === "making" ? <p role="status">Making your transcript</p> : null}
       {view.state === "none" && !view.canMake ? <p>No transcript for this take</p> : null}
       {view.state === "failed" ? <p>The transcript didn&rsquo;t finish</p> : null}
