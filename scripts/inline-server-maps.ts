@@ -38,7 +38,12 @@ for (const chunk of chunks) {
   const reference = mapReference(js);
   if (!reference) continue;
   const mapFile = join(dirname(file), reference);
-  if (!existsSync(mapFile)) continue;
+  if (!existsSync(mapFile)) {
+    // A chunk that points at a map that is not there would ship unmapped: report it.
+    failed += 1;
+    console.error(`${chunk}: the map file it points to (${reference}) is missing.`);
+    continue;
+  }
   const flat = flattenSourceMap(readFileSync(mapFile, "utf8"), js);
   if (!flat.ok) {
     failed += 1;

@@ -40,16 +40,16 @@ function misfits(decoded: Decoded, lines: readonly string[], shift: number): num
 
 /**
  * Is the map lined up with the chunk? Turbopack puts a few segments a few columns past the end
- * of a line, so zero misfits is too strict; instead the chosen shift must leave at most 2% of
- * the mappings off, and clearly fewer than the shift one line higher or lower (a wrong shift
- * leaves most of them off).
+ * of a line, so zero misfits is too strict; instead the chosen shift must leave at most 10% of
+ * the mappings off, and at least 5 times fewer than the shift one line higher or lower (a wrong
+ * shift leaves most of them off, so this comparison is what catches it).
  */
 function fits(decoded: Decoded, lines: readonly string[], shift: number): boolean {
   const total = decoded.reduce((sum, segments) => sum + segments.length, 0);
   if (total === 0) return true;
   const own = misfits(decoded, lines, shift);
   if (own === 0) return true;
-  if (own / total > 0.02) return false;
+  if (own / total > 0.1) return false;
   return [shift - 1, shift + 1]
     .filter((other) => other >= 0)
     .every((other) => misfits(decoded, lines, other) >= own * 5);
@@ -95,9 +95,20 @@ export function hasInlinedMap(js: string): boolean {
   return /^\/\/# sourceMappingURL=data:/m.test(js);
 }
 
-/** The map file name a chunk points to, or null when it has none (or already inlines it). */
+/**
+ * The map file name a chunk points to, or null when it has none (or already inlines it). The
+ * reference is a URL, so a chunk named `[id]` points at `%5Bid%5D`: it is decoded to the real
+ * file name. A reference that cannot be decoded gives the raw text, so the file is not found
+ * and the caller reports it.
+ */
 export function mapReference(js: string): string | null {
-  return REFERENCE.exec(js)?.[1] ?? null;
+  const reference = REFERENCE.exec(js)?.[1];
+  if (reference === undefined) return null;
+  try {
+    return decodeURIComponent(reference);
+  } catch {
+    return reference;
+  }
 }
 
 /** `js` with its `//# sourceMappingURL=<file>.map` line replaced by the map as a data URI. */

@@ -116,6 +116,13 @@ describe("inlineSourceMap, mapReference and hasInlinedMap", () => {
     expect(out).not.toContain("chunk.js.map");
   });
 
+  it("decodes the reference, so a chunk named [id] finds its map file", () => {
+    expect(mapReference("code();\n//# sourceMappingURL=route_%5Bid%5D_actions.js.map\n")).toBe(
+      "route_[id]_actions.js.map",
+    );
+    expect(mapReference("code();\n//# sourceMappingURL=plain.js.map\n")).toBe("plain.js.map");
+  });
+
   it("does not look at a map that is already inlined", () => {
     expect(mapReference(inlineSourceMap(js, "{}"))).toBeNull();
   });

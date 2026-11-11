@@ -30,9 +30,11 @@ if [ -n "${SENTRY_AUTH_TOKEN:-}" ]; then
   pnpm exec sentry-cli sourcemaps inject "$out"
   # The bundle holds many debug ID snippets and the SDK keeps the last registered; make ours the only one.
   pnpm exec tsx scripts/sentry-debug-id.ts "$out/worker.js"
-  # With the server map chain on, the final map must list our sources; if a framework change
-  # breaks the chain, stop here instead of deploying traces that cannot be read.
-  if [ -n "${WORKER_SOURCE_MAPS:-}" ] && ! grep -q '/src/app/' "$out/worker.js.map"; then
+  # With a Sentry token the deploy builds with the server map chain on (package.json), so the
+  # final map must list our sources. If a framework change breaks the chain, stop here instead
+  # of deploying traces that cannot be read. (Not conditional on WORKER_SOURCE_MAPS: that is set
+  # only for the build step, not for this script.)
+  if ! grep -q '/src/app/' "$out/worker.js.map"; then
     echo "worker.js.map lists no src/ sources: the source map chain is broken, refusing to deploy" >&2
     exit 1
   fi
