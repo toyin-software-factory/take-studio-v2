@@ -1,7 +1,7 @@
 # 0001. Stack and architecture for Take Studio
 
 **Date**: 2026-11-10
-**Status**: Proposed
+**Status**: Accepted
 
 ## Summary
 
