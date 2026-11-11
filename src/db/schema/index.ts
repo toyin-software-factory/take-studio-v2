@@ -7,3 +7,4 @@ export * from "./processing";
 export * from "./cut";
 export * from "./render";
 export * from "./storage-deletion";
+export * from "./email";

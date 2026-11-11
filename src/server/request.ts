@@ -1,8 +1,9 @@
 import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { setUser } from "@sentry/core";
 import { createWebDb } from "@/db/client/web";
-import { parseWebEnv } from "@/lib/env";
+import { emailEnvSchema, parseWebEnv } from "@/lib/env";
 import { createAuth } from "./auth";
+import { resendSender } from "./email/send";
 
 /** Per request database client over the Hyperdrive binding. */
 export async function getDb() {
@@ -10,9 +11,16 @@ export async function getDb() {
   return createWebDb(env.HYPERDRIVE);
 }
 
-/** Per request Better Auth instance, sharing the request's database client. */
+/**
+ * Per request Better Auth instance, sharing the request's database client. Sign in links go
+ * out through Resend when the email variables are set; without them the instance has no sender
+ * and a link request answers with the friendly "couldn't send" error (AC-8).
+ */
 export async function getAuth() {
-  return createAuth(await getDb(), parseWebEnv());
+  const email = emailEnvSchema.safeParse(process.env);
+  return createAuth(await getDb(), parseWebEnv(), {
+    ...(email.success ? { sendEmail: resendSender(email.data) } : {}),
+  });
 }
 
 /**
