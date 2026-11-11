@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { logger } from "@trigger.dev/sdk";
-import { startTranscribeJob } from "@/db/data/jobs";
+import { finish, startTranscribeJob } from "@/db/data/jobs";
 import { jobStep, processingJob, take, transcript } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
@@ -159,6 +159,24 @@ describe("transcribeJob (spec 0007, AC-6, AC-7)", () => {
     expect(seen).not.toContain("r2.test");
     expect(seen).not.toContain("originals/");
     spies.forEach((s) => s.mockRestore());
+  });
+});
+
+describe("a job that is already final (spec 0007, atomic save)", () => {
+  it("publishes no transcript when cleanup failed the job while the run worked", async () => {
+    const { take: t, jobId } = await job();
+    // Cleanup fails the stale job while the run is still talking to Deepgram.
+    const post = async () => {
+      await finish(db, { jobId, status: "failed", failureCode: "stale_run" });
+      return dgBody();
+    };
+    const result = await transcribeJob(db, jobId, "r", io({ post }).value);
+    expect(result).toMatchObject({ outcome: "job_final" });
+    expect(await db.select().from(transcript).where(eq(transcript.takeId, t.id))).toHaveLength(0);
+    expect((await outcome(jobId)).job).toMatchObject({
+      status: "failed",
+      failureCode: "stale_run",
+    });
   });
 });
 

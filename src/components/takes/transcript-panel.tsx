@@ -1,10 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { type TranscriptViewData, transcriptViewSchema } from "@/lib/take-api";
 import { POLL } from "@/lib/take-display";
 import { callApi } from "./browser-io";
 import { usePoll, type PollResult } from "./use-poll";
+
+/** About 30 s of 2 s checks for a transcript job that has not appeared yet. */
+const NONE_CHECKS = 15;
 
 const SKIPPED: Readonly<Record<string, string>> = {
   not_english: "Transcripts are English only for now",
@@ -26,6 +29,10 @@ function clock(ms: number): string {
 export function TranscriptPanel({ takeId }: { readonly takeId: string }) {
   const [view, setView] = useState<TranscriptViewData | null>(null);
   const [stopped, setStopped] = useState(false);
+  // `process-take` marks the video Ready a moment before it creates the transcript job, so a
+  // first read can say `none`: keep checking for a short while before believing it.
+  const noneChecks = useRef(0);
+  const [noneSeen, setNoneSeen] = useState(0);
 
   const load = useCallback(async (): Promise<PollResult> => {
     const reply = await callApi(`/api/takes/${takeId}/transcript`, "GET").catch(() => null);
@@ -36,12 +43,26 @@ export function TranscriptPanel({ takeId }: { readonly takeId: string }) {
     }
     if (reply?.status !== 200 || !parsed.success) return "error";
     setView(parsed.data);
-    return parsed.data.state === "making" ? "continue" : "stop";
+    if (parsed.data.state === "making") return "continue";
+    if (parsed.data.state === "none") {
+      noneChecks.current += 1;
+      setNoneSeen(noneChecks.current);
+      if (noneChecks.current < NONE_CHECKS) return "continue";
+    }
+    return "stop";
   }, [takeId]);
 
-  usePoll(load, POLL.takeMs, !stopped && (view === null || view.state === "making"), {
-    immediate: true,
-  });
+  usePoll(
+    load,
+    POLL.takeMs,
+    !stopped &&
+      (view === null ||
+        view.state === "making" ||
+        (view.state === "none" && noneSeen < NONE_CHECKS)),
+    {
+      immediate: true,
+    },
+  );
 
   if (!view) return null;
   return (

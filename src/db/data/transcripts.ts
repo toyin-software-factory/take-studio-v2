@@ -1,7 +1,10 @@
 import { eq } from "drizzle-orm";
+import { runTx } from "../tx";
 import type { TranscriptWord } from "@/lib/transcript-rules";
+import { ACTIVE_JOB_STATUSES } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
-import { transcript } from "../schema";
+import { processingJob, transcript } from "../schema";
+import { finishInTx, updateStep } from "./jobs";
 import { type Executor, type Transcript, pgErrorCode } from "../types";
 
 /**
@@ -58,4 +61,35 @@ export async function upsertTranscript(
     if (pgErrorCode(error).code === "23503") return err("take_gone");
     throw error;
   }
+}
+
+/**
+ * Saves a transcript and finishes its `transcribe` job in one transaction (spec 0007). The job
+ * row is locked and must still be queued or running, so a run that cleanup already failed (or
+ * that was cancelled) can never publish a transcript: `job_final`, nothing written. A take
+ * deleted meanwhile finishes the job without a transcript (`saved: false`).
+ */
+export async function saveTranscriptAndFinish(
+  db: Executor,
+  jobId: string,
+  input: TranscriptInput,
+): Promise<Result<{ readonly saved: boolean }, "job_final" | "failed">> {
+  return runTx(db, async (tx) => {
+    const [job] = await tx
+      .select({ status: processingJob.status })
+      .from(processingJob)
+      .where(eq(processingJob.id, jobId))
+      .for("update");
+    if (!job || !(ACTIVE_JOB_STATUSES as readonly string[]).includes(job.status)) {
+      return err("job_final");
+    }
+    // A savepoint: a foreign key error must not poison the outer transaction.
+    const saved = await runTx(tx, (inner) => upsertTranscript(inner, input));
+    if (saved.ok) {
+      await updateStep(tx, { jobId, name: "transcript", status: "succeeded", progress: 100 });
+    }
+    const finished = await finishInTx(tx, { jobId, status: "succeeded" });
+    if (!finished.ok) return err("failed");
+    return ok({ saved: saved.ok });
+  });
 }

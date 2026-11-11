@@ -112,7 +112,9 @@ export function TakeView({
           />
           <TakeStage detail={detail} onRetried={onRetried} />
           <TakeResult detail={detail} />
-          {detail.take.status === "ready" ? <TranscriptPanel takeId={detail.take.id} /> : null}
+          {detail.take.status === "ready" || detail.take.status === "expired" ? (
+            <TranscriptPanel takeId={detail.take.id} />
+          ) : null}
           <EmailSwitch initial={takeEmails} />
         </>
       ) : stop === null ? (

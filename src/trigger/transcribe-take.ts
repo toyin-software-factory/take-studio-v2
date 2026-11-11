@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { withJobDb } from "@/db/client/job";
 import type { Executor } from "@/db/types";
 import { finish, markRunning, updateStep } from "@/db/data/jobs";
-import { upsertTranscript } from "@/db/data/transcripts";
+import { saveTranscriptAndFinish } from "@/db/data/transcripts";
 import { jobStep, processingJob, take } from "@/db/schema";
 import { TRANSCRIBE_TAKE_LIMITS } from "@/lib/cleanup-rules";
 import { DEEPGRAM_MODEL, deepgramUrl, parseDeepgramResponse } from "@/lib/deepgram";
@@ -216,7 +216,7 @@ export async function transcribeJob(
     if (parsed.kind === "invalid") throw new DeepgramError(200);
     if (parsed.kind !== "words") return skip(parsed.kind);
 
-    const saved = await upsertTranscript(client, {
+    const saved = await saveTranscriptAndFinish(client, jobId, {
       takeId: t.id,
       language: parsed.language,
       text: parsed.text,
@@ -225,12 +225,14 @@ export async function transcribeJob(
       model: DEEPGRAM_MODEL,
     });
     if (!saved.ok) {
-      // The take was deleted meanwhile: end quietly.
-      await finish(client, { jobId, status: "succeeded" });
-      return { jobId, outcome: "take_gone" as const };
+      if (saved.error === "job_final") {
+        // Cleanup failed or cancelled this job while we worked: publish nothing.
+        logger.info("transcribe-take: job already final, nothing saved", { jobId });
+        return { jobId, outcome: "job_final" as const };
+      }
+      throw new Error("transcribe finish failed");
     }
-    await updateStep(client, { jobId, name: "transcript", status: "succeeded", progress: 100 });
-    await finish(client, { jobId, status: "succeeded" });
+    if (!saved.data.saved) return { jobId, outcome: "take_gone" as const };
     logger.info("transcribe-take: saved", { jobId, takeId: t.id, words: parsed.words.length });
     return { jobId, takeId: t.id, outcome: "saved" as const, words: parsed.words.length };
   } finally {

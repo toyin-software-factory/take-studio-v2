@@ -271,21 +271,28 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
  * video job: a refused start (transcript exists, original gone) just leaves "Make transcript".
  */
 async function startTranscript(client: JobDb, takeId: string): Promise<void> {
-  try {
-    const started = await startTranscribeJob(client, { takeId });
-    if (!started.ok) {
-      logger.info("process-take: transcript not started", { takeId, reason: started.error });
+  // A thrown start (the database blinked) is tried 3 times; a retry of this task would exit
+  // early because the video job is already final. A refused start is final, not retried. If
+  // all three throw, the take shows "Make transcript" (spec 0007, Pipeline step 1).
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const started = await startTranscribeJob(client, { takeId });
+      if (!started.ok) {
+        logger.info("process-take: transcript not started", { takeId, reason: started.error });
+        return;
+      }
+      const dispatched = await dispatchJob(client, {
+        jobId: started.data.id,
+        trigger: triggerForTranscribe(),
+      });
+      if (!dispatched.ok) {
+        logger.warn("process-take: transcript trigger failed", { takeId, jobId: started.data.id });
+      }
       return;
+    } catch {
+      logger.warn("process-take: transcript start threw", { takeId, attempt });
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
     }
-    const dispatched = await dispatchJob(client, {
-      jobId: started.data.id,
-      trigger: triggerForTranscribe(),
-    });
-    if (!dispatched.ok) {
-      logger.warn("process-take: transcript trigger failed", { takeId, jobId: started.data.id });
-    }
-  } catch {
-    logger.warn("process-take: transcript start threw", { takeId });
   }
 }
 
