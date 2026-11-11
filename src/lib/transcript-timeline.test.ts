@@ -370,6 +370,29 @@ describe("buildCues", () => {
   });
 });
 
+describe("buildCues with interleaved paragraphs", () => {
+  it("builds cues in mapped time order, so no cue is pushed past a later word", () => {
+    const out = toTrimmedTranscript(
+      [
+        word("A", 1000, 1400, { para: true }),
+        word("B", 9000, 9400),
+        word("C", 5000, 5400, { para: true }),
+        word("D", 9500, 9900),
+      ],
+      { ...base, removedRanges: [] },
+    );
+    const cues = buildCues(out);
+    // C stays at 5000 ms (the second paragraph's own time); B and D follow it in time order.
+    expect(cues.map((c) => [c.startMs, c.text])).toEqual([
+      [1000, "A"],
+      [5000, "C B D"],
+    ]);
+    cues.forEach((c, i) => {
+      if (i > 0) expect(c.startMs).toBeGreaterThanOrEqual(cues[i - 1]?.endMs ?? 0);
+    });
+  });
+});
+
 describe("toSrt and toVtt", () => {
   const cues = [
     { startMs: 500, endMs: 3_723_004, text: "Hello there,\nfriend." },

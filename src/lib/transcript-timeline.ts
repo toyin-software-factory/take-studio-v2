@@ -162,28 +162,32 @@ export function buildCues(paragraphs: readonly TrimmedParagraph[]): Cue[] {
   let current: Draft | null = null;
   let breakBefore = true;
 
-  for (const paragraph of paragraphs) {
-    breakBefore = true;
-    for (const word of paragraph.words) {
-      if (word.filler) continue;
-      const w = cleanWord(word.w);
-      if (w === "") continue;
-      if (current) {
-        const tooLong = word.endMs - current.startMs > CAPTION_RULES.maxCueMs;
-        const noFit = wrapLines([...current.words, w]) === null;
-        if (breakBefore || tooLong || noFit) {
-          drafts.push(current);
-          current = null;
-        }
+  // Words in mapped time order, each remembering whether it opens a paragraph (even a filler
+  // does, so the next spoken word still starts a new cue).
+  const timeline = paragraphs
+    .flatMap((paragraph) => paragraph.words.map((word, i) => ({ word, opensParagraph: i === 0 })))
+    .sort((a, b) => a.word.startMs - b.word.startMs || a.word.endMs - b.word.endMs);
+
+  for (const { word, opensParagraph } of timeline) {
+    if (opensParagraph) breakBefore = true;
+    if (word.filler) continue;
+    const w = cleanWord(word.w);
+    if (w === "") continue;
+    if (current) {
+      const tooLong = word.endMs - current.startMs > CAPTION_RULES.maxCueMs;
+      const noFit = wrapLines([...current.words, w]) === null;
+      if (breakBefore || tooLong || noFit) {
+        drafts.push(current);
+        current = null;
       }
-      if (current) {
-        current.words.push(w);
-        current.endMs = Math.max(current.endMs, word.endMs);
-      } else {
-        current = { startMs: word.startMs, endMs: word.endMs, words: [w] };
-      }
-      breakBefore = /[.?!]["')\]]*$/.test(w);
     }
+    if (current) {
+      current.words.push(w);
+      current.endMs = Math.max(current.endMs, word.endMs);
+    } else {
+      current = { startMs: word.startMs, endMs: word.endMs, words: [w] };
+    }
+    breakBefore = /[.?!]["')\]]*$/.test(w);
   }
   if (current) drafts.push(current);
 
