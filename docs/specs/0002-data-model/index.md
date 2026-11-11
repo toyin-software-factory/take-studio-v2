@@ -1,7 +1,7 @@
 # 0002. Data model for Take Studio
 
 **Date**: 2026-11-10
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 
@@ -97,7 +97,7 @@ Overall progress shown to creators is the average of step progress (weights can 
 
 **Failure code registry** (`src/lib`, each with a `refundable` flag):
 - Refundable: `internal_error`, `ffmpeg_error`, `trigger_failed`, `timeout`, `stale_run`, `provider_error`, `cancelled_before_start`.
-- Not refundable: `invalid_media`, `too_long`, `too_large`, `resolution_exceeded`, `corrupt_upload`, `cancelled_while_running`.
+- Not refundable: `invalid_media`, `too_long`, `too_large`, `resolution_exceeded`, `corrupt_upload`, `cancelled_while_running`, `upload_abandoned`.
 
 **API surface** (data access functions; HTTP endpoints and UI are owned by each slice spec):
 | Function | Key inputs | Key outputs | Auth | Key errors |
@@ -144,7 +144,7 @@ Overall progress shown to creators is the average of step progress (weights can 
 
 **Key invariants**:
 - Every product row is reachable from exactly one creator (built in backgrounds excepted); every function filters by it.
-- At most one active job and one `is_latest` render per take; only the latest render has a `video_key`; an `expired` take holds no file keys.
+- At most one active job and one `is_latest` render per take; only the latest render has a `video_key`; an `expired` take holds no render file keys (`original_key` stays as a record; status `expired` says the file is gone, and a repeat delete is a harmless no-op).
 - Cuts of a take never overlap and lie within the take's length.
 - A job is refunded at most once; `seconds_used` never goes below 0.
 - Every stored file key removed from a row is inserted into `storage_deletion` in the same transaction.
@@ -173,8 +173,8 @@ Overall progress shown to creators is the average of step progress (weights can 
 
 Tracer Bullet: this feature builds the slice 1 tables and the shared data rules the core take loop needs; each later slice adds its own tables and columns from this target in its own migration.
 
-1. Shared schema helpers and registries: `timestamps` helper, status enums, text value registries (kinds, steps, failure codes with `refundable`), canonical email and HMAC helper, satisfies **AC-1**, **AC-13**, **AC-16**.
-2. Slice 1 migration: `take`, `processing_job`, `job_step`, `cut`, `render`, `storage_deletion` with all keys, checks and indexes (partial unique indexes include their `WHERE`, checked by a test), satisfies **AC-1**, **AC-4**, **AC-7**, **AC-8**, **AC-10**.
+1. [x] Shared schema helpers and registries: `timestamps` helper, status enums, text value registries (kinds, steps, failure codes with `refundable`), canonical email and HMAC helper, satisfies **AC-1**, **AC-13**, **AC-16**.
+2. [x] Slice 1 migration: `take`, `processing_job`, `job_step`, `cut`, `render`, `storage_deletion` with all keys, checks and indexes (partial unique indexes include their `WHERE`, checked by a test), satisfies **AC-1**, **AC-4**, **AC-7**, **AC-8**, **AC-10**.
 3. Takes and jobs data functions: create, markUploaded, get, list (cursor), rename, transition (compare and swap), jobs.start (one transaction: kind, charge recorded, steps, take to `processing`), markRunning, updateStep, finish (one transaction incl. refund rule), cancel, satisfies **AC-2**, **AC-3**, **AC-5**, **AC-6**, **AC-7**, **AC-11**, **AC-12**, **AC-13**.
 4. Cuts and renders data functions: list, setApplied, addManual (overlap and range checks), reanalyse (keep creator touched), renders.create and completeLatest (queue old key), satisfies **AC-8**, **AC-9**, **AC-10**.
 5. Deletion and background work: deleteTake, Better Auth `deleteUser` with `beforeDelete`, `storage-deletion` task, `cleanup` scheduled task, trigger idempotency, satisfies **AC-17**, **AC-18**.
