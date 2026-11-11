@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
 import { STORAGE_DELETION } from "@/lib/cleanup-rules";
 import { renderKey } from "@/lib/cut-rules";
+import { thumbnailKey } from "@/lib/take-rules";
 import { ACTIVE_JOB_STATUSES } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
 import { processingJob, render, storageDeletion, take } from "../schema";
@@ -15,7 +16,8 @@ import { queueDeletions } from "./jobs";
  */
 
 /**
- * Every file key these takes may have stored: originals, plus the derived key of every render
+ * Every file key these takes may have stored: originals, their thumbnails
+ * (`originals/{takeId}/thumb.jpg`, spec 0004), plus the derived key of every render
  * row (`renders/{takeId}/{renderId}.mp4`), not only renders with a recorded `video_key`. A
  * render step uploads its file before the row records success, so a crash or failure in
  * between would otherwise orphan the object. Deleting a key that was never written is a no op.
@@ -33,6 +35,7 @@ export async function takeFileKeys(tx: Executor, takeIds: readonly string[]): Pr
   return [
     ...new Set([
       ...originals.map(({ key }) => key),
+      ...takeIds.map((id) => thumbnailKey(id)),
       ...renders.map((row) => renderKey(row.takeId, row.id)),
     ]),
   ];

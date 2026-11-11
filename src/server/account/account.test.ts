@@ -53,7 +53,13 @@ describe("account deletion (AC-17)", () => {
     await db.delete(user).where(eq(user.id, creator.id));
 
     expect([...deleted.queuedKeys].sort()).toEqual(
-      [one.take.originalKey, one.renderKey, two.originalKey].sort(),
+      [
+        one.take.originalKey,
+        `originals/${one.take.id}/thumb.jpg`,
+        one.renderKey,
+        two.originalKey,
+        `originals/${two.id}/thumb.jpg`,
+      ].sort(),
     );
     expect(calls).toEqual({ cancelled: ["run_account"], drains: 1 });
 
@@ -71,7 +77,7 @@ describe("account deletion (AC-17)", () => {
       .select()
       .from(storageDeletion)
       .where(inArray(storageDeletion.objectKey, [...deleted.queuedKeys]));
-    expect(queued).toHaveLength(3);
+    expect(queued).toHaveLength(5);
 
     // The other creator's take survives.
     expect(await db.select({ id: take.id }).from(take).where(eq(take.id, keep.id))).toHaveLength(1);

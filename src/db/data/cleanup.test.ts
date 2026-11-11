@@ -159,7 +159,7 @@ describe("cleanup: video expiry (AC-18)", () => {
     });
     const later = await seedTake(db, creator.id, { status: "ready", videoExpiresAt: minutes(-60) });
 
-    expect(await expireDueTakes(db, NOW)).toEqual({ expired: 1, queuedKeys: 2 });
+    expect(await expireDueTakes(db, NOW)).toEqual({ expired: 1, queuedKeys: 3 });
 
     const takes = await db
       .select()
@@ -170,7 +170,9 @@ describe("cleanup: video expiry (AC-18)", () => {
       [busy.id]: "processing",
       [later.id]: "ready",
     });
-    expect(await queuedKeys()).toEqual([due.originalKey, renderKey].sort());
+    expect(await queuedKeys()).toEqual(
+      [due.originalKey, `originals/${due.id}/thumb.jpg`, renderKey].sort(),
+    );
     const [renderRow] = await db.select().from(render).where(eq(render.id, renderId));
     expect(renderRow).toMatchObject({
       videoKey: null,
@@ -259,7 +261,7 @@ describe("cleanup edges (AC-17, AC-18)", () => {
       videoExpiresAt: null,
     });
 
-    expect(await expireDueTakes(db, NOW)).toEqual({ expired: 1, queuedKeys: 1 });
+    expect(await expireDueTakes(db, NOW)).toEqual({ expired: 1, queuedKeys: 2 });
     const rows = await db
       .select()
       .from(take)
@@ -268,7 +270,9 @@ describe("cleanup edges (AC-17, AC-18)", () => {
       [uploaded.id]: "expired",
       [neverUploaded.id]: "failed",
     });
-    expect(await queuedKeys()).toEqual([uploaded.originalKey]);
+    expect(await queuedKeys()).toEqual(
+      [uploaded.originalKey, `originals/${uploaded.id}/thumb.jpg`].sort(),
+    );
   });
 
   it("leaves an old take alone once its upload has completed", async () => {
