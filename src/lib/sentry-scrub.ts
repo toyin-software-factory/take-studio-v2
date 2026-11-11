@@ -88,7 +88,8 @@ function scrubRequest(request: Obj): Obj {
 }
 
 /** A breadcrumb with URLs stripped or redacted and only allowlisted data keys. */
-export function scrubBreadcrumb<B extends Obj>(breadcrumb: B): B {
+export function scrubBreadcrumb<B extends object>(input: B): B {
+  const breadcrumb = input as Obj;
   const { data, message } = breadcrumb;
   const cleanData = isObject(data)
     ? Object.fromEntries(
@@ -102,15 +103,15 @@ export function scrubBreadcrumb<B extends Obj>(breadcrumb: B): B {
     ...breadcrumb,
     ...(typeof message === "string" ? { message: redactText(message) } : {}),
     ...(cleanData ? { data: cleanData } : {}),
-  };
+  } as B;
 }
 
 /**
  * The whole event: request reduced, user reduced to `{ id }`, `extra` allowlisted, every
  * string (messages, exception values, tags, contexts) redacted, breadcrumbs scrubbed.
  */
-export function scrubEvent<E extends Obj>(event: E): E {
-  const { request, user, extra, breadcrumbs, ...rest } = event;
+export function scrubEvent<E extends object>(event: E): E {
+  const { request, user, extra, breadcrumbs, ...rest } = event as Obj;
   const scrubbed: Obj = redactDeep(rest);
 
   if (isObject(request)) scrubbed.request = scrubRequest(request);
