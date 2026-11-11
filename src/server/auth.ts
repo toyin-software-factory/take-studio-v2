@@ -6,8 +6,8 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "@/db/schema";
 import type { WebEnv } from "@/lib/env";
 import { beforeDeleteUser } from "./account";
-import type { EmailSender } from "./email/send";
-import { signInEmail } from "./email/templates";
+import type { EmailSender } from "@/lib/email/send";
+import { signInEmail } from "@/lib/email/templates";
 import { takeSignInEmailSlot } from "./email/sign-in-limits";
 
 type AuthEnv = Pick<
