@@ -1,4 +1,8 @@
+import { createWriteStream } from "node:fs";
 import { open, stat } from "node:fs/promises";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
+import type { ReadableStream as WebReadableStream } from "node:stream/web";
 import { RENDER_UPLOAD } from "./uploads";
 
 /**
@@ -111,4 +115,18 @@ async function withRetry<T>(fn: () => Promise<T>, attempts: number, backoffMs: n
       await new Promise((resolve) => setTimeout(resolve, backoffMs * 2 ** (attempt - 1)));
     }
   }
+}
+
+/**
+ * Streams a presigned GET to a local file (never into memory). Errors carry the HTTP status,
+ * never the URL. Returns the bytes written.
+ */
+export async function downloadToFile(url: string, path: string): Promise<number> {
+  const res = await fetch(url, { signal: AbortSignal.timeout(30 * 60_000) });
+  if (!res.ok || !res.body) throw new Error(`R2 download failed: HTTP ${res.status}`);
+  await pipeline(
+    Readable.fromWeb(res.body as unknown as WebReadableStream),
+    createWriteStream(path),
+  );
+  return (await stat(path)).size;
 }
