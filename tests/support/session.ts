@@ -25,6 +25,16 @@ export function signedSessionCookie(token: string, secret: string): string {
   return encodeURIComponent(`${token}.${signature}`);
 }
 
+/** The test database URL; throws unless it is on this machine (local Docker or CI service). */
+export function localDatabaseUrl(): string {
+  const url = setting("DATABASE_URL") ?? localDatabase;
+  const { hostname } = new URL(url);
+  if (!["localhost", "127.0.0.1", "[::1]", "::1"].includes(hostname)) {
+    throw new Error(`Refusing to seed test data into a non-local database host: ${hostname}`);
+  }
+  return url;
+}
+
 export type TestUser = { readonly id: string; readonly name: string; readonly email: string };
 
 /** Signs a fresh test user in for `context`. Call the returned cleanup after the test. */
@@ -35,13 +45,7 @@ export async function signIn(
 ): Promise<{ readonly user: TestUser; readonly cleanup: () => Promise<void> }> {
   const secret = setting("BETTER_AUTH_SECRET");
   if (!secret) throw new Error("BETTER_AUTH_SECRET is not set (CI writes it to .env).");
-  const url = setting("DATABASE_URL") ?? localDatabase;
-  // Only ever seed a database on this machine (local Docker or the CI service container).
-  const { hostname } = new URL(url);
-  if (!["localhost", "127.0.0.1", "[::1]", "::1"].includes(hostname)) {
-    throw new Error(`Refusing to seed test sessions into a non-local database host: ${hostname}`);
-  }
-  const sql = postgres(url, { max: 1 });
+  const sql = postgres(localDatabaseUrl(), { max: 1 });
   const user = { id: randomUUID(), name, email: `e2e-${randomUUID()}@example.test` };
   const token = randomBytes(32).toString("base64url");
   const now = new Date();

@@ -1,12 +1,22 @@
+import { Suspense } from "react";
+import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { Film } from "lucide-react";
 import { AppShell } from "@/components/shell/app-shell";
 import { SkipLink } from "@/components/shell/skip-link";
-import { Icon } from "@/components/ui/icon";
-import { getAuth } from "@/server/request";
+import { LibrarySkeleton } from "@/components/takes/library-skeleton";
+import { TakeLibrary } from "@/components/takes/take-library";
+import { UploadArea } from "@/components/takes/upload-area";
+import { getDb, getSession } from "@/server/request";
+import { listForCreator } from "@/server/takes";
+import { cardView } from "@/server/takes/views";
 import { SignInButton } from "./auth-buttons";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = { title: "Your takes · Take Studio" };
+
+/** Library page size (AC-1); the same as GET /api/takes. */
+const PAGE_SIZE = 24;
 
 /** Signed out landing placeholder: name, one line, sign in. The real landing page is feature 15. */
 function Landing() {
@@ -28,18 +38,41 @@ function Landing() {
   );
 }
 
-/** Home: the take list will live here (slice 1). Until then, the signed in empty state. */
+/** The first page of the creator's takes. Throws to the error boundary if it can't load. */
+async function Library({ creatorId }: { readonly creatorId: string }) {
+  const page = await listForCreator(await getDb(), creatorId, { limit: PAGE_SIZE });
+  if (!page.ok) throw new Error("take list failed");
+  const now = new Date();
+  return (
+    <TakeLibrary
+      initial={{
+        takes: page.data.rows.map((row) => cardView(row, now)),
+        nextCursor: page.data.nextCursor,
+      }}
+      thumbs={{}}
+      nowIso={now.toISOString()}
+    />
+  );
+}
+
+/** Home: the library when signed in (AC-1): upload area on top, takes below. */
 export default async function Home() {
-  const auth = await getAuth();
-  const session = await auth.api.getSession({ headers: await headers() });
+  const session = await getSession(await headers());
   if (!session) return <Landing />;
 
   return (
     <AppShell user={{ name: session.user.name, email: session.user.email }}>
-      <h1 className="text-h1 font-semibold">Your takes</h1>
-      <div className="mt-8 flex flex-col items-center gap-3 rounded-md bg-surface px-6 py-12 text-center shadow-card">
-        <Icon icon={Film} size="empty" className="text-text-muted" />
-        <p className="max-w-prose">No takes yet. Uploading arrives with the core take loop.</p>
+      <div className="flex flex-col gap-8">
+        <h1 className="text-h1 font-semibold">Your takes</h1>
+        <UploadArea />
+        <section aria-labelledby="takes-heading" className="flex flex-col gap-4">
+          <h2 id="takes-heading" className="sr-only">
+            Takes
+          </h2>
+          <Suspense fallback={<LibrarySkeleton />}>
+            <Library creatorId={session.user.id} />
+          </Suspense>
+        </section>
       </div>
     </AppShell>
   );
