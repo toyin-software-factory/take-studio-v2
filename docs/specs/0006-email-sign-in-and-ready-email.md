@@ -42,7 +42,7 @@ Better Auth already runs sign in (spec 0001) and has a magic link plugin, so no 
 
 ## Feature design
 
-**Data model** (additive migration): `user.take_emails` boolean, default true. Rate limit rows use Better Auth's database rate limit storage. `processing_job.notified_at` timestamp (null until the email is sent), so a job emails at most once.
+**Data model** (additive migration): `user.take_emails` boolean, default true. Rate limit rows: Better Auth's database rate limit table (per IP and path) plus a small table of our own for the per email limit (email hash, window start, count), since Better Auth's limiter is per IP and path only; both additive. `processing_job.notified_at` timestamp (null until the email is sent), so a job emails at most once.
 
 **Sign in**: Better Auth `magicLink` plugin with `expiresIn` 15 minutes, `sendMagicLink` calling Resend; `accountLinking` enabled with Google as a trusted provider; rate limit storage `database` with the AC-4 rules on the magic link endpoint. Sign in page per `design.md`: Google button, divider, email field, primary "Email me a sign in link"; states idle, sending, sent, error, rate limited.
 

@@ -25,7 +25,7 @@ pnpm db:generate              # new migration after a schema change (commit it)
 
 Production deploys run only from CI on merge to main (migrate, then Trigger.dev, then Worker). Never deploy by hand with `.env*` files present.
 
-The Worker deploys through `scripts/deploy-worker.sh` (build the final bundle, add debug IDs, upload its source map, then `wrangler deploy --no-bundle`). Never run `wrangler deploy <file>`: it ignores `wrangler.jsonc` and drops the bindings. The Worker bundle holds many Sentry debug IDs and the SDK keeps the last one, so `src/lib/sentry-debug-id.ts` adds ours last; the Worker runs with Sentry Dedupe off (`workerSentryOptions`) so every route error counts. Every Sentry event carries a `service` tag (`web`, `browser`, `jobs`, set in `src/lib/sentry-options.ts`); search and alert by `service`, because Sentry replaces the `runtime` tag on job events with the Node runtime.
+Deploy the Worker only through `scripts/deploy-worker.sh`, never `wrangler deploy <file>` (it drops the bindings). The Sentry source map chain and the OpenNext patch are in [scripts/AGENTS.md](scripts/AGENTS.md).
 
 The `pnpm db:*` scripts (via `drizzle.config.ts`) refuse to connect to any non localhost database outside CI unless `MIGRATE_TARGET=prod` is set (`scripts/db-guard.ts`); passing `--url` straight to drizzle-kit skips the guard, so don't; sandboxes carry the production `DATABASE_URL_DIRECT`, so for local work prefix `DATABASE_URL_DIRECT=postgres://postgres:postgres@localhost:5432/take_studio`.
 
@@ -67,6 +67,15 @@ MCP servers: Neon, Cloudflare, Trigger.dev (recommended, not connected yet)
 
 <!-- Nested AGENTS.md files are listed here as they are created -->
 
+- [src/app/AGENTS.md](src/app/AGENTS.md): routes and pages: force dynamic, signed in and out rendering, error pages, titles
+- [src/lib/AGENTS.md](src/lib/AGENTS.md): shared rules: what is pure, add only registries, units, usage hash
+- [src/trigger/AGENTS.md](src/trigger/AGENTS.md): jobs: what each task owns, ffmpeg pin, retries, failure codes, import boundary
+- [src/db/AGENTS.md](src/db/AGENTS.md): data layer: Result, transitions, transactions, clients, test database, migrations
+- [src/server/AGENTS.md](src/server/AGENTS.md): creator scoped functions, route pattern, Origin and ownership checks, sessions, retention
+- [src/server/uploads/AGENTS.md](src/server/uploads/AGENTS.md): multipart upload and R2 rules
+- [src/components/AGENTS.md](src/components/AGENTS.md): tokens, focus, 44 px targets, Stage, the /design gallery
 - [src/components/takes/AGENTS.md](src/components/takes/AGENTS.md): library and take pages, the upload client's browser side, polling and display rules
+- [tests/AGENTS.md](tests/AGENTS.md): which command runs which tests and what each needs
+- [scripts/AGENTS.md](scripts/AGENTS.md): deploy, Sentry source maps, the OpenNext patch, helper scripts
 
 _Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._

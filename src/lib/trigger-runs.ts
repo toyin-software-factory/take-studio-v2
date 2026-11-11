@@ -18,12 +18,24 @@ export function triggerForJob(taskId: string) {
 }
 
 /**
- * Triggers the `probe` task for an uploaded take, with a global idempotency key
- * `probe-{takeId}`, so repeated upload completions never probe twice. Payload: IDs only.
+ * The global idempotency key of a probe dispatch: `probe-{takeId}` for the first (upload
+ * completion), `probe-{takeId}-{n}` for the cleanup's n-th re-dispatch. Keys are global, so a
+ * re-dispatch needs its own key or Trigger.dev would hand back the first run.
  */
-export async function triggerProbe(takeId: string): Promise<void> {
-  const idempotencyKey = await idempotencyKeys.create(`probe-${takeId}`, { scope: "global" });
-  await tasks.trigger("probe", { takeId }, { idempotencyKey });
+export function probeKey(takeId: string, redispatch = 0): string {
+  return redispatch === 0 ? `probe-${takeId}` : `probe-${takeId}-${redispatch}`;
+}
+
+/**
+ * Triggers the `probe` task for an uploaded take with the global idempotency key from
+ * `probeKey`, so repeated upload completions never probe twice. Payload: IDs only.
+ */
+export async function triggerProbe(takeId: string, redispatch = 0): Promise<void> {
+  const idempotencyKey = await idempotencyKeys.create(probeKey(takeId, redispatch), {
+    scope: "global",
+  });
+  // `redispatch` lets the probe's onFailure tell the newest dispatch from an older one.
+  await tasks.trigger("probe", { takeId, redispatch }, { idempotencyKey });
 }
 
 /** Starts a queue drain now; failures are fine (the cleanup schedule drains every 15 minutes). */

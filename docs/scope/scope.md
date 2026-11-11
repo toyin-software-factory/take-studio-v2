@@ -90,14 +90,14 @@ Spec [0003](../specs/0003-design-system.md) · rules in [design.md](../../design
 The walking skeleton: sign in, upload a take, pauses are trimmed automatically in the background, see progress, download the trimmed video. A plain list of your takes so you can find it again. No transcript, background or review yet.
 **Done when:** a signed in creator uploads an MP4 or MOV within the limits (10 min, 2 GB, 1080p), sees processing progress, and downloads a video with long pauses removed; uploads over the limits are refused with a clear message; a failed job shows an error and can be retried.
 - [x] Design it (spec): `/architect core take loop`
-- [ ] Build it: `/develop core take loop`
+- [x] Build it: `/develop core take loop`
    - [x] R2 helpers, CORS and upload routes, render timing spike (AC-3, AC-4, AC-12)
    - [x] Pinned ffmpeg and the probe task (AC-4)
    - [x] The process-take task: trim, render, edge cases (AC-5, AC-6, AC-7, AC-10)
    - [x] Take routes and media links; library and take pages (AC-1, AC-2, AC-8, AC-9, AC-11, AC-12, AC-13) (S1C-T04: take routes and media links, with the `thumb` kind; S1C-T05: library and take pages, upload client, browser e2e)
-   - [ ] End to end tests with fixtures (AC-2, AC-4, AC-6, AC-7, AC-11, AC-13) (API level half done: S1C-T07, `pnpm test:pipeline`; browser half and axe come with the pages)
+   - [x] End to end tests with fixtures (AC-2, AC-4, AC-6, AC-7, AC-11, AC-13) (API level: S1C-T07, `pnpm test:pipeline`; browser level and axe: `tests/takes.spec.ts`)
 - [ ] Verify it: `/check verify core take loop`
-- [ ] Test it: `/test core take loop`
+- [x] Test it: `/test core take loop`
 Spec [0004](../specs/0004-core-take-loop/index.md) · code in `src/server/uploads/`, `src/app/api/uploads/`, `src/server/takes/`, `src/server/media/`, `src/app/api/takes/`, `src/lib/r2*.ts`, `src/lib/take-media.ts`, `src/trigger/`
 
 ### 6. Error monitoring · in-progress
@@ -110,7 +110,7 @@ Catch errors in the app and in processing jobs so failed takes are seen before c
    - [ ] Job failure reporting with source maps (AC-3, AC-5, AC-6) (S1C-T06: built; production check waits for the Sentry keys)
    - [ ] Alert rules and a production check (AC-7)
 - [ ] Verify it: `/check verify error monitoring`
-- [ ] Test it: `/test error monitoring`
+- [x] Test it: `/test error monitoring`
 Spec [0005](../specs/0005-error-monitoring.md) · code in `src/lib/sentry-*.ts`, `src/worker.ts`, `src/instrumentation*.ts`, `src/trigger/init.ts`, `src/trigger/sentry-check.ts`
 
 ### 18. Email sign in and take ready email · in-progress
