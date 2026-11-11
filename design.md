@@ -42,6 +42,7 @@ Dark stage (player, timeline, processing preview):
 - `--stage-accent`: `#669BBC` (Steel Blue), kept segments, selection (4.6:1 on stage-bg, 3.2:1 on raised); never text on raised
 - `--stage-focus`: `#FDF0D5`, 2 px ring with 2 px offset; the `Stage` container sets it so every component inside inherits it
 - `--stage-hover`: `#FDF0D5` at 10% over the current stage surface
+- Primary buttons on the stage: Steel Blue fill with a Deep Space Blue label (4.6:1); hover and pressed mix the Steel Blue towards cream (`color-mix`, which only raises the label's contrast); disabled controls on the stage use cream tints (exempt from contrast, still labelled)
 - Playhead: 3 px `--stage-text` line with a 1 px `--stage-bg` outline and a round handle (so it shows over kept segments)
 - Removed cuts: Brick Red fill with diagonal stripes and a 1 px `--stage-text` outline, never colour alone
 - Letterbox around videos that aren't 16:9: `--stage-bg`
