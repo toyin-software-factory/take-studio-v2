@@ -123,7 +123,10 @@ export async function start(
         )
         .returning();
 
-      const moved = await transitionTake(tx, current.id, current.status, "processing");
+      // A retry clears the previous failure code.
+      const moved = await transitionTake(tx, current.id, current.status, "processing", {
+        failureCode: null,
+      });
       if (!moved.ok) return err(moved.error);
 
       return ok({ ...job, steps: [...steps].sort((a, b) => a.position - b.position) });
