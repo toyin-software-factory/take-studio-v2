@@ -15,7 +15,7 @@ permissions:
 jobs:
   check:
     name: Lint, typecheck, test, build, e2e
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
       postgres:
@@ -32,6 +32,7 @@ jobs:
           --health-timeout 3s
           --health-retries 20
     env:
+      PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.65.0-noble
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/take_studio
       DATABASE_URL_DIRECT: postgres://postgres:postgres@localhost:5432/take_studio
       CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: postgres://postgres:postgres@localhost:5432/take_studio
@@ -94,23 +95,31 @@ jobs:
       - name: No source maps in public assets
         run: pnpm run deploy:check-maps
 
-      - name: Cache Playwright browsers
-        id: playwright-cache
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-
-      - name: Install Playwright browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: pnpm exec playwright install --with-deps chromium
-
-      - name: Install Playwright system deps
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: pnpm exec playwright install-deps chromium
+      # No apt at run time: the e2e step runs in the official Playwright image (browsers and
+      # system libraries baked in). The tag must equal @playwright/test in package.json; a unit
+      # test (src/ci-config.test.ts) fails the build if they drift or if apt creeps back in.
+      - name: Pull the Playwright image
+        timeout-minutes: 5
+        run: docker pull "$PLAYWRIGHT_IMAGE"
 
       - name: E2E smoke
-        run: pnpm test:e2e
+        timeout-minutes: 10
+        # Host networking keeps the Postgres service on localhost (the seed guard needs that)
+        # and the preview Worker on 127.0.0.1:8787. Runs as the runner's user so no root owned
+        # files are left in the workspace. The built Worker and node_modules come from the
+        # steps above; the image only supplies Chromium and its libraries. The image ships a
+        # newer Node and no pnpm, so the runner's own Node (the version in .nvmrc, from
+        # setup-node) and pnpm are mounted read only and put first on PATH: the tests and the
+        # preview run on the same Node as everything else (no download, no apt).
+        run: |
+          pnpm_dir="$(dirname "$PNPM_HOME")"
+          node_dir="$(dirname "$(dirname "$(command -v node)")")"
+          docker run --rm --network host --ipc=host --init \
+            --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -e CI -e PNPM_HOME -e NODE_DIR="$node_dir" -e DATABASE_URL -e DATABASE_URL_DIRECT \
+            -e CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE -e NEXT_TELEMETRY_DISABLED \
+            -v "$GITHUB_WORKSPACE":/work -v "$pnpm_dir":"$pnpm_dir":ro -v "$node_dir":"$node_dir":ro -w /work \
+            "$PLAYWRIGHT_IMAGE" bash -c 'export PATH="$NODE_DIR/bin:$PNPM_HOME:$PATH" && node --version && pnpm exec playwright test'
 
       - uses: actions/upload-artifact@v4
         if: failure()
