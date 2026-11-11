@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { useRouter } from "next/navigation";
 import { useNow } from "./use-now";
 import { Film } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
@@ -38,7 +37,6 @@ export function TakeLibrary({
   const [moreError, setMoreError] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
   const now = useNow(nowIso);
-  const router = useRouter();
 
   const inFlight = takes.filter((t) => isInFlight(t.status)).map((t) => t.id);
   const pollKey = inFlight.join(",");
@@ -57,16 +55,19 @@ export function TakeLibrary({
       return "stop";
     }
     const gone = new Set(ids.filter((_, i) => replies[i]!.status === 404));
+    // A 200 whose body is not a take is an error too, so polling backs off instead of asking
+    // for the same bad answer every 5 s.
+    const parsed = replies.map((r) =>
+      r.status === 200 ? takeDetailSchema.safeParse(r.data) : null,
+    );
     const fresh = new Map(
-      replies.flatMap((r) => {
-        const parsed = takeDetailSchema.safeParse(r.data);
-        return r.status === 200 && parsed.success
-          ? [[parsed.data.take.id, cardFromDetail(parsed.data)] as const]
-          : [];
-      }),
+      parsed.flatMap((p) =>
+        p?.success ? [[p.data.take.id, cardFromDetail(p.data)] as const] : [],
+      ),
     );
     setTakes((list) => list.filter((t) => !gone.has(t.id)).map((t) => fresh.get(t.id) ?? t));
-    return replies.every((r) => r.status === 200 || r.status === 404) ? "continue" : "error";
+    const allGood = replies.every((r, i) => r.status === 404 || parsed[i]?.success === true);
+    return allGood ? "continue" : "error";
   }, [pollKey]);
   usePoll(refresh, POLL.cardMs, pollKey !== "");
 
@@ -84,6 +85,10 @@ export function TakeLibrary({
     setMoreError(false);
     try {
       const reply = await callApi(`/api/takes?cursor=${encodeURIComponent(cursor)}`, "GET");
+      if (reply.status === 401) {
+        setSessionEnded(true);
+        return;
+      }
       const page = takeListSchema.safeParse(reply.data);
       if (reply.status !== 200 || !page.success) throw new Error("list failed");
       setTakes((list) => [
@@ -121,7 +126,9 @@ export function TakeLibrary({
         <Alert variant="warning" title="Your session ended">
           Sign in again to see the latest on your takes.
           <div className="pt-2">
-            <Button size="sm" onClick={() => router.refresh()}>
+            {/* A full reload, not router.refresh(): it drops this page's state, so another creator
+                who signed in meanwhile never sees these cards. */}
+            <Button size="sm" onClick={() => window.location.reload()}>
               Sign in
             </Button>
           </div>
