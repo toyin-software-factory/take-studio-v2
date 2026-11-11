@@ -3,7 +3,7 @@ import { runTx } from "../tx";
 import type { TranscriptWord } from "@/lib/transcript-rules";
 import { ACTIVE_JOB_STATUSES } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
-import { processingJob, transcript } from "../schema";
+import { processingJob, take, transcript } from "../schema";
 import { finishInTx, updateStep } from "./jobs";
 import { type Executor, type Transcript, pgErrorCode } from "../types";
 
@@ -75,6 +75,20 @@ export async function saveTranscriptAndFinish(
   input: TranscriptInput,
 ): Promise<Result<{ readonly saved: boolean }, "job_final" | "failed">> {
   return runTx(db, async (tx) => {
+    // Lock order is take, then job, like take deletion (which locks the take, then deletes its
+    // jobs), so the two never wait on each other.
+    const [owner] = await tx
+      .select({ takeId: processingJob.takeId })
+      .from(processingJob)
+      .where(eq(processingJob.id, jobId));
+    if (!owner) return err("job_final");
+    const [lockedTake] = await tx
+      .select({ id: take.id })
+      .from(take)
+      .where(eq(take.id, owner.takeId))
+      .for("update");
+    // Deleted meanwhile: the job went with it, so there is nothing to finish.
+    if (!lockedTake) return ok({ saved: false });
     const [job] = await tx
       .select({ status: processingJob.status })
       .from(processingJob)

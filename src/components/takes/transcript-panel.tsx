@@ -29,6 +29,7 @@ function clock(ms: number): string {
 export function TranscriptPanel({ takeId }: { readonly takeId: string }) {
   const [view, setView] = useState<TranscriptViewData | null>(null);
   const [stopped, setStopped] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   // `process-take` marks the video Ready a moment before it creates the transcript job, so a
   // first read can say `none`: keep checking for a short while before believing it.
   const noneChecks = useRef(0);
@@ -41,7 +42,11 @@ export function TranscriptPanel({ takeId }: { readonly takeId: string }) {
       setStopped(true);
       return "stop";
     }
-    if (reply?.status !== 200 || !parsed.success) return "error";
+    if (reply?.status !== 200 || !parsed.success) {
+      setLoadFailed(true);
+      return "error";
+    }
+    setLoadFailed(false);
     setView(parsed.data);
     if (parsed.data.state === "making") return "continue";
     if (parsed.data.state === "none") {
@@ -64,7 +69,11 @@ export function TranscriptPanel({ takeId }: { readonly takeId: string }) {
     },
   );
 
-  if (!view) return null;
+  if (!view) {
+    return loadFailed ? (
+      <p role="alert">We couldn&rsquo;t load the transcript. We&rsquo;ll keep trying.</p>
+    ) : null;
+  }
   return (
     <section aria-labelledby="transcript-heading" className="flex flex-col gap-3">
       <h2 id="transcript-heading" className="text-h3 font-semibold">
