@@ -8,6 +8,7 @@ import { Icon } from "@/components/ui/icon";
 import { type TakeDetail, takeDetailSchema } from "@/lib/take-api";
 import { POLL, isInFlight, tabTitle } from "@/lib/take-display";
 import { callApi } from "./browser-io";
+import { createPlayerBridge } from "./player-bridge";
 import { EmailSwitch } from "./email-switch";
 import { TakeHeader } from "./take-header";
 import { TakeResult } from "./take-result";
@@ -38,6 +39,8 @@ export function TakeView({
   const [detail, setDetail] = useState<TakeDetail | null>(null);
   const [stop, setStop] = useState<Stop>(null);
   const [failures, setFailures] = useState(0);
+  // What the player and the transcript panel share (time, seek, caption track).
+  const [bridge] = useState(createPlayerBridge);
 
   const load = useCallback(async (): Promise<PollResult> => {
     const reply = await callApi(`/api/takes/${takeId}`, "GET").catch(() => null);
@@ -110,11 +113,15 @@ export function TakeView({
             take={detail.take}
             onRenamed={(t) => setDetail((d) => (d ? { ...d, take: t } : d))}
           />
-          <TakeStage detail={detail} onRetried={onRetried} />
-          <TakeResult detail={detail} />
-          {detail.take.status === "ready" || detail.take.status === "expired" ? (
-            <TranscriptPanel takeId={detail.take.id} />
-          ) : null}
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start">
+            <div className="flex min-w-0 flex-col gap-6">
+              <TakeStage detail={detail} bridge={bridge} onRetried={onRetried} />
+              <TakeResult detail={detail} />
+            </div>
+            {detail.take.status === "ready" || detail.take.status === "expired" ? (
+              <TranscriptPanel takeId={detail.take.id} bridge={bridge} />
+            ) : null}
+          </div>
           <EmailSwitch initial={takeEmails} />
         </>
       ) : stop === null ? (
