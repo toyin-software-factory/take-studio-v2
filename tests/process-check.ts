@@ -12,7 +12,7 @@ import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { configure } from "@trigger.dev/sdk";
-import { asc, eq, like } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { z } from "zod";
@@ -269,10 +269,18 @@ try {
   await r2.putObject(originalKey(takeId, "mp4"), full, "video/mp4");
   await report("retry after failure", takeId, await runJob(takeId));
 } finally {
-  await Promise.all(keys.map((k) => r2.deleteObject(k)));
-  const left = (await Promise.all(keys.map((k) => r2.headObject(k)))).filter(Boolean).length;
-  await db.delete(schema.user).where(like(schema.user.id, "process-check-%"));
+  // Best effort per key: one failed delete must not stop the rest of the cleanup.
+  const deleteFailures = (await Promise.allSettled(keys.map((k) => r2.deleteObject(k)))).filter(
+    (result) => result.status === "rejected",
+  ).length;
+  const left = (await Promise.all(keys.map((k) => r2.headObject(k).catch(() => null)))).filter(
+    Boolean,
+  ).length;
+  // Only this run's user (equality, never a prefix match that could hit another run's rows).
+  await db.delete(schema.user).where(eq(schema.user.id, userId));
   rmSync(work, { recursive: true, force: true });
-  out({ cleanup: { r2KeysDeleted: keys.length, stillThere: left } });
+  out({
+    cleanup: { r2KeysDeleted: keys.length - deleteFailures, deleteFailures, stillThere: left },
+  });
   await client.end();
 }

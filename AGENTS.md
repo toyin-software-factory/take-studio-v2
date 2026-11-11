@@ -29,6 +29,8 @@ The Worker deploys through `scripts/deploy-worker.sh` (build the final bundle, a
 
 The `pnpm db:*` scripts (via `drizzle.config.ts`) refuse to connect to any non localhost database outside CI unless `MIGRATE_TARGET=prod` is set (`scripts/db-guard.ts`); passing `--url` straight to drizzle-kit skips the guard, so don't; sandboxes carry the production `DATABASE_URL_DIRECT`, so for local work prefix `DATABASE_URL_DIRECT=postgres://postgres:postgres@localhost:5432/take_studio`.
 
+`pnpm test:pipeline` (the API level end to end check, needs R2 and Trigger.dev keys, see README) can leave `next dev` and `trigger dev` running after a failed run, and the local Postgres then answers "too many clients". Stop the leftovers (`pgrep -f 'next[ ]dev'` and `pgrep -f 'trigger[.]dev/dist/esm/index[.]js dev'`, then kill) and run `docker compose restart postgres` before trying again.
+
 ## Specs
 
 Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md` or `docs/specs/NNNN-title/index.md`. Scope lives in `docs/scope/scope.md`.
@@ -64,5 +66,7 @@ MCP servers: Neon, Cloudflare, Trigger.dev (recommended, not connected yet)
 ## Context files
 
 <!-- Nested AGENTS.md files are listed here as they are created -->
+
+- [src/components/takes/AGENTS.md](src/components/takes/AGENTS.md): library and take pages, the upload client's browser side, polling and display rules
 
 _Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._

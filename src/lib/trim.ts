@@ -217,13 +217,19 @@ export function throttledProgress(
   let lastWritten = -1;
   let lastAt = -Infinity;
   let pending: number | null = null;
-  // Progress is best effort: a failed write must never fail the job or leave a rejection behind.
-  const safeWrite = async (percent: number): Promise<void> => {
-    try {
-      await write(percent);
-    } catch {
-      // The next report or the final step write will carry the state.
-    }
+  // Progress is best effort: a failed write must never fail the job or leave a rejection
+  // behind. Writes run one after another, so an older value can never overwrite a newer one,
+  // and `flush` waits for every write still in flight.
+  let chain: Promise<void> = Promise.resolve();
+  const safeWrite = (percent: number): Promise<void> => {
+    chain = chain.then(async () => {
+      try {
+        await write(percent);
+      } catch {
+        // The next report or the final step write will carry the state.
+      }
+    });
+    return chain;
   };
   return {
     async report(percent: number): Promise<void> {
@@ -241,6 +247,7 @@ export function throttledProgress(
         pending = null;
         await safeWrite(lastWritten);
       }
+      await chain;
     },
   };
 }

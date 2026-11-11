@@ -1,0 +1,80 @@
+import { randomUUID } from "node:crypto";
+import postgres from "postgres";
+import { localDatabaseUrl } from "./session";
+
+/**
+ * Test only: seeds takes in each state for a signed in test user, straight into the local or
+ * CI Postgres (never a real database; same guard as `session.ts`). Rows go when the user is
+ * deleted (foreign keys cascade).
+ */
+
+type StepSeed = {
+  readonly name: "trim" | "render";
+  readonly status: string;
+  readonly progress?: number;
+};
+
+export type TakeSeed = {
+  readonly title: string;
+  readonly status: "uploading" | "uploaded" | "processing" | "ready" | "failed" | "expired";
+  readonly durationMs?: number | null;
+  readonly failureCode?: string | null;
+  /** Days until the video expires; negative for the past. Null before upload completes. */
+  readonly expiresInDays?: number | null;
+  /** A job with these steps (its status follows the take). */
+  readonly steps?: readonly StepSeed[];
+  /** A succeeded latest render removing these ranges. */
+  readonly removedRanges?: readonly { readonly startMs: number; readonly endMs: number }[];
+  /** Minutes ago the take was created, for ordering. */
+  readonly minutesAgo?: number;
+};
+
+const JOB_STATUS: Readonly<Record<TakeSeed["status"], string>> = {
+  uploading: "queued",
+  uploaded: "queued",
+  processing: "running",
+  ready: "succeeded",
+  failed: "failed",
+  expired: "succeeded",
+};
+
+export async function seedTakes(creatorId: string, seeds: readonly TakeSeed[]): Promise<string[]> {
+  const sql = postgres(localDatabaseUrl(), { max: 1 });
+  const ids: string[] = [];
+  try {
+    for (const seed of seeds) {
+      const id = randomUUID();
+      ids.push(id);
+      const now = Date.now();
+      const created = new Date(now - (seed.minutesAgo ?? 0) * 60_000);
+      const expires =
+        seed.expiresInDays === null
+          ? null
+          : new Date(now + (seed.expiresInDays ?? 30) * 24 * 60 * 60 * 1000);
+      await sql`insert into take (id, creator_id, title, status, original_key, original_bytes,
+                  container, duration_ms, width, height, video_expires_at, failure_code,
+                  created_at, updated_at)
+                values (${id}, ${creatorId}, ${seed.title}, ${seed.status},
+                  ${`originals/${id}/source.mp4`}, 30754, 'mp4', ${seed.durationMs ?? null},
+                  320, 180, ${expires}, ${seed.failureCode ?? null}, ${created}, ${created})`;
+      if (!seed.steps) continue;
+      const jobId = randomUUID();
+      await sql`insert into processing_job (id, take_id, kind, status, seconds_charged, failure_code, created_at, updated_at)
+                values (${jobId}, ${id}, 'initial', ${JOB_STATUS[seed.status]}, 3,
+                  ${seed.status === "failed" ? (seed.failureCode ?? null) : null}, ${created}, ${created})`;
+      for (const [position, step] of seed.steps.entries()) {
+        await sql`insert into job_step (id, job_id, name, position, status, progress)
+                  values (${randomUUID()}, ${jobId}, ${step.name}, ${position}, ${step.status}, ${step.progress ?? 0})`;
+      }
+      if (seed.removedRanges) {
+        await sql`insert into render (id, take_id, job_id, status, video_key, duration_ms, removed_ranges, is_latest)
+                  values (${randomUUID()}, ${id}, ${jobId}, 'succeeded', ${`renders/${id}/r.mp4`},
+                    ${(seed.durationMs ?? 0) - seed.removedRanges.reduce((s, r) => s + r.endMs - r.startMs, 0)},
+                    ${sql.json(seed.removedRanges as unknown as postgres.JSONValue)}, true)`;
+      }
+    }
+  } finally {
+    await sql.end();
+  }
+  return ids;
+}

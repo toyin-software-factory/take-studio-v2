@@ -30,7 +30,8 @@
     "deploy:check-maps": "if find .open-next/assets -name '*.map' | grep -q .; then echo 'Refusing to deploy: source maps in .open-next/assets would be served publicly (spec 0005, AC-6).' >&2; exit 1; fi",
     "deploy:trigger": "trigger deploy",
     "prepare": "[ -n \"$CI\" ] || { h=$(git rev-parse --git-path hooks/pre-commit 2>/dev/null); if [ -f \"$h\" ] && ! grep -q SIMPLE_GIT_HOOKS \"$h\"; then echo \"prepare: kept your own pre-commit hook at $h, so the lint-staged hook was not installed (see README).\" >&2; else simple-git-hooks; fi; }",
-    "r2:cors": "tsx scripts/r2-cors.ts"
+    "r2:cors": "tsx scripts/r2-cors.ts",
+    "test:pipeline": "tsx tests/pipeline/run.ts"
   },
   "dependencies": {
     "@opennextjs/cloudflare": "1.20.16",

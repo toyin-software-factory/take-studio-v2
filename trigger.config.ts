@@ -1,15 +1,16 @@
 import { defineConfig } from "@trigger.dev/sdk";
 import { esbuildPlugin } from "@trigger.dev/build/extensions";
 import { type ffmpeg, syncEnvVars } from "@trigger.dev/build/extensions/core";
-import { sentryEsbuildPlugin } from "@sentry/esbuild-plugin";
 
 // Sentry (spec 0005): source maps are uploaded on deploy only when CI has a token
 // (deploy.yml), then deleted from the image; the deploy also tells the jobs their Sentry
-// environment and release (the git commit SHA).
+// environment and release (the git commit SHA). The plugin is loaded only in that branch:
+// importing it at the top breaks the `trigger dev` config build on machines without the token.
 const sentryUpload = process.env.SENTRY_AUTH_TOKEN
   ? [
       esbuildPlugin(
-        sentryEsbuildPlugin({
+        // eslint-disable-next-line @typescript-eslint/no-require-imports -- lazy, see above
+        require("@sentry/esbuild-plugin").sentryEsbuildPlugin({
           org: process.env.SENTRY_ORG,
           project: process.env.SENTRY_PROJECT,
           authToken: process.env.SENTRY_AUTH_TOKEN,
