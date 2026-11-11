@@ -45,6 +45,7 @@ Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md` or `docs/specs/NNNN-
 ## Agent skills
 
 Spec 0001 chose OpenNext: where a Cloudflare skill suggests vinext, OpenNext wins.
+
 - [better-auth-best-practices](.claude/skills/better-auth-best-practices/): `better-auth/skills`, Better Auth setup, adapters, sessions
 - [better-auth-security-best-practices](.claude/skills/better-auth-security-best-practices/): `better-auth/skills`, rate limits, secrets, CSRF, trusted origins
 - [create-auth](.claude/skills/create-auth/): `better-auth/skills`, adding auth flows and providers

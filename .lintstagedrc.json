@@ -1,0 +1,4 @@
+{
+  "*.{js,mjs,cjs,jsx,ts,tsx}": ["eslint --no-warn-ignored", "prettier --write --ignore-unknown"],
+  "!(*.{js,mjs,cjs,jsx,ts,tsx})": "prettier --write --ignore-unknown"
+}
