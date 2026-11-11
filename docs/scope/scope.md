@@ -93,11 +93,11 @@ The walking skeleton: sign in, upload a take, pauses are trimmed automatically i
    - [x] R2 helpers, CORS and upload routes, render timing spike (AC-3, AC-4, AC-12)
    - [x] Pinned ffmpeg and the probe task (AC-4)
    - [x] The process-take task: trim, render, edge cases (AC-5, AC-6, AC-7, AC-10)
-   - [ ] Take routes and media links; library and take pages (AC-1, AC-2, AC-8, AC-9, AC-11, AC-12, AC-13)
+   - [ ] Take routes and media links; library and take pages (AC-1, AC-2, AC-8, AC-9, AC-11, AC-12, AC-13) (S1C-T04: take routes and media links built and tested; pages are S1C-T05)
    - [ ] End to end tests with fixtures (AC-2, AC-4, AC-6, AC-7, AC-11, AC-13)
 - [ ] Verify it: `/check verify core take loop`
 - [ ] Test it: `/test core take loop`
-Spec [0004](../specs/0004-core-take-loop/index.md) · code in `src/server/uploads/`, `src/app/api/uploads/`, `src/lib/r2*.ts`, `src/trigger/`
+Spec [0004](../specs/0004-core-take-loop/index.md) · code in `src/server/uploads/`, `src/app/api/uploads/`, `src/server/takes/`, `src/server/media/`, `src/app/api/takes/`, `src/lib/r2*.ts`, `src/lib/take-media.ts`, `src/trigger/`
 
 ### 6. Error monitoring · in-progress
 Catch errors in the app and in processing jobs so failed takes are seen before creators report them.

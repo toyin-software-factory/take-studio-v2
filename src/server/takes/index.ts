@@ -138,6 +138,8 @@ export type TakeListRow = {
   readonly durationMs: number | null;
   readonly videoExpiresAt: Date | null;
   readonly createdAt: Date;
+  /** Why a failed take failed (AC-10 card message and "Try again"); null otherwise. */
+  readonly failureCode: string | null;
   readonly latestRenderId: string | null;
   readonly latestRenderDurationMs: number | null;
 };
@@ -196,6 +198,7 @@ export async function listForCreator(
       durationMs: take.durationMs,
       videoExpiresAt: take.videoExpiresAt,
       createdAt: take.createdAt,
+      failureCode: take.failureCode,
       createdAtText: sql<string>`${take.createdAt}::text`,
       latestRenderId: render.id,
       latestRenderDurationMs: render.durationMs,
@@ -218,6 +221,7 @@ export async function listForCreator(
       durationMs: row.durationMs,
       videoExpiresAt: row.videoExpiresAt,
       createdAt: row.createdAt,
+      failureCode: row.failureCode,
       latestRenderId: row.latestRenderId,
       latestRenderDurationMs: row.latestRenderDurationMs,
     })),
