@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { processingJob, render, storageDeletion, take, user } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
+import { thumbnailKey } from "@/lib/take-rules";
 import { finish, markRunning, start } from "../jobs";
 import { completeLatest, create as createRender } from "../renders";
 import type { AfterDelete } from "../takes";
@@ -53,7 +54,13 @@ describe("account deletion (AC-17)", () => {
     await db.delete(user).where(eq(user.id, creator.id));
 
     expect([...deleted.queuedKeys].sort()).toEqual(
-      [one.take.originalKey, one.renderKey, two.originalKey].sort(),
+      [
+        one.take.originalKey,
+        one.renderKey,
+        two.originalKey,
+        thumbnailKey(one.take.id),
+        thumbnailKey(two.id),
+      ].sort(),
     );
     expect(calls).toEqual({ cancelled: ["run_account"], drains: 1 });
 
@@ -71,7 +78,7 @@ describe("account deletion (AC-17)", () => {
       .select()
       .from(storageDeletion)
       .where(inArray(storageDeletion.objectKey, [...deleted.queuedKeys]));
-    expect(queued).toHaveLength(3);
+    expect(queued).toHaveLength(5);
 
     // The other creator's take survives.
     expect(await db.select({ id: take.id }).from(take).where(eq(take.id, keep.id))).toHaveLength(1);

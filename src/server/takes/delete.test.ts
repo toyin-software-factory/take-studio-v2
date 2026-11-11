@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { cut, jobStep, processingJob, render, storageDeletion, take } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
+import { thumbnailKey } from "@/lib/take-rules";
 import { addManual } from "../cuts";
 import { finish, markRunning, start } from "../jobs";
 import { completeLatest, create as createRender } from "../renders";
@@ -57,7 +58,7 @@ describe("deleteTake (AC-17)", () => {
     const result = await deleteTake(db, creator.id, t.id, after);
 
     expect(result.ok && [...result.data.queuedKeys].sort()).toEqual(
-      [t.originalKey, renderKey].sort(),
+      [t.originalKey, renderKey, thumbnailKey(t.id)].sort(),
     );
     expect(result.ok && result.data.runIds).toEqual([`run_${t.id}`]);
     expect(calls).toEqual({ cancelled: [`run_${t.id}`], drains: 1 });
@@ -85,7 +86,7 @@ describe("deleteTake (AC-17)", () => {
 
     const result = await deleteTake(db, creator.id, t.id, spyAfter().after);
     expect(result.ok && [...result.data.queuedKeys].sort()).toEqual(
-      [t.originalKey, `renders/${t.id}/${pending.data.id}.mp4`].sort(),
+      [t.originalKey, `renders/${t.id}/${pending.data.id}.mp4`, thumbnailKey(t.id)].sort(),
     );
   });
 

@@ -45,15 +45,35 @@ export const probeTask = task({
 
       if (found.status === "uploading") {
         const url = await r2.presignGet(found.originalKey, { expiresSeconds: 10 * 60 });
-        let facts: Awaited<ReturnType<typeof probeUrl>>;
+        let facts: Awaited<ReturnType<typeof probeUrl>> | null = null;
         try {
           facts = await probeUrl(url);
         } catch (error) {
-          // A timeout or a flaky read must not mark good media as bad: retry. Only when
-          // ffprobe keeps failing on the last attempt, with the object there, is it corrupt.
-          const lastAttempt = ctx.attempt.number >= PROBE_ATTEMPTS;
+          // A timeout or a flaky read must not mark good media as bad. Timeouts retry via
+          // Trigger.dev. A read failure is tried once more here (dev has no run retries);
+          // only a repeat failure on the last attempt (or in dev), with the object there,
+          // is corrupt.
           const readFailure = error instanceof MediaToolError && !error.timedOut;
-          if (readFailure && lastAttempt && (await r2.headObject(found.originalKey))) {
+          const finalAttempt =
+            ctx.attempt.number >= PROBE_ATTEMPTS || ctx.environment.type === "DEVELOPMENT";
+          let second: unknown = error;
+          if (readFailure && finalAttempt) {
+            try {
+              facts = await probeUrl(url);
+              second = null;
+            } catch (again) {
+              second = again;
+            }
+          }
+          if (second === null) {
+            // The second read worked: use it.
+          } else if (
+            readFailure &&
+            finalAttempt &&
+            second instanceof MediaToolError &&
+            !second.timedOut &&
+            (await r2.headObject(found.originalKey))
+          ) {
             facts = null;
           } else {
             throw error;
