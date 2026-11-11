@@ -75,13 +75,13 @@ Visual language, layout and base components (upload, progress, video player, tim
 **Done when:** `design.md` covers type, color, spacing and components with Mobbin references, and base components meet WCAG AA (keyboard, focus, contrast).
 - [x] Design it (spec): `/architect design system & UI foundation`
 - [ ] Build it: `/develop design system & UI foundation`
-   - [ ] Tailwind v4 + shadcn/ui setup, tokens and fonts (AC-1, AC-2, AC-8)
+   - [x] Tailwind v4 + shadcn/ui setup, tokens and fonts (AC-1, AC-2, AC-8) (FDS-T01; `/design` token gallery shell included)
    - [ ] Base components with every state (AC-3, AC-5, AC-6)
    - [ ] App shell and Stage container (AC-4, AC-6)
    - [ ] `/design` gallery with axe checks (AC-5, AC-7)
 - [ ] Verify it: `/check verify design system & UI foundation`
 - [ ] Test it: `/test design system & UI foundation`
-Spec [0003](../specs/0003-design-system.md) · rules in [design.md](../../design.md)
+Spec [0003](../specs/0003-design-system.md) · rules in [design.md](../../design.md) · code in `src/app/globals.css`, `src/app/design/`
 
 ## Slice 1: Core take loop
 
