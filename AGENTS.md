@@ -63,4 +63,6 @@ MCP servers: Neon, Cloudflare, Trigger.dev (recommended, not connected yet)
 
 <!-- Nested AGENTS.md files are listed here as they are created -->
 
+- [src/components/takes/AGENTS.md](src/components/takes/AGENTS.md): library and take pages, the upload client's browser side, polling and display rules
+
 _Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
