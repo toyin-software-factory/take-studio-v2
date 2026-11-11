@@ -1,3 +1,4 @@
+import vm from "node:vm";
 import { describe, expect, it } from "vitest";
 import { debugIdSnippet, withWinningDebugId } from "./sentry-debug-id";
 
@@ -22,10 +23,42 @@ describe("withWinningDebugId", () => {
     );
   });
 
-  it("registers the id under the SDK's keys", () => {
-    const snippet = debugIdSnippet(id);
-    expect(snippet).toContain(`_sentryDebugIds[(new e.Error).stack]="${id}"`);
-    expect(snippet).toContain(`_sentryDebugIdIdentifier="sentry-dbid-${id}"`);
+  it("registers the id under the SDK's name", () => {
+    expect(debugIdSnippet(id)).toContain(`e._sentryDebugIdIdentifier="sentry-dbid-${id}"`);
+  });
+
+  describe("running in a bundle (the production order)", () => {
+    /** The snippet the Sentry plugins put in every chunk, as esbuild prints it. */
+    const chunkSnippet = (x: string) =>
+      `"use strict";(function(){try{var e=globalThis,n=new e.Error().stack;n&&(e._sentryDebugIds=e._sentryDebugIds||{},e._sentryDebugIds[n]="${x}",e._sentryDebugIdIdentifier="sentry-dbid-${x}")}catch(e){}})();`;
+    const registered = (context: vm.Context) =>
+      vm.runInContext("Object.values(globalThis._sentryDebugIds)", context) as string[];
+
+    it("holds only our id when a chunk registered before and a lazy module registers after", () => {
+      const context = vm.createContext({});
+      vm.runInContext(chunkSnippet(other), context);
+      vm.runInContext(debugIdSnippet(id), context);
+      vm.runInContext(chunkSnippet("11111111-1111-4111-8111-111111111111"), context);
+      expect(registered(context)).toEqual([id]);
+    });
+
+    it("never throws into the bundle, even in strict code", () => {
+      const context = vm.createContext({});
+      vm.runInContext(debugIdSnippet(id), context);
+      expect(() =>
+        vm.runInContext(
+          '"use strict"; globalThis._sentryDebugIds = {}; globalThis._sentryDebugIds.x = "y"; delete globalThis._sentryDebugIds.x;',
+          context,
+        ),
+      ).not.toThrow();
+      expect(registered(context)).toEqual([id]);
+    });
+
+    it("works when nothing registered before it", () => {
+      const context = vm.createContext({});
+      vm.runInContext(debugIdSnippet(id), context);
+      expect(registered(context)).toEqual([id]);
+    });
   });
 
   it("is idempotent", () => {
