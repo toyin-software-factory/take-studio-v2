@@ -19,7 +19,7 @@ permissions:
 jobs:
   preflight:
     name: Check deploy secrets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       ready: ${{ steps.check.outputs.ready }}
     steps:
@@ -65,7 +65,7 @@ jobs:
     name: Deploy to production
     needs: preflight
     if: needs.preflight.outputs.ready == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: production
     env:
