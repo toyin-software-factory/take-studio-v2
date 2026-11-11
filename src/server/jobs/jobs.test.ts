@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { processingJob, render, storageDeletion, take } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
+import { startJob } from "@/db/data/jobs";
 import { cancel, finish, markRunning, start, updateStep } from ".";
 
 // Test value only; the real secret is USAGE_HASH_SECRET.
@@ -142,6 +143,27 @@ describe("jobs.start (AC-6, AC-7)", () => {
       const retried = await start(db, { creatorId: creator.id, takeId: t.id, usageSecret: SECRET });
       expect(retried.ok, failureCode).toBe(true);
     }
+  });
+
+  it("lets a caller restrict which take statuses may start (the probe: uploaded only)", async () => {
+    const creator = await createCreator(db);
+    const ready = await seedTake(db, creator.id, { status: "ready" });
+    expect(
+      await startJob(db, {
+        creatorId: creator.id,
+        takeId: ready.id,
+        usageSecret: SECRET,
+        fromStatuses: ["uploaded"],
+      }),
+    ).toEqual({ ok: false, error: "invalid_transition" });
+    const uploaded = await seedTake(db, creator.id, { status: "uploaded" });
+    const started = await startJob(db, {
+      creatorId: creator.id,
+      takeId: uploaded.id,
+      usageSecret: SECRET,
+      fromStatuses: ["uploaded"],
+    });
+    expect(started.ok).toBe(true);
   });
 
   it("re renders for free once an initial job succeeded", async () => {

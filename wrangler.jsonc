@@ -1,7 +1,8 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "take-studio",
-  "main": ".open-next/worker.js",
+  // Our entry wraps OpenNext's .open-next/worker.js with Sentry (spec 0005).
+  "main": "src/worker.ts",
   // Pinned on purpose. Bump it in its own PR and run `pnpm preview` first.
   "compatibility_date": "2026-11-01",
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],

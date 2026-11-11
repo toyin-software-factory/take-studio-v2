@@ -42,6 +42,7 @@ describe("take state machine (AC-3)", () => {
     ["uploading", "failed"],
     ["uploaded", "processing"],
     ["uploaded", "expired"],
+    ["uploaded", "failed"],
     ["processing", "ready"],
     ["processing", "failed"],
     ["ready", "processing"],

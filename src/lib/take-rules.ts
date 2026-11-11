@@ -67,7 +67,8 @@ export function checkUpload(sizeBytes: number, probe: Probe | null): ProbeVerdic
 /** Allowed take status transitions (spec 0002, "State transitions"). */
 export const TAKE_TRANSITIONS: Readonly<Record<TakeStatus, readonly TakeStatus[]>> = {
   uploading: ["uploaded", "failed"],
-  uploaded: ["processing", "expired"],
+  // `failed` when processing never got started (probe gave up after the upload was fine).
+  uploaded: ["processing", "expired", "failed"],
   processing: ["ready", "failed"],
   ready: ["processing", "expired"],
   failed: ["processing", "expired"],
