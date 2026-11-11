@@ -41,7 +41,7 @@ describe("CI workflows", () => {
       );
       expect(runners.length, `${file} has at least one job`).toBeGreaterThan(0);
       expect(runners.length, `${file}: every runs-on must be a single value`).toBe(
-        (text.match(/runs-on:/g) ?? []).length,
+        (text.match(/^\s*runs-on:/gm) ?? []).length,
       );
       // Every job, not just one: any other value, matrix expression or list fails.
       expect(runners, file).toEqual(runners.map(() => RUNNER));
