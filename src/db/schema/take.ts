@@ -25,6 +25,8 @@ export const take = pgTable(
     height: integer("height"),
     /** Null until uploaded; upload time + 30 days, never extended. */
     videoExpiresAt: timestamp("video_expires_at", { withTimezone: true }),
+    /** How often cleanup re-dispatched the probe for a stored but never probed upload (S1C-T09). */
+    probeAttempts: integer("probe_attempts").notNull().default(0),
     /** Open set: validated against the failure code registry in code, no DB CHECK. */
     failureCode: text("failure_code"),
     ...timestamps,

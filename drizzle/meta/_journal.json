@@ -15,6 +15,13 @@
       "when": 1794354775869,
       "tag": "0001_data_model_slice1",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794390894108,
+      "tag": "0002_take_probe_attempts",
+      "breakpoints": true
     }
   ]
 }

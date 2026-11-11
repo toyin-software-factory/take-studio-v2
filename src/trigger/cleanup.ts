@@ -1,14 +1,22 @@
 import { logger, schedules } from "@trigger.dev/sdk";
 import { withJobDb } from "@/db/client/job";
-import { expireDueTakes, failAbandonedUploads, failStaleJobs } from "@/db/data/cleanup";
+import {
+  expireDueTakes,
+  failAbandonedUploads,
+  failStaleJobs,
+  recoverStuckUploads,
+} from "@/db/data/cleanup";
 import { parseJobEnv } from "@/lib/env";
 import { createR2 } from "@/lib/r2";
-import { cancelRuns } from "@/lib/trigger-runs";
+import { cancelRuns, triggerProbe } from "@/lib/trigger-runs";
 import { storageDeletionTask } from "./storage-deletion";
 
 /**
  * Scheduled cleanup every 15 minutes (spec 0002, AC-18):
- * 1. fail abandoned uploads (`upload_abandoned`) and abort their multipart uploads;
+ * 0. recover takes stuck in `uploading` whose original is stored but never probed (S1C-T09):
+ *    dispatch the probe again with a fresh key; after 3 re-dispatches fail them (`internal_error`);
+ * 1. fail abandoned uploads (`upload_abandoned`) and abort their multipart uploads (never the
+ *    takes recovery owns);
  * 2. fail stuck jobs with the refundable `stale_run` (and cancel their runs);
  * 3. expire takes past `video_expires_at`, queuing their video files;
  * 4. drain the file deletion queue.
@@ -26,7 +34,11 @@ export const cleanupTask = schedules.task({
     const now = payload.timestamp;
 
     const summary = await withJobDb(env.DATABASE_URL, async (db) => {
-      const abandoned = await failAbandonedUploads(db, now);
+      const recovery = await recoverStuckUploads(db, now, {
+        headObject: (key) => r2.headObject(key),
+        dispatchProbe: triggerProbe,
+      });
+      const abandoned = await failAbandonedUploads(db, now, recovery.owned);
       let abortFailures = 0;
       for (const upload of abandoned) {
         if (upload.uploadId === null) continue;
@@ -44,6 +56,8 @@ export const cleanupTask = schedules.task({
 
       const expiry = await expireDueTakes(db, now);
       return {
+        probesRedispatched: recovery.redispatched.length,
+        stuckUploadsFailed: recovery.failed.length,
         abandonedUploads: abandoned.length,
         abortFailures,
         staleJobs: stale.length,
