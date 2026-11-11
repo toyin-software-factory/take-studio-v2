@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, like } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { cut, jobStep, processingJob, render, storageDeletion, take, transcript } from "../schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "../testing/test-db";
@@ -209,8 +209,6 @@ describe("finish for a transcribe job", () => {
       applied: true,
       reason: "Pause",
     });
-    const keysBefore = (await db.select().from(storageDeletion)).length;
-
     const job = await started(t.id);
     await finish(db, { jobId: job.id, status: "failed", failureCode: "timeout" });
 
@@ -220,7 +218,13 @@ describe("finish for a transcribe job", () => {
       status: "succeeded",
       videoKey: `renders/${t.id}/${renderId}.mp4`,
     });
-    expect((await db.select().from(storageDeletion)).length).toBe(keysBefore);
+    // Scoped to this take's keys: other test files share the database and run in parallel.
+    expect(
+      await db
+        .select()
+        .from(storageDeletion)
+        .where(like(storageDeletion.objectKey, `%${t.id}%`)),
+    ).toHaveLength(0);
     expect(await db.select().from(cut).where(eq(cut.takeId, t.id))).toHaveLength(1);
   });
 
