@@ -1,7 +1,6 @@
-import { logger, task } from "@trigger.dev/sdk";
+import { AbortTaskRunError, logger, task } from "@trigger.dev/sdk";
 import { withJobDb } from "@/db/client/job";
 import { resendSender } from "@/lib/email/send";
-import { z } from "zod";
 import { parseEmailEnv, parseJobEnv } from "@/lib/env";
 import { notifyTakeFinished } from "./notify";
 
@@ -19,14 +18,18 @@ export const notifyTakeTask = task({
   maxDuration: 120,
   retry: { maxAttempts: 3, minTimeoutInMs: 5_000, maxTimeoutInMs: 60_000, factor: 3 },
   run: async (payload: { readonly jobId: string }) => {
-    // BETTER_AUTH_URL builds the take link and the turn off link; it must be set in the
-    // Trigger.dev environment next to the email variables.
-    const baseUrl = z.url().parse(process.env.BETTER_AUTH_URL);
-    const env = { ...parseJobEnv(), ...parseEmailEnv() };
+    // A missing or invalid variable is a deploy mistake, not a send failure: stop now with a
+    // clear error (names only) instead of retrying.
+    let env;
+    try {
+      env = { ...parseJobEnv(), ...parseEmailEnv() };
+    } catch (error) {
+      throw new AbortTaskRunError(error instanceof Error ? error.message : "Invalid email env");
+    }
     const result = await withJobDb(env.DATABASE_URL, (db) =>
       notifyTakeFinished(db, payload.jobId, {
         sendEmail: resendSender(env),
-        baseUrl,
+        baseUrl: new URL(env.BETTER_AUTH_URL).origin,
         linkSecret: env.EMAIL_LINK_SECRET,
       }),
     );
