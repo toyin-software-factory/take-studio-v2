@@ -70,7 +70,7 @@ Core entities every slice builds on: creators, takes, processing jobs and their 
 - [x] Test it: `/test data model`
 Spec [0002](../specs/0002-data-model/index.md) · code in `src/db/`, `src/lib/`, `src/server/{takes,jobs,cuts,renders,account}/`, `src/trigger/`
 
-### 4. Design system & UI foundation · in-progress
+### 4. Design system & UI foundation · done
 Visual language, layout and base components (upload, progress, video player, timeline, download), with Mobbin references in `design.md`.
 **Done when:** `design.md` covers type, color, spacing and components with Mobbin references, and base components meet WCAG AA (keyboard, focus, contrast).
 - [x] Design it (spec): `/architect design system & UI foundation`
@@ -79,8 +79,8 @@ Visual language, layout and base components (upload, progress, video player, tim
    - [x] Base components with every state (AC-3, AC-5, AC-6) (FDS-T02)
    - [x] App shell and Stage container (AC-4, AC-6) (FDS-T03)
    - [x] `/design` gallery with axe checks (AC-5, AC-7) (FDS-T01, FDS-T02)
-- [ ] Verify it: `/check verify design system & UI foundation`
-- [ ] Test it: `/test design system & UI foundation`
+- [x] Verify it: `/check verify design system & UI foundation`
+- [x] Test it: `/test design system & UI foundation`
 Spec [0003](../specs/0003-design-system.md) · rules in [design.md](../../design.md) · code in `src/app/globals.css`, `src/components/ui/`, `src/components/shell/`, `src/components/stage.tsx`, `src/app/design/`
 
 ## Slice 1: Core take loop

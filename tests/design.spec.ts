@@ -39,6 +39,46 @@ test.describe("design gallery (preview)", () => {
     expect(await mono.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/JetBrains/);
   });
 
+  test("loads the fonts without moving the layout", async ({ page }) => {
+    await page.addInitScript(() => {
+      const w = window as unknown as { shift: number };
+      w.shift = 0;
+      new PerformanceObserver((list) => {
+        for (const e of list.getEntries() as unknown as {
+          hadRecentInput: boolean;
+          value: number;
+        }[]) {
+          if (!e.hadRecentInput) w.shift += e.value;
+        }
+      }).observe({ type: "layout-shift", buffered: true });
+    });
+    const hosts = new Set<string>();
+    page.on("request", (request) => hosts.add(new URL(request.url()).host));
+    await page.goto("/design");
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(500);
+    expect(await page.evaluate(() => (window as unknown as { shift: number }).shift)).toBeLessThan(
+      0.01,
+    );
+    // Self hosted: no font file comes from another host (spec 0001, next/font).
+    expect([...hosts]).toEqual([new URL(page.url()).host]);
+  });
+
+  test("stops every running animation under reduced motion, not just the sample", async ({
+    page,
+  }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/design");
+    await page.waitForTimeout(400);
+    const running = await page.evaluate(() =>
+      document
+        .getAnimations()
+        .filter((a) => a.playState === "running")
+        .map((a) => (a as CSSAnimation).animationName ?? a.constructor.name),
+    );
+    expect(running).toEqual([]);
+  });
+
   test("stops animation under reduced motion", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/design");
