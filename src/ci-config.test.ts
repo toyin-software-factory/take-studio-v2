@@ -12,6 +12,9 @@ const pkg = JSON.parse(readFileSync("package.json", "utf8")) as {
   devDependencies: Record<string, string>;
 };
 
+/** The one runner image every job is pinned to (bump deliberately, in one PR, with the docs). */
+const RUNNER = "ubuntu-24.04";
+
 /** A workflow without its full line comments, so notes about apt don't trip the guards. */
 function withoutComments(text: string): string {
   return text.replace(/^\s*#.*$/gm, "");
@@ -26,12 +29,15 @@ function step(name: string): string {
 }
 
 describe("CI workflows", () => {
-  it("pin the runner image in every workflow, never ubuntu-latest", () => {
+  it("pin every job's runner to ubuntu-24.04, never ubuntu-latest", () => {
     const files = readdirSync(".github/workflows").filter((f) => /\.ya?ml$/.test(f));
     expect(files.length).toBeGreaterThan(0);
     for (const file of files) {
       const text = withoutComments(readFileSync(`.github/workflows/${file}`, "utf8"));
-      expect(text, file).toMatch(/runs-on:\s*ubuntu-\d+\.\d+\s*$/m);
+      const runners = [...text.matchAll(/^\s*runs-on:\s*(\S+)\s*$/gm)].map((m) => m[1]);
+      expect(runners.length, `${file} has at least one job`).toBeGreaterThan(0);
+      // Every job, not just one: a single other value (or a list or expression) fails.
+      expect(runners, file).toEqual(runners.map(() => RUNNER));
       expect(text, file).not.toMatch(/ubuntu-latest/);
     }
   });
