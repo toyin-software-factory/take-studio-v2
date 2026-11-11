@@ -1,7 +1,7 @@
 /**
  * Makes the Worker bundle's own debug ID the one Sentry sees (spec 0005, AC-6).
  * The bundle holds a debug ID snippet for every chunk and package inside it, and the SDK keeps
- * one ID per file name: the last one registered. Many of those snippets sit inside modules the
+ * one ID per file name: the last one registered, reading Sentry's registry and then Next's. Many of those snippets sit inside modules the
  * bundle loads lazily, on the first request, so they run after anything we add to the file
  * (events carried a chunk's ID with no matching map, and every frame came back
  * `js_invalid_sourcemap_location`, even with ours placed last). So ours replaces the registry
@@ -15,20 +15,26 @@ export type WinningDebugId =
   { readonly ok: true; readonly data: string } | { readonly ok: false; readonly error: string };
 
 /**
- * The snippet for `id`. It runs once, when the bundle loads: it sets `_sentryDebugIds` to a
- * read only view that holds this ID, then ignores writes (no error, so the other snippets, which
- * are wrapped in try and catch, carry on without effect).
+ * The snippet for `id`. It runs once, when the bundle loads: for each of the two registries the
+ * SDK reads (Sentry's `_sentryDebugIds` and Next's own `_debugIds`, which the SDK reads last and
+ * so would win) it installs a read only view that holds this ID, then ignores writes (no error,
+ * so the other snippets, which are wrapped in try and catch, carry on without effect). A registry
+ * that is already locked (the bundle was evaluated again) is left alone, and the identifier is
+ * set either way.
  */
 export function debugIdSnippet(id: string): string {
   return (
-    '!function(){try{var e="undefined"!=typeof window?window:"undefined"!=typeof global?global:' +
-    '"undefined"!=typeof globalThis?globalThis:"undefined"!=typeof self?self:{},m={};' +
-    `m[(new e.Error).stack]="${id}";` +
+    '!function(){var e="undefined"!=typeof globalThis?globalThis:"undefined"!=typeof window?window:' +
+    '"undefined"!=typeof global?global:"undefined"!=typeof self?self:{},k="";' +
+    "try{k=(new e.Error).stack}catch(x){}" +
+    "function l(n){try{var d=Object.getOwnPropertyDescriptor(e,n);if(d&&!d.configurable)return;" +
+    `var m={};m[k]="${id}";` +
     "var p=new Proxy(m,{set:function(){return!0},defineProperty:function(){return!0}," +
     "deleteProperty:function(){return!0}});" +
-    'Object.defineProperty(e,"_sentryDebugIds",{get:function(){return p},set:function(){},' +
-    "configurable:!1,enumerable:!0});" +
-    `e._sentryDebugIdIdentifier="sentry-dbid-${id}"}catch(e){}}();`
+    "Object.defineProperty(e,n,{get:function(){return p},set:function(){},configurable:!1," +
+    "enumerable:!0})}catch(x){}}" +
+    'l("_sentryDebugIds");l("_debugIds");' +
+    `try{e._sentryDebugIdIdentifier="sentry-dbid-${id}"}catch(x){}}();`
   );
 }
 

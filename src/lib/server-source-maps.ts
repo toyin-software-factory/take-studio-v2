@@ -1,4 +1,4 @@
-import { FlattenMap, encodedMappings } from "@jridgewell/trace-mapping";
+import { FlattenMap, TraceMap, decodedMappings, encodedMappings } from "@jridgewell/trace-mapping";
 
 /**
  * Prepares one Next server chunk's source map for the Worker bundle (spec 0005, AC-6).
@@ -10,30 +10,78 @@ import { FlattenMap, encodedMappings } from "@jridgewell/trace-mapping";
 export type MapResult =
   { readonly ok: true; readonly data: string } | { readonly ok: false; readonly error: string };
 
-/** Lines the Sentry plugin adds above a chunk's code (debug ID, release); each starts like this. */
-const INJECTED_LINE = ";!function(){try";
+/** Markers of the lines the Sentry plugin adds above a chunk (debug ID, release). */
+const SENTRY_LINE = /_sentryDebugIds|_sentryRelease|SENTRY_RELEASES?\b/;
+
+/** How many lines at the top of `js` the Sentry plugin added. Next's own `_debugIds` line is not one. */
+function sentryLineCount(lines: readonly string[]): number {
+  const firstOther = lines.findIndex((line) => !SENTRY_LINE.test(line));
+  return firstOther === -1 ? lines.length : firstOther;
+}
+
+type Decoded = readonly (readonly (readonly number[])[])[];
+
+/**
+ * How many mappings land past the end of their line, or on a line that is not code, when the
+ * map is moved down by `shift`. Trailing `//#` comment lines are not code.
+ */
+function misfits(decoded: Decoded, lines: readonly string[], shift: number): number {
+  const codeLines = lines.length - [...lines].reverse().findIndex((l) => !l.startsWith("//#"));
+  return decoded.reduce(
+    (count, segments, index) =>
+      count +
+      segments.filter(
+        (segment) =>
+          index + shift >= codeLines || segment[0]! > (lines[index + shift]?.length ?? -1),
+      ).length,
+    0,
+  );
+}
+
+/**
+ * Is the map lined up with the chunk? Turbopack puts a few segments a few columns past the end
+ * of a line, so zero misfits is too strict; instead the chosen shift must leave at most 2% of
+ * the mappings off, and clearly fewer than the shift one line higher or lower (a wrong shift
+ * leaves most of them off).
+ */
+function fits(decoded: Decoded, lines: readonly string[], shift: number): boolean {
+  const total = decoded.reduce((sum, segments) => sum + segments.length, 0);
+  if (total === 0) return true;
+  const own = misfits(decoded, lines, shift);
+  if (own === 0) return true;
+  if (own / total > 0.02) return false;
+  return [shift - 1, shift + 1]
+    .filter((other) => other >= 0)
+    .every((other) => misfits(decoded, lines, other) >= own * 5);
+}
 
 /**
  * A plain (version 3, one `mappings` string) map equal to `raw`, which may be sectioned, and
- * lined up with `js`. The plugin adds lines above the code after Turbopack wrote the map and
- * does not move a sectioned map's mappings by all of them, so every mapping would sit a line
- * too early. The first mapping belongs on the first line of real code: shift to match.
+ * lined up with `js`. Turbopack's section offset already counts its own `_debugIds` line, but
+ * the Sentry plugin adds lines above the chunk afterwards and does not move the mappings of a
+ * sectioned map, so those must move down by exactly the number of lines the plugin added. The result is checked
+ * against the chunk (every mapping must land on a real line and column); a map that does not
+ * fit is refused, because a wrong line is worse than none.
  */
 export function flattenSourceMap(raw: string, js: string): MapResult {
   try {
-    const flat = new FlattenMap(JSON.parse(raw));
-    const mappings = encodedMappings(flat);
-    const codeStart = js.split("\n").findIndex((line) => !line.startsWith(INJECTED_LINE));
-    const firstMapped = mappings.split(";").findIndex((group) => group !== "");
-    const shift = codeStart > firstMapped && firstMapped >= 0 ? codeStart - firstMapped : 0;
+    const parsed: unknown = JSON.parse(raw);
+    const flat = new FlattenMap(parsed as never);
+    const lines = js.split("\n");
+    // Only a sectioned map is left unmoved by the plugin; a plain map it adjusts itself.
+    const sectioned = typeof parsed === "object" && parsed !== null && "sections" in parsed;
+    const shift = sectioned ? sentryLineCount(lines) : 0;
+    const unshifted = encodedMappings(flat);
+    const decoded = decodedMappings(
+      new TraceMap({ version: 3, sources: [], names: [], mappings: unshifted }),
+    );
+    if (!fits(decoded, lines, shift)) {
+      return { ok: false, error: "The source map does not fit the chunk." };
+    }
+    const mappings = ";".repeat(shift) + unshifted;
     return {
       ok: true,
-      data: JSON.stringify({
-        version: 3,
-        sources: flat.sources,
-        names: flat.names,
-        mappings: ";".repeat(shift) + mappings,
-      }),
+      data: JSON.stringify({ version: 3, sources: flat.sources, names: flat.names, mappings }),
     };
   } catch {
     return { ok: false, error: "The source map could not be read." };
@@ -41,6 +89,11 @@ export function flattenSourceMap(raw: string, js: string): MapResult {
 }
 
 const REFERENCE = /^\/\/# sourceMappingURL=(?!data:)(\S+\.map)[ \t]*$/m;
+
+/** Does `js` already carry its map inline (a `//# sourceMappingURL=data:` line)? */
+export function hasInlinedMap(js: string): boolean {
+  return /^\/\/# sourceMappingURL=data:/m.test(js);
+}
 
 /** The map file name a chunk points to, or null when it has none (or already inlines it). */
 export function mapReference(js: string): string | null {

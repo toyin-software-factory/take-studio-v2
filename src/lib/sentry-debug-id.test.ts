@@ -31,14 +31,26 @@ describe("withWinningDebugId", () => {
     /** The snippet the Sentry plugins put in every chunk, as esbuild prints it. */
     const chunkSnippet = (x: string) =>
       `"use strict";(function(){try{var e=globalThis,n=new e.Error().stack;n&&(e._sentryDebugIds=e._sentryDebugIds||{},e._sentryDebugIds[n]="${x}",e._sentryDebugIdIdentifier="sentry-dbid-${x}")}catch(e){}})();`;
-    const registered = (context: vm.Context) =>
-      vm.runInContext("Object.values(globalThis._sentryDebugIds)", context) as string[];
+    /** Next's own snippet, as Turbopack writes it above every chunk. */
+    const nativeSnippet = (x: string) =>
+      `"use strict";(function(){try{var e=globalThis,n=new e.Error().stack;n&&((e._debugIds||(e._debugIds={}))[n]="${x}")}catch(e){}})();`;
+    const registered = (context: vm.Context, registry = "_sentryDebugIds") =>
+      vm.runInContext(`Object.values(globalThis.${registry})`, context) as string[];
 
     it("holds only our id when a chunk registered before and a lazy module registers after", () => {
       const context = vm.createContext({});
       vm.runInContext(chunkSnippet(other), context);
       vm.runInContext(debugIdSnippet(id), context);
       vm.runInContext(chunkSnippet("11111111-1111-4111-8111-111111111111"), context);
+      expect(registered(context)).toEqual([id]);
+    });
+
+    it("holds only our id in Next's native registry too (the SDK reads it last)", () => {
+      const context = vm.createContext({});
+      vm.runInContext(nativeSnippet(other), context);
+      vm.runInContext(debugIdSnippet(id), context);
+      vm.runInContext(nativeSnippet("11111111-1111-4111-8111-111111111111"), context);
+      expect(registered(context, "_debugIds")).toEqual([id]);
       expect(registered(context)).toEqual([id]);
     });
 
@@ -52,6 +64,32 @@ describe("withWinningDebugId", () => {
         ),
       ).not.toThrow();
       expect(registered(context)).toEqual([id]);
+    });
+
+    it("is safe when the bundle is evaluated again: no error, and the registry keeps our id", () => {
+      const context = vm.createContext({});
+      vm.runInContext(debugIdSnippet(id), context);
+      expect(() => vm.runInContext(debugIdSnippet(id), context)).not.toThrow();
+      expect(() => vm.runInContext(debugIdSnippet(other), context)).not.toThrow();
+      expect(registered(context)).toEqual([id]);
+    });
+
+    it("sets the identifier even when something else already locked the registry", () => {
+      const context = vm.createContext({});
+      vm.runInContext(
+        'Object.defineProperty(globalThis, "_sentryDebugIds", { value: {}, configurable: false })',
+        context,
+      );
+      expect(() => vm.runInContext(debugIdSnippet(id), context)).not.toThrow();
+      expect(vm.runInContext("globalThis._sentryDebugIdIdentifier", context)).toBe(
+        `sentry-dbid-${id}`,
+      );
+    });
+
+    it("prefers globalThis", () => {
+      expect(debugIdSnippet(id).indexOf("globalThis?globalThis")).toBeLessThan(
+        debugIdSnippet(id).indexOf("window?window"),
+      );
     });
 
     it("works when nothing registered before it", () => {

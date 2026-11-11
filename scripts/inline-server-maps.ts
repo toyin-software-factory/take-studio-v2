@@ -14,7 +14,12 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
-import { flattenSourceMap, inlineSourceMap, mapReference } from "../src/lib/server-source-maps";
+import {
+  flattenSourceMap,
+  hasInlinedMap,
+  inlineSourceMap,
+  mapReference,
+} from "../src/lib/server-source-maps";
 
 if (!process.env.WORKER_SOURCE_MAPS) process.exit(0);
 
@@ -22,7 +27,7 @@ const next = process.argv[2] ?? ".next";
 const root = join(next, "server");
 const standalone = join(next, "standalone", ".next", "server");
 const chunks = readdirSync(root, { recursive: true, encoding: "utf8" }).filter((f) =>
-  f.endsWith(".js"),
+  /\.(?:js|mjs|cjs)$/.test(f),
 );
 
 let inlined = 0;
@@ -51,10 +56,24 @@ let mirrored = 0;
 for (const chunk of chunks) {
   const twin = join(standalone, chunk);
   const file = join(root, chunk);
-  if (existsSync(twin) && readFileSync(file, "utf8").includes("sourceMappingURL=data:")) {
+  if (existsSync(twin) && hasInlinedMap(readFileSync(file, "utf8"))) {
     copyFileSync(file, twin);
     mirrored += 1;
   }
 }
-console.log(`Inlined ${inlined} server source maps (${failed} failed), mirrored ${mirrored}.`);
-if (failed > 0) process.exit(1);
+// With the flag set the deploy relies on these maps, so nothing inlined (a framework change) or
+// any failure stops the build instead of quietly giving unmapped traces.
+const carrying = chunks.filter((chunk) =>
+  hasInlinedMap(readFileSync(join(root, chunk), "utf8")),
+).length;
+console.log(
+  `Inlined ${inlined} server source maps (${failed} failed); ${carrying} chunks carry one; mirrored ${mirrored}.`,
+);
+if (failed > 0 || carrying === 0) {
+  console.error(
+    failed > 0
+      ? "Some server source maps could not be inlined."
+      : "No server chunk carries a source map: Next wrote none, or its output changed.",
+  );
+  process.exit(1);
+}
