@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { processingJob, render, storageDeletion, take, user } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
+import { thumbnailKey } from "@/lib/take-rules";
 import { finish, markRunning, start } from "../jobs";
 import { completeLatest, create as createRender } from "../renders";
 import type { AfterDelete } from "../takes";
@@ -55,10 +56,10 @@ describe("account deletion (AC-17)", () => {
     expect([...deleted.queuedKeys].sort()).toEqual(
       [
         one.take.originalKey,
-        `originals/${one.take.id}/thumb.jpg`,
         one.renderKey,
         two.originalKey,
-        `originals/${two.id}/thumb.jpg`,
+        thumbnailKey(one.take.id),
+        thumbnailKey(two.id),
       ].sort(),
     );
     expect(calls).toEqual({ cancelled: ["run_account"], drains: 1 });
