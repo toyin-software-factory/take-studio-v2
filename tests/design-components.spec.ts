@@ -92,3 +92,17 @@ test.describe("on a phone", () => {
     expect(Math.round(box.width)).toBe(viewport.width);
   });
 });
+
+test("Stage container gives its controls the cream focus ring", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/design");
+  const play = page
+    .getByRole("region", { name: "Stage example" })
+    .getByRole("button", { name: "Play" });
+  await play.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  await expect(play).toBeFocused();
+  await expect(play).toHaveCSS("outline-style", "solid");
+  await expect(play).toHaveCSS("outline-color", "rgb(253, 240, 213)");
+});

@@ -50,6 +50,7 @@
   /* ---------- Shape, elevation, layers, motion ---------- */
   --radius: 10px;
   --radius-chip: 6px;
+  --sidebar-width: 15rem;
   --elevation-card: 0 1px 2px rgb(0 48 73 / 6%), 0 2px 8px rgb(0 48 73 / 6%);
   --elevation-overlay: 0 2px 6px rgb(0 48 73 / 8%), 0 12px 32px rgb(0 48 73 / 16%);
   --z-base: 0;
@@ -262,15 +263,8 @@
 
   body {
     margin: 0;
-    padding: 2rem 1rem;
     line-height: 1.5;
     background-color: var(--bg);
-  }
-
-  /* Placeholder pages until the app shell (spec 0003, build plan step 3) lands. */
-  main {
-    max-width: 40rem;
-    margin: 0 auto;
   }
 
   * {
