@@ -20,7 +20,7 @@ beforeAll(async () => {
   testDb = await openTestDb();
   db = testDb.db;
 });
-afterAll(() => testDb.close());
+afterAll(() => testDb?.close());
 
 const probe = { durationMs: 61_500, width: 1920, height: 1080, container: "mp4" };
 

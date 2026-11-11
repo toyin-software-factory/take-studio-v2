@@ -17,7 +17,7 @@ beforeAll(async () => {
   testDb = await openTestDb();
   db = testDb.db;
 });
-afterAll(() => testDb.close());
+afterAll(() => testDb?.close());
 
 async function startOk(creatorId: string, takeId: string) {
   const result = await start(db, { creatorId, takeId, usageSecret: SECRET, now: NOW });

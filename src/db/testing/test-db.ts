@@ -24,23 +24,29 @@ function testUrl(): URL {
   return url;
 }
 
+/** Creates the test database when missing. Safe when several test workers race. */
 async function ensureDatabase(url: URL): Promise<void> {
   const name = url.pathname.slice(1);
   const admin = new URL(url);
   admin.pathname = "/postgres";
   const sql = postgres(admin.toString(), { max: 1, onnotice: () => {} });
   try {
+    try {
+      await sql`select 1`;
+    } catch (error) {
+      throw new Error(
+        `Can't reach the test Postgres at ${url.host}. Start it with \`pnpm db:up\`. (${String(error)})`,
+      );
+    }
     const [found] = await sql`select 1 from pg_database where datname = ${name}`;
     if (!found) {
       await sql.unsafe(`create database "${name.replaceAll('"', '""')}"`).catch((error) => {
-        // Another test worker created it first.
-        if ((error as { code?: string }).code !== "42P04") throw error;
+        // Another test worker created it first: 42P04 (duplicate_database), or 23505 when
+        // both inserts into pg_database race.
+        const code = (error as { code?: string }).code;
+        if (code !== "42P04" && code !== "23505") throw error;
       });
     }
-  } catch (error) {
-    throw new Error(
-      `Can't reach the test Postgres at ${url.host}. Start it with \`pnpm db:up\`. (${String(error)})`,
-    );
   } finally {
     await sql.end({ timeout: 5 });
   }
