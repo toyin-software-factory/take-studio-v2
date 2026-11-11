@@ -279,7 +279,8 @@
   }
 
   /* Links in running text are underlined: red alone isn't distinguishable from blue text. */
-  :where(p, li) a {
+  /* Not nav lists: those are menus, not running text. */
+  :where(p, main li) a {
     color: var(--primary);
     text-decoration: underline;
     text-underline-offset: 2px;

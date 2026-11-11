@@ -45,6 +45,8 @@ test("desktop shell: skip link, landmarks, sidebar and active item", async ({ pa
   await expect(active).toHaveAttribute("aria-current", "page");
   await expect(active).toHaveCSS("border-left-width", "3px");
   await expect(active).toHaveCSS("border-left-color", "rgb(193, 18, 31)");
+  // Nav items are a menu, not running text: no link underline.
+  await expect(active).toHaveCSS("text-decoration-line", "none");
 });
 
 test("signed in home passes axe", async ({ page }) => {
