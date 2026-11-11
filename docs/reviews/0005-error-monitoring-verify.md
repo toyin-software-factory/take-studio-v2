@@ -2,6 +2,8 @@
 
 **Verdict: PASS, with one confirmation owed.** Seven of the eight acceptance criteria are met with evidence from this run. The weekly report part of AC-7 cannot be read with the Sentry token we have, so it needs a person to look (details under "Owed"). Nothing failed.
 
+**Update 2026-11-11 (lead):** Toyin confirmed in Sentry that the weekly report is on for take-studio and that the first seen email for today's check errors arrived. AC-7 is now fully met, so all eight criteria pass.
+
 Run on 2026-11-11 against the live app (release `b70536a`), Sentry's API (read only), the unit tests and the real deploy log. No personal data and no secrets are in this report; it uses event IDs, run IDs and PR links only.
 
 ## Result per acceptance criterion

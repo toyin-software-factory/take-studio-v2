@@ -27,7 +27,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 3 | Data model | Foundation | done |
 | 4 | Design system & UI foundation | Foundation | done |
 | 5 | Core take loop | Slice 1 | in-progress |
-| 6 | Error monitoring | Slice 1 | in-progress |
+| 6 | Error monitoring | Slice 1 | done |
 | 7 | Transcript | Slice 2 | planned |
 | 8 | Studio background swap | Slice 3 | planned |
 | 9 | Cut review timeline | Slice 4 | planned |
@@ -100,7 +100,7 @@ The walking skeleton: sign in, upload a take, pauses are trimmed automatically i
 - [x] Test it: `/test core take loop`
 Spec [0004](../specs/0004-core-take-loop/index.md) · code in `src/server/uploads/`, `src/app/api/uploads/`, `src/server/takes/`, `src/server/media/`, `src/app/api/takes/`, `src/lib/r2*.ts`, `src/lib/take-media.ts`, `src/trigger/`
 
-### 6. Error monitoring · in-progress
+### 6. Error monitoring · done
 Catch errors in the app and in processing jobs so failed takes are seen before creators report them.
 **Done when:** an error in the web app or a failed processing job is reported with enough context to debug, and no video content or secrets are sent.
 - [x] Design it (spec): `/architect error monitoring`
@@ -108,8 +108,8 @@ Catch errors in the app and in processing jobs so failed takes are seen before c
    - [x] Scrubbing module with tests (AC-4) (S1C-T06)
    - [x] Web and browser reporting with source maps (AC-1, AC-2, AC-5, AC-6, AC-8) (S1C-T06, S1C-T11, S1C-T14: proven in production, see `docs/reviews/0005-error-monitoring-verify.md`)
    - [x] Job failure reporting with source maps (AC-3, AC-5, AC-6) (S1C-T06, S1C-T12, S1C-T14: proven in production, see the verify report)
-   - [x] Alert rules and a production check (AC-7) (first seen and spike rules enabled; production checks done for web, browser and jobs; the weekly report setting is owed, see the verify report)
-- [ ] Verify it: `/check verify error monitoring`
+   - [x] Alert rules and a production check (AC-7) (first seen and spike rules enabled; production checks done for web, browser and jobs; weekly report on and the first seen email received, both confirmed by Toyin on 2026-11-11)
+- [x] Verify it: `/check verify error monitoring` (`docs/reviews/0005-error-monitoring-verify.md`: all of AC-1 to AC-8 pass)
 - [x] Test it: `/test error monitoring`
 Spec [0005](../specs/0005-error-monitoring.md) · code in `src/lib/sentry-*.ts`, `src/worker.ts`, `src/instrumentation*.ts`, `src/trigger/init.ts`, `src/trigger/sentry-check.ts`
 

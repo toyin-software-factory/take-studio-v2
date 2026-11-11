@@ -1,7 +1,7 @@
 # 0005. Error monitoring
 
 **Date**: 2026-11-11
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 
@@ -85,7 +85,7 @@ One project with a `service` tag (Sentry overwrites its own `runtime` tag on Nod
 - `SENTRY_ORG`, `SENTRY_PROJECT`: names for upload (GitHub Actions variables)
 
 **Critical test scenarios**:
-- A route that throws in production reaches Sentry with release and `runtime: web`, verifies **AC-1**.
+- A route that throws in production reaches Sentry with release and `service: web`, verifies **AC-1**.
 - A task that throws reaches Sentry with only allowlisted tags and no payload, verifies **AC-3**, **AC-4**.
 - Scrubber unit tests: a presigned URL, a cookie, an email and a request body are all removed, verifies **AC-4**.
 - Build and tests pass with no DSN set, verifies **AC-8**.
