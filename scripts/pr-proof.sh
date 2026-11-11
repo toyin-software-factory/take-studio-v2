@@ -60,7 +60,9 @@ git -C "$tree" add -A
 if git -C "$tree" diff --cached --quiet; then
   echo "pr-assets already has these files; nothing to push." >&2
 else
-  git -C "$tree" commit -qm "proof: $id"
+  # --no-verify: this worktree holds only proof files and has no package.json, so the repo's
+  # pre commit hook (pnpm exec lint-staged) can't run here and would block the publish.
+  git -C "$tree" commit --no-verify -qm "proof: $id"
   for try in 1 2 3; do
     git -C "$tree" push -q origin HEAD:refs/heads/pr-assets && break
     [ "$try" = 3 ] && { echo "push to pr-assets failed" >&2; exit 1; }
