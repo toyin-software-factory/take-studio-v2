@@ -16,7 +16,8 @@ import { storageDeletionTask } from "./storage-deletion";
  */
 export const cleanupTask = schedules.task({
   id: "cleanup",
-  cron: "*/15 * * * *",
+  // A short window: Trigger.dev's default (60 min) could delay a 15 minute cleanup by an hour.
+  cron: { pattern: "*/15 * * * *", timezone: "UTC", window: "2m" },
   machine: "small-1x",
   maxDuration: 600,
   run: async (payload) => {
