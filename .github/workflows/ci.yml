@@ -107,14 +107,17 @@ jobs:
         # Host networking keeps the Postgres service on localhost (the seed guard needs that)
         # and the preview Worker on 127.0.0.1:8787. Runs as the runner's user so no root owned
         # files are left in the workspace. The built Worker and node_modules come from the
-        # steps above; the image only supplies Chromium and its libraries.
+        # steps above; the image only supplies Chromium and its libraries. The preview calls
+        # pnpm, which the image lacks, so the runner's own pnpm is mounted read only (no
+        # download, no apt).
         run: |
+          pnpm_dir="$(dirname "$PNPM_HOME")"
           docker run --rm --network host --ipc=host --init \
             --user "$(id -u):$(id -g)" -e HOME=/tmp \
-            -e CI -e DATABASE_URL -e DATABASE_URL_DIRECT \
+            -e CI -e PNPM_HOME -e DATABASE_URL -e DATABASE_URL_DIRECT \
             -e CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE -e NEXT_TELEMETRY_DISABLED \
-            -v "$GITHUB_WORKSPACE":/work -w /work \
-            "$PLAYWRIGHT_IMAGE" ./node_modules/.bin/playwright test
+            -v "$GITHUB_WORKSPACE":/work -v "$pnpm_dir":"$pnpm_dir":ro -w /work \
+            "$PLAYWRIGHT_IMAGE" bash -c 'export PATH="$PNPM_HOME:$PATH" && pnpm exec playwright test'
 
       - uses: actions/upload-artifact@v4
         if: failure()
