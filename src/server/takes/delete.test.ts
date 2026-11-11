@@ -58,7 +58,7 @@ describe("deleteTake (AC-17)", () => {
     const result = await deleteTake(db, creator.id, t.id, after);
 
     expect(result.ok && [...result.data.queuedKeys].sort()).toEqual(
-      [t.originalKey, `originals/${t.id}/thumb.jpg`, renderKey].sort(),
+      [t.originalKey, renderKey, thumbnailKey(t.id)].sort(),
     );
     expect(result.ok && result.data.runIds).toEqual([`run_${t.id}`]);
     expect(calls).toEqual({ cancelled: [`run_${t.id}`], drains: 1 });
@@ -71,14 +71,8 @@ describe("deleteTake (AC-17)", () => {
     const queued = await db
       .select({ key: storageDeletion.objectKey })
       .from(storageDeletion)
-      .where(
-        inArray(storageDeletion.objectKey, [
-          t.originalKey,
-          `originals/${t.id}/thumb.jpg`,
-          renderKey,
-        ]),
-      );
-    expect(queued).toHaveLength(3);
+      .where(inArray(storageDeletion.objectKey, [t.originalKey, renderKey]));
+    expect(queued).toHaveLength(2);
   });
 
   it("queues the derived key of a render still in progress (its file may already be uploaded)", async () => {
@@ -92,11 +86,7 @@ describe("deleteTake (AC-17)", () => {
 
     const result = await deleteTake(db, creator.id, t.id, spyAfter().after);
     expect(result.ok && [...result.data.queuedKeys].sort()).toEqual(
-      [
-        t.originalKey,
-        `originals/${t.id}/thumb.jpg`,
-        `renders/${t.id}/${pending.data.id}.mp4`,
-      ].sort(),
+      [t.originalKey, `renders/${t.id}/${pending.data.id}.mp4`, thumbnailKey(t.id)].sort(),
     );
   });
 

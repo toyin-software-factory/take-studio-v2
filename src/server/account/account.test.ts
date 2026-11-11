@@ -56,10 +56,10 @@ describe("account deletion (AC-17)", () => {
     expect([...deleted.queuedKeys].sort()).toEqual(
       [
         one.take.originalKey,
-        `originals/${one.take.id}/thumb.jpg`,
         one.renderKey,
         two.originalKey,
-        `originals/${two.id}/thumb.jpg`,
+        thumbnailKey(one.take.id),
+        thumbnailKey(two.id),
       ].sort(),
     );
     expect(calls).toEqual({ cancelled: ["run_account"], drains: 1 });

@@ -171,9 +171,7 @@ describe("cleanup: video expiry (AC-18)", () => {
       [busy.id]: "processing",
       [later.id]: "ready",
     });
-    expect(await queuedKeys()).toEqual(
-      [due.originalKey, `originals/${due.id}/thumb.jpg`, renderKey].sort(),
-    );
+    expect(await queuedKeys()).toEqual([due.originalKey, renderKey, thumbnailKey(due.id)].sort());
     const [renderRow] = await db.select().from(render).where(eq(render.id, renderId));
     expect(renderRow).toMatchObject({
       videoKey: null,
@@ -271,9 +269,7 @@ describe("cleanup edges (AC-17, AC-18)", () => {
       [uploaded.id]: "expired",
       [neverUploaded.id]: "failed",
     });
-    expect(await queuedKeys()).toEqual(
-      [uploaded.originalKey, `originals/${uploaded.id}/thumb.jpg`].sort(),
-    );
+    expect(await queuedKeys()).toEqual([uploaded.originalKey, thumbnailKey(uploaded.id)].sort());
   });
 
   it("leaves an old take alone once its upload has completed", async () => {
