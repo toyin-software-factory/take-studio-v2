@@ -5,7 +5,15 @@ import { logger, task } from "@trigger.dev/sdk";
 import { and, eq } from "drizzle-orm";
 import { type JobDb, withJobDb } from "@/db/client/job";
 import { reanalyse } from "@/db/data/cuts";
-import { discardJobRenders, finish, markRunning, queueDeletions, updateStep } from "@/db/data/jobs";
+import { dispatchJob } from "@/db/data/dispatch";
+import {
+  discardJobRenders,
+  finish,
+  markRunning,
+  queueDeletions,
+  startTranscribeJob,
+  updateStep,
+} from "@/db/data/jobs";
 import { completeLatest, create as createRender } from "@/db/data/renders";
 import { jobStep, processingJob, take } from "@/db/schema";
 import { runTx } from "@/db/tx";
@@ -27,6 +35,7 @@ import {
   throttledProgress,
   totalMs,
 } from "@/lib/trim";
+import { triggerForTranscribe } from "@/lib/trigger-runs";
 import { PROCESS_TAKE_LIMITS } from "@/lib/cleanup-rules";
 import { RENDER_UPLOAD } from "@/lib/uploads";
 import { queueTakeEmail } from "./email/queue";
@@ -128,6 +137,8 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
       await step("render", "skipped", 0);
       await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
       await queueTakeEmail(job.id, job.kind);
+      // The transcript job skips it as `no_speech` without calling Deepgram (spec 0007, AC-7).
+      await startTranscript(client, t.id);
       return { jobId: job.id, takeId: t.id, outcome: "no_audio" as const };
     }
     const trimProgress = throttledProgress((p) => step("trim", "running", p));
@@ -148,6 +159,7 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
       await step("render", "skipped", 0);
       await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
       await queueTakeEmail(job.id, job.kind);
+      await startTranscript(client, t.id);
       return { jobId: job.id, takeId: t.id, outcome: "no_cuts" as const };
     }
 
@@ -236,6 +248,7 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
     const finished = await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
     if (!finished.ok) throw new Error(`finish failed: ${finished.error}`);
     await queueTakeEmail(job.id, job.kind);
+    await startTranscript(client, t.id);
 
     return {
       jobId: job.id,
@@ -248,6 +261,38 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
     };
   } finally {
     await rm(work, { recursive: true, force: true });
+  }
+}
+
+/**
+ * After the video is Ready (spec 0007, Pipeline step 1): starts the take's transcribe job and
+ * triggers `transcribe-take` (key `transcribe-{jobId}`; a throwing trigger finishes the job
+ * `trigger_failed` at once, so it never sits queued). Never throws and never touches the
+ * video job: a refused start (transcript exists, original gone) just leaves "Make transcript".
+ */
+async function startTranscript(client: JobDb, takeId: string): Promise<void> {
+  // A thrown start (the database blinked) is tried 3 times; a retry of this task would exit
+  // early because the video job is already final. A refused start is final, not retried. If
+  // all three throw, the take shows "Make transcript" (spec 0007, Pipeline step 1).
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const started = await startTranscribeJob(client, { takeId });
+      if (!started.ok) {
+        logger.info("process-take: transcript not started", { takeId, reason: started.error });
+        return;
+      }
+      const dispatched = await dispatchJob(client, {
+        jobId: started.data.id,
+        trigger: triggerForTranscribe(),
+      });
+      if (!dispatched.ok) {
+        logger.warn("process-take: transcript trigger failed", { takeId, jobId: started.data.id });
+      }
+      return;
+    } catch {
+      logger.warn("process-take: transcript start threw", { takeId, attempt });
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
+    }
   }
 }
 

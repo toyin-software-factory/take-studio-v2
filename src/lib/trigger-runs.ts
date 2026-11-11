@@ -55,3 +55,17 @@ export async function cancelRuns(runIds: readonly string[]): Promise<number> {
   const results = await Promise.allSettled(runIds.map((id) => runs.cancel(id)));
   return results.filter((result) => result.status === "fulfilled").length;
 }
+
+/**
+ * Triggers `transcribe-take` for a transcribe job with the global idempotency key
+ * `transcribe-{jobId}` (spec 0007). Pass it to `dispatchJob`; payload: the job ID only.
+ */
+export function triggerForTranscribe() {
+  return async (jobId: string): Promise<{ readonly id: string }> => {
+    const idempotencyKey = await idempotencyKeys.create(`transcribe-${jobId}`, {
+      scope: "global",
+    });
+    const handle = await tasks.trigger("transcribe-take", { jobId }, { idempotencyKey });
+    return { id: handle.id };
+  };
+}

@@ -45,6 +45,15 @@ export const emailEnvSchema = z.object({
   EMAIL_LINK_SECRET: z.string().min(32, "EMAIL_LINK_SECRET must be at least 32 characters"),
 });
 
+/**
+ * Transcripts (spec 0007): the Deepgram key lives in Trigger.dev only (never the Worker) and is
+ * parsed only by `transcribe-take`, so no other job needs it.
+ */
+export const transcriptEnvSchema = z.object({
+  DEEPGRAM_API_KEY: z.string().min(1),
+});
+
+export type TranscriptEnv = z.infer<typeof transcriptEnvSchema>;
 export type EmailEnv = z.infer<typeof emailEnvSchema>;
 export type WebEnv = z.infer<typeof webEnvSchema>;
 export type JobEnv = z.infer<typeof jobEnvSchema>;
@@ -82,4 +91,9 @@ export function parseUsageEnv(source: Source = process.env): UsageEnv {
 /** Email env: Resend key, sender address and the unsubscribe link secret (web and jobs). */
 export function parseEmailEnv(source: Source = process.env): EmailEnv {
   return parseEnv(emailEnvSchema, source, "email");
+}
+
+/** Transcript env: the Deepgram key (the `transcribe-take` job only). */
+export function parseTranscriptEnv(source: Source = process.env): TranscriptEnv {
+  return parseEnv(transcriptEnvSchema, source, "transcript");
 }
