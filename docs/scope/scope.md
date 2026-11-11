@@ -61,14 +61,14 @@ Capture conventions and tooling from the real scaffolded project into root `AGEN
 Core entities every slice builds on: creators, takes, processing jobs and their steps, cuts, backgrounds, transcripts, usage.
 **Done when:** the entities support every later slice (review, retention, usage limit, API access) without a breaking migration, and each creator can only reach their own data.
 - [x] Design it (spec): `/architect data model`
-- [ ] Build it: `/develop data model`
+- [x] Build it: `/develop data model`
    - [x] Shared helpers, registries and slice 1 migration (AC-1, AC-4, AC-7, AC-8, AC-10, AC-13, AC-16)
-   - [ ] Takes and jobs data functions, atomic start and finish (AC-2, AC-3, AC-5, AC-6, AC-11, AC-12, AC-13)
-   - [ ] Cuts and renders data functions (AC-8, AC-9, AC-10)
-   - [ ] Deletion queue, account deletion hook, cleanup schedule (AC-17, AC-18)
-- [ ] Verify it: `/check verify data model`
+   - [x] Takes and jobs data functions, atomic start and finish (AC-2, AC-3, AC-5, AC-6, AC-11, AC-12, AC-13)
+   - [x] Cuts and renders data functions (AC-8, AC-9, AC-10)
+   - [x] Deletion queue, account deletion hook, cleanup schedule (AC-17, AC-18)
+- [x] Verify it: `/check verify data model`
 - [ ] Test it: `/test data model`
-Spec [0002](../specs/0002-data-model/index.md) · code in `src/db/schema/`, `src/lib/`
+Spec [0002](../specs/0002-data-model/index.md) · code in `src/db/`, `src/lib/`, `src/server/{takes,jobs,cuts,renders,account}/`, `src/trigger/`
 
 ### 4. Design system & UI foundation · in-progress
 Visual language, layout and base components (upload, progress, video player, timeline, download), with Mobbin references in `design.md`.
