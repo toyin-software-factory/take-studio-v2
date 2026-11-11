@@ -100,6 +100,13 @@
   --border-strong: var(--stage-border);
   --focus: var(--stage-focus);
   --scrollbar: rgb(177 182 171 / 40%);
+  /* Derived for controls on the stage (design.md only names the light versions): primary is
+     Steel Blue here, so hover and pressed lighten it towards cream, which only raises the
+     contrast of its Deep Space Blue label; disabled uses cream tints instead of blue ones. */
+  --primary-hover: color-mix(in srgb, var(--stage-accent) 85%, var(--stage-text));
+  --primary-active: color-mix(in srgb, var(--stage-accent) 70%, var(--stage-text));
+  --disabled-bg: var(--stage-hover);
+  --disabled-fg: rgb(253 240 213 / 45%);
 
   --background: var(--stage-bg);
   --foreground: var(--stage-text);
@@ -213,6 +220,9 @@
   --spacing: 0.25rem;
   --container-content: 75rem;
   --container-transcript: 72ch;
+  --container-dialog-sm: 25rem;
+  --container-dialog-md: 35rem;
+  --container-dialog-lg: 45rem;
 
   --breakpoint-sm: 40rem;
   --breakpoint-md: 48rem;
@@ -229,6 +239,16 @@
   --shadow-overlay: var(--elevation-overlay);
 
   --ease-out: var(--ease-out-soft);
+  --animate-indeterminate: indeterminate 1.2s var(--ease-out-soft) infinite;
+
+  @keyframes indeterminate {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(300%);
+    }
+  }
   --default-transition-duration: var(--duration-fast);
   --default-transition-timing-function: var(--ease-out-soft);
 }

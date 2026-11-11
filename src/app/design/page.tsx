@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Toaster } from "@/components/ui/sonner";
 import { ColourSection } from "./colour-section";
+import { ComponentsSection } from "./components-section";
 import { isGalleryEnabled } from "./gallery";
 import { LayersSection, ShapeSection, SpacingSection, TypeSection } from "./scale-sections";
 import { lightColours, lightPairs, stageColours, stagePairs } from "./tokens";
@@ -9,7 +11,7 @@ import { lightColours, lightPairs, stageColours, stagePairs } from "./tokens";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Design tokens · Take Studio",
+  title: "Design system · Take Studio",
   robots: { index: false, follow: false },
 };
 
@@ -29,7 +31,7 @@ export default function DesignGalleryPage() {
   return (
     <main className="mx-auto max-w-content space-y-12">
       <header className="space-y-2">
-        <h1 className="text-h1 font-semibold">Design tokens</h1>
+        <h1 className="text-h1 font-semibold">Design system</h1>
         <p className="text-text-muted">
           Every token from design.md on the light app and inside the dark stage. Contrast ratios are
           computed from the token values. Base components join this page in the next milestone.
@@ -62,6 +64,8 @@ export default function DesignGalleryPage() {
       <SpacingSection />
       <ShapeSection />
       <LayersSection />
+      <ComponentsSection />
+      <Toaster />
     </main>
   );
 }
