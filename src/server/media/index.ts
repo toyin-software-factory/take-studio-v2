@@ -5,8 +5,8 @@ import { getForCreator } from "../takes";
 import { type Creator, errorResponse, guard, json } from "../takes/http";
 
 /**
- * GET /api/takes/{id}/media?kind=play|download|original (spec 0004, AC-9, AC-11, AC-12):
- * a presigned R2 link issued only after the ownership check. `play` lasts 1 hour and is
+ * GET /api/takes/{id}/media?kind=play|download|original|thumb (spec 0004, AC-9, AC-11, AC-12):
+ * a presigned R2 link issued only after the ownership check. `play` and `thumb` last 1 hour and are
  * inline; `download` and `original` last 15 minutes as attachments named from the title.
  * 404 (same body as every other route) when there is no such take or no file, 410 once the
  * video expired. The link is returned, never logged.
@@ -53,16 +53,20 @@ export async function handleMedia(
   }
   if (!stored) return errorResponse("not_found");
 
-  const play = kind.data === "play";
+  // Play and thumbnail links are inline and last an hour; downloads are 15 minute attachments.
+  const inline = kind.data === "play" || kind.data === "thumb";
   const url = await deps.presignGet(choice.key, {
-    expiresSeconds: play ? MEDIA_LINKS.playSeconds : MEDIA_LINKS.downloadSeconds,
+    expiresSeconds: inline ? MEDIA_LINKS.playSeconds : MEDIA_LINKS.downloadSeconds,
     disposition: {
-      type: play ? "inline" : "attachment",
-      fileName: downloadFileName(take.title, choice.file, take.container),
+      type: inline ? "inline" : "attachment",
+      fileName:
+        choice.file === "thumb"
+          ? "thumbnail.jpg"
+          : downloadFileName(take.title, choice.file, take.container),
     },
   });
   return json({
     url,
-    expiresInSeconds: play ? MEDIA_LINKS.playSeconds : MEDIA_LINKS.downloadSeconds,
+    expiresInSeconds: inline ? MEDIA_LINKS.playSeconds : MEDIA_LINKS.downloadSeconds,
   });
 }

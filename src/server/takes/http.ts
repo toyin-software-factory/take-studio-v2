@@ -173,7 +173,7 @@ export async function handleRetry(
   if (!found.ok) return errorResponse("not_found");
   const { take } = found.data;
   if (take.status === "processing") return errorResponse("job_in_progress");
-  if (!isRetryable(take)) return errorResponse("not_retryable");
+  if (!isRetryable(take, deps.now?.() ?? new Date())) return errorResponse("not_retryable");
 
   // A missing USAGE_HASH_SECRET is a configuration problem: a friendly 503 before any job
   // starts (so nothing is charged), never a 500.

@@ -20,7 +20,7 @@ export function takeView(take: Take, now: Date) {
     videoExpiresAt: iso(take.videoExpiresAt),
     createdAt: iso(take.createdAt),
     failureCode: take.failureCode,
-    retryable: isRetryable(take),
+    retryable: isRetryable(take, now),
     expired: isExpired(take, now),
   };
 }
@@ -35,7 +35,7 @@ export function cardView(row: TakeListRow, now: Date) {
     videoExpiresAt: iso(row.videoExpiresAt),
     createdAt: iso(row.createdAt),
     failureCode: row.failureCode,
-    retryable: isRetryable(row),
+    retryable: isRetryable(row, now),
     expired: isExpired(row, now),
   };
 }
