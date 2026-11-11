@@ -1,5 +1,5 @@
 {
-  "id": "619a5300-5968-4be1-9eb8-1430dfcbf777",
+  "id": "e1decaaa-66ab-457b-a585-2fdb26b06ab8",
   "prevId": "c26fc566-fa4d-42ec-96c9-4db724a392f6",
   "version": "7",
   "dialect": "postgresql",
@@ -1288,6 +1288,21 @@
               "asc": true,
               "nulls": "last"
             },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "sign_in_email_attempt_created_idx": {
+          "name": "sign_in_email_attempt_created_idx",
+          "columns": [
             {
               "expression": "created_at",
               "isExpression": false,
