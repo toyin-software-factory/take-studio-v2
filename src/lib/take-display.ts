@@ -1,4 +1,5 @@
-import { MEDIA_LIMITS } from "./take-rules";
+import { isMediaFailure } from "./failure-codes";
+import { uploadFailureMessage } from "./take-messages";
 
 /**
  * Pure display rules for the library and take pages (spec 0004, AC-1, AC-4, AC-7 to AC-10,
@@ -34,49 +35,19 @@ export function isInFlight(status: string): boolean {
 }
 
 /**
- * Failures caused by the uploaded media itself: "Upload another video". Same set as
- * `isMediaFailure` in #32 (src/lib/failure-codes.ts); switch to that import once it lands.
- */
-const MEDIA_FAILURES: ReadonlySet<string> = new Set([
-  "invalid_media",
-  "too_long",
-  "too_large",
-  "resolution_exceeded",
-  "corrupt_upload",
-  "upload_abandoned",
-]);
-
-export function isMediaFailure(code: string | null): boolean {
-  return code !== null && MEDIA_FAILURES.has(code);
-}
-
-const minutesOf = (ms: number) => Math.ceil(ms / 60_000);
-
-/**
  * The friendly message for a failed take: what happened, then what to do (design.md Voice).
- * Media failures name the limit (AC-4, same wording as `take-messages.ts` in #32); our own
- * failures say it wasn't the creator's fault.
+ * Media failures use the shared wording from `take-messages.ts` (AC-4; the page has no frame
+ * size, so a resolution failure gets its general sentence); our own failures say it wasn't the
+ * creator's fault.
  */
 export function failureMessage(take: {
   readonly failureCode: string | null;
   readonly durationMs: number | null;
 }): string {
-  const limit = MEDIA_LIMITS.maxDurationMs / 60_000;
+  if (isMediaFailure(take.failureCode)) {
+    return uploadFailureMessage({ ...take, width: null, height: null, originalBytes: 0 });
+  }
   switch (take.failureCode) {
-    case "too_long":
-      return take.durationMs
-        ? `This video is ${minutesOf(take.durationMs)} minutes long. The limit is ${limit} minutes.`
-        : `This video is longer than ${limit} minutes, the limit.`;
-    case "too_large":
-      return "This video is over 2 GB. The limit is 2 GB.";
-    case "resolution_exceeded":
-      return "This video is bigger than 1080p, the limit.";
-    case "invalid_media":
-      return "This file isn't a video we can read. Use an MP4 or MOV.";
-    case "corrupt_upload":
-      return "This video couldn't be read. It may be damaged, or the upload didn't finish.";
-    case "upload_abandoned":
-      return "This upload didn't finish.";
     case "timeout":
       return "Processing took too long and stopped. Try again.";
     case "cancelled_while_running":
@@ -110,8 +81,8 @@ export function shortDate(iso: string): string {
 
 /**
  * Expiry note for a card or page (AC-1, design.md Expired video): "Video expires in 12 days",
- * "Video expires today" (the same UTC date), "Video expires tomorrow" (under a day left but the
- * next UTC date), "Video expired on 3 Dec"; null before the upload completes.
+ * "Video expires in less than a day" (never "today": the creator's day is not UTC), "Video
+ * expired on 3 Dec"; null before the upload completes.
  */
 export function expiryNote(
   videoExpiresAt: string | null,
@@ -122,10 +93,7 @@ export function expiryNote(
   const left = new Date(videoExpiresAt).getTime() - now.getTime();
   if (expired || left <= 0) return `Video expired on ${shortDate(videoExpiresAt)}`;
   const days = Math.floor(left / DAY_MS);
-  if (days === 0) {
-    const sameUtcDate = videoExpiresAt.slice(0, 10) === now.toISOString().slice(0, 10);
-    return sameUtcDate ? "Video expires today" : "Video expires tomorrow";
-  }
+  if (days === 0) return "Video expires in less than a day";
   return `Video expires in ${days} ${days === 1 ? "day" : "days"}`;
 }
 

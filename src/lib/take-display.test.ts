@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { isMediaFailure } from "./failure-codes";
 import {
   expiryNote,
   shortDate,
   failureMessage,
   formatClock,
   isInFlight,
-  isMediaFailure,
   overallPercent,
   pollDelay,
   removedNote,
@@ -36,8 +36,8 @@ describe("expiryNote (AC-1)", () => {
   it.each([
     ["2026-11-23T13:00:00Z", false, "Video expires in 12 days"],
     ["2026-11-12T13:00:00Z", false, "Video expires in 1 day"],
-    ["2026-11-11T18:00:00Z", false, "Video expires today"],
-    ["2026-11-12T10:00:00Z", false, "Video expires tomorrow"],
+    ["2026-11-11T18:00:00Z", false, "Video expires in less than a day"],
+    ["2026-11-12T10:00:00Z", false, "Video expires in less than a day"],
     ["2026-11-10T09:00:00Z", false, "Video expired on 10 Nov"],
     ["2026-12-03T09:00:00Z", true, "Video expired on 3 Dec"],
   ])("%s (expired %s) → %s", (at, expired, text) => {

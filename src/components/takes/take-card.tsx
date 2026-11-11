@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { TakeCard as TakeCardData } from "@/lib/take-api";
-import { expiryNote, failureMessage, formatClock, isMediaFailure } from "@/lib/take-display";
+import { isMediaFailure } from "@/lib/failure-codes";
+import { expiryNote, failureMessage, formatClock } from "@/lib/take-display";
 import { StatusBadge } from "./status-badge";
 import { TakeThumb } from "./take-thumb";
 import { UPLOAD_INPUT_ID } from "./upload-area";

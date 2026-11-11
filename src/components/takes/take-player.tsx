@@ -106,7 +106,11 @@ export function TakePlayer({ takeId }: { readonly takeId: string }) {
           className="size-full object-contain"
           onClick={toggle}
           onPlay={() => setPlaying(true)}
-          onPause={() => setPlaying(false)}
+          onPause={() => {
+            setPlaying(false);
+            // A pause while the new link is loading means: stay paused when it arrives.
+            resumePlaying.current = false;
+          }}
           onTimeUpdate={(e) => setCurrent(e.currentTarget.currentTime)}
           onLoadedMetadata={(e) => {
             setDuration(e.currentTarget.duration);
