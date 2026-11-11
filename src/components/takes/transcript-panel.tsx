@@ -1,14 +1,13 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { type TranscriptViewData, apiMessage, transcriptViewSchema } from "@/lib/take-api";
-import { POLL } from "@/lib/take-display";
-import { callApi } from "./browser-io";
-import { usePoll, type PollResult } from "./use-poll";
-
-/** About 30 s of 2 s checks for a transcript job that has not appeared yet. */
-const NONE_CHECKS = 15;
+import { Icon } from "@/components/ui/icon";
+import { type PlayerBridge, useCurrentParagraph } from "./player-bridge";
+import { TranscriptDownloads } from "./transcript-downloads";
+import { TranscriptParagraphs } from "./transcript-paragraphs";
+import { useTranscript } from "./use-transcript";
 
 const SKIPPED: Readonly<Record<string, string>> = {
   not_english: "Transcripts are English only for now",
@@ -16,121 +15,81 @@ const SKIPPED: Readonly<Record<string, string>> = {
   original_gone: "This take's video has expired, so a transcript can't be made",
 };
 
-/** `m:ss` of a time in milliseconds (floored). */
-function clock(ms: number): string {
-  const total = Math.floor(ms / 1000);
-  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
-}
-
 /**
- * The transcript under a ready take (spec 0007, slice 2 thread): plain paragraphs, each with its
- * timestamp on the trimmed video. Reads GET /api/takes/{id}/transcript and polls every 2 s
- * while it is being made. The full panel (trimmed times, seek, downloads) comes later.
+ * The transcript beside the stage (spec 0007, AC-2 to AC-5, AC-8 to AC-10, AC-12): making (with
+ * polling), ready, ready with no words in the trimmed video, skipped with its reason, failed
+ * with Try again, and none with Make transcript (or a plain note when it cannot be made).
+ * The words, seek, downloads and the caption track version all come from one read.
  */
-export function TranscriptPanel({ takeId }: { readonly takeId: string }) {
-  const [view, setView] = useState<TranscriptViewData | null>(null);
-  const [stopped, setStopped] = useState(false);
-  const [loadFailed, setLoadFailed] = useState(false);
-  const [starting, setStarting] = useState(false);
-  const [startError, setStartError] = useState<string | null>(null);
-  // `process-take` marks the video Ready a moment before it creates the transcript job, so a
-  // first read can say `none`: keep checking for a short while before believing it.
-  const noneChecks = useRef(0);
-  const [noneSeen, setNoneSeen] = useState(0);
-
-  const load = useCallback(async (): Promise<PollResult> => {
-    const reply = await callApi(`/api/takes/${takeId}/transcript`, "GET").catch(() => null);
-    const parsed = transcriptViewSchema.safeParse(reply?.data);
-    if (reply?.status === 401 || reply?.status === 404) {
-      // Final: the take page already says signed out or not found, so no retry promise here.
-      setLoadFailed(false);
-      setStopped(true);
-      return "stop";
-    }
-    if (reply?.status !== 200 || !parsed.success) {
-      setLoadFailed(true);
-      return "error";
-    }
-    setLoadFailed(false);
-    setView(parsed.data);
-    // A start message ("still being made") only belongs while the job is still making.
-    if (parsed.data.state !== "making") setStartError(null);
-    if (parsed.data.state === "making") return "continue";
-    if (parsed.data.state === "none") {
-      noneChecks.current += 1;
-      setNoneSeen(noneChecks.current);
-      if (noneChecks.current < NONE_CHECKS) return "continue";
-    }
-    return "stop";
-  }, [takeId]);
-
-  /** Make transcript / Try again (spec 0007, AC-9): starts the job, then polls like any other. */
-  const make = useCallback(async () => {
-    setStarting(true);
-    setStartError(null);
-    try {
-      const reply = await callApi(`/api/takes/${takeId}/transcript`, "POST");
-      if (reply.status === 202) {
-        noneChecks.current = 0;
-        setNoneSeen(0);
-        setView((v) => (v ? { ...v, state: "making", canMake: false } : v));
-      } else {
-        setStartError(apiMessage(reply.data, "The transcript didn't start. Please try again."));
-        // Another tab may have started it (or the take changed): refresh, and polling resumes
-        // by itself if the view now says `making`.
-        if (reply.status === 409) await load();
-      }
-    } catch {
-      setStartError("The transcript didn't start. Check your connection and try again.");
-    } finally {
-      setStarting(false);
-    }
-  }, [takeId, load]);
-
-  usePoll(
-    load,
-    POLL.takeMs,
-    !stopped &&
-      (view === null ||
-        view.state === "making" ||
-        (view.state === "none" && noneSeen < NONE_CHECKS)),
-    {
-      immediate: true,
-    },
+export function TranscriptPanel({
+  takeId,
+  bridge,
+}: {
+  readonly takeId: string;
+  readonly bridge: PlayerBridge;
+}) {
+  const { view, loadError, starting, startError, make } = useTranscript(takeId);
+  const paragraphs = view?.state === "ready" ? (view.paragraphs ?? []) : [];
+  const current = useCurrentParagraph(
+    bridge,
+    paragraphs.map((p) => p.startMs),
   );
 
-  const loadError =
-    loadFailed && !stopped ? (
-      <p role="alert">We couldn&rsquo;t load the transcript. We&rsquo;ll keep trying.</p>
-    ) : null;
-  if (!view) return loadError;
+  // The player shows a caption track only for a ready transcript that has words.
+  const captionsVersion =
+    view?.state === "ready" && paragraphs.length > 0 ? (view.version ?? "1") : null;
+  useEffect(() => {
+    bridge.setCaptions(captionsVersion);
+    return () => bridge.setCaptions(null);
+  }, [bridge, captionsVersion]);
+
+  const problem = loadError ? (
+    <p role="alert" className="text-danger">
+      We couldn&rsquo;t load the transcript. We&rsquo;ll keep trying.
+    </p>
+  ) : null;
+  if (!view) return problem;
+
+  const retryable = (view.state === "none" || view.state === "failed") && view.canMake;
   return (
-    <section aria-labelledby="transcript-heading" className="flex flex-col gap-3">
+    <section
+      aria-labelledby="transcript-heading"
+      className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4"
+    >
       <h2 id="transcript-heading" className="text-h3 font-semibold">
         Transcript
       </h2>
-      {loadError}
-      {view.state === "making" ? <p role="status">Making your transcript</p> : null}
+      {problem}
+      {view.state === "making" ? (
+        <p role="status" className="flex items-center gap-2 text-text-muted">
+          <Icon icon={Loader2} size="badge" className="animate-spin motion-reduce:animate-none" />
+          Making your transcript
+        </p>
+      ) : null}
       {view.state === "none" && !view.canMake ? <p>No transcript for this take</p> : null}
       {view.state === "failed" ? <p>The transcript didn&rsquo;t finish</p> : null}
-      {(view.state === "none" || view.state === "failed") && view.canMake ? (
-        <Button type="button" onClick={make} disabled={starting} className="w-fit">
+      {retryable ? (
+        <Button type="button" onClick={() => void make()} loading={starting} className="w-fit">
           {view.state === "failed" ? "Try again" : "Make transcript"}
         </Button>
       ) : null}
-      {startError ? <p role="alert">{startError}</p> : null}
-      {view.state === "skipped" ? <p>{SKIPPED[view.reason ?? ""] ?? "No transcript"}</p> : null}
-      {view.state === "ready" && view.paragraphs?.length === 0 ? (
-        <p>No words in this transcript</p>
+      {startError ? (
+        <p role="alert" className="text-danger">
+          {startError}
+        </p>
       ) : null}
-      {view.state === "ready"
-        ? (view.paragraphs ?? []).map((p) => (
-            <div key={p.startMs} className="flex max-w-[72ch] gap-3 leading-[1.7]">
-              <span className="font-mono text-small text-muted-foreground">{clock(p.startMs)}</span>
-              <p>{p.words.map((w) => w.w).join(" ")}</p>
-            </div>
-          ))
-        : null}
+      {view.state === "skipped" ? <p>{SKIPPED[view.reason ?? ""] ?? "No transcript"}</p> : null}
+      {view.state === "ready" && paragraphs.length === 0 ? (
+        <p>No words in the trimmed video</p>
+      ) : null}
+      {view.state === "ready" && paragraphs.length > 0 ? (
+        <>
+          <TranscriptDownloads takeId={takeId} version={view.version} />
+          <div className="max-h-[32rem] overflow-y-auto">
+            <TranscriptParagraphs paragraphs={paragraphs} current={current} onSeek={bridge.seek} />
+          </div>
+        </>
+      ) : null}
     </section>
   );
 }

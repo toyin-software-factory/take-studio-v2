@@ -78,3 +78,48 @@ export async function seedTakes(creatorId: string, seeds: readonly TakeSeed[]): 
   }
   return ids;
 }
+
+export type WordSeed = {
+  readonly w: string;
+  readonly startMs: number;
+  readonly endMs: number;
+  readonly filler?: boolean;
+  readonly para?: boolean;
+};
+
+/** Test only: a stored transcript (times on the original take, 25 fps) for a seeded take. */
+export async function seedTranscript(takeId: string, words: readonly WordSeed[]): Promise<void> {
+  const sql = postgres(localDatabaseUrl(), { max: 1 });
+  try {
+    const stored = words.map((word) => ({
+      w: word.w,
+      startMs: word.startMs,
+      endMs: word.endMs,
+      conf: 0.99,
+      filler: word.filler ?? false,
+      para: word.para ?? false,
+    }));
+    await sql`insert into transcript (id, take_id, language, text, words, source_fps, model)
+              values (${randomUUID()}, ${takeId}, 'en', ${words.map((w) => w.w).join(" ")},
+                ${sql.json(stored as unknown as postgres.JSONValue)}, 25, 'nova-3')`;
+  } finally {
+    await sql.end();
+  }
+}
+
+/** Test only: a new latest render for a take (as a re render would make), so the version changes. */
+export async function replaceLatestRender(takeId: string): Promise<void> {
+  const sql = postgres(localDatabaseUrl(), { max: 1 });
+  try {
+    const [old] = await sql`select job_id, duration_ms, removed_ranges from render
+                            where take_id = ${takeId} and is_latest`;
+    if (!old) throw new Error("take has no latest render");
+    const id = randomUUID();
+    await sql`update render set is_latest = false where take_id = ${takeId}`;
+    await sql`insert into render (id, take_id, job_id, status, video_key, duration_ms, removed_ranges, is_latest)
+              values (${id}, ${takeId}, ${old.job_id}, 'succeeded', ${`renders/${takeId}/${id}.mp4`},
+                ${old.duration_ms}, ${sql.json(old.removed_ranges)}, true)`;
+  } finally {
+    await sql.end();
+  }
+}

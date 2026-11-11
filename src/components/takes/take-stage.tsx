@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import type { TakeDetail } from "@/lib/take-api";
 import { expiryNote, failureMessage } from "@/lib/take-display";
+import type { PlayerBridge } from "./player-bridge";
 import { ProcessingSteps } from "./processing-steps";
 import { TakePlayer } from "./take-player";
 import { useRetry } from "./use-retry";
@@ -64,9 +65,11 @@ function Failed({
  */
 export function TakeStage({
   detail,
+  bridge,
   onRetried,
 }: {
   readonly detail: TakeDetail;
+  readonly bridge: PlayerBridge;
   readonly onRetried: () => void;
 }) {
   const { take, latestJob } = detail;
@@ -81,7 +84,7 @@ export function TakeStage({
           <p className="text-stage-text-muted">Videos are kept for 30 days.</p>
         </StageMessage>
       ) : take.status === "ready" ? (
-        <TakePlayer takeId={take.id} />
+        <TakePlayer takeId={take.id} bridge={bridge} />
       ) : take.status === "failed" ? (
         <Failed detail={detail} onRetried={onRetried} />
       ) : (
