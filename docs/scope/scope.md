@@ -111,7 +111,7 @@ Catch errors in the app and in processing jobs so failed takes are seen before c
    - [ ] Alert rules and a production check (AC-7)
 - [ ] Verify it: `/check verify error monitoring`
 - [ ] Test it: `/test error monitoring`
-Spec [0005](../specs/0005-error-monitoring.md) · code in `src/lib/sentry-*.ts`, `src/worker.ts`, `src/instrumentation*.ts`, `src/trigger/init.ts`
+Spec [0005](../specs/0005-error-monitoring.md) · code in `src/lib/sentry-*.ts`, `src/worker.ts`, `src/instrumentation*.ts`, `src/trigger/init.ts`, `src/trigger/sentry-check.ts`
 
 ### 18. Email sign in and take ready email · in-progress
 Follow up to the core take loop (from spec 0004): sign in with a one time email link alongside Google, and an email when a take is ready or failed, with one click opt out.
