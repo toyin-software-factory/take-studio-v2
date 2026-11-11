@@ -3,7 +3,15 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { take } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
-import { create, getForCreator, listForCreator, markUploaded, rename, transition } from ".";
+import {
+  attachUpload,
+  create,
+  getForCreator,
+  listForCreator,
+  markUploaded,
+  rename,
+  transition,
+} from ".";
 
 let testDb: TestDb;
 let db: Db;
@@ -51,6 +59,33 @@ describe("takes.create", () => {
     expect(await create(db, { ...base, container: "webm" as "mp4" })).toEqual({
       ok: false,
       error: "invalid",
+    });
+  });
+});
+
+describe("takes.attachUpload", () => {
+  it("stores the multipart upload id only while the take is uploading", async () => {
+    const creator = await createCreator(db);
+    const created = await create(db, {
+      creatorId: creator.id,
+      fileName: "a.mov",
+      container: "mov",
+      bytes: 10,
+    });
+    if (!created.ok) throw new Error(created.error);
+    expect(created.data.uploadId).toBeNull();
+
+    const attached = await attachUpload(db, creator.id, created.data.id, "mpu-123");
+    expect(attached.ok && attached.data.uploadId).toBe("mpu-123");
+    expect(await attachUpload(db, creator.id, created.data.id, "  ")).toEqual({
+      ok: false,
+      error: "invalid",
+    });
+
+    const uploaded = await seedTake(db, creator.id, { status: "uploaded" });
+    expect(await attachUpload(db, creator.id, uploaded.id, "mpu-9")).toEqual({
+      ok: false,
+      error: "invalid_transition",
     });
   });
 });
@@ -205,6 +240,11 @@ describe("ownership (AC-2)", () => {
 
     expect(await getForCreator(db, b.id, t.id)).toEqual({ ok: false, error: "not_found" });
     expect(await rename(db, b.id, t.id, "Mine now")).toEqual({ ok: false, error: "not_found" });
+    const uploading = await seedTake(db, a.id, { status: "uploading" });
+    expect(await attachUpload(db, b.id, uploading.id, "mpu-x")).toEqual({
+      ok: false,
+      error: "not_found",
+    });
     const list = await listForCreator(db, b.id);
     expect(list.ok && list.data.rows).toEqual([]);
 

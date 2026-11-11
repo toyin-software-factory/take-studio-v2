@@ -21,12 +21,12 @@ const createSchema = z.object({
   fileName: z.string(),
   container: z.enum(CONTAINERS),
   bytes: z.number().int().positive().max(MEDIA_LIMITS.maxBytes),
-  uploadId: z.string().min(1).nullable().optional(),
 });
 
 /**
  * `takes.create`: a new take in `uploading` with an app generated ID and its original key
  * (`originals/{takeId}/source.{container}`). The title comes from the file name.
+ * Upload flow: create → start the multipart upload at `originalKey` → `attachUpload`.
  */
 export async function create(
   db: Executor,
@@ -34,7 +34,7 @@ export async function create(
 ): Promise<Result<Take, "invalid">> {
   const parsed = createSchema.safeParse(input);
   if (!parsed.success) return err("invalid");
-  const { creatorId, fileName, container, bytes, uploadId } = parsed.data;
+  const { creatorId, fileName, container, bytes } = parsed.data;
 
   const title = titleFromFileName(fileName);
   if (title.length === 0) return err("invalid");
@@ -50,10 +50,37 @@ export async function create(
       originalKey: originalKey(id, container),
       originalBytes: bytes,
       container,
-      uploadId: uploadId ?? null,
     })
     .returning();
   return created ? ok(created) : err("invalid");
+}
+
+/**
+ * `takes.attachUpload`: stores the multipart upload ID on the creator's take, only while it
+ * is still `uploading` (the cleanup task uses it to abort abandoned uploads). A take in any
+ * other status is `invalid_transition`; another creator's take is `not_found`.
+ */
+export async function attachUpload(
+  db: Executor,
+  creatorId: string,
+  takeId: string,
+  uploadId: string,
+): Promise<Result<Take, "not_found" | "invalid" | "invalid_transition">> {
+  if (!z.uuid().safeParse(takeId).success) return err("not_found");
+  if (!z.string().trim().min(1).max(1024).safeParse(uploadId).success) return err("invalid");
+
+  const [updated] = await db
+    .update(take)
+    .set({ uploadId })
+    .where(and(eq(take.id, takeId), eq(take.creatorId, creatorId), eq(take.status, "uploading")))
+    .returning();
+  if (updated) return ok(updated);
+
+  const [owned] = await db
+    .select({ id: take.id })
+    .from(take)
+    .where(and(eq(take.id, takeId), eq(take.creatorId, creatorId)));
+  return err(owned ? "invalid_transition" : "not_found");
 }
 
 export type TakeDetail = {
