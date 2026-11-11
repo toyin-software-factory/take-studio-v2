@@ -6,7 +6,6 @@ import { Stage, StageLetterbox } from "@/components/stage";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import type { TakeDetail } from "@/lib/take-api";
-import { isMediaFailure } from "@/lib/failure-codes";
 import { expiryNote, failureMessage } from "@/lib/take-display";
 import { ProcessingSteps } from "./processing-steps";
 import { TakePlayer } from "./take-player";
@@ -43,17 +42,17 @@ function Failed({
   return (
     <StageMessage icon={CircleAlert} title="This take didn't finish">
       <p role="alert" className="max-w-prose text-stage-text-muted">
-        {failureMessage(take)}
+        {failureMessage(take, take.retryable)}
       </p>
       {take.retryable ? (
         <Button loading={pending} onClick={() => void retry()}>
           Try again
         </Button>
-      ) : isMediaFailure(take.failureCode) ? (
+      ) : (
         <Button asChild>
           <Link href="/">Upload another video</Link>
         </Button>
-      ) : null}
+      )}
     </StageMessage>
   );
 }

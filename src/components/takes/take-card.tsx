@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import type { TakeCard as TakeCardData } from "@/lib/take-api";
-import { isMediaFailure } from "@/lib/failure-codes";
-import { expiryNote, failureMessage, formatClock } from "@/lib/take-display";
+import { effectiveStatus, expiryNote, failureMessage, formatClock } from "@/lib/take-display";
 import { StatusBadge } from "./status-badge";
 import { TakeThumb } from "./take-thumb";
 import { UPLOAD_INPUT_ID } from "./upload-area";
@@ -25,16 +24,14 @@ export function TakeCard({
   readonly onRetried: (id: string) => void;
 }) {
   const { retry, pending } = useRetry(take.id, () => onRetried(take.id));
-  const expiry = expiryNote(take.videoExpiresAt, take.expired, now);
-  const failed = take.status === "failed";
+  const status = effectiveStatus(take.status, take.videoExpiresAt, take.expired, now);
+  const expired = take.expired || status === "expired";
+  const expiry = expiryNote(take.videoExpiresAt, expired, now);
+  const failed = status === "failed";
 
   return (
     <li className="relative flex flex-col rounded-md bg-surface shadow-card transition-shadow focus-within:shadow-overlay hover:shadow-overlay">
-      <TakeThumb
-        takeId={take.id}
-        available={take.status !== "uploading" && !take.expired}
-        status={take.status}
-      />
+      <TakeThumb takeId={take.id} available={status !== "uploading" && !expired} status={status} />
       <div className="flex flex-1 flex-col gap-2 p-4">
         <h3 className="text-body font-semibold">
           <Link
@@ -45,7 +42,7 @@ export function TakeCard({
           </Link>
         </h3>
         <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge status={take.status} />
+          <StatusBadge status={status} />
           {take.durationMs !== null ? (
             <span className="mono text-small text-text-muted">
               <span className="sr-only">Length </span>
@@ -53,7 +50,7 @@ export function TakeCard({
             </span>
           ) : null}
         </div>
-        {failed ? <p className="text-small">{failureMessage(take)}</p> : null}
+        {failed ? <p className="text-small">{failureMessage(take, take.retryable)}</p> : null}
         {expiry ? <p className="text-small text-text-muted">{expiry}</p> : null}
         {failed ? (
           // Above the stretched link, so the button gets the click.
@@ -62,7 +59,7 @@ export function TakeCard({
               <Button size="sm" loading={pending} onClick={() => void retry()}>
                 Try again
               </Button>
-            ) : isMediaFailure(take.failureCode) ? (
+            ) : (
               <Button
                 size="sm"
                 variant="secondary"
@@ -70,7 +67,7 @@ export function TakeCard({
               >
                 Upload another video
               </Button>
-            ) : null}
+            )}
           </div>
         ) : null}
       </div>

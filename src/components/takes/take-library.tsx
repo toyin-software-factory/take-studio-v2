@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useNow } from "./use-now";
 import { Film } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -34,7 +35,7 @@ export function TakeLibrary({
   const [cursor, setCursor] = useState(initial.nextCursor);
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState(false);
-  const now = new Date(nowIso);
+  const now = useNow(nowIso);
 
   const inFlight = takes.filter((t) => isInFlight(t.status)).map((t) => t.id);
   const pollKey = inFlight.join(",");

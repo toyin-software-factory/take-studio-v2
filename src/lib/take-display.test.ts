@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { isMediaFailure } from "./failure-codes";
 import {
+  effectiveStatus,
   expiryNote,
   shortDate,
   failureMessage,
@@ -109,5 +110,26 @@ describe("tab titles and polling (AC-8, Flow step 7)", () => {
 describe("shortDate", () => {
   it("shows the UTC date whatever the host time zone", () => {
     expect(shortDate("2026-12-03T00:30:00Z")).toBe("3 Dec");
+  });
+});
+
+describe("effectiveStatus", () => {
+  const now = new Date("2026-11-11T12:00:00Z");
+  it("turns a ready take into expired once its time has passed or the server says so", () => {
+    expect(effectiveStatus("ready", "2026-11-11T11:59:00Z", false, now)).toBe("expired");
+    expect(effectiveStatus("ready", "2026-12-01T00:00:00Z", true, now)).toBe("expired");
+  });
+  it("leaves other takes alone", () => {
+    expect(effectiveStatus("ready", "2026-12-01T00:00:00Z", false, now)).toBe("ready");
+    expect(effectiveStatus("failed", "2026-11-01T00:00:00Z", false, now)).toBe("failed");
+    expect(effectiveStatus("ready", null, false, now)).toBe("ready");
+  });
+});
+
+describe("failureMessage when the take can't be retried", () => {
+  it("says to upload again instead of try again", () => {
+    const take = { failureCode: "internal_error", durationMs: null };
+    expect(failureMessage(take, false)).toMatch(/Upload the video again\.$/);
+    expect(failureMessage(take)).toMatch(/Try again\.$/);
   });
 });

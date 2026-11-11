@@ -40,22 +40,43 @@ export function isInFlight(status: string): boolean {
  * size, so a resolution failure gets its general sentence); our own failures say it wasn't the
  * creator's fault.
  */
-export function failureMessage(take: {
-  readonly failureCode: string | null;
-  readonly durationMs: number | null;
-}): string {
+export function failureMessage(
+  take: {
+    readonly failureCode: string | null;
+    readonly durationMs: number | null;
+  },
+  retryable = true,
+): string {
   if (isMediaFailure(take.failureCode)) {
     return uploadFailureMessage({ ...take, width: null, height: null, originalBytes: 0 });
   }
+  // A take that can't be retried (no length was read, or the original is going) says to upload
+  // again instead of "Try again", so the words match the button.
+  const again = retryable ? "Try again." : "Upload the video again.";
   switch (take.failureCode) {
     case "timeout":
-      return "Processing took too long and stopped. Try again.";
+      return `Processing took too long and stopped. ${again}`;
     case "cancelled_while_running":
     case "cancelled_before_start":
-      return "Processing was stopped before it finished. Try again.";
+      return `Processing was stopped before it finished. ${again}`;
     default:
-      return "Something went wrong on our side while processing this video. Try again.";
+      return `Something went wrong on our side while processing this video. ${again}`;
   }
+}
+
+/**
+ * The status a card or page should show now: a ready take whose video has expired (the server
+ * says so, or its expiry time has passed while the page stayed open) is `expired`, whatever
+ * the last response said.
+ */
+export function effectiveStatus(
+  status: string,
+  videoExpiresAt: string | null,
+  expired: boolean,
+  now: Date,
+): string {
+  const past = videoExpiresAt !== null && new Date(videoExpiresAt).getTime() <= now.getTime();
+  return status === "ready" && (expired || past) ? "expired" : status;
 }
 
 /** mm:ss, or h:mm:ss from an hour (design.md Voice). Negative or missing gives 0:00. */
