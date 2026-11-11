@@ -23,9 +23,9 @@ Verified on official pages (2026-11-11): the free Developer plan has 5,000 error
 - As a creator, I want my videos, transcripts and email never to reach a third party through error reports.
 
 **Acceptance criteria**:
-- **AC-1**: An unhandled error in a route handler, server component or the Worker reaches Sentry with environment (`production`, `preview`, `development`), release (git commit SHA) and a `runtime: web` tag.
-- **AC-2**: An unhandled error in the browser reaches Sentry with the same release and a `runtime: browser` tag.
-- **AC-3**: A Trigger.dev task's final failure reaches Sentry with `runtime: jobs`, the task name, run ID, attempt, and only these IDs as tags: `takeId`, `jobId`, `renderId` when present. The task payload is never attached.
+- **AC-1**: An unhandled error in a route handler, server component or the Worker reaches Sentry with environment (`production`, `preview`, `development`), release (git commit SHA) and a `service: web` tag.
+- **AC-2**: An unhandled error in the browser reaches Sentry with the same release and a `service: browser` tag.
+- **AC-3**: A Trigger.dev task's final failure reaches Sentry with `service: jobs`, the task name, run ID, attempt, and only these IDs as tags: `takeId`, `jobId`, `renderId` when present. The task payload is never attached.
 - **AC-4**: No personal or secret data is sent or stored: the Sentry project has "Prevent Storing of IP Addresses" on (Sentry otherwise stores IP and location server side); the SDK's default personal data collection is off (`sendDefaultPii: false` in SDK v10, every `dataCollection` category off in v11); the user is set to `{ id }` only; request bodies, cookies, `authorization` headers and query strings are removed; any URL containing `X-Amz-` or `r2.cloudflarestorage.com` is redacted in events and breadcrumbs; take titles, file names, emails and transcript text are never added. Proven by unit tests on the scrubbing functions.
 - **AC-5**: Errors only: tracing sample rate 0, no session replay, no user feedback widget, no profiling.
 - **AC-6**: Source maps for the web app and the jobs are uploaded during the CI deploy, so production stack traces show original file names and lines; source maps are not served publicly. For the Worker, the deploy builds the final wrangler bundle, injects debug IDs and uploads that bundle's map, then deploys that exact file with all bindings from `wrangler.jsonc`; a failed upload stops the deploy before production changes. Server frames resolve to `src/`: Next writes server source maps, the maps survive OpenNext's standalone copy, the OpenNext Cloudflare bundle step emits its map (a pinned, gated patch), and the composed map is realigned for the lines the Sentry plugin injects; all of this is on only for deploys that have the Sentry token.
@@ -51,7 +51,7 @@ Verified on official pages (2026-11-11): the free Developer plan has 5,000 error
 
 ## Rationale
 
-One project with a `runtime` tag keeps everything in the free plan and one view. Scrubbing in the SDK (`beforeSend`, `beforeBreadcrumb`) means personal data never leaves our environment; Sentry's server side scrubbing is a backup, not the plan. Errors only keeps us far under 5,000 events and avoids Workers' tracing limitation (CPU time shows as 0 ms). The one user limit fits: Toyin owns the account and alerts; builders read issues through the Sentry API with a token when fixing.
+One project with a `service` tag (Sentry overwrites its own `runtime` tag on Node events, so we use `service`) keeps everything in the free plan and one view. Scrubbing in the SDK (`beforeSend`, `beforeBreadcrumb`) means personal data never leaves our environment; Sentry's server side scrubbing is a backup, not the plan. Errors only keeps us far under 5,000 events and avoids Workers' tracing limitation (CPU time shows as 0 ms). The one user limit fits: Toyin owns the account and alerts; builders read issues through the Sentry API with a token when fixing.
 
 ## Feature design
 
