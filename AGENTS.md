@@ -67,6 +67,8 @@ MCP servers: Neon, Cloudflare, Trigger.dev (recommended, not connected yet)
 
 <!-- Nested AGENTS.md files are listed here as they are created -->
 
+- [src/app/AGENTS.md](src/app/AGENTS.md): routes and pages: force dynamic, signed in and out rendering, error pages, titles
+- [src/lib/AGENTS.md](src/lib/AGENTS.md): shared rules: what is pure, add only registries, units, usage hash
 - [src/trigger/AGENTS.md](src/trigger/AGENTS.md): jobs: what each task owns, ffmpeg pin, retries, failure codes, import boundary
 - [src/db/AGENTS.md](src/db/AGENTS.md): data layer: Result, transitions, transactions, clients, test database, migrations
 - [src/server/AGENTS.md](src/server/AGENTS.md): creator scoped functions, route pattern, Origin and ownership checks, sessions, retention
