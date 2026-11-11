@@ -8,16 +8,18 @@ Mostly pure modules used by the web app, the browser, the Worker and the jobs. S
 - Media: `probe` (ffprobe JSON to facts), `trim` (silence to cuts, ffmpeg filter scripts, progress).
 - Storage and jobs: `r2` (S3 API through aws4fetch), `r2-file-upload` (Node only, for jobs), `trigger-runs`.
 - API shapes and wording: `take-api` (zod), `take-display`, `take-messages`, `upload-client`.
+- Email (spec 0006): `email/send` (Resend, the only network edge), `email/templates` (pure), `email-links` (signed turn off links, Web Crypto). Used by the Worker and by the `notify-take` job.
 - Config: `env` (zod parsers), `worker-deploy-config`, `server-source-maps`, `sentry-*` (options, scrubbing, check guard, debug ID).
 - Small helpers: `result`, `utils`, `usage-hash`, `fonts`, `auth-client`.
 
 ## Conventions and gotchas
 
-- Most modules are pure or take their I/O as a parameter (`upload-client` does), and tests rely on that. The ones that do I/O are `env` (reads `process.env`), `r2` (network), `r2-file-upload` (Node files), `trigger-runs` (Trigger.dev SDK), `fonts` (`next/font`, web only) and `auth-client` (browser, `"use client"`). Keep new modules pure unless they belong in that list.
+- Most modules are pure or take their I/O as a parameter (`upload-client` does), and tests rely on that. The ones that do I/O are `env` (reads `process.env`), `r2` (network), `email/send` (network, Resend), `r2-file-upload` (Node files), `trigger-runs` (Trigger.dev SDK), `fonts` (`next/font`, web only) and `auth-client` (browser, `"use client"`). Keep new modules pure unless they belong in that list.
 - Imports (ESLint, `eslint.config.mjs`): `src/lib` may not import `@/app`, `@/server`, `@/trigger` or `@opennextjs/cloudflare`. It may import `next`, but jobs may not, so anything a job uses must stay free of `next`.
 - Registries are add only. Failure codes are an open set with no database check (see [src/trigger](../trigger/AGENTS.md)). The status, job, step and render lists in `processing.ts` build Postgres enums and checks, so never rename or remove a value. `LIVE_SLICE` keeps steps from later slices out until it is raised, and a step missing from `STEP_WEIGHTS` counts as 0 in the progress bar.
 - Units: `maxDurationSeconds` is in seconds; every other timing in `cleanup-rules.ts` is in milliseconds. `TRIM.minSilenceMs` is milliseconds and is divided by 1000 for ffmpeg. When the frame rate is unknown, `alignToFrames` and `outputFps` both assume 30.
 - Usage hash: usage is stored under an HMAC of the canonical email (`usage-hash.ts`): lowercased, `+tag` removed, and for Gmail the dots removed and `googlemail.com` written as `gmail.com`. `USAGE_HASH_SECRET` (at least 32 characters) has its own schema in `env.ts` and is parsed only where the hash is computed. `USAGE_HASH_VERSION` is stored beside each row. Changing the canonical rules or the version changes every hash, so old usage would stop matching. Never log the secret or the email.
+- `emailEnvSchema` (app URL, Resend key, sender, link secret) is parsed only where email is sent or a link is signed; `BETTER_AUTH_URL` must also be set in Trigger.dev, or `notify-take` stops at once with a names only error.
 - `env.ts` error messages name the variables and never show values.
 - `take-media.ts` keeps its own copy of the media failure codes next to the one in `failure-codes.ts`. They are the same today; change both, or remove the copy.
 

@@ -3,7 +3,7 @@ import { setUser } from "@sentry/core";
 import { createWebDb } from "@/db/client/web";
 import { emailEnvSchema, parseWebEnv } from "@/lib/env";
 import { createAuth } from "./auth";
-import { resendSender } from "./email/send";
+import { resendSender } from "@/lib/email/send";
 
 /** Per request database client over the Hyperdrive binding. */
 export async function getDb() {

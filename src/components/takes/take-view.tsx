@@ -8,6 +8,7 @@ import { Icon } from "@/components/ui/icon";
 import { type TakeDetail, takeDetailSchema } from "@/lib/take-api";
 import { POLL, isInFlight, tabTitle } from "@/lib/take-display";
 import { callApi } from "./browser-io";
+import { EmailSwitch } from "./email-switch";
 import { TakeHeader } from "./take-header";
 import { TakeResult } from "./take-result";
 import { TakeSkeleton } from "./take-skeleton";
@@ -25,10 +26,13 @@ export function TakeView({
   takeId,
   initialTitle,
   initialStatus,
+  takeEmails,
 }: {
   readonly takeId: string;
   readonly initialTitle: string;
   readonly initialStatus: string;
+  /** Saved "email me when takes are ready" setting (spec 0006, AC-6). */
+  readonly takeEmails: boolean;
 }) {
   const [detail, setDetail] = useState<TakeDetail | null>(null);
   const [stop, setStop] = useState<Stop>(null);
@@ -107,6 +111,7 @@ export function TakeView({
           />
           <TakeStage detail={detail} onRetried={onRetried} />
           <TakeResult detail={detail} />
+          <EmailSwitch initial={takeEmails} />
         </>
       ) : stop === null ? (
         <TakeSkeleton title={initialTitle} />

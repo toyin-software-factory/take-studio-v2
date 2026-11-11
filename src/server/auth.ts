@@ -6,8 +6,8 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "@/db/schema";
 import type { WebEnv } from "@/lib/env";
 import { beforeDeleteUser } from "./account";
-import type { EmailSender } from "./email/send";
-import { signInEmail } from "./email/templates";
+import type { EmailSender } from "@/lib/email/send";
+import { signInEmail } from "@/lib/email/templates";
 import { takeSignInEmailSlot } from "./email/sign-in-limits";
 
 type AuthEnv = Pick<
@@ -98,6 +98,11 @@ export function createAuth(
       }),
     ],
     user: {
+      // Declared so a later schema regeneration keeps the column; `input: false` means a
+      // sign up or update body can never set it (only the signed link and the switch do).
+      additionalFields: {
+        takeEmails: { type: "boolean", required: true, defaultValue: true, input: false },
+      },
       // Spec 0002, AC-17: the creator's takes, rows and files go before the user row.
       deleteUser: { enabled: true, beforeDelete: beforeDeleteUser(db) },
     },
