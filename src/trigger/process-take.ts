@@ -144,6 +144,10 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
     if (!created.ok) throw new Error(`render create failed: ${created.error}`);
     const renderId = created.data.id;
     const keep = alignToFrames(keepRanges(created.data.removedRanges, facts.durationMs), facts.fps);
+    if (keep.length === 0) {
+      // Every range collapsed when snapped to frames: nothing would be left to render.
+      throw new Error("render has nothing to keep: the cuts remove the whole take");
+    }
     const expectedMs = totalMs(keep);
     const script = join(work, "graph.txt");
     await writeFile(script, renderFilterScript(keep, facts.hdrTransfer));
