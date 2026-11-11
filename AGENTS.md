@@ -23,7 +23,7 @@ pnpm test:e2e                 # Playwright smoke tests
 pnpm db:generate              # new migration after a schema change (commit it)
 ```
 
-Production deploys run only from CI on merge to main (migrate, then Trigger.dev, then Worker). Never deploy by hand with `.env*` files present.
+Production deploys run only from CI on merge to main (build and check the Worker, then migrate, then Trigger.dev, then ship the Worker). Never deploy by hand with `.env*` files present.
 
 Deploy the Worker only through `scripts/deploy-worker.sh`, never `wrangler deploy <file>` (it drops the bindings). The Sentry source map chain and the OpenNext patch are in [scripts/AGENTS.md](scripts/AGENTS.md).
 
