@@ -1,14 +1,47 @@
+import { z } from "zod";
+
 /**
  * Guard for drizzle-kit: stops a local command from quietly running against a remote
  * database (for example production Neon, whose direct URL sits in builder sandboxes).
  *
- * drizzle-kit commands that connect to a database refuse a non local host unless the run is
- * in CI (`CI=true`, set by GitHub Actions, used by the deploy workflow) or the caller opts in
- * with `MIGRATE_TARGET=prod`. Commands that never connect (generate, check, up, drop, export)
- * pass through. The host is printed before a connecting command runs; credentials never are.
+ * It runs when drizzle-kit loads `drizzle.config.ts`, which every `pnpm db:*` script does.
+ * Those scripts are the supported entry points. Credentials passed on the drizzle-kit command
+ * line (`--url` and friends) skip the config file and therefore skip this guard.
+ *
+ * Commands that connect to a database refuse a non local host unless the run is in CI
+ * (`CI=true`, set by GitHub Actions, used by the deploy workflow) or the caller opts in with
+ * `MIGRATE_TARGET=prod`. Commands that never connect (generate, check, up, drop, export) pass
+ * through. The host is printed before a connecting command runs; credentials never are.
  */
 
-type Env = Readonly<Record<string, string | undefined>>;
+/** The guard's settings, parsed from the environment by `parseGuardEnv`. */
+export type GuardEnv = { readonly ci: boolean; readonly optedIn: boolean };
+
+const guardEnvSchema = z.object({
+  CI: z.string().optional(),
+  MIGRATE_TARGET: z
+    .enum(["prod"], { message: 'MIGRATE_TARGET must be "prod" when set' })
+    .optional(),
+});
+
+/** Validates `CI` and `MIGRATE_TARGET` (zod at the env boundary); errors name the setting. */
+export function parseGuardEnv(
+  source: Readonly<Record<string, string | undefined>>,
+):
+  { readonly ok: true; readonly env: GuardEnv } | { readonly ok: false; readonly message: string } {
+  const parsed = guardEnvSchema.safeParse({
+    CI: source.CI || undefined,
+    MIGRATE_TARGET: source.MIGRATE_TARGET || undefined,
+  });
+  if (!parsed.success) {
+    const issues = parsed.error.issues.map((issue) => issue.message).join("; ");
+    return { ok: false, message: `drizzle-kit guard: invalid setting. ${issues}.` };
+  }
+  return {
+    ok: true,
+    env: { ci: isTruthy(parsed.data.CI), optedIn: parsed.data.MIGRATE_TARGET === "prod" },
+  };
+}
 
 export type DbGuardResult =
   | { readonly ok: true; readonly message: string | null }
@@ -41,16 +74,18 @@ export function dbHost(url: string): string | null {
   }
 }
 
+/** True for loopback hosts: localhost, 127.x and ::1. */
 function isLocalHost(host: string): boolean {
   return LOCAL_HOSTS.has(host) || host.startsWith("127.");
 }
 
+/** True for the values CI systems use to switch a flag on (`true`, `1`). */
 function isTruthy(value: string | undefined): boolean {
   return value === "true" || value === "1";
 }
 
 /** Decides whether a drizzle-kit command may run against `url`. Pure; no side effects. */
-export function checkDbTarget(url: string, command: string | null, env: Env): DbGuardResult {
+export function checkDbTarget(url: string, command: string | null, env: GuardEnv): DbGuardResult {
   if (command !== null && OFFLINE_COMMANDS.has(command)) return { ok: true, message: null };
 
   const label = `drizzle-kit ${command ?? "(unknown command)"}`;
@@ -60,10 +95,8 @@ export function checkDbTarget(url: string, command: string | null, env: Env): Db
   }
   if (isLocalHost(host)) return { ok: true, message: `${label} → ${host} (local)` };
 
-  const ci = isTruthy(env.CI);
-  const optedIn = env.MIGRATE_TARGET === "prod";
-  if (ci || optedIn) {
-    const why = ci ? "CI" : "MIGRATE_TARGET=prod";
+  if (env.ci || env.optedIn) {
+    const why = env.ci ? "CI" : "MIGRATE_TARGET=prod";
     return { ok: true, message: `${label} → ${host} (remote, allowed by ${why})` };
   }
 
@@ -80,7 +113,12 @@ export function checkDbTarget(url: string, command: string | null, env: Env): Db
 
 /** Runs the guard for this process: prints the target, or prints why and exits non zero. */
 export function guardDbTarget(url: string): void {
-  const result = checkDbTarget(url, drizzleCommand(process.argv), process.env);
+  const settings = parseGuardEnv(process.env);
+  if (!settings.ok) {
+    console.error(settings.message);
+    process.exit(1);
+  }
+  const result = checkDbTarget(url, drizzleCommand(process.argv), settings.env);
   if (!result.ok) {
     console.error(result.message);
     process.exit(1);
