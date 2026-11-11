@@ -20,7 +20,7 @@ function clock(ms: number): string {
 
 /**
  * The transcript under a ready take (spec 0007, slice 2 thread): plain paragraphs, each with its
- * timestamp on the original take. Reads GET /api/takes/{id}/transcript and polls every 2 s
+ * timestamp on the trimmed video. Reads GET /api/takes/{id}/transcript and polls every 2 s
  * while it is being made. The full panel (trimmed times, seek, downloads) comes later.
  */
 export function TranscriptPanel({ takeId }: { readonly takeId: string }) {

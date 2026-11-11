@@ -1,17 +1,50 @@
 import { and, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { getTranscriptByTake } from "@/db/data/transcripts";
-import { jobStep, processingJob, take } from "@/db/schema";
+import { jobStep, processingJob, take as takeTable } from "@/db/schema";
 import type { Executor } from "@/db/types";
 import { ACTIVE_JOB_STATUSES, isSkipReason, type SkipReason } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
-import { type PlainParagraph, groupParagraphs } from "@/lib/transcript-rules";
+import { type TrimmedParagraph, toTrimmedTranscript } from "@/lib/transcript-timeline";
+import { getForCreator } from "../takes";
 
 /**
- * Creator scoped transcript read (spec 0007, API surface). `creatorId` comes from the session;
- * another creator's take is `not_found`. Slice 2 returns the stored (untrimmed) paragraphs;
- * the trimmed timeline arrives with the next task.
+ * The transcript of one of the creator's takes on the trimmed timeline (spec 0007, AC-2, AC-4,
+ * AC-10). Ownership is in the query, so another creator's take is `not_found`, the same as a
+ * take with no transcript. Works on an expired take: the transcript outlives the video. The
+ * words are personal data: callers return them to the owner and never log them.
  */
+
+export type TrimmedTranscriptView = {
+  readonly title: string;
+  readonly paragraphs: readonly TrimmedParagraph[];
+  /** Changes when the transcript or the latest render does (the track URL's `?v=`). */
+  readonly version: string;
+};
+
+export async function getTrimmedForCreator(
+  db: Executor,
+  creatorId: string,
+  takeId: string,
+): Promise<Result<TrimmedTranscriptView, "not_found">> {
+  const found = await getForCreator(db, creatorId, takeId);
+  if (!found.ok) return err("not_found");
+  const { take, latestRender } = found.data;
+  const stored = await getTranscriptByTake(db, take.id);
+  if (!stored) return err("not_found");
+
+  const paragraphs = toTrimmedTranscript(stored.words, {
+    // No latest render (a take handed back uncut) means nothing was removed.
+    removedRanges: latestRender?.removedRanges ?? [],
+    durationMs: take.durationMs ?? 0,
+    sourceFps: stored.sourceFps,
+  });
+  return ok({
+    title: take.title,
+    paragraphs,
+    version: `${stored.updatedAt.getTime()}.${latestRender?.id ?? "none"}`,
+  });
+}
 
 export type TranscriptState = "none" | "making" | "ready" | "skipped" | "failed";
 
@@ -19,7 +52,9 @@ export type TranscriptView = {
   readonly state: TranscriptState;
   readonly reason?: SkipReason;
   readonly canMake: boolean;
-  readonly paragraphs?: readonly PlainParagraph[];
+  /** Trimmed paragraphs and the track URL version (ready only). */
+  readonly paragraphs?: readonly TrimmedParagraph[];
+  readonly version?: string;
 };
 
 /** `state` per spec 0007 "Value sourcing": row → ready, else the latest transcribe job. */
@@ -32,8 +67,8 @@ export async function getTranscriptView(
   if (!z.uuid().safeParse(takeId).success) return err("not_found");
   const [found] = await db
     .select()
-    .from(take)
-    .where(and(eq(take.id, takeId), eq(take.creatorId, creatorId)));
+    .from(takeTable)
+    .where(and(eq(takeTable.id, takeId), eq(takeTable.creatorId, creatorId)));
   if (!found) return err("not_found");
 
   const [latest] = await db
@@ -52,7 +87,14 @@ export async function getTranscriptView(
 
   const row = await getTranscriptByTake(db, takeId);
   if (row) {
-    return ok({ state: "ready", canMake: false, paragraphs: groupParagraphs(row.words) });
+    const trimmed = await getTrimmedForCreator(db, creatorId, takeId);
+    if (!trimmed.ok) return err("not_found");
+    return ok({
+      state: "ready",
+      canMake: false,
+      paragraphs: trimmed.data.paragraphs,
+      version: trimmed.data.version,
+    });
   }
   if (!latest) return ok({ state: "none", canMake: mayStart });
   if ((ACTIVE_JOB_STATUSES as readonly string[]).includes(latest.status)) {

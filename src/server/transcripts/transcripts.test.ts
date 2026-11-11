@@ -63,6 +63,7 @@ describe("GET /api/takes/[id]/transcript (spec 0007)", () => {
     });
     const { body } = await get(creator.id, t.id);
     expect(body.state).toBe("ready");
+    expect(body.version).toMatch(/^\d+\.none$/);
     const paragraphs = body.paragraphs as { startMs: number; words: { w: string }[] }[];
     expect(paragraphs.map((p) => [p.startMs, p.words.map((w) => w.w)])).toEqual([
       [100, ["Hello", "um"]],

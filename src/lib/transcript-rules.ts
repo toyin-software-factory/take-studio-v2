@@ -24,31 +24,3 @@ export function isFillerWord(word: string): boolean {
   const plain = word.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
   return (FILLER_WORDS as readonly string[]).includes(plain);
 }
-
-/** A paragraph of stored words, times still on the original take (the plain view of slice 2). */
-export type PlainParagraph = {
-  readonly startMs: number;
-  readonly words: readonly {
-    readonly w: string;
-    readonly startMs: number;
-    readonly endMs: number;
-    readonly filler: boolean;
-  }[];
-};
-
-/** Splits words into paragraphs at each `para` word (the first word always opens one). */
-export function groupParagraphs(words: readonly TranscriptWord[]): readonly PlainParagraph[] {
-  const out: { startMs: number; words: PlainParagraph["words"][number][] }[] = [];
-  for (const [index, word] of words.entries()) {
-    if (word.para || index === 0 || out.length === 0) {
-      out.push({ startMs: word.startMs, words: [] });
-    }
-    out[out.length - 1]!.words.push({
-      w: word.w,
-      startMs: word.startMs,
-      endMs: word.endMs,
-      filler: word.filler,
-    });
-  }
-  return out;
-}

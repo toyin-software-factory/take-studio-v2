@@ -4,6 +4,7 @@ import { triggerForJob } from "@/lib/trigger-runs";
 import { createAuth } from "../auth";
 import type { MediaHttpDeps } from "../media";
 import { getDb } from "../request";
+import type { TranscriptHttpDeps } from "../transcripts/http";
 import type { Creator, TakeHttpDeps } from "./http";
 
 /**
@@ -36,4 +37,8 @@ export function mediaHttpDeps(): MediaHttpDeps {
     headObject: (key) => r2.headObject(key),
     presignGet: (key, options) => r2.presignGet(key, options),
   };
+}
+
+export function transcriptHttpDeps(): TranscriptHttpDeps {
+  return { allowedOrigin: new URL(parseWebEnv().BETTER_AUTH_URL).origin, getCreator };
 }

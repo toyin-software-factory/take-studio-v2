@@ -15,7 +15,7 @@ The library at `/` and the take page at `/takes/[id]`. Specs: [0004 core take lo
 - Expiry: show `effectiveStatus(...)`, not the raw status, so a ready take past its expiry shows as expired. Dates are UTC. Under a day left reads "Video expires in less than a day", never "today" or "tomorrow".
 - Thumbnails come from `/api/takes/{id}/media?kind=thumb` and keep the placeholder when there is none. A card re-asks when its status changes.
 - Pages read the session through `getSession()` in `src/server/request.ts`.
-- `transcript-panel.tsx` (spec 0007): plain paragraphs with original take timestamps, polled every 2 s while the state is `making`. The trimmed timeline, seek, downloads and CC come in later tasks.
+- `transcript-panel.tsx` (spec 0007): plain paragraphs with trimmed timeline timestamps, polled every 2 s while the state is `making`. The trimmed timeline, seek, downloads and CC come in later tasks.
 - Browser tests: `tests/takes.spec.ts`, with helpers in `tests/support/takes.ts`.
 
 _Drafted by /sync from the introducing change, worth a quick human pass._

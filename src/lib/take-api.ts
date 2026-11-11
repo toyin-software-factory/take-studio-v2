@@ -81,11 +81,12 @@ export function cardFromDetail(detail: TakeDetail): TakeCard {
   };
 }
 
-/** GET /api/takes/{id}/transcript (spec 0007): state, optional skip reason, plain paragraphs. */
+/** GET /api/takes/{id}/transcript (spec 0007): state, optional skip reason, trimmed paragraphs and version. */
 export const transcriptViewSchema = z.object({
   state: z.enum(["none", "making", "ready", "skipped", "failed"]),
   reason: z.enum(["not_english", "no_speech", "original_gone"]).optional(),
   canMake: z.boolean(),
+  version: z.string().optional(),
   paragraphs: z
     .array(
       z.object({

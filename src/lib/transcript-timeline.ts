@@ -1,3 +1,4 @@
+import type { TranscriptWord } from "./transcript-rules";
 import { alignToFrames, keepRanges, type Range } from "./trim";
 
 /**
@@ -6,16 +7,6 @@ import { alignToFrames, keepRanges, type Range } from "./trim";
  * the same frame aligned keep ranges the render uses, so nothing is stored twice and the
  * captions line up with the video.
  */
-
-/** A stored word: times on the original take (spec 0007, `transcript.words`). */
-export type StoredWord = {
-  readonly w: string;
-  readonly startMs: number;
-  readonly endMs: number;
-  readonly filler: boolean;
-  /** True on the first word of a paragraph. */
-  readonly para: boolean;
-};
 
 /** A kept word on the trimmed timeline. */
 export type TrimmedWord = {
@@ -59,7 +50,7 @@ export type TimelineOptions = {
  * and a paragraph with no kept words disappears.
  */
 export function toTrimmedTranscript(
-  words: readonly StoredWord[],
+  words: readonly TranscriptWord[],
   options: TimelineOptions,
 ): TrimmedParagraph[] {
   const { removedRanges, durationMs, sourceFps } = options;
