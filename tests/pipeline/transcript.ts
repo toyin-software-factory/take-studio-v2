@@ -19,7 +19,10 @@ type TakeLike = {
 };
 
 export type Ctx = {
+  /** The creator of the earlier fixtures (the no audio take is theirs). */
   readonly a: Creator;
+  /** A fresh creator for the transcript takes: the upload limit is 10 per hour per creator. */
+  readonly t: Creator;
   readonly b: Creator;
   readonly check: (scenario: string, name: string, ok: boolean, detail?: unknown) => void;
   readonly upload: (creator: Creator, file: string, container: "mp4" | "mov") => Promise<string>;
@@ -98,7 +101,8 @@ const rowsOf = (takeId: string) =>
   db.select().from(schema.transcript).where(eq(schema.transcript.takeId, takeId));
 
 export async function transcriptScenarios(ctx: Ctx): Promise<void> {
-  const { a, b, check } = ctx;
+  const { b, check } = ctx;
+  const a = ctx.t;
   const S = "transcript";
   let english: string | undefined;
 
@@ -173,7 +177,9 @@ export async function transcriptScenarios(ctx: Ctx): Promise<void> {
         },
       );
       const srt = await a.raw("GET", `/api/takes/${english}/transcript/srt`);
-      const near = srtStarts(srt.text).some((s) => Math.abs(s - flat[k]!.startMs) <= FRAME_MS + 2);
+      // Captions leave fillers out, so the cue starts on the first word that is not one.
+      const caption = flat.slice(k).find((w) => !w.filler) ?? flat[k]!;
+      const near = srtStarts(srt.text).some((s) => Math.abs(s - caption.startMs) <= FRAME_MS + 2);
       check(
         S,
         "AC-4: an SRT cue starts on that word within one frame",
@@ -181,7 +187,7 @@ export async function transcriptScenarios(ctx: Ctx): Promise<void> {
         {
           status: srt.status,
           cues: srtStarts(srt.text),
-          wordMs: Math.round(flat[k]!.startMs),
+          wordMs: Math.round(caption.startMs),
         },
       );
     }
@@ -253,7 +259,7 @@ export async function transcriptScenarios(ctx: Ctx): Promise<void> {
       { state: v.state, reason: v.reason },
     );
     if (ctx.noAudioTakeId) {
-      const n = await waitTranscript(a, ctx.noAudioTakeId);
+      const n = await waitTranscript(ctx.a, ctx.noAudioTakeId);
       check(
         S,
         "AC-7: a take with no audio stream skipped no_speech",
