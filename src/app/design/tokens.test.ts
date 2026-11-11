@@ -49,10 +49,11 @@ describe("design tokens", () => {
 });
 
 describe("design.md and globals.css agree (AC-1)", () => {
-  // Lines like "- `--bg`: `#FDF0D5` (Papaya Whip), page background"; translucent tokens say
-  // "at 6%" instead of a hex, so only opaque tokens are compared.
+  // Lines like "- `--bg`: `#FDF0D5` (Papaya Whip), page background"; a line can document several
+  // tokens ("`--primary`: `#...`; `--primary-active`: `#...`"), so every match counts. Translucent
+  // tokens say "at 6%" instead of a hex, so only opaque tokens are compared.
   const doc = readFileSync(join(srcDir, "..", "design.md"), "utf8");
-  const documented = [...doc.matchAll(/^- `--([a-z-]+)`: `(#[0-9a-f]{6})`(?! at \d+%)/gim)].map(
+  const documented = [...doc.matchAll(/`--([a-z-]+)`: `(#[0-9a-f]{6})`(?! at \d+%)/gi)].map(
     (m) => [m[1]!, m[2]!.toLowerCase()] as const,
   );
   const expand = (hex: string) =>

@@ -53,9 +53,21 @@ test.describe("design gallery (preview)", () => {
       }).observe({ type: "layout-shift", buffered: true });
     });
     const hosts = new Set<string>();
+    const fontStatuses: number[] = [];
     page.on("request", (request) => hosts.add(new URL(request.url()).host));
+    page.on("response", (response) => {
+      if (response.request().resourceType() === "font") fontStatuses.push(response.status());
+    });
     await page.goto("/design");
     await page.evaluate(() => document.fonts.ready);
+    // `fonts.ready` resolves even when a face failed, so check the faces and their requests.
+    const loaded = await page.evaluate(() =>
+      [...document.fonts].filter((f) => f.status === "loaded").map((f) => f.family),
+    );
+    expect(loaded.some((family) => /Inter/i.test(family))).toBe(true);
+    expect(loaded.some((family) => /JetBrains/i.test(family))).toBe(true);
+    expect(fontStatuses.length).toBeGreaterThan(0);
+    expect(fontStatuses.every((status) => status === 200)).toBe(true);
     await page.waitForTimeout(500);
     expect(await page.evaluate(() => (window as unknown as { shift: number }).shift)).toBeLessThan(
       0.01,

@@ -116,20 +116,21 @@ test.describe("touch targets on a phone (AC-5)", () => {
         const box = el.getBoundingClientRect();
         const cx = box.left + box.width / 2;
         const cy = box.top + box.height / 2;
+        // Its own label is part of the target: pressing it toggles the control.
+        const reaches = (dx: number, dy: number) => {
+          const hit = document.elementFromPoint(cx + dx, cy + dy);
+          return (
+            hit !== null && (hit === el || el.contains(hit) || hit.closest("label")?.control === el)
+          );
+        };
         const lands = [
           [-21, -21],
           [21, -21],
           [-21, 21],
           [21, 21],
-        ].every(([dx, dy]) => {
-          const hit = document.elementFromPoint(cx + dx!, cy + dy!);
-          // Its own label is part of the target: pressing it toggles the control.
-          return (
-            hit !== null && (hit === el || el.contains(hit) || hit.closest("label")?.control === el)
-          );
-        });
-        // Wide controls (inputs, sliders, tabs) only need the height; check along the middle.
-        const tall = box.height >= 43.5 && box.width >= 43.5;
+        ].every(([dx, dy]) => reaches(dx!, dy!));
+        // A box that is already 44 px passes only if something else is not covering it.
+        const tall = box.height >= 43.5 && box.width >= 43.5 && reaches(0, 0);
         if (!lands && !tall) {
           bad.push(
             `${el.tagName.toLowerCase()} ${el.getAttribute("role") ?? ""} ${Math.round(box.width)}x${Math.round(box.height)}`,
