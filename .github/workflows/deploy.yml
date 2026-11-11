@@ -84,6 +84,8 @@ jobs:
         run: pnpm db:migrate
         env:
           DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
+          # Explicit opt in for the migration guard (scripts/db-guard.ts); CI=true also allows it.
+          MIGRATE_TARGET: prod
 
       - name: 2. Deploy Trigger.dev tasks (prod)
         run: pnpm deploy:trigger --env prod
