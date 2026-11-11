@@ -5,6 +5,8 @@
  * case, errors say what happened then what to do. Pure functions, no I/O.
  */
 
+import { formatClock } from "@/lib/take-display";
+
 export type Email = {
   readonly subject: string;
   readonly html: string;
@@ -81,16 +83,7 @@ type TakeEmailBase = {
   readonly unsubscribeUrl: string;
 };
 
-/** "m:ss" (h:mm:ss over an hour), as the app shows times. */
-export function formatClock(ms: number): string {
-  const total = Math.max(0, Math.round(ms / 1000));
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
-}
-
+/** Times in emails use the app's own `formatClock` (take-display), so both always agree. */
 const NOTES: Record<"no_audio" | "no_cuts", string> = {
   no_audio: "This video has no sound, so there were no pauses to trim.",
   no_cuts: "We found no pauses to trim, so your video is unchanged.",

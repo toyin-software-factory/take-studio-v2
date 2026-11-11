@@ -13,18 +13,40 @@ import {
   stepStatusText,
   tabTitle,
 } from "./take-display";
+import { takeReadyEmail } from "./email/templates";
+
+const emailBase = {
+  title: "Demo",
+  takeUrl: "https://app.example.com/takes/1",
+  unsubscribeUrl: "https://app.example.com/emails/off?u=1&s=2",
+};
 
 describe("formatClock (design.md Voice: mm:ss, h:mm:ss from an hour)", () => {
   it.each([
     [0, "0:00"],
     [null, "0:00"],
     [-5, "0:00"],
+    [2_499, "0:02"],
+    [2_500, "0:02"],
+    [2_501, "0:02"],
     [4_999, "0:04"],
+    [59_999, "0:59"],
+    [60_000, "1:00"],
     [84_000, "1:24"],
     [600_000, "10:00"],
     [3_723_000, "1:02:03"],
   ])("%s ms → %s", (ms, text) => {
     expect(formatClock(ms)).toBe(text);
+  });
+
+  it("shows the removed time the same way in the take page note and in the email", () => {
+    for (const ms of [2_499, 2_500, 2_501, 59_999, 60_000]) {
+      const clock = formatClock(ms);
+      expect(removedNote(ms)).toBe(`Removed ${clock} of pauses`);
+      expect(takeReadyEmail({ ...emailBase, removedMs: ms, note: null }).text).toContain(
+        `We removed ${clock} of pauses.`,
+      );
+    }
   });
 
   it("writes the AC-9 note", () => {

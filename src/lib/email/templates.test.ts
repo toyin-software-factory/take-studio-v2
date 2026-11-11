@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { escapeHtml, formatClock, signInEmail, takeFailedEmail, takeReadyEmail } from "./templates";
+import { escapeHtml, signInEmail, takeFailedEmail, takeReadyEmail } from "./templates";
 
 const URLS = {
   takeUrl: "https://app.example.com/takes/abc",
@@ -66,11 +66,7 @@ describe("email templates (AC-5, AC-6, AC-7)", () => {
     }
   });
 
-  it("formats clocks like the app (m:ss, h:mm:ss over an hour)", () => {
-    expect(formatClock(0)).toBe("0:00");
-    expect(formatClock(59_400)).toBe("0:59");
-    expect(formatClock(61_000)).toBe("1:01");
-    expect(formatClock(3_725_000)).toBe("1:02:05");
+  it("escapes HTML", () => {
     expect(escapeHtml(`a&b<c>"d"'e'`)).toBe("a&amp;b&lt;c&gt;&quot;d&quot;&#39;e&#39;");
   });
 });
