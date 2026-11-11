@@ -39,6 +39,9 @@ describe("deploy.yml order", () => {
     expect(pkg.scripts["deploy:build"]).toMatch(/deploy-worker\.sh build /);
     expect(pkg.scripts["deploy:ship"]).toMatch(/deploy-worker\.sh ship /);
     expect(pkg.scripts["deploy:build"]).not.toMatch(/ship/);
+    // The old bundle goes before the first command that can fail (check-env, OpenNext), so a
+    // failed build can never leave a bundle from an earlier build for `deploy:ship` to deploy.
+    expect(pkg.scripts["deploy:build"]).toMatch(/^rm -rf \.wrangler-dist && /);
     expect(pkg.scripts["deploy"]).toBe("pnpm run deploy:build && pnpm run deploy:ship");
   });
 });

@@ -158,6 +158,25 @@ describe("scripts/deploy-worker.sh ship phase", () => {
     expect(run.log.split("\n").filter((l) => /--dry-run|sourcemaps/.test(l))).toHaveLength(3);
   });
 
+  it("keeps the bundle when the deploy itself fails, so ship can be retried", () => {
+    const w = workspace();
+    expect(w.run("build", { token: "token" }).status).toBe(0);
+    const failed = w.run("ship", { fail: "wrangler deploy --config" });
+    expect(failed.status).not.toBe(0);
+    expect(w.has(".wrangler-dist/worker.js")).toBe(true);
+    const retry = w.run("ship");
+    expect(retry.status).toBe(0);
+    expect(retry.log.match(/wrangler deploy --config/g) ?? []).toHaveLength(2);
+  });
+
+  it("removes the bundle once it has shipped, so it cannot be deployed twice by mistake", () => {
+    const w = workspace();
+    expect(w.run("build", { token: "token" }).status).toBe(0);
+    expect(w.run("ship").status).toBe(0);
+    expect(w.has(".wrangler-dist")).toBe(false);
+    expect(w.run("ship").status).toBe(1);
+  });
+
   it("refuses when there was no build", () => {
     const w = workspace();
     const run = w.run("ship");

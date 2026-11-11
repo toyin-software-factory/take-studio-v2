@@ -22,7 +22,9 @@ out=".wrangler-dist"
 export OPEN_NEXT_DEPLOY=true # wrangler must not hand this deploy back to OpenNext
 vars=(--var "SENTRY_ENVIRONMENT:${env_name}" --var "SENTRY_RELEASE:${release}")
 
-# The bundle is only kept when the phase finished: a failed build leaves nothing to ship.
+# A failed build leaves nothing to ship (the bundle is removed unless the build finished). A
+# failed ship keeps the bundle, so the ship step can be retried: migrations and the jobs
+# deploy have already run by then.
 keep=0
 trap 'if [ "$keep" != 1 ]; then rm -rf "$out"; fi' EXIT
 
@@ -73,7 +75,10 @@ case "$mode" in
       echo "a source map file is still in $out; refusing to deploy it" >&2
       exit 1
     fi
+    keep=1
     pnpm exec wrangler deploy --config "$out/wrangler.json" --no-bundle "${vars[@]}"
+    # Shipped: nothing left to deploy twice by mistake.
+    rm -rf "$out"
     ;;
   *)
     echo "unknown mode '$mode': use build or ship" >&2
