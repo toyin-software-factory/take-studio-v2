@@ -91,6 +91,9 @@ jobs:
       - name: Build the Worker
         run: pnpm build:worker
 
+      - name: No source maps in public assets
+        run: pnpm run deploy:check-maps
+
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@v4
