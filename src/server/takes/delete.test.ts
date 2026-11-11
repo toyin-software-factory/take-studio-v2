@@ -74,6 +74,21 @@ describe("deleteTake (AC-17)", () => {
     expect(queued).toHaveLength(2);
   });
 
+  it("queues the derived key of a render still in progress (its file may already be uploaded)", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id);
+    const job = await start(db, { creatorId: creator.id, takeId: t.id, usageSecret: SECRET });
+    if (!job.ok) throw new Error(job.error);
+    const pending = await createRender(db, { takeId: t.id, jobId: job.data.id });
+    if (!pending.ok) throw new Error(pending.error);
+    expect(pending.data.videoKey).toBeNull();
+
+    const result = await deleteTake(db, creator.id, t.id, spyAfter().after);
+    expect(result.ok && [...result.data.queuedKeys].sort()).toEqual(
+      [t.originalKey, `renders/${t.id}/${pending.data.id}.mp4`].sort(),
+    );
+  });
+
   it("gives another creator not_found and changes nothing", async () => {
     const a = await createCreator(db);
     const b = await createCreator(db);

@@ -1,5 +1,6 @@
 import { and, asc, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
 import { STORAGE_DELETION } from "@/lib/cleanup-rules";
+import { renderKey } from "@/lib/cut-rules";
 import { ACTIVE_JOB_STATUSES } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
 import { processingJob, render, storageDeletion, take } from "../schema";
@@ -13,7 +14,12 @@ import { queueDeletions } from "./jobs";
  * transaction, so no file is ever orphaned. Job safe: IDs only.
  */
 
-/** Every stored file key of these takes: originals and render videos. */
+/**
+ * Every file key these takes may have stored: originals, plus the derived key of every render
+ * row (`renders/{takeId}/{renderId}.mp4`), not only renders with a recorded `video_key`. A
+ * render step uploads its file before the row records success, so a crash or failure in
+ * between would otherwise orphan the object. Deleting a key that was never written is a no op.
+ */
 export async function takeFileKeys(tx: Executor, takeIds: readonly string[]): Promise<string[]> {
   if (takeIds.length === 0) return [];
   const originals = await tx
@@ -21,10 +27,15 @@ export async function takeFileKeys(tx: Executor, takeIds: readonly string[]): Pr
     .from(take)
     .where(inArray(take.id, [...takeIds]));
   const renders = await tx
-    .select({ key: render.videoKey })
+    .select({ id: render.id, takeId: render.takeId })
     .from(render)
-    .where(and(inArray(render.takeId, [...takeIds]), isNotNull(render.videoKey)));
-  return [...originals, ...renders].flatMap(({ key }) => (key ? [key] : []));
+    .where(inArray(render.takeId, [...takeIds]));
+  return [
+    ...new Set([
+      ...originals.map(({ key }) => key),
+      ...renders.map((row) => renderKey(row.takeId, row.id)),
+    ]),
+  ];
 }
 
 export type DeletedTakes = {
@@ -112,11 +123,12 @@ export type DrainResult = {
 };
 
 /**
- * Drains the file deletion queue in batches. Each batch claims rows with
- * `FOR UPDATE SKIP LOCKED` (so parallel drains never touch the same row), deletes each object
- * with `deleteObject`, removes the row on success, or bumps `attempts` and `last_error` (status
- * text only, never the key) on failure. Stops when no claimable rows are left or after
- * `maxBatches`.
+ * Drains the file deletion queue in batches, without holding a transaction across R2 calls:
+ * read a batch, delete each object, then record each outcome in its own short statement
+ * (remove the row, or bump `attempts` and `last_error`, status text only, never the key).
+ * A timeout mid batch therefore loses at most the row in flight, and failure counts always
+ * reach `maxAttempts`. The task's queue runs one drain at a time; a rare overlap only repeats
+ * a delete, which is harmless. Stops when no eligible rows are left or after `maxBatches`.
  */
 export async function drainDeletions(
   db: Executor,
@@ -135,44 +147,43 @@ export async function drainDeletions(
   const failedIds = new Set<string>();
 
   for (let batch = 0; batch < maxBatches; batch++) {
-    const handled = await db.transaction(async (tx) => {
-      const rows = await tx
-        .select()
-        .from(storageDeletion)
-        .where(
-          and(
-            lt(storageDeletion.attempts, maxAttempts),
-            // Don't retry a row that already failed in this drain.
-            failedIds.size > 0
-              ? sql`${storageDeletion.id} not in (${sql.join(
-                  [...failedIds].map((id) => sql`${id}::uuid`),
-                  sql`, `,
-                )})`
-              : undefined,
-          ),
-        )
-        .orderBy(asc(storageDeletion.attempts), asc(storageDeletion.createdAt))
-        .limit(batchSize)
-        .for("update", { skipLocked: true });
+    const rows = await db
+      .select()
+      .from(storageDeletion)
+      .where(
+        and(
+          lt(storageDeletion.attempts, maxAttempts),
+          // Don't retry a row that already failed in this drain.
+          failedIds.size > 0
+            ? sql`${storageDeletion.id} not in (${sql.join(
+                [...failedIds].map((id) => sql`${id}::uuid`),
+                sql`, `,
+              )})`
+            : undefined,
+        ),
+      )
+      .orderBy(asc(storageDeletion.attempts), asc(storageDeletion.createdAt))
+      .limit(batchSize);
 
-      for (const row of rows) {
-        try {
-          await deleteObject(row.objectKey);
-          await tx.delete(storageDeletion).where(eq(storageDeletion.id, row.id));
-          deleted++;
-        } catch (error) {
-          failed++;
-          failedIds.add(row.id);
-          const message = error instanceof Error ? error.message : "delete failed";
-          await tx
-            .update(storageDeletion)
-            .set({ attempts: row.attempts + 1, lastError: message.slice(0, 500) })
-            .where(eq(storageDeletion.id, row.id));
-        }
+    for (const row of rows) {
+      try {
+        await deleteObject(row.objectKey);
+        await db.delete(storageDeletion).where(eq(storageDeletion.id, row.id));
+        deleted++;
+      } catch (error) {
+        failed++;
+        failedIds.add(row.id);
+        const message = error instanceof Error ? error.message : "delete failed";
+        await db
+          .update(storageDeletion)
+          .set({
+            attempts: sql`${storageDeletion.attempts} + 1`,
+            lastError: message.slice(0, 500),
+          })
+          .where(eq(storageDeletion.id, row.id));
       }
-      return rows.length;
-    });
-    if (handled < batchSize) break;
+    }
+    if (rows.length < batchSize) break;
   }
 
   const [{ stuck } = { stuck: 0 }] = await db
