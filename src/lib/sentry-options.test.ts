@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { jobFailureTags, sentryEnvironment, sentryOptions } from "./sentry-options";
+import {
+  jobFailureTags,
+  sentryEnvironment,
+  sentryOptions,
+  workerSentryOptions,
+} from "./sentry-options";
 
 describe("sentryOptions", () => {
   it("is disabled without a DSN (AC-8)", () => {
@@ -57,5 +62,26 @@ describe("jobFailureTags", () => {
       takeId: "take_1",
     });
     expect(JSON.stringify(tags)).not.toMatch(/holiday|original\.mov/);
+  });
+});
+
+describe("workerSentryOptions", () => {
+  const input = {
+    dsn: "https://k@o1.ingest.sentry.io/2",
+    environment: "production",
+    runtime: "web",
+  } as const;
+
+  it("turns deduplication off so every route error is sent (S1C-T11)", () => {
+    expect(workerSentryOptions(input).enableDedupe).toBe(false);
+  });
+
+  it("keeps the shared options", () => {
+    expect(workerSentryOptions(input)).toMatchObject({
+      enabled: true,
+      environment: "production",
+      tracesSampleRate: 0,
+      initialScope: { tags: { runtime: "web" } },
+    });
   });
 });

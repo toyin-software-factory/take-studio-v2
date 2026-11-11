@@ -66,6 +66,16 @@ export function sentryOptions({
 }
 
 /**
+ * The Worker's options: the shared ones plus no deduplication. The SDK drops an event that is
+ * identical to the previous one in the same Worker instance, so a repeating route error was
+ * sent once and the rest were lost (the S1C-T06 production check saw no event for a second
+ * 500), and the "more than 10 events in 1 hour" alert (spec 0005) could never count them.
+ */
+export function workerSentryOptions(options: Parameters<typeof sentryOptions>[0]) {
+  return { ...sentryOptions(options), enableDedupe: false };
+}
+
+/**
  * Tags for a job's final failure (AC-3): runtime, task, run ID, attempt, and only the
  * allowlisted IDs found in the payload. The payload itself is never returned.
  */

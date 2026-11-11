@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/nextjs/cloudflare";
 import handler from "../.open-next/worker.js";
-import { sentryEnvironment, sentryOptions } from "./lib/sentry-options";
+import { sentryEnvironment, workerSentryOptions } from "./lib/sentry-options";
 
 /**
  * The Worker entry (wrangler.jsonc `main`): OpenNext's handler wrapped with Sentry, so
@@ -16,7 +16,7 @@ type SentryEnv = {
 
 export default Sentry.withSentry(
   (env: SentryEnv) =>
-    sentryOptions({
+    workerSentryOptions({
       dsn: env.SENTRY_DSN,
       environment: sentryEnvironment(env.SENTRY_ENVIRONMENT),
       runtime: "web",

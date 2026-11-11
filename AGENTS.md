@@ -25,6 +25,8 @@ pnpm db:generate              # new migration after a schema change (commit it)
 
 Production deploys run only from CI on merge to main (migrate, then Trigger.dev, then Worker). Never deploy by hand with `.env*` files present.
 
+The Worker deploys through `scripts/deploy-worker.sh` (build the final bundle, add debug IDs, upload its source map, then `wrangler deploy --no-bundle`). Never run `wrangler deploy <file>`: it ignores `wrangler.jsonc` and drops the bindings. The Worker bundle holds many Sentry debug IDs and the SDK keeps the last one, so `src/lib/sentry-debug-id.ts` adds ours last; the Worker runs with Sentry Dedupe off (`workerSentryOptions`) so every route error counts.
+
 The `pnpm db:*` scripts (via `drizzle.config.ts`) refuse to connect to any non localhost database outside CI unless `MIGRATE_TARGET=prod` is set (`scripts/db-guard.ts`); passing `--url` straight to drizzle-kit skips the guard, so don't; sandboxes carry the production `DATABASE_URL_DIRECT`, so for local work prefix `DATABASE_URL_DIRECT=postgres://postgres:postgres@localhost:5432/take_studio`.
 
 ## Specs
