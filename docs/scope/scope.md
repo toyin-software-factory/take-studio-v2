@@ -26,7 +26,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 2 | Coding standards & tooling | Foundation | done |
 | 3 | Data model | Foundation | done |
 | 4 | Design system & UI foundation | Foundation | in-progress |
-| 5 | Core take loop | Slice 1 | planned |
+| 5 | Core take loop | Slice 1 | in-progress |
 | 6 | Error monitoring | Slice 1 | planned |
 | 7 | Transcript | Slice 2 | planned |
 | 8 | Studio background swap | Slice 3 | planned |
@@ -85,10 +85,19 @@ Spec [0003](../specs/0003-design-system.md) · rules in [design.md](../../design
 
 ## Slice 1: Core take loop
 
-### 5. Core take loop · needs a decision
+### 5. Core take loop · in-progress
 The walking skeleton: sign in, upload a take, pauses are trimmed automatically in the background, see progress, download the trimmed video. A plain list of your takes so you can find it again. No transcript, background or review yet.
 **Done when:** a signed in creator uploads an MP4 or MOV within the limits (10 min, 2 GB, 1080p), sees processing progress, and downloads a video with long pauses removed; uploads over the limits are refused with a clear message; a failed job shows an error and can be retried.
-- [ ] Design it (spec): `/architect core take loop`
+- [x] Design it (spec): `/architect core take loop`
+- [ ] Build it: `/develop core take loop`
+   - [ ] R2 helpers, CORS and upload routes, render timing spike (AC-3, AC-4, AC-12)
+   - [ ] Pinned ffmpeg and the probe task (AC-4)
+   - [ ] The process-take task: trim, render, edge cases (AC-5, AC-6, AC-7, AC-10)
+   - [ ] Take routes and media links; library and take pages (AC-1, AC-2, AC-8, AC-9, AC-11, AC-12, AC-13)
+   - [ ] End to end tests with fixtures (AC-2, AC-4, AC-6, AC-7, AC-11, AC-13)
+- [ ] Verify it: `/check verify core take loop`
+- [ ] Test it: `/test core take loop`
+Spec [0004](../specs/0004-core-take-loop/index.md)
 
 ### 6. Error monitoring · needs a decision
 Catch errors in the app and in processing jobs so failed takes are seen before creators report them.
