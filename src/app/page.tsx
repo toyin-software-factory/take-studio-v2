@@ -1,7 +1,9 @@
 import { Suspense } from "react";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { headers } from "next/headers";
 import { AppShell } from "@/components/shell/app-shell";
+import { Button } from "@/components/ui/button";
 import { SkipLink } from "@/components/shell/skip-link";
 import { LibrarySkeleton } from "@/components/takes/library-skeleton";
 import { TakeLibrary } from "@/components/takes/take-library";
@@ -9,7 +11,6 @@ import { UploadArea } from "@/components/takes/upload-area";
 import { getDb, getSession } from "@/server/request";
 import { listForCreator } from "@/server/takes";
 import { cardView } from "@/server/takes/views";
-import { SignInButton } from "./auth-buttons";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,9 @@ function Landing() {
         <p className="text-text-muted">
           Upload a take. Get it back trimmed, on a studio background, with a transcript.
         </p>
-        <SignInButton />
+        <Button asChild size="lg">
+          <Link href="/sign-in">Sign in</Link>
+        </Button>
       </main>
     </>
   );

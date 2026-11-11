@@ -58,9 +58,9 @@ test("sign out from the user menu returns to the signed out page", async ({ page
   await page.goto("/");
   await page.getByRole("button", { name: /Account menu/ }).click();
   await page.getByRole("menuitem", { name: "Sign out" }).click();
-  await expect(page.getByRole("button", { name: "Sign in with Google" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("button", { name: "Sign in with Google" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
 });
 
 test.describe("on a phone", () => {
@@ -97,7 +97,7 @@ test.describe("on a phone", () => {
     // The menu must sit above the sheet, not hidden behind it.
     await expect(signOut).toBeVisible();
     await signOut.click();
-    await expect(page.getByRole("button", { name: "Sign in with Google" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
   });
 
   test("signed in home passes axe on a phone", async ({ page }) => {

@@ -4,7 +4,7 @@
 
 - **Language / Runtime**: TypeScript (strict), Node 22 LTS
 - **Framework**: Next.js (App Router) on Cloudflare Workers via `@opennextjs/cloudflare`
-- **Key dependencies**: Drizzle ORM + postgres.js (Neon via Hyperdrive), Better Auth, Trigger.dev v4 (ffmpeg jobs), Cloudflare R2 via `aws4fetch`, zod; later Deepgram (slice 2) and `@anthropic-ai/sdk` with `claude-opus-5-5` (slice 5)
+- **Key dependencies**: Drizzle ORM + postgres.js (Neon via Hyperdrive), Better Auth, Trigger.dev v4 (ffmpeg jobs), Cloudflare R2 via `aws4fetch`, Resend for email (spec 0006), zod; later Deepgram (slice 2) and `@anthropic-ai/sdk` with `claude-opus-5-5` (slice 5)
 - **Package manager**: pnpm
 - Full decision, runtime rules and where each key lives: [spec 0001](docs/specs/0001-stack-architecture/index.md)
 

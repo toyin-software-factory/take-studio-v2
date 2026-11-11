@@ -33,6 +33,17 @@ export const usageEnvSchema = z.object({
   USAGE_HASH_SECRET: z.string().min(32, "USAGE_HASH_SECRET must be at least 32 characters"),
 });
 
+/**
+ * Email (spec 0006): Resend key, sender and the secret that signs unsubscribe links. Parsed
+ * only where email is sent or a link is signed, so the app keeps running before they are set.
+ */
+export const emailEnvSchema = z.object({
+  RESEND_API_KEY: z.string().min(1),
+  EMAIL_FROM: z.string().min(3),
+  EMAIL_LINK_SECRET: z.string().min(32, "EMAIL_LINK_SECRET must be at least 32 characters"),
+});
+
+export type EmailEnv = z.infer<typeof emailEnvSchema>;
 export type WebEnv = z.infer<typeof webEnvSchema>;
 export type JobEnv = z.infer<typeof jobEnvSchema>;
 export type R2Env = z.infer<typeof r2Schema>;
@@ -64,4 +75,9 @@ export function parseJobEnv(source: Source = process.env): JobEnv {
 /** Usage env: the HMAC secret for usage account hashes (web and jobs). */
 export function parseUsageEnv(source: Source = process.env): UsageEnv {
   return parseEnv(usageEnvSchema, source, "usage");
+}
+
+/** Email env: Resend key, sender address and the unsubscribe link secret (web and jobs). */
+export function parseEmailEnv(source: Source = process.env): EmailEnv {
+  return parseEnv(emailEnvSchema, source, "email");
 }

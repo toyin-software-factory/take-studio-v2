@@ -1,7 +1,7 @@
 # 0006. Email sign in (magic link) and "take ready" email
 
 **Date**: 2026-11-11
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 
