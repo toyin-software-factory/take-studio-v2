@@ -8,10 +8,10 @@ import {
 } from "./deadline";
 
 describe("deadlineMs", () => {
-  it("stops 60 s before maxDuration", () => {
-    expect(DEADLINE_MARGIN_SECONDS).toBe(60);
-    expect(deadlineMs(15 * 60)).toBe(14 * 60_000);
-    expect(deadlineMs(40 * 60)).toBe(39 * 60_000);
+  it("stops 90 s before maxDuration, leaving the failure hooks room", () => {
+    expect(DEADLINE_MARGIN_SECONDS).toBe(90);
+    expect(deadlineMs(15 * 60)).toBe(13.5 * 60_000);
+    expect(deadlineMs(40 * 60)).toBe(38.5 * 60_000);
     expect(deadlineMs(30)).toBe(1000);
   });
 });

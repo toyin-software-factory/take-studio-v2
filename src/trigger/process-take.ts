@@ -65,7 +65,7 @@ export const processTakeTask = task({
     const r2 = createR2(env);
     // One job client for the whole run (progress writes every few seconds would otherwise
     // open a connection each time); postgres.js reconnects if the pooler drops it while idle.
-    // Stops itself 60 s before maxDuration (Trigger.dev skips onFailure past it): work is
+    // Stops itself 90 s before maxDuration (Trigger.dev skips onFailure past it): work is
     // aborted, temp files go, then DeadlineExceeded reaches onFailure as `timeout`.
     return runWithDeadline(deadlineMs(PROCESS_TAKE_LIMITS.maxDurationSeconds), (signal) =>
       withJobDb(env.DATABASE_URL, (client) =>

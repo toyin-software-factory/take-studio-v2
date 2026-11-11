@@ -45,7 +45,7 @@ export const transcribeTakeTask = task({
     }
     const env = parseJobEnv();
     const r2 = createR2(env);
-    // Stops itself 60 s before maxDuration (Trigger.dev skips onFailure past it): ffmpeg is
+    // Stops itself 90 s before maxDuration (Trigger.dev skips onFailure past it): ffmpeg is
     // killed, the Deepgram fetch aborted, temp files removed, then DeadlineExceeded reaches
     // onFailure as `timeout`.
     return runWithDeadline(deadlineMs(TRANSCRIBE_TAKE_LIMITS.maxDurationSeconds), (signal) =>

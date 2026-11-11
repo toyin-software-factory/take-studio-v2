@@ -8,8 +8,13 @@
  * that crashes.
  */
 
-/** Seconds before `maxDuration` at which an attempt stops itself. */
-export const DEADLINE_MARGIN_SECONDS = 60;
+/**
+ * Seconds before `maxDuration` at which an attempt stops itself. The failure hooks run inside
+ * the same budget: the global Sentry hook (flush, 2 s), then the task's own, which opens a job
+ * database client (first connect: up to 3 tries of 10 s plus 1 s and 2 s waits, so 33 s),
+ * writes the job and closes the client (5 s). About 45 s in the worst case, so 90 s leaves room.
+ */
+export const DEADLINE_MARGIN_SECONDS = 90;
 
 /** How long aborted work gets to wind down before the error is thrown anyway. */
 const WIND_DOWN_MS = 10_000;
