@@ -35,7 +35,13 @@ export async function signIn(
 ): Promise<{ readonly user: TestUser; readonly cleanup: () => Promise<void> }> {
   const secret = setting("BETTER_AUTH_SECRET");
   if (!secret) throw new Error("BETTER_AUTH_SECRET is not set (CI writes it to .env).");
-  const sql = postgres(setting("DATABASE_URL") ?? localDatabase, { max: 1 });
+  const url = setting("DATABASE_URL") ?? localDatabase;
+  // Only ever seed a database on this machine (local Docker or the CI service container).
+  const { hostname } = new URL(url);
+  if (!["localhost", "127.0.0.1", "[::1]", "::1"].includes(hostname)) {
+    throw new Error(`Refusing to seed test sessions into a non-local database host: ${hostname}`);
+  }
+  const sql = postgres(url, { max: 1 });
   const user = { id: randomUUID(), name, email: `e2e-${randomUUID()}@example.test` };
   const token = randomBytes(32).toString("base64url");
   const now = new Date();
