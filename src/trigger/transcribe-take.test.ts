@@ -220,6 +220,17 @@ describe("the Deepgram error matrix (spec 0007, AC-8)", () => {
     const error = await postToDeepgram(new Uint8Array(), "k", timeout).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(DeepgramTimeout);
     expect(transcribeFailureCode(error)).toBe("timeout");
+    // Headers arrive, then the body stalls past the deadline.
+    const stalled = (async () => ({
+      ok: true,
+      status: 200,
+      json: async () => {
+        throw new DOMException("took too long", "TimeoutError");
+      },
+    })) as unknown as typeof fetch;
+    const bodyError = await postToDeepgram(new Uint8Array(), "k", stalled).catch((e: unknown) => e);
+    expect(bodyError).toBeInstanceOf(DeepgramTimeout);
+    expect(transcribeFailureCode(bodyError)).toBe("timeout");
     expect(transcribeFailureCode(new DeepgramError(429))).toBe("provider_error");
     expect(transcribeFailureCode(new DeepgramError(null))).toBe("provider_error");
     expect(transcribeFailureCode(new Error("MAX_DURATION_EXCEEDED"))).toBe("timeout");

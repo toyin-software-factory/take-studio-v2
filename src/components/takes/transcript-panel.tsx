@@ -74,13 +74,16 @@ export function TranscriptPanel({ takeId }: { readonly takeId: string }) {
         setView((v) => (v ? { ...v, state: "making", canMake: false } : v));
       } else {
         setStartError(apiMessage(reply.data, "The transcript didn't start. Please try again."));
+        // Another tab may have started it (or the take changed): refresh, and polling resumes
+        // by itself if the view now says `making`.
+        if (reply.status === 409) await load();
       }
     } catch {
       setStartError("The transcript didn't start. Check your connection and try again.");
     } finally {
       setStarting(false);
     }
-  }, [takeId]);
+  }, [takeId, load]);
 
   usePoll(
     load,

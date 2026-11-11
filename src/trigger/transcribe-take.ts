@@ -148,7 +148,9 @@ export async function postToDeepgram(
   }
   try {
     return await response.json();
-  } catch {
+  } catch (error) {
+    // The 5 minute signal also covers reading the body: a stalled body is a timeout, not bad JSON.
+    if (error instanceof Error && error.name === "TimeoutError") throw new DeepgramTimeout();
     throw new DeepgramError(response.status);
   }
 }
