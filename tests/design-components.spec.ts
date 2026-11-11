@@ -93,6 +93,20 @@ test.describe("on a phone", () => {
   });
 });
 
+test("Stage container gives its controls the cream focus ring", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/design");
+  const play = page
+    .getByRole("region", { name: "Stage example" })
+    .getByRole("button", { name: "Play" });
+  await play.focus();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  await expect(play).toBeFocused();
+  await expect(play).toHaveCSS("outline-style", "solid");
+  await expect(play).toHaveCSS("outline-color", "rgb(253, 240, 213)");
+});
+
 test("link buttons size to their text on light and stage", async ({ page }) => {
   await page.goto("/design");
   for (const section of ["components-light", "components-stage"]) {

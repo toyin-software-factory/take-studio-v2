@@ -110,6 +110,7 @@ jobs:
           SENTRY_ORG: ${{ vars.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
           SENTRY_RELEASE: ${{ github.sha }}
-          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+          # The same DSN as the server; the GitHub secret is SENTRY_DSN.
+          NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           NEXT_PUBLIC_SENTRY_ENVIRONMENT: production
           NEXT_PUBLIC_SENTRY_RELEASE: ${{ github.sha }}

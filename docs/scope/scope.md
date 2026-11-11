@@ -39,6 +39,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 15 | Landing page & SEO | Launch | planned |
 | 16 | Privacy & terms pages | Launch | planned |
 | 17 | Product analytics | Launch | planned |
+| 18 | Email sign in and take ready email | Slice 1 | in-progress |
 
 ## Foundations
 
@@ -74,14 +75,14 @@ Spec [0002](../specs/0002-data-model/index.md) · code in `src/db/`, `src/lib/`,
 Visual language, layout and base components (upload, progress, video player, timeline, download), with Mobbin references in `design.md`.
 **Done when:** `design.md` covers type, color, spacing and components with Mobbin references, and base components meet WCAG AA (keyboard, focus, contrast).
 - [x] Design it (spec): `/architect design system & UI foundation`
-- [ ] Build it: `/develop design system & UI foundation`
+- [x] Build it: `/develop design system & UI foundation`
    - [x] Tailwind v4 + shadcn/ui setup, tokens and fonts (AC-1, AC-2, AC-8) (FDS-T01; `/design` token gallery shell included)
    - [x] Base components with every state (AC-3, AC-5, AC-6) (FDS-T02)
-   - [ ] App shell and Stage container (AC-4, AC-6)
+   - [x] App shell and Stage container (AC-4, AC-6) (FDS-T03)
    - [x] `/design` gallery with axe checks (AC-5, AC-7) (FDS-T01, FDS-T02)
 - [ ] Verify it: `/check verify design system & UI foundation`
 - [ ] Test it: `/test design system & UI foundation`
-Spec [0003](../specs/0003-design-system.md) · rules in [design.md](../../design.md) · code in `src/app/globals.css`, `src/components/ui/`, `src/app/design/`
+Spec [0003](../specs/0003-design-system.md) · rules in [design.md](../../design.md) · code in `src/app/globals.css`, `src/components/ui/`, `src/components/shell/`, `src/components/stage.tsx`, `src/app/design/`
 
 ## Slice 1: Core take loop
 
@@ -93,11 +94,11 @@ The walking skeleton: sign in, upload a take, pauses are trimmed automatically i
    - [x] R2 helpers, CORS and upload routes, render timing spike (AC-3, AC-4, AC-12)
    - [x] Pinned ffmpeg and the probe task (AC-4)
    - [x] The process-take task: trim, render, edge cases (AC-5, AC-6, AC-7, AC-10)
-   - [ ] Take routes and media links; library and take pages (AC-1, AC-2, AC-8, AC-9, AC-11, AC-12, AC-13)
+   - [ ] Take routes and media links; library and take pages (AC-1, AC-2, AC-8, AC-9, AC-11, AC-12, AC-13) (S1C-T04: take routes and media links built and tested; pages are S1C-T05)
    - [ ] End to end tests with fixtures (AC-2, AC-4, AC-6, AC-7, AC-11, AC-13)
 - [ ] Verify it: `/check verify core take loop`
 - [ ] Test it: `/test core take loop`
-Spec [0004](../specs/0004-core-take-loop/index.md) · code in `src/server/uploads/`, `src/app/api/uploads/`, `src/lib/r2*.ts`, `src/trigger/`
+Spec [0004](../specs/0004-core-take-loop/index.md) · code in `src/server/uploads/`, `src/app/api/uploads/`, `src/server/takes/`, `src/server/media/`, `src/app/api/takes/`, `src/lib/r2*.ts`, `src/lib/take-media.ts`, `src/trigger/`
 
 ### 6. Error monitoring · in-progress
 Catch errors in the app and in processing jobs so failed takes are seen before creators report them.
@@ -111,6 +112,18 @@ Catch errors in the app and in processing jobs so failed takes are seen before c
 - [ ] Verify it: `/check verify error monitoring`
 - [ ] Test it: `/test error monitoring`
 Spec [0005](../specs/0005-error-monitoring.md) · code in `src/lib/sentry-*.ts`, `src/worker.ts`, `src/instrumentation*.ts`, `src/trigger/init.ts`
+
+### 18. Email sign in and take ready email · in-progress
+Follow up to the core take loop (from spec 0004): sign in with a one time email link alongside Google, and an email when a take is ready or failed, with one click opt out.
+**Done when:** a creator can sign in by email link (once, 15 minutes), Google and email are one account, and each finished run sends one ready or failed email that can be turned off.
+- [x] Design it (spec): `/architect email sign in and take ready email`
+- [ ] Build it: `/develop email sign in and take ready email`
+   - [ ] Resend client and email templates (AC-7)
+   - [ ] Magic link sign in with linking and rate limits (AC-1, AC-2, AC-3, AC-4, AC-8)
+   - [ ] Take emails with opt out (AC-5, AC-6, AC-8)
+- [ ] Verify it: `/check verify email sign in and take ready email`
+- [ ] Test it: `/test email sign in and take ready email`
+Spec [0006](../specs/0006-email-sign-in-and-ready-email.md)
 
 ## Slice 2: Transcript
 

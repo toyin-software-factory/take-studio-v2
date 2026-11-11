@@ -1,3 +1,4 @@
+import { Stage } from "@/components/stage";
 import { ButtonDemos } from "./demo-buttons";
 import { FeedbackDemos } from "./demo-feedback";
 import { FormDemos } from "./demo-forms";
@@ -16,7 +17,7 @@ export function ComponentsSection() {
         <OverlayDemos />
         <FeedbackDemos idPrefix="light" />
       </section>
-      <section aria-labelledby="components-stage" className="stage space-y-6 rounded-md p-4 sm:p-6">
+      <Stage aria-labelledby="components-stage" className="space-y-6">
         <h2 id="components-stage" className="text-h2 font-semibold">
           Components on the stage
         </h2>
@@ -28,7 +29,7 @@ export function ComponentsSection() {
         <FormDemos idPrefix="stage" />
         <OverlayDemos />
         <FeedbackDemos idPrefix="stage" />
-      </section>
+      </Stage>
     </>
   );
 }
