@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { cut } from "@/db/schema";
+import { cut, take } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { addManual, listForTake, reanalyse, setApplied } from ".";
@@ -202,6 +202,38 @@ describe("creator edits racing a re analysis (AC-9)", () => {
       ok: false,
       error: "not_found",
     });
+  });
+
+  it("makes a re analysis wait for a creator edit holding the take lock, then keep the cut", async () => {
+    const { takeId } = await setup();
+    const first = await reanalyse(db, {
+      takeId,
+      proposed: [{ startMs: 0, endMs: 500, kind: "pause", proposedBy: "rules" }],
+    });
+    if (!first.ok) throw new Error(first.error);
+    const cutId = first.data.cuts[0]?.id ?? "";
+
+    let reanalysis: ReturnType<typeof reanalyse> | undefined;
+    let settled = false;
+    await db.transaction(async (tx) => {
+      // What setApplied does: lock the take row, then touch the cut.
+      await tx.select({ id: take.id }).from(take).where(eq(take.id, takeId)).for("update");
+      await tx
+        .update(cut)
+        .set({ applied: false, creatorChangedAt: new Date() })
+        .where(eq(cut.id, cutId));
+
+      reanalysis = reanalyse(db, { takeId, proposed: [] });
+      void reanalysis.then(() => (settled = true));
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      // Still blocked on the take lock while the edit is uncommitted.
+      expect(settled).toBe(false);
+    });
+
+    const result = await reanalysis;
+    expect(result?.ok).toBe(true);
+    const [row] = await db.select().from(cut).where(eq(cut.id, cutId));
+    expect(row).toMatchObject({ applied: false });
   });
 
   it("never deletes a cut the creator touched: either the change survives or it reports not_found", async () => {

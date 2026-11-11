@@ -19,12 +19,16 @@ beforeAll(async () => {
 });
 
 describe("withJobDb", () => {
-  it("runs the callback against the database and returns its result", async () => {
+  it("runs the callback, returns its result, then closes its client", async () => {
+    let used: Parameters<Parameters<typeof withJobDb>[1]>[0] | undefined;
     const value = await withJobDb(TEST_URL, async (db) => {
+      used = db;
       const [row] = await db.execute<{ one: number }>(sql`select 1 as one`);
       return row?.one;
     });
     expect(value).toBe(1);
+    // The client is closed once withJobDb returns.
+    await expect(used?.execute(sql`select 1`)).rejects.toThrow();
   });
 
   it("closes its client when the callback finishes, even when it throws", async () => {
