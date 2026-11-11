@@ -24,20 +24,21 @@ test("dialog traps focus and returns it to the trigger", async ({ page }) => {
 
 test("menu opens and moves by keyboard", async ({ page }) => {
   await page.goto("/design");
-  await light(page).getByRole("button", { name: "More actions" }).focus();
+  // Radix learns that a menu was opened from the keyboard from a document listener it adds in an
+  // effect. Until the page's effects have run, Enter opens the menu but focus stays on the menu
+  // instead of the first item. The gallery sets this attribute after those effects (no sleeps).
+  await expect(light(page).locator("[data-overlays-ready='true']")).toBeAttached();
+  const trigger = light(page).getByRole("button", { name: "More actions" });
+  await trigger.focus();
   await page.keyboard.press("Enter");
   const menu = page.getByRole("menu");
   await expect(menu).toBeVisible();
-  // Opened from the keyboard, the menu first takes focus itself and then moves it to its first
-  // item. An arrow key pressed before the first item has focus lands one item too early, so wait
-  // for a menu item to be focused.
-  await expect
-    .poll(() => page.evaluate(() => document.activeElement?.getAttribute("role")))
-    .toBe("menuitem");
+  await expect(page.getByRole("menuitem", { name: "Rename" })).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(page.getByRole("menuitem", { name: "Download" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(menu).toBeHidden();
+  await expect(trigger).toBeFocused();
 });
 
 test("toasts use status or alert and errors stay", async ({ page }) => {
