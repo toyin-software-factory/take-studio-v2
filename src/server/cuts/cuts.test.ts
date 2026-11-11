@@ -171,6 +171,39 @@ describe("cuts.reanalyse (AC-9)", () => {
   });
 });
 
+describe("creator edits racing a re analysis (AC-9)", () => {
+  it("never deletes a cut the creator touched: either the change survives or it reports not_found", async () => {
+    for (let round = 0; round < 5; round++) {
+      const { creatorId, takeId } = await setup();
+      const first = await reanalyse(db, {
+        takeId,
+        proposed: [{ startMs: 0, endMs: 500, kind: "pause", proposedBy: "rules" }],
+      });
+      if (!first.ok) throw new Error(first.error);
+      const cutId = first.data.cuts[0]?.id ?? "";
+
+      const [edit] = await Promise.all([
+        setApplied(db, { creatorId, cutId, applied: false }),
+        reanalyse(db, {
+          takeId,
+          proposed: [{ startMs: 1000, endMs: 1500, kind: "pause", proposedBy: "ai" }],
+        }),
+      ]);
+
+      const [row] = await db.select().from(cut).where(eq(cut.id, cutId));
+      if (edit.ok) {
+        // The edit committed first, so the re analysis had to keep the touched cut.
+        expect(row).toMatchObject({ applied: false });
+        expect(row?.creatorChangedAt).toBeInstanceOf(Date);
+      } else {
+        // The re analysis replaced the untouched cut first; the edit saw it gone.
+        expect(edit).toEqual({ ok: false, error: "not_found" });
+        expect(row).toBeUndefined();
+      }
+    }
+  });
+});
+
 describe("ownership (AC-2)", () => {
   it("gives creator B not_found on creator A's cuts", async () => {
     const a = await setup();

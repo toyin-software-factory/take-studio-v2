@@ -229,6 +229,57 @@ describe("storage deletion drain (AC-17)", () => {
   });
 });
 
+describe("cleanup edges (AC-17, AC-18)", () => {
+  it("drains a queue longer than one batch", async () => {
+    await db.insert(storageDeletion).values(
+      Array.from({ length: 5 }, (_, i) => ({
+        id: crypto.randomUUID(),
+        objectKey: `originals/batch-${i}/source.mp4`,
+      })),
+    );
+    const deleted: string[] = [];
+    const result = await drainDeletions(db, async (key) => void deleted.push(key), {
+      batchSize: 2,
+    });
+    expect(result).toEqual({ deleted: 5, failed: 0, stuck: 0 });
+    expect(new Set(deleted).size).toBe(5);
+    expect(await db.select().from(storageDeletion)).toEqual([]);
+  });
+
+  it("expires an uploaded take that was never processed, and never sweeps a take with no expiry", async () => {
+    const creator = await createCreator(db);
+    const uploaded = await seedTake(db, creator.id, {
+      status: "uploaded",
+      videoExpiresAt: minutes(5),
+    });
+    const neverUploaded = await seedTake(db, creator.id, {
+      status: "failed",
+      failureCode: "upload_abandoned",
+      durationMs: null,
+      videoExpiresAt: null,
+    });
+
+    expect(await expireDueTakes(db, NOW)).toEqual({ expired: 1, queuedKeys: 1 });
+    const rows = await db
+      .select()
+      .from(take)
+      .where(inArray(take.id, [uploaded.id, neverUploaded.id]));
+    expect(Object.fromEntries(rows.map((t) => [t.id, t.status]))).toEqual({
+      [uploaded.id]: "expired",
+      [neverUploaded.id]: "failed",
+    });
+    expect(await queuedKeys()).toEqual([uploaded.originalKey]);
+  });
+
+  it("leaves an old take alone once its upload has completed", async () => {
+    const creator = await createCreator(db);
+    const done = await seedTake(db, creator.id, { status: "uploaded", createdAt: minutes(500) });
+    expect(await failAbandonedUploads(db, NOW)).toEqual([]);
+    const [row] = await db.select().from(take).where(eq(take.id, done.id));
+    expect(row?.status).toBe("uploaded");
+  });
+});
+
 describe("dispatchJob", () => {
   it("records the run ID when triggering works", async () => {
     const creator = await createCreator(db);

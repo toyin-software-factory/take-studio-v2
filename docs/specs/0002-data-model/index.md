@@ -1,7 +1,7 @@
 # 0002. Data model for Take Studio
 
 **Date**: 2026-11-10
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 

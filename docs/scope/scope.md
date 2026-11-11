@@ -24,7 +24,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 |---|---------|-------|--------|
 | 1 | Stack & architecture | Foundation | in-progress |
 | 2 | Coding standards & tooling | Foundation | done |
-| 3 | Data model | Foundation | in-progress |
+| 3 | Data model | Foundation | done |
 | 4 | Design system & UI foundation | Foundation | in-progress |
 | 5 | Core take loop | Slice 1 | planned |
 | 6 | Error monitoring | Slice 1 | planned |
@@ -57,7 +57,7 @@ Capture conventions and tooling from the real scaffolded project into root `AGEN
 - [x] Capture conventions + tooling choices: `/audit` (PR #6)
 - [x] Install the tooling: `/develop tooling` (pre commit hook: format and lint staged files, PR #8)
 
-### 3. Data model · in-progress
+### 3. Data model · done
 Core entities every slice builds on: creators, takes, processing jobs and their steps, cuts, backgrounds, transcripts, usage.
 **Done when:** the entities support every later slice (review, retention, usage limit, API access) without a breaking migration, and each creator can only reach their own data.
 - [x] Design it (spec): `/architect data model`
@@ -67,7 +67,7 @@ Core entities every slice builds on: creators, takes, processing jobs and their 
    - [x] Cuts and renders data functions (AC-8, AC-9, AC-10)
    - [x] Deletion queue, account deletion hook, cleanup schedule (AC-17, AC-18)
 - [x] Verify it: `/check verify data model`
-- [ ] Test it: `/test data model`
+- [x] Test it: `/test data model`
 Spec [0002](../specs/0002-data-model/index.md) · code in `src/db/`, `src/lib/`, `src/server/{takes,jobs,cuts,renders,account}/`, `src/trigger/`
 
 ### 4. Design system & UI foundation · in-progress

@@ -167,6 +167,12 @@ describe("renders of a job that did not succeed (AC-10)", () => {
       .from(storageDeletion)
       .where(eq(storageDeletion.objectKey, key));
     expect(queued).toHaveLength(1);
+    // The latest render's file must not be queued. (The queue table is shared with other test
+    // files running in parallel, so check this take's keys rather than the whole table.)
+    const latestKey = first.render.videoKey ?? "";
+    expect(
+      await db.select().from(storageDeletion).where(eq(storageDeletion.objectKey, latestKey)),
+    ).toEqual([]);
   });
 
   it("queues the key of a pending render when its job is cancelled, and marks it failed", async () => {
