@@ -25,9 +25,18 @@ export const jobEnvSchema = r2Schema.extend({
   DATABASE_URL: z.url(),
 });
 
+/**
+ * Usage hashing (spec 0002, AC-16): needed by the Worker and by jobs, but parsed only where
+ * the hash is computed, so the app keeps running before the secret is set everywhere.
+ */
+export const usageEnvSchema = z.object({
+  USAGE_HASH_SECRET: z.string().min(32, "USAGE_HASH_SECRET must be at least 32 characters"),
+});
+
 export type WebEnv = z.infer<typeof webEnvSchema>;
 export type JobEnv = z.infer<typeof jobEnvSchema>;
 export type R2Env = z.infer<typeof r2Schema>;
+export type UsageEnv = z.infer<typeof usageEnvSchema>;
 
 type Source = Record<string, string | undefined>;
 
@@ -50,4 +59,9 @@ export function parseWebEnv(source: Source = process.env): WebEnv {
 /** Job (Trigger.dev task) env: database URL and R2 variables. */
 export function parseJobEnv(source: Source = process.env): JobEnv {
   return parseEnv(jobEnvSchema, source, "job");
+}
+
+/** Usage env: the HMAC secret for usage account hashes (web and jobs). */
+export function parseUsageEnv(source: Source = process.env): UsageEnv {
+  return parseEnv(usageEnvSchema, source, "usage");
 }
