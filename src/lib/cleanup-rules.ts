@@ -56,6 +56,15 @@ export const CLEANUP = {
   batchSize: 100,
 } as const;
 
+/**
+ * Whether a probe run may fail its take: only the newest dispatch owns it. `redispatch` is the
+ * run's own number (0 for the upload completion), `attempts` the take's `probe_attempts`.
+ * An older run that fails after cleanup dispatched a newer one must leave the take alone.
+ */
+export function ownsTakeAfterFailure(redispatch: number | undefined, attempts: number): boolean {
+  return (redispatch ?? 0) >= attempts;
+}
+
 export const STORAGE_DELETION = {
   /** Queue rows claimed per drain batch. */
   batchSize: 50,

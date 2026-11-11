@@ -7,7 +7,7 @@ import { markUploaded, transitionTake } from "@/db/data/takes";
 import { processingJob, take } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { parseJobEnv, parseUsageEnv } from "@/lib/env";
-import { PROBE_LIMITS } from "@/lib/cleanup-rules";
+import { PROBE_LIMITS, ownsTakeAfterFailure } from "@/lib/cleanup-rules";
 import { createR2 } from "@/lib/r2";
 import { thumbnailKey } from "@/lib/take-rules";
 import { triggerForJob } from "@/lib/trigger-runs";
@@ -32,7 +32,7 @@ export const probeTask = task({
   machine: "small-2x",
   maxDuration: PROBE_LIMITS.maxDurationSeconds,
   retry: { maxAttempts: PROBE_ATTEMPTS },
-  run: async (payload: { readonly takeId: string }, { ctx }) => {
+  run: async (payload: { readonly takeId: string; readonly redispatch?: number }, { ctx }) => {
     const env = parseJobEnv();
     const { USAGE_HASH_SECRET: usageSecret } = parseUsageEnv();
     const r2 = createR2(env);
@@ -123,6 +123,18 @@ export const probeTask = task({
   onFailure: async ({ payload }) => {
     const env = parseJobEnv();
     await withJobDb(env.DATABASE_URL, async (db) => {
+      // An older run that failed after cleanup dispatched a newer one (a higher `redispatch`)
+      // must not fail a take the newer run is still probing: only the newest owner may.
+      const [current] = await db
+        .select({ attempts: take.probeAttempts })
+        .from(take)
+        .where(eq(take.id, payload.takeId));
+      if (current && !ownsTakeAfterFailure(payload.redispatch, current.attempts)) {
+        logger.info("probe: a newer dispatch owns the take, not failing it", {
+          takeId: payload.takeId,
+        });
+        return;
+      }
       // Never probed: fail the upload.
       const fromUploading = await transitionTake(db, payload.takeId, "uploading", "failed", {
         failureCode: "internal_error",

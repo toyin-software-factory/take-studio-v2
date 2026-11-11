@@ -34,7 +34,8 @@ export async function triggerProbe(takeId: string, redispatch = 0): Promise<void
   const idempotencyKey = await idempotencyKeys.create(probeKey(takeId, redispatch), {
     scope: "global",
   });
-  await tasks.trigger("probe", { takeId }, { idempotencyKey });
+  // `redispatch` lets the probe's onFailure tell the newest dispatch from an older one.
+  await tasks.trigger("probe", { takeId, redispatch }, { idempotencyKey });
 }
 
 /** Starts a queue drain now; failures are fine (the cleanup schedule drains every 15 minutes). */

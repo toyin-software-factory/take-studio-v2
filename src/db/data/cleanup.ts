@@ -33,7 +33,10 @@ export async function failAbandonedUploads(
   db: Executor,
   now: Date,
   headObject: StuckUploadPorts["headObject"],
+  scan: ScanBudget = {},
 ): Promise<readonly AbandonedUpload[]> {
+  const clock = scan.clock ?? Date.now;
+  const stopAt = clock() + (scan.budgetMs ?? DEFAULT_SCAN_BUDGET_MS);
   const { abandonedUploadBefore } = cleanupCutoffs(now);
   const candidates = await db
     .select({
@@ -44,16 +47,19 @@ export async function failAbandonedUploads(
     })
     .from(take)
     .where(and(eq(take.status, "uploading"), lt(take.createdAt, abandonedUploadBefore)))
-    .orderBy(asc(take.createdAt))
+    .orderBy(asc(take.updatedAt))
     .limit(CLEANUP.batchSize);
 
   const failed: AbandonedUpload[] = [];
   for (const candidate of candidates) {
+    if (clock() >= stopAt) break; // out of time budget: the next run continues
     try {
       const stored = await headObject(candidate.originalKey);
       if (stored && stored.size === Number(candidate.originalBytes)) continue; // recovery's
     } catch {
-      continue; // cannot tell: try again next run rather than delete a stored original
+      // Cannot tell: try again later rather than delete a stored original, behind the rest.
+      await backOff(db, candidate.id, now);
+      continue;
     }
     const result = await runTx(db, async (tx) => {
       const moved = await transitionTake(tx, candidate.id, "uploading", "failed", {
@@ -153,6 +159,26 @@ export async function expireDueTakes(
   return { expired, queuedKeys };
 }
 
+/** Bounds for the storage scans, so slow R2 calls cannot use up the whole cleanup run. */
+export type ScanBudget = {
+  /** Stop starting storage checks after this long (default 2 minutes). */
+  readonly budgetMs?: number;
+  /** Clock for the budget (tests). */
+  readonly clock?: () => number;
+};
+const DEFAULT_SCAN_BUDGET_MS = 2 * 60 * 1000;
+
+/**
+ * A storage check failed: move the take to the back of the queue (`updated_at` is the sort key
+ * of both scans) so persistent HEAD errors on the oldest rows cannot starve later ones.
+ */
+async function backOff(db: Executor, takeId: string, now: Date): Promise<void> {
+  await db
+    .update(take)
+    .set({ updatedAt: now })
+    .where(and(eq(take.id, takeId), eq(take.status, "uploading")));
+}
+
 export type StuckUploadPorts = {
   /** R2 HEAD of the original: its size, or null when the object does not exist. */
   readonly headObject: (key: string) => Promise<{ readonly size: number } | null>;
@@ -185,7 +211,10 @@ export async function recoverStuckUploads(
   db: Executor,
   now: Date,
   ports: StuckUploadPorts,
+  scan: ScanBudget = {},
 ): Promise<StuckUploadRecovery> {
+  const clock = scan.clock ?? Date.now;
+  const stopAt = clock() + (scan.budgetMs ?? DEFAULT_SCAN_BUDGET_MS);
   const quietBefore = new Date(now.getTime() - CLEANUP.stuckProbeAfterMs);
   const candidates = await db
     .select({
@@ -197,17 +226,20 @@ export async function recoverStuckUploads(
     })
     .from(take)
     .where(and(eq(take.status, "uploading"), lt(take.updatedAt, quietBefore)))
-    .orderBy(asc(take.createdAt))
+    .orderBy(asc(take.updatedAt))
     .limit(CLEANUP.batchSize);
 
   const redispatched: string[] = [];
   const failed: string[] = [];
   for (const candidate of candidates) {
+    if (clock() >= stopAt) break; // out of time budget: the next run continues
     let stored: { readonly size: number } | null;
     try {
       stored = await ports.headObject(candidate.originalKey);
     } catch {
-      continue; // could not check: leave it alone this run
+      // Could not check: leave it, and move it behind the others so it cannot starve them.
+      await backOff(db, candidate.id, now);
+      continue;
     }
     if (!stored || stored.size !== Number(candidate.originalBytes)) continue;
 

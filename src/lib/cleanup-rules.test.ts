@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { CLEANUP, PROCESS_TAKE_LIMITS, cleanupCutoffs } from "./cleanup-rules";
+import {
+  CLEANUP,
+  PROCESS_TAKE_LIMITS,
+  cleanupCutoffs,
+  ownsTakeAfterFailure,
+} from "./cleanup-rules";
 
 describe("cleanup cut offs (AC-18)", () => {
   it("derives each cut off from now and the constants", () => {
@@ -20,5 +25,15 @@ describe("cleanup cut offs (AC-18)", () => {
     expect(CLEANUP.jobMaxDurationMs + CLEANUP.runningStaleMarginMs).toBeGreaterThan(
       PROCESS_TAKE_LIMITS.maxDurationSeconds * 1000 * PROCESS_TAKE_LIMITS.maxAttempts,
     );
+  });
+});
+
+describe("probe ownership after a failure (S1C-T09)", () => {
+  it("only the newest dispatch may fail the take", () => {
+    expect(ownsTakeAfterFailure(undefined, 0)).toBe(true); // the upload completion's run
+    expect(ownsTakeAfterFailure(0, 0)).toBe(true);
+    expect(ownsTakeAfterFailure(0, 1)).toBe(false); // an older run, cleanup dispatched a newer one
+    expect(ownsTakeAfterFailure(2, 3)).toBe(false);
+    expect(ownsTakeAfterFailure(3, 3)).toBe(true); // the newest
   });
 });

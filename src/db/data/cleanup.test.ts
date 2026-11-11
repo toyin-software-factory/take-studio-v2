@@ -539,4 +539,40 @@ describe("cleanup: takes stuck in uploading after a failed probe dispatch (S1C-T
     const abandoned = await failAbandonedUploads(db, NOW, ports().headObject);
     expect(abandoned.map((a) => a.takeId)).toEqual([bad.id]);
   });
+
+  it("moves a take whose storage check failed behind the others, so it cannot starve them", async () => {
+    const creator = await createCreator(db);
+    const broken = await seedStuck(creator.id, {}, 60, 30); // oldest updated_at
+    const fine = await seedStuck(creator.id, {}, 50, 10);
+    const base = ports();
+    const p = {
+      ...base,
+      headObject: async (key: string) => {
+        if (key === broken.originalKey) throw new Error("r2 error");
+        return base.headObject(key);
+      },
+    };
+    const result = await recoverStuckUploads(db, NOW, p);
+    expect(result.redispatched).toEqual([fine.id]);
+    // The broken one was touched: it now sorts after everything that was waiting.
+    expect((await probeAttemptsOf(broken.id)).updatedAt.getTime()).toBe(NOW.getTime());
+    expect((await probeAttemptsOf(broken.id)).status).toBe("uploading");
+  });
+
+  it("stops starting storage checks when the time budget is used up", async () => {
+    const creator = await createCreator(db);
+    for (let n = 0; n < 3; n += 1) await seedStuck(creator.id, {}, 60 - n, 30 - n);
+    let ticks = 0;
+    const clock = () => (ticks += 600); // each look at the clock costs 600 ms
+    const p = ports();
+    const result = await recoverStuckUploads(db, NOW, p, { budgetMs: 1000, clock });
+    expect(result.redispatched).toHaveLength(1); // the rest wait for the next run
+    expect(p.dispatched).toHaveLength(1);
+    let t2 = 0;
+    const abandoned = await failAbandonedUploads(db, NOW, notStored, {
+      budgetMs: 0,
+      clock: () => (t2 += 1),
+    });
+    expect(abandoned).toEqual([]); // no time left: nothing was started
+  });
 });
