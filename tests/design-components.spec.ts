@@ -106,3 +106,12 @@ test("Stage container gives its controls the cream focus ring", async ({ page })
   await expect(play).toHaveCSS("outline-style", "solid");
   await expect(play).toHaveCSS("outline-color", "rgb(253, 240, 213)");
 });
+
+test("link buttons size to their text on light and stage", async ({ page }) => {
+  await page.goto("/design");
+  for (const section of ["components-light", "components-stage"]) {
+    const link = page.locator(`#${section}`).locator("..").locator('[data-variant="link"]').first();
+    await expect(link).toHaveCSS("padding-left", "0px");
+    expect((await link.boundingBox())!.height).toBeLessThan(32);
+  }
+});

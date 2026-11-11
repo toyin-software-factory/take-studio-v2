@@ -20,7 +20,7 @@ const buttonVariants = cva(
           "border border-input bg-secondary text-secondary-foreground shadow-card hover:bg-accent active:bg-muted",
         ghost: "text-foreground hover:bg-accent active:bg-muted",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-danger-hover active:bg-primary-active",
+          "bg-destructive text-destructive-foreground hover:bg-danger-hover active:bg-danger-active",
         link: "h-auto px-0 text-primary underline underline-offset-2 hover:text-primary-hover aria-disabled:bg-transparent in-[.stage]:text-foreground in-[.stage]:hover:text-foreground",
       },
       size: {
@@ -73,7 +73,8 @@ function Button({
         }
         onClick?.(event);
       }}
-      className={cn(buttonVariants({ variant, size, className }))}
+      // Link buttons size to their text, so no size classes (they would override h-auto px-0).
+      className={cn(buttonVariants({ variant, size: variant === "link" ? null : size, className }))}
       {...props}
     >
       {asChild ? (
