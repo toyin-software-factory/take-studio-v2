@@ -25,7 +25,8 @@ export type NotifyDeps = {
   readonly linkSecret: string;
 };
 
-export type NotifyOutcome = "sent" | "already_sent" | "emails_off" | "not_final" | "not_found";
+export type NotifyOutcome =
+  "sent" | "already_sent" | "emails_off" | "not_final" | "not_found" | "superseded";
 
 export async function notifyTakeFinished(
   db: Executor,
@@ -65,6 +66,12 @@ export async function notifyTakeFinished(
       note: takeNote({ status: job.status, steps }, latest !== undefined),
     });
   } else {
+    // The email says what is true now, not at the moment the job failed.
+    if (t.status === "processing") {
+      // The creator already started a retry; its own job sends its own email.
+      await markNotified(db, job.id, now);
+      return ok("superseded");
+    }
     const retryable = isRetryable(
       {
         status: t.status,
@@ -74,13 +81,12 @@ export async function notifyTakeFinished(
       },
       now,
     );
-    mail = takeFailedEmail({
-      ...links,
-      message: failureMessage(
-        { failureCode: job.failureCode, durationMs: t.durationMs },
-        retryable,
-      ),
-    });
+    // A failed re-render of a take that still has its earlier result: nothing to upload again.
+    const message =
+      t.status === "ready"
+        ? "The new version didn't finish. Your earlier result is still there, and you can try again from the take page."
+        : failureMessage({ failureCode: job.failureCode, durationMs: t.durationMs }, retryable);
+    mail = takeFailedEmail({ ...links, message });
   }
 
   const sent = await deps.sendEmail({
@@ -95,9 +101,13 @@ export async function notifyTakeFinished(
   });
   if (!sent.ok) return err("send_failed");
 
+  await markNotified(db, job.id, now);
+  return ok("sent");
+}
+
+async function markNotified(db: Executor, jobId: string, now: Date): Promise<void> {
   await db
     .update(processingJob)
     .set({ notifiedAt: now })
-    .where(and(eq(processingJob.id, job.id), isNull(processingJob.notifiedAt)));
-  return ok("sent");
+    .where(and(eq(processingJob.id, jobId), isNull(processingJob.notifiedAt)));
 }

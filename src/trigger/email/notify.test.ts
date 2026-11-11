@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { setTakeEmails } from "@/db/data/email-prefs";
 import { finish, markRunning, startJob as start } from "@/db/data/jobs";
-import { processingJob } from "@/db/schema";
+import { processingJob, take } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import type { OutgoingEmail } from "@/lib/email/send";
@@ -99,5 +99,26 @@ describe("notifyTakeFinished (spec 0006, AC-5, AC-6, AC-8)", () => {
     const [row] = await db.select().from(processingJob).where(eq(processingJob.id, jobId));
     expect(row?.notifiedAt).toBeNull();
     expect(await notifyTakeFinished(db, jobId, fakeSender().deps)).toEqual(ok("sent"));
+  });
+
+  it("skips a failed job's email when a retry is already processing, and doesn't try again", async () => {
+    const { creator, jobId } = await finishedJob("failed");
+    const [row] = await db.select().from(processingJob).where(eq(processingJob.id, jobId));
+    await db.update(take).set({ status: "processing" }).where(eq(take.id, row!.takeId));
+    const { sent, deps } = fakeSender();
+    expect(await notifyTakeFinished(db, jobId, deps)).toEqual(ok("superseded"));
+    expect(await notifyTakeFinished(db, jobId, deps)).toEqual(ok("already_sent"));
+    expect(sent).toHaveLength(0);
+    expect(creator.id).toBeTruthy();
+  });
+
+  it("says the earlier result is still there when a re-render failed on a ready take", async () => {
+    const { jobId } = await finishedJob("failed");
+    const [row] = await db.select().from(processingJob).where(eq(processingJob.id, jobId));
+    await db.update(take).set({ status: "ready" }).where(eq(take.id, row!.takeId));
+    const { sent, deps } = fakeSender();
+    expect(await notifyTakeFinished(db, jobId, deps)).toEqual(ok("sent"));
+    expect(sent[0]?.text).toContain("earlier result is still there");
+    expect(sent[0]?.text).not.toContain("Upload the video again");
   });
 });

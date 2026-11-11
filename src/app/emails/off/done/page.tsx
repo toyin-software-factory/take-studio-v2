@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { SkipLink } from "@/components/shell/skip-link";
 
+export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Take emails · Take Studio" };
 
 type Props = { readonly searchParams: Promise<{ readonly status?: string }> };
