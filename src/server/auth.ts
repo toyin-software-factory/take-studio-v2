@@ -19,7 +19,16 @@ type AuthEnv = Pick<
 export const MAGIC_LINK_EXPIRES_SECONDS = 15 * 60;
 
 /** What auth needs to send mail: the sender, or none (the CLI and tests without email). */
-export type AuthDeps = { readonly sendEmail?: EmailSender };
+export type AuthDeps = {
+  readonly sendEmail?: EmailSender;
+  /**
+   * Header that carries the real client IP for the per IP limit. The Worker passes
+   * `cf-connecting-ip` (set by Cloudflare, not by the client); without it Better Auth uses
+   * `x-forwarded-for`, whose multi address values can share one counter. Unset in tests and
+   * the CLI, where there is no Cloudflare in front.
+   */
+  readonly clientIpHeader?: string;
+};
 
 /**
  * Better Auth: Google plus email sign in links (spec 0006). One account per email (account
@@ -47,6 +56,9 @@ export function createAuth(
       // AC-3: the same email via Google and via a link is one account, never two.
       accountLinking: { enabled: true, trustedProviders: ["google"] },
     },
+    ...(deps.clientIpHeader
+      ? { advanced: { ipAddress: { ipAddressHeaders: [deps.clientIpHeader] } } }
+      : {}),
     rateLimit: {
       enabled: true,
       storage: "database",

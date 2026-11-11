@@ -24,5 +24,9 @@ export const signInEmailAttempt = pgTable(
     emailKey: text("email_key").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
-  (t) => [index("sign_in_email_attempt_key_created_idx").on(t.emailKey, t.createdAt)],
+  (t) => [
+    index("sign_in_email_attempt_key_created_idx").on(t.emailKey, t.createdAt),
+    // The prune on every admitted request filters on created_at alone.
+    index("sign_in_email_attempt_created_idx").on(t.createdAt),
+  ],
 );

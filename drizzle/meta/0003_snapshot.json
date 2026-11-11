@@ -1286,6 +1286,21 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "sign_in_email_attempt_created_idx": {
+          "name": "sign_in_email_attempt_created_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {},

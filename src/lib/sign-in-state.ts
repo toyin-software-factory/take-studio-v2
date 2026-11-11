@@ -17,7 +17,7 @@ export function signInFailureFrom(error: AuthError): SignInFailure {
 export const SIGN_IN_MESSAGES: Record<SignInFailure, { title: string; text: string }> = {
   rate_limited: {
     title: "Too many sign in links",
-    text: "You asked for a few links in a short time. Wait a few minutes and try again, or continue with Google.",
+    text: "You asked for a few links in a short time. Wait a while (it can take up to an hour) and try again, or continue with Google.",
   },
   send_failed: {
     title: "We couldn't send the email",

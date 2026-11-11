@@ -13,3 +13,5 @@ CREATE TABLE "sign_in_email_attempt" (
 );
 --> statement-breakpoint
 CREATE INDEX "sign_in_email_attempt_key_created_idx" ON "sign_in_email_attempt" USING btree ("email_key","created_at");
+--> statement-breakpoint
+CREATE INDEX "sign_in_email_attempt_created_idx" ON "sign_in_email_attempt" USING btree ("created_at");

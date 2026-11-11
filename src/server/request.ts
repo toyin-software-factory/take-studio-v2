@@ -19,6 +19,7 @@ export async function getDb() {
 export async function getAuth() {
   const email = emailEnvSchema.safeParse(process.env);
   return createAuth(await getDb(), parseWebEnv(), {
+    clientIpHeader: "cf-connecting-ip",
     ...(email.success ? { sendEmail: resendSender(email.data) } : {}),
   });
 }
