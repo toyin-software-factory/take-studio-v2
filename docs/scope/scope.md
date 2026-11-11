@@ -94,7 +94,7 @@ The walking skeleton: sign in, upload a take, pauses are trimmed automatically i
    - [x] Pinned ffmpeg and the probe task (AC-4)
    - [x] The process-take task: trim, render, edge cases (AC-5, AC-6, AC-7, AC-10)
    - [ ] Take routes and media links; library and take pages (AC-1, AC-2, AC-8, AC-9, AC-11, AC-12, AC-13) (S1C-T04: take routes and media links built and tested; pages are S1C-T05)
-   - [ ] End to end tests with fixtures (AC-2, AC-4, AC-6, AC-7, AC-11, AC-13)
+   - [ ] End to end tests with fixtures (AC-2, AC-4, AC-6, AC-7, AC-11, AC-13) (API level half done: S1C-T07, `pnpm test:pipeline`; browser half and axe come with the pages)
 - [ ] Verify it: `/check verify core take loop`
 - [ ] Test it: `/test core take loop`
 Spec [0004](../specs/0004-core-take-loop/index.md) · code in `src/server/uploads/`, `src/app/api/uploads/`, `src/server/takes/`, `src/server/media/`, `src/app/api/takes/`, `src/lib/r2*.ts`, `src/lib/take-media.ts`, `src/trigger/`

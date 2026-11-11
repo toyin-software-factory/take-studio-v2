@@ -67,6 +67,36 @@ OpenNext bundles `.env` into the Worker at build time, so create `.env` before `
 | `deploy`                                      | Build and deploy the Worker (run as `pnpm run deploy`: `pnpm deploy` is a pnpm built in) |
 | `deploy:trigger`                              | Deploy the Trigger.dev tasks                                                             |
 
+## Pipeline check (before a release)
+
+`pnpm test:pipeline` runs the whole take loop end to end through the real API and tasks: create an upload, PUT the parts straight to R2, complete, probe, process, then read the take and its media links. It runs this for every fixture in `tests/fixtures/media`:
+
+- a normal MP4 with a pause;
+- a portrait MOV with `moov` at the end;
+- HDR;
+- an A/V sync clip;
+- a clip with no pauses;
+- a silent clip;
+- an 11 minute file;
+- a 4K file.
+
+It checks final states and messages, cuts and margins, `removedMs`, charges and refunds, render size, colour, CFR and faststart, and A/V sync at every cut (at most one frame). It also checks media link lifetimes and file names, "Try again", the limits, and that a second creator gets 404 on every route. It ends by deleting everything it made, through the real deletion path. It prints one line per check and exits non zero if any fails.
+
+**When:** run it before releasing anything that touches uploads, the probe, `process-take`, the take routes or the data model. It isn't part of PR CI, because it needs real R2 and Trigger.dev access and takes a few minutes.
+
+**What it needs:**
+
+- local Postgres (`pnpm db:up`);
+- ffmpeg 7 on your machine;
+- `BETTER_AUTH_SECRET`, the `R2_*` variables, `TRIGGER_DEV_SECRET_KEY` (a `tr_dev_` key) and `TRIGGER_ACCESS_TOKEN` in your environment.
+
+It starts `next dev` on port 3100 and `trigger dev` itself, against your local database, and uses a throwaway usage secret. Your app data is untouched. Test files go to the R2 bucket under random take IDs and are deleted at the end.
+
+```bash
+pnpm db:up
+pnpm test:pipeline
+```
+
 ## CI and deploy
 
 - **CI** (`.github/workflows/ci.yml`, every PR): install, lint, format check, typecheck, Vitest, a check that `drizzle-kit generate` makes no new migration, Worker build, then Playwright against the built Worker with Postgres as a service container.
