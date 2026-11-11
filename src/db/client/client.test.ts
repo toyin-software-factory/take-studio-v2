@@ -44,8 +44,8 @@ describe("withJobDb", () => {
     await expect(
       withJobDb("postgres://postgres:postgres@127.0.0.1:1/none", async () => "never"),
     ).rejects.toThrow();
-    // Waits 1 s then 2 s between the three attempts.
-    expect(Date.now() - started).toBeGreaterThanOrEqual(3_000);
+    // Waits 1 s then 2 s between the three attempts; a small margin absorbs timer drift.
+    expect(Date.now() - started).toBeGreaterThanOrEqual(2_900);
   });
 });
 
