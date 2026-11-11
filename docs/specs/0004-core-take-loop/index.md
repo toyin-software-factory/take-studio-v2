@@ -63,7 +63,7 @@ Reasoning and options: see `rationale.md`. Toyin's calls after the cross check: 
 | `/api/takes/{id}` | GET | none | take, latest job with steps, latest render, removedMs (sum of the latest render's removed ranges, or of applied cuts if no render) | 404 |
 | `/api/takes/{id}` | PATCH | title | take | 404, 422 |
 | `/api/takes/{id}/retry` | POST | none | job | 404, 409 in progress or not retryable |
-| `/api/takes/{id}/media` | GET | kind (`play`, `download`, `original`) | JSON `{ url }` | 404 no file, 410 expired |
+| `/api/takes/{id}/media` | GET | kind (`play`, `download`, `original`, `thumb`) | JSON `{ url }` (`thumb`: inline, 1 hour) | 404 no file, 410 expired |
 
 R2 helpers added to the existing `createR2` (aws4fetch, `signQuery: true`, no signed `Content-Type` or `Content-Length`): `createMultipartUpload`, `presignUploadPart`, `completeMultipartUpload`, `abortMultipartUpload`, `headObject`, `presignGet` (with `response-content-disposition`, RFC 5987 encoded), and a job side multipart uploader.
 
