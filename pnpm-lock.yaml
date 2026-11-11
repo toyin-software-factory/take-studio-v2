@@ -73,7 +73,7 @@ importers:
         specifier: 1.65.0
         version: 1.65.0
       '@sentry/cli':
-        specifier: ^3.8.2
+        specifier: 3.8.2
         version: 3.8.2
       '@sentry/esbuild-plugin':
         specifier: 11.12.0
