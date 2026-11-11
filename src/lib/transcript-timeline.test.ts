@@ -5,16 +5,17 @@ import {
   toSrt,
   toTrimmedTranscript,
   toVtt,
-  type StoredWord,
   type TrimmedParagraph,
   type TrimmedWord,
 } from "./transcript-timeline";
+import type { TranscriptWord } from "./transcript-rules";
 import { alignToFrames, keepRanges, TRIM } from "./trim";
 
-const word = (w: string, startMs: number, endMs: number, extra: Partial<StoredWord> = {}) => ({
+const word = (w: string, startMs: number, endMs: number, extra: Partial<TranscriptWord> = {}) => ({
   w,
   startMs,
   endMs,
+  conf: 0.99,
   filler: false,
   para: false,
   ...extra,
