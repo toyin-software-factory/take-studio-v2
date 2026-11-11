@@ -1,0 +1,36 @@
+import { idempotencyKeys, runs, tasks } from "@trigger.dev/sdk";
+
+/**
+ * Small Trigger.dev helpers shared by the web app and jobs. They read TRIGGER_SECRET_KEY from
+ * the environment, like the rest of the SDK. Payloads carry IDs only.
+ */
+
+/**
+ * Triggers `taskId` for a job with a global idempotency key derived from the job ID, so
+ * repeating the call never starts a second run. Pass it to `dispatchJob`.
+ */
+export function triggerForJob(taskId: string) {
+  return async (jobId: string): Promise<{ readonly id: string }> => {
+    const idempotencyKey = await idempotencyKeys.create(`job-${jobId}`, { scope: "global" });
+    const handle = await tasks.trigger(taskId, { jobId }, { idempotencyKey });
+    return { id: handle.id };
+  };
+}
+
+/** Starts a queue drain now; failures are fine (the cleanup schedule drains every 15 minutes). */
+export async function requestStorageDrain(): Promise<void> {
+  try {
+    await tasks.trigger("storage-deletion", {});
+  } catch {
+    // Best effort by design.
+  }
+}
+
+/**
+ * Cancels runs, best effort: a run that already finished can't be cancelled, and a failure
+ * here must not undo a deletion that already committed. Returns how many were cancelled.
+ */
+export async function cancelRuns(runIds: readonly string[]): Promise<number> {
+  const results = await Promise.allSettled(runIds.map((id) => runs.cancel(id)));
+  return results.filter((result) => result.status === "fulfilled").length;
+}

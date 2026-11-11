@@ -16,10 +16,16 @@ const DEFAULT_URL = "postgres://postgres:postgres@localhost:5432/take_studio_tes
 const MIGRATIONS = fileURLToPath(new URL("../../../drizzle", import.meta.url));
 const LOCK_ID = 7_311_002; // any constant: serialises migrations across test workers
 
-function testUrl(): URL {
+function testUrl(database?: string): URL {
   const url = new URL(process.env.TEST_DATABASE_URL ?? DEFAULT_URL);
   if (!["localhost", "127.0.0.1", "::1", "[::1]"].includes(url.hostname)) {
     throw new Error(`Test database must be on localhost, got ${url.hostname}.`);
+  }
+  if (database !== undefined) {
+    if (!/^take_studio_test_[a-z0-9_]+$/.test(database)) {
+      throw new Error(`Separate test databases must be named take_studio_test_<name>.`);
+    }
+    url.pathname = `/${database}`;
   }
   return url;
 }
@@ -54,9 +60,13 @@ async function ensureDatabase(url: URL): Promise<void> {
 
 export type TestDb = { readonly db: Db; readonly close: () => Promise<void> };
 
-/** Opens a migrated test database. Call `close` in `afterAll`. */
-export async function openTestDb(): Promise<TestDb> {
-  const url = testUrl();
+/**
+ * Opens a migrated test database. Call `close` in `afterAll`. Pass `database`
+ * (`take_studio_test_<name>`) for tests that sweep whole tables (cleanup, the deletion queue),
+ * so they can't touch rows other test files are using at the same time.
+ */
+export async function openTestDb(options: { readonly database?: string } = {}): Promise<TestDb> {
+  const url = testUrl(options.database);
   await ensureDatabase(url);
 
   const lockClient = postgres(url.toString(), { max: 1, onnotice: () => {} });

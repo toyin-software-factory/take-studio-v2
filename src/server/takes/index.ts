@@ -1,11 +1,14 @@
 import { and, asc, desc, eq, gt, lt, or, sql } from "drizzle-orm";
 import { z } from "zod";
+import { type DeletedTakes, deleteTakesInTx } from "@/db/data/deletion";
 import { markUploaded, transition } from "@/db/data/takes";
 import { jobStep, processingJob, render, take } from "@/db/schema";
+import { runTx } from "@/db/tx";
 import type { Executor, JobStep, ProcessingJob, Render, Take } from "@/db/types";
 import { CONTAINERS, TAKE_TITLE_MAX, type TakeStatus } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
 import { MEDIA_LIMITS, cleanTitle, originalKey, titleFromFileName } from "@/lib/take-rules";
+import { cancelRuns, requestStorageDrain } from "@/lib/trigger-runs";
 
 /**
  * Creator scoped take functions (spec 0002, API surface; AC-2). `creatorId` always comes
@@ -14,6 +17,7 @@ import { MEDIA_LIMITS, cleanTitle, originalKey, titleFromFileName } from "@/lib/
  */
 
 // System functions, re exported so callers see one `takes` surface.
+export { expireTake as expire } from "@/db/data/deletion";
 export { markUploaded, transition };
 
 const createSchema = z.object({
@@ -238,4 +242,42 @@ export async function rename(
     .where(and(eq(take.id, takeId), eq(take.creatorId, creatorId)))
     .returning();
   return updated ? ok(updated) : err("not_found");
+}
+
+/** Side effects run after a deletion commits; injectable for tests. */
+export type AfterDelete = {
+  readonly cancelRuns: (runIds: readonly string[]) => Promise<unknown>;
+  readonly requestStorageDrain: () => Promise<unknown>;
+};
+
+const defaultAfterDelete: AfterDelete = { cancelRuns, requestStorageDrain };
+
+/**
+ * `deleteTake` (AC-17): deletes the creator's take and everything under it (jobs, steps, cuts,
+ * renders cascade), queuing every file key in the same transaction. After commit it cancels
+ * the take's active Trigger.dev runs and asks for a queue drain, both best effort.
+ */
+export async function deleteTake(
+  db: Executor,
+  creatorId: string,
+  takeId: string,
+  after: AfterDelete = defaultAfterDelete,
+): Promise<Result<DeletedTakes, "not_found">> {
+  if (!z.uuid().safeParse(takeId).success) return err("not_found");
+
+  const result = await runTx(db, async (tx) => {
+    const [owned] = await tx
+      .select({ id: take.id })
+      .from(take)
+      .where(and(eq(take.id, takeId), eq(take.creatorId, creatorId)))
+      .for("update");
+    if (!owned) return err("not_found");
+    return ok(await deleteTakesInTx(tx, [takeId]));
+  });
+
+  if (result.ok) {
+    await after.cancelRuns(result.data.runIds);
+    await after.requestStorageDrain();
+  }
+  return result;
 }
