@@ -4,13 +4,18 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@opennextjs/cloudflare@1.20.16':
+    hash: 0cb420b94f7e004ac7d652d9e61cbd8c567668a7e08799495fe15f67142098fb
+    path: patches/@opennextjs__cloudflare@1.20.16.patch
+
 importers:
 
   .:
     dependencies:
       '@opennextjs/cloudflare':
         specifier: 1.20.16
-        version: 1.20.16(next@16.4.6(@babel/core@7.29.13)(@opentelemetry/api@1.9.1)(@playwright/test@1.65.0)(@types/node@22.20.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(wrangler@4.160.0(@types/node@22.20.5))
+        version: 1.20.16(patch_hash=0cb420b94f7e004ac7d652d9e61cbd8c567668a7e08799495fe15f67142098fb)(next@16.4.6(@babel/core@7.29.13)(@opentelemetry/api@1.9.1)(@playwright/test@1.65.0)(@types/node@22.20.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(wrangler@4.160.0(@types/node@22.20.5))
       '@sentry/core':
         specifier: 11.12.0
         version: 11.12.0
@@ -69,6 +74,9 @@ importers:
       '@axe-core/playwright':
         specifier: 4.14.0
         version: 4.14.0(playwright-core@1.65.0)
+      '@jridgewell/trace-mapping':
+        specifier: 0.3.31
+        version: 0.3.31
       '@playwright/test':
         specifier: 1.65.0
         version: 1.65.0
@@ -8441,7 +8449,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@opennextjs/cloudflare@1.20.16(next@16.4.6(@babel/core@7.29.13)(@opentelemetry/api@1.9.1)(@playwright/test@1.65.0)(@types/node@22.20.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(wrangler@4.160.0(@types/node@22.20.5))':
+  '@opennextjs/cloudflare@1.20.16(patch_hash=0cb420b94f7e004ac7d652d9e61cbd8c567668a7e08799495fe15f67142098fb)(next@16.4.6(@babel/core@7.29.13)(@opentelemetry/api@1.9.1)(@playwright/test@1.65.0)(@types/node@22.20.5)(react-dom@19.3.0(react@19.3.0))(react@19.3.0))(wrangler@4.160.0(@types/node@22.20.5))':
     dependencies:
       '@ast-grep/napi': 0.45.3
       '@dotenvx/dotenvx': 2.38.2

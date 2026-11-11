@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "concurrently -k -n next,trigger -c blue,magenta \"next dev\" \"trigger dev\"",
     "dev:web": "next dev",
-    "build": "next build",
+    "build": "next build && tsx scripts/inline-server-maps.ts",
     "build:worker": "opennextjs-cloudflare build",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview --var DESIGN_GALLERY:1",
     "start": "next start",
@@ -25,7 +25,7 @@
     "db:migrate": "drizzle-kit migrate",
     "auth:generate": "auth generate --config src/server/auth.cli.ts --output src/db/schema/auth.ts --yes",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
-    "deploy": "pnpm run deploy:check-env && opennextjs-cloudflare build && pnpm run deploy:check-maps && bash scripts/deploy-worker.sh production ${SENTRY_RELEASE:-unknown}",
+    "deploy": "pnpm run deploy:check-env && WORKER_SOURCE_MAPS=${SENTRY_AUTH_TOKEN:+1} opennextjs-cloudflare build && pnpm run deploy:check-maps && bash scripts/deploy-worker.sh production ${SENTRY_RELEASE:-unknown}",
     "deploy:check-env": "if ls -a | grep -E '^\\.(env|dev\\.vars)' | grep -vx '.env.example' | grep -q .; then echo 'Refusing to deploy: OpenNext would bake local .env or .dev.vars values into the production Worker. Build from a clean checkout.' >&2; exit 1; fi",
     "deploy:check-maps": "if find .open-next/assets -name '*.map' | grep -q .; then echo 'Refusing to deploy: source maps in .open-next/assets would be served publicly (spec 0005, AC-6).' >&2; exit 1; fi",
     "deploy:trigger": "trigger deploy",
@@ -56,6 +56,7 @@
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",
+    "@jridgewell/trace-mapping": "0.3.31",
     "@playwright/test": "1.65.0",
     "@sentry/cli": "3.8.2",
     "@sentry/esbuild-plugin": "11.12.0",
@@ -96,6 +97,9 @@
       "sharp",
       "simple-git-hooks",
       "unrs-resolver"
-    ]
+    ],
+    "patchedDependencies": {
+      "@opennextjs/cloudflare@1.20.16": "patches/@opennextjs__cloudflare@1.20.16.patch"
+    }
   }
 }
