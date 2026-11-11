@@ -1,0 +1,219 @@
+import { eq } from "drizzle-orm";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { take } from "@/db/schema";
+import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
+import type { Db } from "@/db/types";
+import { create, getForCreator, listForCreator, markUploaded, rename, transition } from ".";
+
+let testDb: TestDb;
+let db: Db;
+
+beforeAll(async () => {
+  testDb = await openTestDb();
+  db = testDb.db;
+});
+afterAll(() => testDb.close());
+
+const probe = { durationMs: 61_500, width: 1920, height: 1080, container: "mp4" };
+
+describe("takes.create", () => {
+  it("creates an uploading take with an app generated id and original key", async () => {
+    const creator = await createCreator(db);
+    const result = await create(db, {
+      creatorId: creator.id,
+      fileName: " Morning take.MP4 ",
+      container: "mp4",
+      bytes: 5_000_000,
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.data).toMatchObject({
+      creatorId: creator.id,
+      title: "Morning take",
+      status: "uploading",
+      originalKey: `originals/${result.data.id}/source.mp4`,
+      originalBytes: 5_000_000,
+    });
+  });
+
+  it("rejects bad input with invalid", async () => {
+    const creator = await createCreator(db);
+    const base = { creatorId: creator.id, fileName: "a.mp4", container: "mp4" as const, bytes: 1 };
+    expect(await create(db, { ...base, fileName: "  .mp4 " })).toEqual({
+      ok: false,
+      error: "invalid",
+    });
+    expect(await create(db, { ...base, bytes: 0 })).toEqual({ ok: false, error: "invalid" });
+    expect(await create(db, { ...base, bytes: 3 * 1024 ** 3 })).toEqual({
+      ok: false,
+      error: "invalid",
+    });
+    expect(await create(db, { ...base, container: "webm" as "mp4" })).toEqual({
+      ok: false,
+      error: "invalid",
+    });
+  });
+});
+
+describe("takes.markUploaded (AC-5)", () => {
+  it("marks a take uploaded with its probe and a 30 day expiry, once", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, {
+      status: "uploading",
+      durationMs: null,
+      width: null,
+      height: null,
+      videoExpiresAt: null,
+      uploadId: "mpu-1",
+    });
+    const now = new Date("2026-11-11T10:00:00Z");
+    const result = await markUploaded(db, { takeId: t.id, sizeBytes: 4_000_000, probe, now });
+    expect(result.ok && result.data).toMatchObject({
+      status: "uploaded",
+      durationMs: 61_500,
+      width: 1920,
+      height: 1080,
+      originalBytes: 4_000_000,
+      uploadId: null,
+      videoExpiresAt: new Date("2026-12-11T10:00:00Z"),
+    });
+    // A repeat is not a valid transition.
+    expect(await markUploaded(db, { takeId: t.id, sizeBytes: 1, probe })).toEqual({
+      ok: false,
+      error: "invalid_transition",
+    });
+  });
+
+  it("fails a take outside the limits with a non refundable code", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, { status: "uploading", durationMs: null });
+    const result = await markUploaded(db, {
+      takeId: t.id,
+      sizeBytes: 1_000,
+      probe: { ...probe, durationMs: 11 * 60 * 1000 },
+    });
+    expect(result.ok && result.data).toMatchObject({ status: "failed", failureCode: "too_long" });
+  });
+
+  it("returns not_found for a missing take", async () => {
+    expect(await markUploaded(db, { takeId: crypto.randomUUID(), sizeBytes: 1, probe })).toEqual({
+      ok: false,
+      error: "not_found",
+    });
+  });
+});
+
+describe("takes.transition (AC-3)", () => {
+  it("applies an allowed transition as a compare and swap", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, { status: "uploaded" });
+    const moved = await transition(db, { takeId: t.id, from: "uploaded", to: "processing" });
+    expect(moved.ok && moved.data.status).toBe("processing");
+    // The take is no longer `uploaded`, so the same swap now fails.
+    expect(await transition(db, { takeId: t.id, from: "uploaded", to: "processing" })).toEqual({
+      ok: false,
+      error: "invalid_transition",
+    });
+  });
+
+  it("rejects transitions the state machine does not allow, without touching the row", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, { status: "uploaded" });
+    for (const [from, to] of [
+      ["uploaded", "ready"],
+      ["uploaded", "uploading"],
+      ["expired", "processing"],
+    ] as const) {
+      expect(await transition(db, { takeId: t.id, from, to })).toEqual({
+        ok: false,
+        error: "invalid_transition",
+      });
+    }
+    const [row] = await db.select().from(take).where(eq(take.id, t.id));
+    expect(row?.status).toBe("uploaded");
+  });
+});
+
+describe("takes.getForCreator, listForCreator and rename", () => {
+  it("reads a take with its latest job and render", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id);
+    const result = await getForCreator(db, creator.id, t.id);
+    expect(result.ok && result.data).toMatchObject({
+      take: { id: t.id },
+      latestRender: null,
+      latestJob: null,
+    });
+  });
+
+  it("lists newest first across pages with no gaps or repeats", async () => {
+    const creator = await createCreator(db);
+    const base = Date.parse("2026-11-01T00:00:00Z");
+    const ids: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      // Two takes share a timestamp to exercise the id tie break.
+      const createdAt = new Date(base + Math.min(i, 3) * 1000);
+      ids.push((await seedTake(db, creator.id, { title: `Take ${i}`, createdAt })).id);
+    }
+
+    const seen: string[] = [];
+    let cursor: string | null = null;
+    do {
+      const page = await listForCreator(db, creator.id, { cursor, limit: 2 });
+      if (!page.ok) throw new Error(page.error);
+      expect(page.data.rows.length).toBeLessThanOrEqual(2);
+      seen.push(...page.data.rows.map((row) => row.id));
+      cursor = page.data.nextCursor;
+    } while (cursor);
+
+    expect(seen).toHaveLength(5);
+    expect(new Set(seen).size).toBe(5);
+    // Newest first: the two takes at +3s come first, ordered by id.
+    const tied = [ids[3], ids[4]].sort();
+    expect(seen.slice(0, 2)).toEqual(tied);
+    expect(seen.slice(2)).toEqual([ids[2], ids[1], ids[0]]);
+  });
+
+  it("rejects a malformed cursor and caps the page size at 50", async () => {
+    const creator = await createCreator(db);
+    expect(await listForCreator(db, creator.id, { cursor: "nope" })).toEqual({
+      ok: false,
+      error: "invalid",
+    });
+    const result = await listForCreator(db, creator.id, { limit: 500 });
+    expect(result.ok && result.data.rows).toEqual([]);
+  });
+
+  it("renames in any status, cleaning the title", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, { status: "expired" });
+    const result = await rename(db, creator.id, t.id, "  New\tname ");
+    expect(result.ok && result.data.title).toBe("New name");
+    expect(await rename(db, creator.id, t.id, "   ")).toEqual({ ok: false, error: "invalid" });
+    expect(await rename(db, creator.id, t.id, "x".repeat(201))).toEqual({
+      ok: false,
+      error: "invalid",
+    });
+  });
+});
+
+describe("ownership (AC-2)", () => {
+  it("gives creator B not_found on creator A's take", async () => {
+    const a = await createCreator(db);
+    const b = await createCreator(db);
+    const t = await seedTake(db, a.id);
+
+    expect(await getForCreator(db, b.id, t.id)).toEqual({ ok: false, error: "not_found" });
+    expect(await rename(db, b.id, t.id, "Mine now")).toEqual({ ok: false, error: "not_found" });
+    const list = await listForCreator(db, b.id);
+    expect(list.ok && list.data.rows).toEqual([]);
+
+    const [row] = await db.select().from(take).where(eq(take.id, t.id));
+    expect(row?.title).toBe("Seeded take");
+  });
+
+  it("treats a malformed id as not_found", async () => {
+    const a = await createCreator(db);
+    expect(await getForCreator(db, a.id, "not-a-uuid")).toEqual({ ok: false, error: "not_found" });
+  });
+});
