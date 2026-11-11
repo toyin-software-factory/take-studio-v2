@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { JOB_KIND_SLICES, JOB_KINDS, STEPS, STEPS_BY_KIND, STEP_NAMES } from "./processing";
+import {
+  JOB_KIND_SLICES,
+  JOB_KINDS,
+  STEPS,
+  STEPS_BY_KIND,
+  STEP_NAMES,
+  stepsFor,
+} from "./processing";
 
 describe("step registry (AC-7)", () => {
   it("lists the steps per kind in the spec's order", () => {
@@ -29,5 +36,17 @@ describe("step registry (AC-7)", () => {
   it("defines every job kind from the spec, with reanalyse live from slice 5", () => {
     expect(JOB_KINDS).toEqual(["initial", "rerender", "reanalyse"]);
     expect(JOB_KIND_SLICES.reanalyse).toBe(5);
+  });
+
+  it("creates only live steps, and a re render's background only when it changed", () => {
+    expect(stepsFor("initial")).toEqual(["trim", "render"]);
+    expect(stepsFor("rerender")).toEqual(["render"]);
+    expect(stepsFor("initial", { liveSlice: 5 })).toEqual(STEPS_BY_KIND.initial);
+    expect(stepsFor("rerender", { liveSlice: 3 })).toEqual(["render"]);
+    expect(stepsFor("rerender", { liveSlice: 3, backgroundChanged: true })).toEqual([
+      "background",
+      "render",
+    ]);
+    expect(stepsFor("reanalyse", { liveSlice: 5 })).toEqual(["ai_edit", "render"]);
   });
 });

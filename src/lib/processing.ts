@@ -72,6 +72,36 @@ export const STEPS_BY_KIND = {
   reanalyse: ["ai_edit", "render"],
 } as const satisfies Readonly<Record<JobKind, readonly StepName[]>>;
 
+/**
+ * The latest product slice that is live. Steps and job kinds from later slices are allowed
+ * in the database but not created yet. Bump it when a slice ships.
+ */
+export const LIVE_SLICE = 1;
+
+type StepsForOptions = {
+  readonly liveSlice?: number;
+  /** For `rerender`: whether the take's background changed since the latest render. */
+  readonly backgroundChanged?: boolean;
+};
+
+/**
+ * The ordered steps to create for a new job of `kind`: skips steps whose slice is not live,
+ * and for a re render skips `background` unless the background changed.
+ */
+export function stepsFor(kind: JobKind, options: StepsForOptions = {}): readonly StepName[] {
+  const { liveSlice = LIVE_SLICE, backgroundChanged = false } = options;
+  return STEPS_BY_KIND[kind].filter(
+    (name) =>
+      STEPS[name].slice <= liveSlice &&
+      !(kind === "rerender" && name === "background" && !backgroundChanged),
+  );
+}
+
+/** True for job statuses that never change again. */
+export function isFinalJobStatus(status: JobStatus): boolean {
+  return status === "succeeded" || status === "failed" || status === "cancelled";
+}
+
 /** render.status. */
 export const RENDER_STATUSES = ["pending", "succeeded", "failed"] as const;
 export type RenderStatus = (typeof RENDER_STATUSES)[number];
