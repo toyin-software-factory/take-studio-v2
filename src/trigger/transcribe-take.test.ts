@@ -12,6 +12,7 @@ import {
   DeepgramTimeout,
   failTranscribeJob,
   transcribeFailureCode,
+  withDeadline,
   type TranscribeIo,
   postToDeepgram,
   transcribeJob,
@@ -235,6 +236,16 @@ describe("the Deepgram error matrix (spec 0007, AC-8)", () => {
     expect(transcribeFailureCode(new DeepgramError(null))).toBe("provider_error");
     expect(transcribeFailureCode(new Error("MAX_DURATION_EXCEEDED"))).toBe("timeout");
     expect(transcribeFailureCode(new Error("boom"))).toBe("internal_error");
+  });
+});
+
+describe("withDeadline (maxDuration does not reach onFailure)", () => {
+  it("passes a result through and rejects a slow attempt as a timeout", async () => {
+    expect(await withDeadline(Promise.resolve(7), 1000)).toBe(7);
+    const slow = new Promise((resolve) => setTimeout(resolve, 200));
+    const error = await withDeadline(slow, 10).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(DeepgramTimeout);
+    expect(transcribeFailureCode(error)).toBe("timeout");
   });
 });
 

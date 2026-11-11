@@ -53,6 +53,8 @@ export function TranscriptPanel({ takeId }: { readonly takeId: string }) {
     }
     setLoadFailed(false);
     setView(parsed.data);
+    // A start message ("still being made") only belongs while the job is still making.
+    if (parsed.data.state !== "making") setStartError(null);
     if (parsed.data.state === "making") return "continue";
     if (parsed.data.state === "none") {
       noneChecks.current += 1;

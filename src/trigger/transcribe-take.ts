@@ -44,13 +44,19 @@ export const transcribeTakeTask = task({
     }
     const env = parseJobEnv();
     const r2 = createR2(env);
-    return withJobDb(env.DATABASE_URL, (db) =>
-      transcribeJob(db, payload.jobId, ctx.run.id, {
-        r2,
-        probe: probeUrl,
-        extractAudio: extractWithFfmpeg,
-        post: (audio) => postToDeepgram(audio, transcriptEnv.DEEPGRAM_API_KEY),
-      }),
+    // Trigger.dev does not call `onFailure` when a run exceeds `maxDuration` (checked in a local
+    // run: the run ends TIMED_OUT and the job would stay active until stale cleanup), so the
+    // attempt stops itself a little earlier. The error then reaches `onFailure` like any other.
+    return withDeadline(
+      withJobDb(env.DATABASE_URL, (db) =>
+        transcribeJob(db, payload.jobId, ctx.run.id, {
+          r2,
+          probe: probeUrl,
+          extractAudio: extractWithFfmpeg,
+          post: (audio) => postToDeepgram(audio, transcriptEnv.DEEPGRAM_API_KEY),
+        }),
+      ),
+      (TRANSCRIBE_TAKE_LIMITS.maxDurationSeconds - ATTEMPT_MARGIN_SECONDS) * 1000,
     );
   },
   onFailure: async ({ payload, error }) => {
@@ -58,6 +64,22 @@ export const transcribeTakeTask = task({
     await withJobDb(env.DATABASE_URL, (d) => failTranscribeJob(d, payload.jobId, error));
   },
 });
+
+/** Seconds before `maxDuration` at which an attempt gives up on its own. */
+const ATTEMPT_MARGIN_SECONDS = 30;
+
+/** Rejects with `DeepgramTimeout` (final code `timeout`) when `work` takes longer than `ms`. */
+export async function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new DeepgramTimeout()), ms);
+  });
+  try {
+    return await Promise.race([work, deadline]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 /**
  * Failure code for a final error (spec 0007, AC-8): a rejected request (4xx) is
