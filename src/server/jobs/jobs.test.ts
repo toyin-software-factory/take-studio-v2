@@ -1,5 +1,5 @@
 import { createHmac } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { processingJob, render, storageDeletion, take } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
@@ -143,6 +143,30 @@ describe("jobs.start (AC-6, AC-7)", () => {
       const retried = await start(db, { creatorId: creator.id, takeId: t.id, usageSecret: SECRET });
       expect(retried.ok, failureCode).toBe(true);
     }
+  });
+
+  it("refuses a failed take whose video has expired, and still starts one that has not", async () => {
+    const creator = await createCreator(db);
+    const base = { status: "failed" as const, failureCode: "timeout" };
+    const gone = await seedTake(db, creator.id, {
+      ...base,
+      videoExpiresAt: new Date(NOW.getTime() - 1000),
+    });
+    const atNow = await seedTake(db, creator.id, { ...base, videoExpiresAt: NOW });
+    const fresh = await seedTake(db, creator.id, {
+      ...base,
+      videoExpiresAt: new Date(NOW.getTime() + 60_000),
+    });
+    const startAt = (takeId: string) =>
+      start(db, { creatorId: creator.id, takeId, usageSecret: SECRET, now: NOW });
+    expect(await startAt(gone.id)).toEqual({ ok: false, error: "invalid_transition" });
+    expect(await startAt(atNow.id)).toEqual({ ok: false, error: "invalid_transition" });
+    expect((await startAt(fresh.id)).ok).toBe(true);
+    const rows = await db
+      .select()
+      .from(processingJob)
+      .where(inArray(processingJob.takeId, [gone.id, atNow.id]));
+    expect(rows).toEqual([]);
   });
 
   it("lets a caller restrict which take statuses may start (the probe: uploaded only)", async () => {
