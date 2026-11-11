@@ -20,6 +20,7 @@ Mostly pure modules used by the web app, the browser, the Worker and the jobs. S
 - Units: `maxDurationSeconds` is in seconds; every other timing in `cleanup-rules.ts` is in milliseconds. `TRIM.minSilenceMs` is milliseconds and is divided by 1000 for ffmpeg. When the frame rate is unknown, `alignToFrames` and `outputFps` both assume 30.
 - Usage hash: usage is stored under an HMAC of the canonical email (`usage-hash.ts`): lowercased, `+tag` removed, and for Gmail the dots removed and `googlemail.com` written as `gmail.com`. `USAGE_HASH_SECRET` (at least 32 characters) has its own schema in `env.ts` and is parsed only where the hash is computed. `USAGE_HASH_VERSION` is stored beside each row. Changing the canonical rules or the version changes every hash, so old usage would stop matching. Never log the secret or the email.
 - `emailEnvSchema` (app URL, Resend key, sender, link secret) is parsed only where email is sent or a link is signed; `BETTER_AUTH_URL` must also be set in Trigger.dev, or `notify-take` stops at once with a names only error.
+- Durations shown to people (take length, player time, "Removed m:ss of pauses", the same number in emails) all go through `formatClock` in `take-display.ts`, which floors to whole seconds (2501 ms is `0:02`). Never write a second formatter; emails import this one.
 - `env.ts` error messages name the variables and never show values.
 - `take-media.ts` keeps its own copy of the media failure codes next to the one in `failure-codes.ts`. They are the same today; change both, or remove the copy.
 
