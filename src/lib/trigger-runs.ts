@@ -17,6 +17,15 @@ export function triggerForJob(taskId: string) {
   };
 }
 
+/**
+ * Triggers the `probe` task for an uploaded take, with a global idempotency key
+ * `probe-{takeId}`, so repeated upload completions never probe twice. Payload: IDs only.
+ */
+export async function triggerProbe(takeId: string): Promise<void> {
+  const idempotencyKey = await idempotencyKeys.create(`probe-${takeId}`, { scope: "global" });
+  await tasks.trigger("probe", { takeId }, { idempotencyKey });
+}
+
 /** Starts a queue drain now; failures are fine (the cleanup schedule drains every 15 minutes). */
 export async function requestStorageDrain(): Promise<void> {
   try {
