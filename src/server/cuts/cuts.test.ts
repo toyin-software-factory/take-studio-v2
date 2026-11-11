@@ -172,6 +172,38 @@ describe("cuts.reanalyse (AC-9)", () => {
 });
 
 describe("creator edits racing a re analysis (AC-9)", () => {
+  it("keeps the cut when the creator's edit lands before the re analysis", async () => {
+    const { creatorId, takeId } = await setup();
+    const first = await reanalyse(db, {
+      takeId,
+      proposed: [{ startMs: 0, endMs: 500, kind: "pause", proposedBy: "rules" }],
+    });
+    if (!first.ok) throw new Error(first.error);
+    const cutId = first.data.cuts[0]?.id ?? "";
+
+    expect((await setApplied(db, { creatorId, cutId, applied: false })).ok).toBe(true);
+    await reanalyse(db, { takeId, proposed: [] });
+
+    const [row] = await db.select().from(cut).where(eq(cut.id, cutId));
+    expect(row).toMatchObject({ applied: false });
+  });
+
+  it("reports not_found when the re analysis replaced the cut before the creator's edit", async () => {
+    const { creatorId, takeId } = await setup();
+    const first = await reanalyse(db, {
+      takeId,
+      proposed: [{ startMs: 0, endMs: 500, kind: "pause", proposedBy: "rules" }],
+    });
+    if (!first.ok) throw new Error(first.error);
+    const cutId = first.data.cuts[0]?.id ?? "";
+
+    await reanalyse(db, { takeId, proposed: [] });
+    expect(await setApplied(db, { creatorId, cutId, applied: false })).toEqual({
+      ok: false,
+      error: "not_found",
+    });
+  });
+
   it("never deletes a cut the creator touched: either the change survives or it reports not_found", async () => {
     for (let round = 0; round < 5; round++) {
       const { creatorId, takeId } = await setup();
