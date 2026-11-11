@@ -97,7 +97,7 @@ Overall progress shown to creators is the average of step progress (weights can 
 
 **Failure code registry** (`src/lib`, each with a `refundable` flag):
 - Refundable: `internal_error`, `ffmpeg_error`, `trigger_failed`, `timeout`, `stale_run`, `provider_error`, `cancelled_before_start`.
-- Not refundable: `invalid_media`, `too_long`, `too_large`, `resolution_exceeded`, `corrupt_upload`, `cancelled_while_running`.
+- Not refundable: `invalid_media`, `too_long`, `too_large`, `resolution_exceeded`, `corrupt_upload`, `cancelled_while_running`, `upload_abandoned`.
 
 **API surface** (data access functions; HTTP endpoints and UI are owned by each slice spec):
 | Function | Key inputs | Key outputs | Auth | Key errors |
@@ -144,7 +144,7 @@ Overall progress shown to creators is the average of step progress (weights can 
 
 **Key invariants**:
 - Every product row is reachable from exactly one creator (built in backgrounds excepted); every function filters by it.
-- At most one active job and one `is_latest` render per take; only the latest render has a `video_key`; an `expired` take holds no file keys.
+- At most one active job and one `is_latest` render per take; only the latest render has a `video_key`; an `expired` take holds no render file keys (`original_key` stays as a record; status `expired` says the file is gone, and a repeat delete is a harmless no-op).
 - Cuts of a take never overlap and lie within the take's length.
 - A job is refunded at most once; `seconds_used` never goes below 0.
 - Every stored file key removed from a row is inserted into `storage_deletion` in the same transaction.
