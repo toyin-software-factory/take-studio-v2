@@ -7,15 +7,18 @@ import {
   ACTIVE_JOB_STATUSES,
   STEP_NAMES,
   STEP_STATUSES,
+  type SkipReason,
   type StepName,
   type StepStatus,
   type JobKind,
+  isSkipReason,
+  isTranscribeKind,
   stepsFor,
   type TakeStatus,
 } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
 import { usageAccountHash } from "@/lib/usage-hash";
-import { jobStep, processingJob, render, storageDeletion, take, user } from "../schema";
+import { jobStep, processingJob, render, storageDeletion, take, transcript, user } from "../schema";
 import { runTx } from "../tx";
 import {
   type Executor,
@@ -56,20 +59,30 @@ export async function markRunning(
   return current.status === "running" ? ok(current) : err("already_final");
 }
 
-const stepUpdateSchema = z.object({
-  jobId: z.uuid(),
-  name: z.enum(STEP_NAMES as [StepName, ...StepName[]]),
-  status: z.enum(STEP_STATUSES),
-  progress: z.number().int().min(0).max(100),
-  failureCode: z.string().refine(isFailureCode).nullable().optional(),
-});
+const stepUpdateSchema = z
+  .object({
+    jobId: z.uuid(),
+    name: z.enum(STEP_NAMES as [StepName, ...StepName[]]),
+    status: z.enum(STEP_STATUSES),
+    progress: z.number().int().min(0).max(100),
+    failureCode: z.string().nullable().optional(),
+  })
+  // Spec 0007: a skipped step may carry a skip reason, a failed step a failure code, and no
+  // other status carries either. A skip reason on a failed step (or the reverse) is rejected.
+  .refine(({ status, failureCode }) => {
+    if (failureCode === null || failureCode === undefined) return true;
+    if (status === "skipped") return isSkipReason(failureCode);
+    if (status === "failed") return isFailureCode(failureCode);
+    return false;
+  });
 
 const FINAL_STEP_STATUSES: readonly StepStatus[] = ["succeeded", "failed", "skipped"];
 
 /**
  * `jobs.updateStep` (AC-7): sets a step's status and progress (0 to 100). Stamps
  * `started_at` the first time it runs and `finished_at` when it ends. Rejects bad input,
- * unknown steps and steps of a job that already finished with `invalid`.
+ * unknown steps and steps of a job that already finished with `invalid`. `failureCode` is a
+ * failure code only with `failed` and a skip reason only with `skipped` (spec 0007).
  */
 export async function updateStep(
   db: Executor,
@@ -78,7 +91,7 @@ export async function updateStep(
     readonly name: StepName;
     readonly status: StepStatus;
     readonly progress: number;
-    readonly failureCode?: FailureCode | null;
+    readonly failureCode?: FailureCode | SkipReason | null;
     readonly now?: Date;
   },
 ): Promise<Result<JobStep, "invalid">> {
@@ -227,6 +240,7 @@ type FinishInput = {
  * 3. take `processing` → `ready` on success, or on failure when a latest render exists,
  *    else → `failed` with the job's failure code;
  * 4. refund once (`refunded` compare and swap) when the failure code is refundable.
+ * A `transcribe` job only does step 1: it never moves the take, touches renders or refunds.
  */
 export function finish(
   db: Executor,
@@ -260,6 +274,14 @@ export async function finishInTx(
       .from(processingJob)
       .where(eq(processingJob.id, input.jobId));
     return err(exists ? "already_final" : "not_found");
+  }
+
+  // A transcribe job (spec 0007) works beside the take: the job status and code are all that
+  // change. No take transition, no render flip or discard, no refund (it charged nothing).
+  if (isTranscribeKind(job.kind)) {
+    const [current] = await tx.select().from(take).where(eq(take.id, job.takeId));
+    if (!current) return err("not_found");
+    return ok({ job, take: current, refundedSeconds: 0, queuedKeys: [] });
   }
 
   // 2. On success this job's render becomes the latest; otherwise its renders' files go.
@@ -443,6 +465,97 @@ export async function startJob(
     const { code, constraint } = pgErrorCode(error);
     if (code === "23505" && constraint === "processing_job_one_active_per_take_uidx") {
       return err("job_in_progress");
+    }
+    throw error;
+  }
+}
+
+export type TranscribeStartError =
+  "not_found" | "invalid_transition" | "original_gone" | "already_done" | "job_active";
+
+/**
+ * `startTranscribeJob` (spec 0007, "Job model seam"), one transaction. Unlike `startJob` it
+ * never moves the take and never charges:
+ * 1. lock the take (`FOR UPDATE`);
+ * 2. require it `ready` with the original still stored (`video_expires_at` null or in the
+ *    future); an expired take or a passed expiry is `original_gone`, any other status is
+ *    `invalid_transition`;
+ * 3. refuse `already_done` when its transcript exists, and `job_active` while any job of the
+ *    take is queued or running;
+ * 4. insert the `transcribe` job (0 seconds, no charged month or hash) and its `transcript` step.
+ * The creator scoped wrapper (ownership, Origin) lives in src/server.
+ */
+export async function startTranscribeJob(
+  db: Executor,
+  input: { readonly takeId: string; readonly now?: Date },
+): Promise<Result<StartedJob, TranscribeStartError>> {
+  if (!z.uuid().safeParse(input.takeId).success) return err("not_found");
+  const now = input.now ?? new Date();
+
+  try {
+    return await runTx(db, async (tx) => {
+      const [current] = await tx.select().from(take).where(eq(take.id, input.takeId)).for("update");
+      if (!current) return err("not_found");
+
+      const expired =
+        current.status === "expired" ||
+        (current.videoExpiresAt !== null && current.videoExpiresAt.getTime() <= now.getTime());
+      if (expired) return err("original_gone");
+      if (current.status !== "ready") return err("invalid_transition");
+
+      const [done] = await tx
+        .select({ id: transcript.id })
+        .from(transcript)
+        .where(eq(transcript.takeId, current.id));
+      if (done) return err("already_done");
+
+      const [active] = await tx
+        .select({ id: processingJob.id })
+        .from(processingJob)
+        .where(
+          and(
+            eq(processingJob.takeId, current.id),
+            inArray(processingJob.status, ACTIVE_JOB_STATUSES),
+          ),
+        );
+      if (active) return err("job_active");
+
+      const jobId = crypto.randomUUID();
+      const [job] = await tx
+        .insert(processingJob)
+        .values({
+          id: jobId,
+          takeId: current.id,
+          kind: "transcribe",
+          status: "queued",
+          secondsCharged: 0,
+          chargedMonth: null,
+          chargedAccountHash: null,
+        })
+        .returning();
+      if (!job) return err("job_active");
+
+      const steps = await tx
+        .insert(jobStep)
+        .values(
+          stepsFor("transcribe").map((name, position) => ({
+            id: crypto.randomUUID(),
+            jobId,
+            name,
+            position,
+            status: "pending",
+            progress: 0,
+          })),
+        )
+        .returning();
+
+      return ok({ ...job, steps: [...steps].sort((a, b) => a.position - b.position) });
+    });
+  } catch (error) {
+    // The partial unique index is the last guard against two active jobs on one take.
+    const { code, constraint } = pgErrorCode(error);
+    if (code === "23505" && constraint === "processing_job_one_active_per_take_uidx") {
+      return err("job_active");
     }
     throw error;
   }

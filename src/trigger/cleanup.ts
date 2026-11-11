@@ -54,7 +54,7 @@ export const cleanupTask = schedules.task({
 
       const stale = await failStaleJobs(db, now);
       // AC-5: a job the sweep failed still owes its creator the "didn't finish" email.
-      for (const job of stale) await queueTakeEmail(job.jobId);
+      for (const job of stale) await queueTakeEmail(job.jobId, job.kind);
       const cancelled = await cancelRuns(stale.flatMap(({ runId }) => (runId ? [runId] : [])));
 
       const expiry = await expireDueTakes(db, now);

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CLEANUP,
   PROCESS_TAKE_LIMITS,
+  TRANSCRIBE_TAKE_LIMITS,
   cleanupCutoffs,
   ownsTakeAfterFailure,
 } from "./cleanup-rules";
@@ -13,7 +14,18 @@ describe("cleanup cut offs (AC-18)", () => {
       abandonedUploadBefore: new Date("2026-11-11T10:45:00Z"), // 60 min link + 15 min margin
       queuedJobBefore: new Date("2026-11-11T11:45:00Z"), // 15 min
       runningJobBefore: new Date("2026-11-11T10:35:00Z"), // 2 attempts x 40 min maxDuration + 5 min margin
+      transcribeRunningJobBefore: new Date("2026-11-11T11:10:00Z"), // 3 attempts x 15 min + 5 min margin
     });
+  });
+
+  it("derives the transcribe window from its own limits (3 attempts, 15 minutes), 50 minutes in all", () => {
+    expect(CLEANUP.transcribeJobMaxDurationMs).toBe(
+      TRANSCRIBE_TAKE_LIMITS.maxAttempts * TRANSCRIBE_TAKE_LIMITS.maxDurationSeconds * 1000,
+    );
+    expect(TRANSCRIBE_TAKE_LIMITS).toEqual({ maxDurationSeconds: 15 * 60, maxAttempts: 3 });
+    expect(CLEANUP.transcribeJobMaxDurationMs + CLEANUP.runningStaleMarginMs).toBe(50 * 60 * 1000);
+    // Shorter than the video window, never shorter than one full run of its own task.
+    expect(CLEANUP.transcribeJobMaxDurationMs).toBeLessThan(CLEANUP.jobMaxDurationMs);
   });
 
   it("derives the running job window from the task's attempts and maxDuration", () => {

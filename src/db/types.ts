@@ -14,6 +14,7 @@ export type Take = typeof schema.take.$inferSelect;
 export type ProcessingJob = typeof schema.processingJob.$inferSelect;
 export type JobStep = typeof schema.jobStep.$inferSelect;
 export type Render = typeof schema.render.$inferSelect;
+export type Transcript = typeof schema.transcript.$inferSelect;
 
 /** Postgres SQLSTATE of an error from postgres.js, also when Drizzle wraps it. */
 export function pgErrorCode(error: unknown): { code?: string; constraint?: string } {

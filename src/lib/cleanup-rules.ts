@@ -18,6 +18,18 @@ export const PROCESS_TAKE_LIMITS = {
   maxAttempts: 2,
 } as const;
 
+/**
+ * The transcribe task's limits (spec 0007), in one place like `PROCESS_TAKE_LIMITS`: the task
+ * reads them for its own `maxDuration` and `retry`, and a running transcribe job is stale after
+ * 3 x 15 minutes plus the margin (50 minutes), far sooner than a video job.
+ */
+export const TRANSCRIBE_TAKE_LIMITS = {
+  /** `maxDuration` of one attempt, in seconds. */
+  maxDurationSeconds: 15 * 60,
+  /** `retry.maxAttempts`. */
+  maxAttempts: 3,
+} as const;
+
 /** The probe task's limits, shared by the task and the stuck upload recovery's grace period. */
 export const PROBE_LIMITS = {
   /** `maxDuration` of one attempt, in seconds. */
@@ -38,6 +50,12 @@ export const CLEANUP = {
    * maxDuration, and a retry keeps the first attempt's `started_at`.
    */
   jobMaxDurationMs: PROCESS_TAKE_LIMITS.maxAttempts * PROCESS_TAKE_LIMITS.maxDurationSeconds * 1000,
+  /**
+   * The same for a `transcribe` job: its own limits, so one stuck there is found in minutes
+   * instead of the video job's hour and a half.
+   */
+  transcribeJobMaxDurationMs:
+    TRANSCRIBE_TAKE_LIMITS.maxAttempts * TRANSCRIBE_TAKE_LIMITS.maxDurationSeconds * 1000,
   /** Extra time after that (retry back off, queue time) before a `running` job counts as stale. */
   runningStaleMarginMs: 5 * MINUTE,
   /**
@@ -82,7 +100,11 @@ export function cleanupCutoffs(now: Date) {
     ),
     /** `queued` jobs created before this are stale. */
     queuedJobBefore: new Date(at - CLEANUP.queuedStaleMs),
-    /** `running` jobs started before this are stale. */
+    /** `running` jobs of the video kinds started before this are stale. */
     runningJobBefore: new Date(at - CLEANUP.jobMaxDurationMs - CLEANUP.runningStaleMarginMs),
+    /** `running` `transcribe` jobs started before this are stale (spec 0007). */
+    transcribeRunningJobBefore: new Date(
+      at - CLEANUP.transcribeJobMaxDurationMs - CLEANUP.runningStaleMarginMs,
+    ),
   };
 }

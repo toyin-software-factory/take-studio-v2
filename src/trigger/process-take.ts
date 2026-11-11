@@ -62,7 +62,7 @@ export const processTakeTask = task({
   onFailure: async ({ payload, error }) => {
     const code = failureCodeFor(error);
     const env = parseJobEnv();
-    await withJobDb(env.DATABASE_URL, async (d) => {
+    const kind = await withJobDb(env.DATABASE_URL, async (d) => {
       // The step that was running when it failed gets the code too.
       const running = await d
         .select({ name: jobStep.name, progress: jobStep.progress })
@@ -78,8 +78,13 @@ export const processTakeTask = task({
         });
       }
       await finish(d, { jobId: payload.jobId, status: "failed", failureCode: code });
+      const [row] = await d
+        .select({ kind: processingJob.kind })
+        .from(processingJob)
+        .where(eq(processingJob.id, payload.jobId));
+      return row?.kind ?? null;
     });
-    await queueTakeEmail(payload.jobId);
+    if (kind) await queueTakeEmail(payload.jobId, kind);
   },
 });
 
@@ -122,7 +127,7 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
       await step("trim", "skipped", 0);
       await step("render", "skipped", 0);
       await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
-      await queueTakeEmail(job.id);
+      await queueTakeEmail(job.id, job.kind);
       return { jobId: job.id, takeId: t.id, outcome: "no_audio" as const };
     }
     const trimProgress = throttledProgress((p) => step("trim", "running", p));
@@ -142,7 +147,7 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
     if (!analysed.data.cuts.some((c) => c.applied)) {
       await step("render", "skipped", 0);
       await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
-      await queueTakeEmail(job.id);
+      await queueTakeEmail(job.id, job.kind);
       return { jobId: job.id, takeId: t.id, outcome: "no_cuts" as const };
     }
 
@@ -230,7 +235,7 @@ async function processJob(client: JobDb, jobId: string, runId: string, r2: R2) {
     await step("render", "succeeded", 100);
     const finished = await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
     if (!finished.ok) throw new Error(`finish failed: ${finished.error}`);
-    await queueTakeEmail(job.id);
+    await queueTakeEmail(job.id, job.kind);
 
     return {
       jobId: job.id,

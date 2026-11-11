@@ -176,7 +176,7 @@ async function startAndDispatch(db: Db, takeId: string, creatorId: string, usage
     const dispatched = await dispatchJob(db, { jobId: started.data.id, trigger });
     // No run started and the job is already failed (`trigger_failed`): the creator isn't
     // waiting on a response here, so the email is how they learn it.
-    if (!dispatched.ok) await queueTakeEmail(started.data.id);
+    if (!dispatched.ok) await queueTakeEmail(started.data.id, started.data.kind);
     return {
       takeId,
       outcome: "started" as const,
@@ -193,7 +193,7 @@ async function startAndDispatch(db: Db, takeId: string, creatorId: string, usage
       );
     if (active && !active.triggerRunId) {
       const dispatched = await dispatchJob(db, { jobId: active.id, trigger });
-      if (!dispatched.ok) await queueTakeEmail(active.id);
+      if (!dispatched.ok) await queueTakeEmail(active.id, active.kind);
       return {
         takeId,
         outcome: "redispatched" as const,

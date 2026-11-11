@@ -38,10 +38,36 @@ export type Container = (typeof CONTAINERS)[number];
 export const JOB_KIND_SLICES = {
   initial: 1,
   rerender: 1,
+  /** Spec 0007: makes the transcript; never moves the take, charges nothing, sends no email. */
+  transcribe: 2,
   reanalyse: 5,
 } as const satisfies Readonly<Record<string, number>>;
 export type JobKind = keyof typeof JOB_KIND_SLICES;
 export const JOB_KINDS = Object.keys(JOB_KIND_SLICES) as readonly JobKind[];
+
+/** The kinds whose finish can send the "take ready or didn't finish" email (spec 0006). */
+export const EMAIL_JOB_KINDS = ["initial", "rerender"] as const satisfies readonly JobKind[];
+
+/** True for a job kind whose result is emailed; `transcribe` jobs never are (spec 0007). */
+export function jobKindSendsEmail(kind: string): boolean {
+  return (EMAIL_JOB_KINDS as readonly string[]).includes(kind);
+}
+
+/** True for a kind that works on the take without ever changing its status (spec 0007). */
+export function isTranscribeKind(kind: string): boolean {
+  return kind === "transcribe";
+}
+
+/**
+ * Why a `transcript` step ended `skipped` (spec 0007). Stored in `job_step.failure_code`, and
+ * only on a skipped step: a failed step carries a failure code instead (never both).
+ */
+export const SKIP_REASONS = ["not_english", "no_speech", "original_gone"] as const;
+export type SkipReason = (typeof SKIP_REASONS)[number];
+
+export function isSkipReason(value: string): value is SkipReason {
+  return (SKIP_REASONS as readonly string[]).includes(value);
+}
 
 /** job_step.status. */
 export const STEP_STATUSES = ["pending", "running", "succeeded", "failed", "skipped"] as const;
@@ -67,8 +93,9 @@ export const STEP_NAMES = Object.keys(STEPS) as readonly StepName[];
  * latest render; jobs.start applies that rule.
  */
 export const STEPS_BY_KIND = {
-  initial: ["trim", "transcript", "background", "ai_edit", "render"],
+  initial: ["trim", "background", "ai_edit", "render"],
   rerender: ["background", "render"],
+  transcribe: ["transcript"],
   reanalyse: ["ai_edit", "render"],
 } as const satisfies Readonly<Record<JobKind, readonly StepName[]>>;
 
@@ -76,7 +103,7 @@ export const STEPS_BY_KIND = {
  * The latest product slice that is live. Steps and job kinds from later slices are allowed
  * in the database but not created yet. Bump it when a slice ships.
  */
-export const LIVE_SLICE = 1;
+export const LIVE_SLICE = 2;
 
 type StepsForOptions = {
   readonly liveSlice?: number;
