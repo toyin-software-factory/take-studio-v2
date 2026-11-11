@@ -122,7 +122,7 @@ Follow up to the core take loop (from spec 0004): sign in with a one time email 
    - [x] Magic link sign in with linking and rate limits (AC-1, AC-2, AC-3, AC-4, AC-8) (merged in #64; SPF and DKIM checked on a real email; a real sign in link was used once on production, see the verify report)
    - [x] Take emails with opt out (AC-5, AC-6, AC-8) (S1C-T08 part 2 PR: notify task, turn off link, take page switch, tested)
 - [x] Verify it: `/check verify email sign in and take ready email` (`docs/reviews/0006-email-sign-in-and-ready-email-verify.md`: all of AC-1 to AC-8 pass)
-- [ ] Test it: `/test email sign in and take ready email`
+- [x] Test it: `/test email sign in and take ready email` (`src/server/auth.test.ts`, `src/trigger/email/notify.test.ts`, `src/lib/email/templates.test.ts`, `src/lib/email/send.test.ts`, `src/app/emails/off/route.test.ts`, `src/server/email/turn-off.test.ts`, `tests/sign-in.spec.ts`)
 Spec [0006](../specs/0006-email-sign-in-and-ready-email.md)
 
 ## Slice 2: Transcript
