@@ -94,8 +94,11 @@ It starts `next dev` on port 3100 and `trigger dev` itself, against your local d
 
 ```bash
 pnpm db:up
+DATABASE_URL_DIRECT=postgres://postgres:postgres@localhost:5432/take_studio pnpm db:migrate
 pnpm test:pipeline
 ```
+
+The migrate line gives a fresh local database the app tables, and keeps `db:migrate` on localhost (the sandbox carries the production URL). If you override `PIPELINE_DATABASE_URL`, point `DATABASE_URL_DIRECT` at that same database.
 
 ## CI and deploy
 

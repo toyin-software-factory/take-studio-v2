@@ -141,9 +141,13 @@ export type Creator = {
   ) => Promise<{ status: number; json: Record<string, unknown> }>;
 };
 
+/** IDs of the creators this run made, recorded before the row exists, so cleanup removes only these. */
+export const createdCreatorIds = new Set<string>();
+
 /** A throwaway creator with a real Better Auth session cookie. */
 export async function createCreator(label: string): Promise<Creator> {
   const id = `pipeline-${label}-${crypto.randomUUID()}`;
+  createdCreatorIds.add(id);
   const token = randomBytes(24).toString("base64url");
   await db
     .insert(schema.user)

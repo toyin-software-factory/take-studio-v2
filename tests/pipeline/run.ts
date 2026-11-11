@@ -11,6 +11,7 @@
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { asc, eq, inArray } from "drizzle-orm";
 import { drainDeletions, takeFileKeys } from "../../src/db/data/deletion";
 import * as schema from "../../src/db/schema";
@@ -19,6 +20,7 @@ import { uploadFailureMessage } from "../../src/lib/take-messages";
 import {
   type Creator,
   createCreator,
+  createdCreatorIds,
   db,
   pg,
   r2,
@@ -39,7 +41,8 @@ function check(scenario: string, name: string, ok: boolean, detail: unknown = ""
   });
 }
 
-const media = (file: string) => new URL(`../fixtures/media/${file}`, import.meta.url).pathname;
+const media = (file: string) =>
+  fileURLToPath(new URL(`../fixtures/media/${file}`, import.meta.url));
 
 /** Upload a fixture the way the browser will: create, part PUTs straight to R2, complete. */
 async function upload(creator: Creator, file: string, container: "mp4" | "mov"): Promise<string> {
@@ -474,40 +477,40 @@ try {
   check("harness", "run", false, String(error));
 } finally {
   // Clean up through the real deletion path: account data deleted, files drained from R2.
-  const creators = (await db.select({ id: schema.user.id }).from(schema.user)).filter((u) =>
-    u.id.startsWith("pipeline-"),
-  );
-  const owned = creators.length
-    ? await db
-        .select({ id: schema.take.id })
-        .from(schema.take)
-        .where(
-          inArray(
-            schema.take.creatorId,
-            creators.map((c) => c.id),
-          ),
-        )
-    : [];
-  const keys = await takeFileKeys(
-    db,
-    owned.map((t) => t.id),
-  );
-  for (const c of creators) {
-    await deleteCreatorData(db, c.id, {
-      cancelRuns: async () => {},
-      requestStorageDrain: async () => {},
+  // Only the creators this run made; leftovers of abandoned runs are not touched here.
+  // The services and the connection are always closed, whatever the cleanup does.
+  try {
+    const creators = [...createdCreatorIds];
+    const owned = creators.length
+      ? await db
+          .select({ id: schema.take.id })
+          .from(schema.take)
+          .where(inArray(schema.take.creatorId, creators))
+      : [];
+    const keys = await takeFileKeys(
+      db,
+      owned.map((t) => t.id),
+    );
+    for (const id of creators) {
+      await deleteCreatorData(db, id, {
+        cancelRuns: async () => {},
+        requestStorageDrain: async () => {},
+      });
+      await db.delete(schema.user).where(eq(schema.user.id, id));
+    }
+    const drained = await drainDeletions(db, (k) => r2.deleteObject(k));
+    const left = (await Promise.all(keys.map((k) => r2.headObject(k)))).filter(Boolean).length;
+    check("cleanup", "all test files deleted from R2", left === 0, {
+      keys: keys.length,
+      drained: drained.deleted,
+      left,
     });
-    await db.delete(schema.user).where(eq(schema.user.id, c.id));
+  } catch (error) {
+    check("cleanup", "run", false, String(error));
+  } finally {
+    stopServices();
+    await pg.end();
   }
-  const drained = await drainDeletions(db, (k) => r2.deleteObject(k));
-  const left = (await Promise.all(keys.map((k) => r2.headObject(k)))).filter(Boolean).length;
-  check("cleanup", "all test files deleted from R2", left === 0, {
-    keys: keys.length,
-    drained: drained.deleted,
-    left,
-  });
-  stopServices();
-  await pg.end();
 
   const width = Math.max(...checks.map((c) => c.scenario.length));
   for (const c of checks) {

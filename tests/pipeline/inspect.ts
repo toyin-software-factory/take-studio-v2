@@ -45,12 +45,46 @@ export function renderFacts(path: string): RenderFacts {
     height: Number(v.height),
     rotation: v.side_data_list?.find((d) => d.rotation !== undefined)?.rotation ?? 0,
     colorTransfer: (v.color_transfer as string | undefined) ?? null,
-    cfr: v.r_frame_rate === v.avg_frame_rate,
+    cfr: evenlySpaced(path),
     fps: String(v.avg_frame_rate),
     hasAudio: raw.streams.some((s) => s.codec_type === "audio"),
     durationMs: Math.round(Number(raw.format.duration) * 1000),
     faststart: bytes.indexOf("moov") < bytes.indexOf("mdat"),
   };
+}
+
+/**
+ * True when the video frames are evenly spaced: every gap between successive presentation
+ * timestamps is within 1 ms (or 2 % of the median gap, whichever is larger) of the median gap.
+ * `r_frame_rate` is only a guessed base rate and `avg_frame_rate` an aggregate, so equal values
+ * do not prove constant frame rate; the real timestamps do.
+ */
+function evenlySpaced(path: string): boolean {
+  const out = execFileSync(
+    "ffprobe",
+    [
+      "-v",
+      "error",
+      "-select_streams",
+      "v:0",
+      "-show_entries",
+      "packet=pts_time",
+      "-of",
+      "csv=p=0",
+      path,
+    ],
+    { encoding: "utf8", maxBuffer: 64 << 20 },
+  );
+  const times = out
+    .split("\n")
+    .map((line) => Number.parseFloat(line))
+    .filter((t) => Number.isFinite(t))
+    .sort((x, y) => x - y);
+  if (times.length < 3) return false;
+  const gaps = times.slice(1).map((t, i) => t - times[i]!);
+  const median = [...gaps].sort((x, y) => x - y)[Math.floor(gaps.length / 2)]!;
+  const tolerance = Math.max(0.001, median * 0.02);
+  return gaps.every((gap) => Math.abs(gap - median) <= tolerance);
 }
 
 function ffmpegLog(args: string[]): string {
