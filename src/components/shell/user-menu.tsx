@@ -56,7 +56,8 @@ export function UserMenu({ user }: { readonly user: ShellUser }) {
       <DropdownMenuContent
         side="top"
         align="start"
-        className="w-(--radix-dropdown-menu-trigger-width)"
+        // Above the phone menu sheet (dialog layer), which this menu can open from.
+        className="z-(--z-toast) w-(--radix-dropdown-menu-trigger-width)"
       >
         <DropdownMenuLabel className="truncate text-text-muted">{user.email}</DropdownMenuLabel>
         <DropdownMenuSeparator />

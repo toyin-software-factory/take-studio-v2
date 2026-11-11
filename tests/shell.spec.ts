@@ -88,6 +88,18 @@ test.describe("on a phone", () => {
     await expect(menu).toBeFocused();
   });
 
+  test("signs out from the account menu inside the sheet", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Open menu" }).click();
+    const sheet = page.getByRole("dialog", { name: "Take Studio" });
+    await sheet.getByRole("button", { name: /Account menu/ }).click();
+    const signOut = page.getByRole("menuitem", { name: "Sign out" });
+    // The menu must sit above the sheet, not hidden behind it.
+    await expect(signOut).toBeVisible();
+    await signOut.click();
+    await expect(page.getByRole("button", { name: "Sign in with Google" })).toBeVisible();
+  });
+
   test("signed in home passes axe on a phone", async ({ page }) => {
     await page.goto("/");
     await expectNoSeriousAxeIssues(page);
