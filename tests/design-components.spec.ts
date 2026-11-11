@@ -93,6 +93,56 @@ test.describe("on a phone", () => {
   });
 });
 
+test.describe("touch targets on a phone (AC-5)", () => {
+  const { viewport, deviceScaleFactor } = devices["Pixel 7"];
+  test.use({ viewport, deviceScaleFactor, isMobile: true, hasTouch: true });
+
+  // A control passes when a 44 px square around its centre still lands on it or its label, even when the
+  // visible box is smaller (checkbox and switch extend their hit area with a pseudo element).
+  test("every control has a 44 px hit area", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto("/design");
+    const failures = await page.evaluate(() => {
+      const controls = document.querySelectorAll<HTMLElement>(
+        "button:not([disabled]), input:not([type=hidden]):not([disabled]), textarea:not([disabled]), [role=checkbox]:not([disabled]), [role=switch]:not([disabled]), [role=tab], [role=combobox], [role=slider]",
+      );
+      const bad: string[] = [];
+      for (const el of controls) {
+        const r = el.getBoundingClientRect();
+        // Visually hidden helpers (a native input behind a custom control) are not targets.
+        if (r.width <= 1 || r.height <= 1 || el.closest("[aria-hidden=true]")) continue;
+        if (el.matches("input[type=checkbox]") && el.closest("[data-slot]")) continue;
+        el.scrollIntoView({ block: "center" });
+        const box = el.getBoundingClientRect();
+        const cx = box.left + box.width / 2;
+        const cy = box.top + box.height / 2;
+        // Its own label is part of the target: pressing it toggles the control.
+        const reaches = (dx: number, dy: number) => {
+          const hit = document.elementFromPoint(cx + dx, cy + dy);
+          return (
+            hit !== null && (hit === el || el.contains(hit) || hit.closest("label")?.control === el)
+          );
+        };
+        const lands = [
+          [-21, -21],
+          [21, -21],
+          [-21, 21],
+          [21, 21],
+        ].every(([dx, dy]) => reaches(dx!, dy!));
+        // A box that is already 44 px passes only if something else is not covering it.
+        const tall = box.height >= 43.5 && box.width >= 43.5 && reaches(0, 0);
+        if (!lands && !tall) {
+          bad.push(
+            `${el.tagName.toLowerCase()} ${el.getAttribute("role") ?? ""} ${Math.round(box.width)}x${Math.round(box.height)}`,
+          );
+        }
+      }
+      return bad;
+    });
+    expect(failures).toEqual([]);
+  });
+});
+
 test("Stage container gives its controls the cream focus ring", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/design");
