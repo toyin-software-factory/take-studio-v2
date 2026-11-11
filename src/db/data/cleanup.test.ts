@@ -1,6 +1,7 @@
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { CLEANUP, cleanupCutoffs } from "@/lib/cleanup-rules";
+import { thumbnailKey } from "@/lib/take-rules";
 import { cut, processingJob, render, storageDeletion, take } from "../schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "../testing/test-db";
 import type { Db } from "../types";

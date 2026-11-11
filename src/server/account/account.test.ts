@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { processingJob, render, storageDeletion, take, user } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
+import { thumbnailKey } from "@/lib/take-rules";
 import { finish, markRunning, start } from "../jobs";
 import { completeLatest, create as createRender } from "../renders";
 import type { AfterDelete } from "../takes";

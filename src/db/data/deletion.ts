@@ -4,6 +4,7 @@ import { renderKey } from "@/lib/cut-rules";
 import { thumbnailKey } from "@/lib/take-rules";
 import { ACTIVE_JOB_STATUSES } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
+import { thumbnailKey } from "@/lib/take-rules";
 import { processingJob, render, storageDeletion, take } from "../schema";
 import { runTx } from "../tx";
 import type { Executor, Take, Tx } from "../types";
