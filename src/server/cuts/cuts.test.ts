@@ -12,7 +12,7 @@ beforeAll(async () => {
   testDb = await openTestDb();
   db = testDb.db;
 });
-afterAll(() => testDb.close());
+afterAll(() => testDb?.close());
 
 /** A creator with a probed 10 second take. */
 async function setup() {

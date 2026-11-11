@@ -16,7 +16,7 @@ beforeAll(async () => {
   testDb = await openTestDb();
   db = testDb.db;
 });
-afterAll(() => testDb.close());
+afterAll(() => testDb?.close());
 
 async function startJob(creatorId: string, takeId: string) {
   const job = await start(db, { creatorId, takeId, usageSecret: SECRET });
