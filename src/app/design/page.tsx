@@ -33,8 +33,8 @@ export default function DesignGalleryPage() {
       <header className="space-y-2">
         <h1 className="text-h1 font-semibold">Design system</h1>
         <p className="text-text-muted">
-          Every token from design.md on the light app and inside the dark stage. Contrast ratios are
-          computed from the token values. Base components join this page in the next milestone.
+          Every token and base component from design.md, on the light app and inside the dark stage.
+          Contrast ratios are computed from the token values.
         </p>
       </header>
       <ColourSection

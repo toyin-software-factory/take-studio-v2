@@ -92,3 +92,12 @@ test.describe("on a phone", () => {
     expect(Math.round(box.width)).toBe(viewport.width);
   });
 });
+
+test("link buttons size to their text on light and stage", async ({ page }) => {
+  await page.goto("/design");
+  for (const section of ["components-light", "components-stage"]) {
+    const link = page.locator(`#${section}`).locator("..").locator('[data-variant="link"]').first();
+    await expect(link).toHaveCSS("padding-left", "0px");
+    expect((await link.boundingBox())!.height).toBeLessThan(32);
+  }
+});

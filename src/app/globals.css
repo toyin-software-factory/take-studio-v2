@@ -25,6 +25,7 @@
   --primary-active: #5a0000;
   --danger: #9b0d18;
   --danger-hover: #780000;
+  --danger-active: #5a0000;
   --danger-bg: rgb(155 13 24 / 8%);
   --success: #2e6b3f;
   --success-bg: rgb(46 107 63 / 8%);
@@ -167,6 +168,7 @@
   --color-primary-active: var(--primary-active);
   --color-danger: var(--danger);
   --color-danger-hover: var(--danger-hover);
+  --color-danger-active: var(--danger-active);
   --color-danger-bg: var(--danger-bg);
   --color-success: var(--success);
   --color-success-bg: var(--success-bg);
