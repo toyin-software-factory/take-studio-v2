@@ -224,7 +224,8 @@ export async function finishInTx(
     job.takeId,
     "processing",
     toReady ? "ready" : "failed",
-    toReady ? {} : { failureCode },
+    // A take that works again carries no old failure.
+    { failureCode: toReady ? null : failureCode },
   );
   if (!moved.ok) return err(moved.error);
 
