@@ -34,10 +34,12 @@ export const usageEnvSchema = z.object({
 });
 
 /**
- * Email (spec 0006): Resend key, sender and the secret that signs unsubscribe links. Parsed
+ * Email (spec 0006): app URL, Resend key, sender and the secret that signs unsubscribe links. Parsed
  * only where email is sent or a link is signed, so the app keeps running before they are set.
  */
 export const emailEnvSchema = z.object({
+  /** App base URL: the take and turn off links in emails point at it (jobs need it too). */
+  BETTER_AUTH_URL: z.url(),
   RESEND_API_KEY: z.string().min(1),
   EMAIL_FROM: z.string().min(3),
   EMAIL_LINK_SECRET: z.string().min(32, "EMAIL_LINK_SECRET must be at least 32 characters"),
