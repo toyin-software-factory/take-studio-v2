@@ -29,6 +29,13 @@
       "when": 1794394391745,
       "tag": "0003_sign_in_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794395172771,
+      "tag": "0004_take_emails",
+      "breakpoints": true
     }
   ]
 }

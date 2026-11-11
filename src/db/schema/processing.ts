@@ -38,6 +38,8 @@ export const processingJob = pgTable(
     failureCode: text("failure_code"),
     startedAt: timestamp("started_at", { withTimezone: true }),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
+    /** Spec 0006, AC-5: when this job's "take ready or failed" email was sent; null until then. */
+    notifiedAt: timestamp("notified_at", { withTimezone: true }),
     ...timestamps,
   },
   (t) => [
