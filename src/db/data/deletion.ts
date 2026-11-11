@@ -100,6 +100,18 @@ export async function expireTake(
       .for("update");
     if (!locked) return err("not_found");
     if (!(EXPIRABLE as readonly string[]).includes(locked.status)) return err("invalid_transition");
+    // A take is never expired while a job of any kind runs for it (a transcribe job leaves the
+    // take `ready`); it expires on the next sweep after the job ends (spec 0007).
+    const [active] = await tx
+      .select({ id: processingJob.id })
+      .from(processingJob)
+      .where(
+        and(
+          eq(processingJob.takeId, input.takeId),
+          inArray(processingJob.status, ACTIVE_JOB_STATUSES),
+        ),
+      );
+    if (active) return err("invalid_transition");
 
     const queuedKeys = await takeFileKeys(tx, [input.takeId]);
     await queueDeletions(tx, queuedKeys);

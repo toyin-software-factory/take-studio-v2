@@ -198,6 +198,117 @@ describe("cleanup: video expiry (AC-18)", () => {
   });
 });
 
+describe("cleanup: transcribe jobs (spec 0007)", () => {
+  it("has its own stale cutoff: 50 minutes, against 85 for the video kinds", async () => {
+    const cutoffs = cleanupCutoffs(NOW);
+    expect(NOW.getTime() - cutoffs.transcribeRunningJobBefore.getTime()).toBe(50 * 60 * 1000);
+    expect(NOW.getTime() - cutoffs.runningJobBefore.getTime()).toBe(85 * 60 * 1000);
+
+    const creator = await createCreator(db);
+    const stuck = await seedTake(db, creator.id, { status: "ready" });
+    const stuckJob = await seedJob(stuck.id, {
+      kind: "transcribe",
+      status: "running",
+      secondsCharged: 0,
+      chargedMonth: null,
+      chargedAccountHash: null,
+      startedAt: minutes(55),
+    });
+    const fresh = await seedTake(db, creator.id, { status: "ready" });
+    const freshJob = await seedJob(fresh.id, {
+      kind: "transcribe",
+      status: "running",
+      secondsCharged: 0,
+      chargedMonth: null,
+      chargedAccountHash: null,
+      startedAt: minutes(40),
+    });
+    // The same 55 minutes is still fine for a video job.
+    const video = await seedTake(db, creator.id, { status: "processing" });
+    const videoJob = await seedJob(video.id, { status: "running", startedAt: minutes(55) });
+
+    const stale = await failStaleJobs(db, NOW);
+
+    expect(stale.map((j) => j.jobId)).toEqual([stuckJob.id]);
+    expect(stale[0]).toMatchObject({ kind: "transcribe", refundedSeconds: 0 });
+    const [stuckRow] = await db
+      .select()
+      .from(processingJob)
+      .where(eq(processingJob.id, stuckJob.id));
+    expect(stuckRow).toMatchObject({ status: "failed", failureCode: "stale_run", refunded: false });
+    const statuses = await db
+      .select({ id: processingJob.id, status: processingJob.status })
+      .from(processingJob)
+      .where(inArray(processingJob.id, [freshJob.id, videoJob.id]));
+    expect(statuses.every((r) => r.status === "running")).toBe(true);
+    // A stale transcribe job never moves its take.
+    const [takeRow] = await db.select().from(take).where(eq(take.id, stuck.id));
+    expect(takeRow).toMatchObject({ status: "ready", failureCode: null });
+  });
+
+  it("fails a transcribe job that stayed queued past the pick up window, without moving the take", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, { status: "ready" });
+    const job = await seedJob(t.id, {
+      kind: "transcribe",
+      status: "queued",
+      secondsCharged: 0,
+      chargedMonth: null,
+      chargedAccountHash: null,
+      createdAt: minutes(20),
+    });
+    const stale = await failStaleJobs(db, NOW);
+    expect(stale).toEqual([expect.objectContaining({ jobId: job.id, kind: "transcribe" })]);
+    const [takeRow] = await db.select().from(take).where(eq(take.id, t.id));
+    expect(takeRow?.status).toBe("ready");
+  });
+
+  it("does not expire a take while a transcribe job runs, and expires it on the next sweep after", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, { status: "ready", videoExpiresAt: minutes(1) });
+    const job = await seedJob(t.id, {
+      kind: "transcribe",
+      status: "running",
+      secondsCharged: 0,
+      chargedMonth: null,
+      chargedAccountHash: null,
+      startedAt: minutes(2),
+    });
+
+    expect(await expireDueTakes(db, NOW)).toEqual({ expired: 0, queuedKeys: 0 });
+    // Even called directly, the take is refused while a job of any kind is active.
+    expect(await expireTake(db, { takeId: t.id })).toEqual({
+      ok: false,
+      error: "invalid_transition",
+    });
+    const [before] = await db.select().from(take).where(eq(take.id, t.id));
+    expect(before?.status).toBe("ready");
+
+    await finish(db, { jobId: job.id, status: "succeeded" });
+    const swept = await expireDueTakes(db, NOW);
+    expect(swept.expired).toBe(1);
+    const [after] = await db.select().from(take).where(eq(take.id, t.id));
+    expect(after?.status).toBe("expired");
+  });
+
+  it("still expires other due takes in the same sweep", async () => {
+    const creator = await createCreator(db);
+    const busy = await seedTake(db, creator.id, { status: "ready", videoExpiresAt: minutes(1) });
+    await seedJob(busy.id, {
+      kind: "transcribe",
+      status: "queued",
+      secondsCharged: 0,
+      chargedMonth: null,
+      chargedAccountHash: null,
+    });
+    const idle = await seedTake(db, creator.id, { status: "ready", videoExpiresAt: minutes(1) });
+    const swept = await expireDueTakes(db, NOW);
+    expect(swept.expired).toBe(1);
+    const [row] = await db.select().from(take).where(eq(take.id, idle.id));
+    expect(row?.status).toBe("expired");
+  });
+});
+
 describe("storage deletion drain (AC-17)", () => {
   it("deletes objects and their rows, and retries failures later with attempts and error", async () => {
     await db.insert(storageDeletion).values([

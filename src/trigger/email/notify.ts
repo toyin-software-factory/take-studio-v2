@@ -4,6 +4,7 @@ import type { Executor } from "@/db/types";
 import { unsubscribeUrl } from "@/lib/email-links";
 import { type Result, err, ok } from "@/lib/result";
 import { failureMessage } from "@/lib/take-display";
+import { jobKindSendsEmail } from "@/lib/processing";
 import { isRetryable, removedMs, takeNote } from "@/lib/take-media";
 import type { EmailSender } from "@/lib/email/send";
 import { takeFailedEmail, takeReadyEmail } from "@/lib/email/templates";
@@ -26,7 +27,7 @@ export type NotifyDeps = {
 };
 
 export type NotifyOutcome =
-  "sent" | "already_sent" | "emails_off" | "not_final" | "not_found" | "superseded";
+  "sent" | "already_sent" | "emails_off" | "not_final" | "not_found" | "superseded" | "not_emailed";
 
 export async function notifyTakeFinished(
   db: Executor,
@@ -43,6 +44,8 @@ export async function notifyTakeFinished(
   if (!found) return ok("not_found");
   const { job, take: t, user: creator } = found;
 
+  // Transcribe jobs (spec 0007) never email, whoever queued this.
+  if (!jobKindSendsEmail(job.kind)) return ok("not_emailed");
   if (job.notifiedAt) return ok("already_sent");
   if (job.status !== "succeeded" && job.status !== "failed") return ok("not_final");
   if (!creator.takeEmails) return ok("emails_off");

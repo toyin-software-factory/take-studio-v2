@@ -19,6 +19,8 @@ const NOT_REFUNDABLE = [
   "corrupt_upload",
   "cancelled_while_running",
   "upload_abandoned",
+  // Spec 0007: the transcript provider rejected the request; nothing was charged to refund.
+  "provider_rejected",
 ];
 
 describe("failure code registry (AC-13)", () => {

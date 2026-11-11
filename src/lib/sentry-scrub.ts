@@ -4,6 +4,8 @@
  * unit tested. They run in `beforeSend` and `beforeBreadcrumb`; Sentry's server side scrubbing
  * is only a backup.
  */
+import { isFailureCode } from "./failure-codes";
+import { JOB_KINDS } from "./processing";
 
 export const REDACTED = "[redacted]";
 
@@ -130,18 +132,36 @@ export function scrubEvent<E extends object>(event: E): E {
 /** IDs a job failure may carry as tags (spec 0005, AC-3). */
 export const JOB_TAG_KEYS = ["takeId", "jobId", "renderId"] as const;
 
+type JobTags = Partial<
+  Record<(typeof JOB_TAG_KEYS)[number] | "kind" | "failureCode" | "statusCode", string>
+>;
+
 /**
- * The allowlisted ID tags from a task payload: only `takeId`, `jobId` and `renderId`, and
- * only when they are short ID strings. The payload itself is never sent.
+ * The allowlisted tags from a task payload: the IDs `takeId`, `jobId` and `renderId` (only when
+ * they are short ID strings), plus, from spec 0007, the job `kind` (only a known kind such as
+ * `transcribe`), a `failureCode` (only a code in the registry, such as `provider_rejected`) and
+ * a provider `statusCode` (only three digits). Anything else, and the payload itself, is never
+ * sent: a transcript text, a title or a file key can't ride along.
  */
-export function jobTagsFrom(
-  payload: unknown,
-): Partial<Record<(typeof JOB_TAG_KEYS)[number], string>> {
+export function jobTagsFrom(payload: unknown): JobTags {
   if (!isObject(payload)) return {};
-  return Object.fromEntries(
+  const ids = Object.fromEntries(
     JOB_TAG_KEYS.flatMap((key) => {
       const value = payload[key];
       return typeof value === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(value) ? [[key, value]] : [];
     }),
   );
+  const { kind, failureCode, statusCode } = payload;
+  return {
+    ...ids,
+    ...(typeof kind === "string" && (JOB_KINDS as readonly string[]).includes(kind)
+      ? { kind }
+      : {}),
+    ...(typeof failureCode === "string" && isFailureCode(failureCode) ? { failureCode } : {}),
+    ...(typeof statusCode === "number" &&
+    Number.isInteger(statusCode) &&
+    /^\d{3}$/.test(String(statusCode))
+      ? { statusCode: String(statusCode) }
+      : {}),
+  };
 }

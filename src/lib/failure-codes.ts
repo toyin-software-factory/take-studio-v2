@@ -13,6 +13,9 @@ export const FAILURE_CODES = {
   timeout: { refundable: true },
   stale_run: { refundable: true },
   provider_error: { refundable: true },
+  // Spec 0007: the transcript provider rejected the request (for example out of credit).
+  // Nothing is charged for a transcript, so there is nothing to refund.
+  provider_rejected: { refundable: false },
   cancelled_before_start: { refundable: true },
   // Not refundable: the media was rejected, or the creator cancelled a running job.
   invalid_media: { refundable: false },

@@ -166,3 +166,38 @@ describe("jobTagsFrom", () => {
     expect(jobTagsFrom("take_1")).toEqual({});
   });
 });
+
+describe("jobTagsFrom for transcribe jobs (spec 0007)", () => {
+  it("allows the transcribe kind, a known failure code and a three digit status code", () => {
+    expect(
+      jobTagsFrom({
+        jobId: "job_1",
+        takeId: "take_1",
+        kind: "transcribe",
+        failureCode: "provider_rejected",
+        statusCode: 402,
+      }),
+    ).toEqual({
+      jobId: "job_1",
+      takeId: "take_1",
+      kind: "transcribe",
+      failureCode: "provider_rejected",
+      statusCode: "402",
+    });
+  });
+
+  it("drops an unknown kind or code, a status code that is not three digits, and everything else", () => {
+    const tags = jobTagsFrom({
+      jobId: "job_1",
+      kind: "make_coffee",
+      failureCode: "totally_new",
+      statusCode: 40,
+      text: "my private transcript",
+      words: [{ w: "secret" }],
+    });
+    expect(tags).toEqual({ jobId: "job_1" });
+    expect(jobTagsFrom({ statusCode: "402" })).toEqual({});
+    expect(jobTagsFrom({ statusCode: 4020 })).toEqual({});
+    expect(JSON.stringify(tags)).not.toMatch(/private|secret/);
+  });
+});

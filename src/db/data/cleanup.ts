@@ -1,4 +1,5 @@
-import { and, asc, eq, inArray, isNotNull, lt, lte, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, lt, lte, ne, notExists, or, sql } from "drizzle-orm";
+import { ACTIVE_JOB_STATUSES } from "@/lib/processing";
 import { CLEANUP, cleanupCutoffs } from "@/lib/cleanup-rules";
 import { processingJob, take } from "../schema";
 import { runTx } from "../tx";
@@ -83,6 +84,8 @@ export async function failAbandonedUploads(
 
 export type StaleJob = {
   readonly jobId: string;
+  /** The job's kind: `transcribe` jobs never send the take email (spec 0007). */
+  readonly kind: string;
   readonly refundedSeconds: number;
   /** Trigger.dev run to cancel, when known. */
   readonly runId: string | null;
@@ -90,21 +93,29 @@ export type StaleJob = {
 
 /**
  * Fails jobs that are stuck with the refundable `stale_run`: `queued` for longer than the
- * pick up window, or `running` past the task's maxDuration plus a margin. Uses `jobs.finish`,
+ * pick up window, or `running` past the task's maxDuration plus a margin (each kind has its own:
+ * a `transcribe` job is stale after 50 minutes, the video kinds after 85). Uses `jobs.finish`,
  * so the take moves and the refund happens exactly as for any other failure.
  */
 export async function failStaleJobs(db: Executor, now: Date): Promise<readonly StaleJob[]> {
-  const { queuedJobBefore, runningJobBefore } = cleanupCutoffs(now);
+  const { queuedJobBefore, runningJobBefore, transcribeRunningJobBefore } = cleanupCutoffs(now);
   const candidates = await db
-    .select({ id: processingJob.id })
+    .select({ id: processingJob.id, kind: processingJob.kind })
     .from(processingJob)
     .where(
       or(
         and(eq(processingJob.status, "queued"), lt(processingJob.createdAt, queuedJobBefore)),
         and(
           eq(processingJob.status, "running"),
+          ne(processingJob.kind, "transcribe"),
           isNotNull(processingJob.startedAt),
           lt(processingJob.startedAt, runningJobBefore),
+        ),
+        and(
+          eq(processingJob.status, "running"),
+          eq(processingJob.kind, "transcribe"),
+          isNotNull(processingJob.startedAt),
+          lt(processingJob.startedAt, transcribeRunningJobBefore),
         ),
       ),
     )
@@ -112,12 +123,13 @@ export async function failStaleJobs(db: Executor, now: Date): Promise<readonly S
     .limit(CLEANUP.batchSize);
 
   const failed: StaleJob[] = [];
-  for (const { id } of candidates) {
+  for (const { id, kind } of candidates) {
     const result = await finish(db, { jobId: id, status: "failed", failureCode: "stale_run", now });
     // `already_final`: it finished on its own meanwhile.
     if (result.ok) {
       failed.push({
         jobId: id,
+        kind,
         refundedSeconds: result.data.refundedSeconds,
         runId: result.data.job.triggerRunId,
       });
@@ -128,7 +140,8 @@ export async function failStaleJobs(db: Executor, now: Date): Promise<readonly S
 
 /**
  * Expires takes whose `video_expires_at` has passed (AC-18). `processing` takes are skipped
- * and picked up by a later sweep once their job ends.
+ * and picked up by a later sweep once their job ends, and so is any take with an active job of
+ * any kind (a `transcribe` job leaves the take `ready`, spec 0007).
  */
 export async function expireDueTakes(
   db: Executor,
@@ -142,6 +155,17 @@ export async function expireDueTakes(
         inArray(take.status, ["uploaded", "ready", "failed"]),
         isNotNull(take.videoExpiresAt),
         lte(take.videoExpiresAt, now),
+        notExists(
+          db
+            .select({ one: sql`1` })
+            .from(processingJob)
+            .where(
+              and(
+                eq(processingJob.takeId, take.id),
+                inArray(processingJob.status, ACTIVE_JOB_STATUSES),
+              ),
+            ),
+        ),
       ),
     )
     .orderBy(asc(take.videoExpiresAt))
