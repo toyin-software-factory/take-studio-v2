@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, truncate, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -107,6 +107,33 @@ describe("uploadFileMultipart stops cleanly on failure", () => {
     expect(events).not.toContain("complete");
     // Far fewer than 25 parts were started: the workers stopped after the failure.
     expect(events.filter((e) => e.startsWith("start")).length).toBeLessThan(10);
+  });
+});
+
+describe("uploadFileMultipart refuses a file that shrinks mid upload", () => {
+  it("errors and aborts instead of sending a zero padded part", async () => {
+    const path = join(dir, "shrinking.mp4");
+    await writeFile(path, Buffer.alloc(1_000, 7));
+    const log: string[] = [];
+    const target: MultipartTarget = {
+      createMultipartUpload: async () => "up-1",
+      uploadPart: async (_k, _u, partNumber) => {
+        // The first part truncates the file, so later reads come up short.
+        if (partNumber === 1) await truncate(path, 250);
+        return `etag-${partNumber}`;
+      },
+      completeMultipartUpload: async () => void log.push("complete"),
+      abortMultipartUpload: async () => void log.push("abort"),
+    };
+    await expect(
+      uploadFileMultipart(target, "k", path, {
+        contentType: "video/mp4",
+        partSize: 200,
+        concurrency: 1,
+        backoffMs: 1,
+      }),
+    ).rejects.toThrow("render file changed during upload");
+    expect(log).toEqual(["abort"]);
   });
 });
 

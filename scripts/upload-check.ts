@@ -142,7 +142,10 @@ try {
         });
       }
     };
-    await Promise.all([worker(), worker(), worker()]);
+    // Wait for every worker before going on, so cleanup never races an upload.
+    const results = await Promise.allSettled([worker(), worker(), worker()]);
+    const failed = results.find((r): r is PromiseRejectedResult => r.status === "rejected");
+    if (failed) throw failed.reason;
   }
   etags.sort((a, b) => a.partNumber - b.partNumber);
   log("PUT parts to R2", { parts: etags.length, seconds: (Date.now() - t0) / 1000 });
@@ -162,6 +165,15 @@ try {
 } finally {
   if (cleanup) {
     if (takeId) {
+      // An upload that never completed: abort it while the take still holds its upload ID.
+      const [row] = await db
+        .select({ status: take.status, uploadId: take.uploadId })
+        .from(take)
+        .where(eq(take.id, takeId));
+      if (row?.status === "uploading" && row.uploadId) {
+        await r2.abortMultipartUpload(`originals/${takeId}/source.mp4`, row.uploadId);
+        log("cleanup: incomplete multipart upload aborted");
+      }
       await r2.deleteObject(`originals/${takeId}/source.mp4`);
       log("cleanup: R2 object deleted", {
         stillThere: (await r2.headObject(`originals/${takeId}/source.mp4`)) !== null,

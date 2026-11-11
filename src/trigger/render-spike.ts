@@ -18,10 +18,17 @@ const run = promisify(execFile);
  * `zscale` + `tonemap=hable`, `libx264 -preset fast -crf 18 -pix_fmt yuv420p`, AAC 192 kb/s,
  * `+faststart`. Output: timings and sizes only.
  */
-const spikePayload = z.object({
-  seconds: z.number().positive().max(7200).default(600),
-  cuts: z.number().int().min(0).max(500).default(40),
-});
+const CUT_SECONDS = 1.5;
+
+const spikePayload = z
+  .object({
+    seconds: z.number().positive().max(7200).default(600),
+    cuts: z.number().int().min(0).max(500).default(40),
+  })
+  // Each 1.5 s cut needs room around it, or keep ranges turn inside out.
+  .refine(({ seconds, cuts }) => seconds / (cuts + 1) >= CUT_SECONDS * 2, {
+    message: "seconds is too short for that many cuts (need seconds / (cuts + 1) >= 3)",
+  });
 
 export const renderSpikeTask = schemaTask({
   id: "render-spike",
