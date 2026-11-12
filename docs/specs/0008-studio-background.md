@@ -115,7 +115,7 @@ Registries and codes: `LIVE_SLICE = 3`; `STEPS_BY_KIND.initial` = `trim`, `backg
 **State transitions**:
 - `background.status`: `uploading → processing → ready | failed` (`/complete` moves to `processing`; ingest decides). Rows still `uploading` or `processing` after 1 hour are failed by cleanup, which queues their keys.
 - Background re-render: take stays `ready`; `rerender` job `queued → running → succeeded | failed`. Success (in one transaction): the new render becomes latest (`flipLatestRender`), `take.background_id` = the job's `target_background_id`. Failure: the job is `failed` with its code; the take, its latest render and `take.background_id` are unchanged.
-- `background_preview.status`: `making → ready | failed`; a `failed` or stale (`making` older than 2 minutes) row is replaced by a new request.
+- `background_preview.status`: `making → ready | failed`; a `failed` or stale row is replaced by a new request. Stale means `making` for longer than 8 minutes (`PREVIEW_STALE_MS` in `src/lib/background-preview.ts`): the preview task's `maxDuration` times its attempts (2 × 180 s) plus 2 minutes for waiting in its queue, so a preview still queued or running is never duplicated.
 
 **Job seam** (modelled on spec 0007's `startTranscribeJob`):
 - `startJob` (initial, unchanged trigger) sets `target_background_id` from `take.background_id` and creates the `background` step only when it is set.
