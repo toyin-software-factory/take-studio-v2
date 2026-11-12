@@ -205,6 +205,7 @@ test.describe("touch targets on a phone", () => {
   test("the select and each tile are at least 44 px", async ({ page, baseURL }) => {
     await signedInWithStudios(page, baseURL!);
     await page.goto("/");
+    await expect(select(page)).toBeEnabled(); // the list has loaded
     const trigger = await select(page).boundingBox();
     expect(trigger?.height).toBeGreaterThanOrEqual(44);
     await select(page).click();
@@ -404,4 +405,32 @@ test("an upload that never finished can be removed", async ({ page, baseURL }) =
   await page.getByRole("button", { name: "Remove" }).click();
   await expect.poll(() => deleted).toBe(1);
   await expect(page.getByText("Half sent")).toHaveCount(0);
+});
+
+test("a pick made while a delete is pending is kept when the delete finishes", async ({
+  page,
+  baseURL,
+}) => {
+  await signedInWithStudios(page, baseURL!);
+  const other = { ...readyItem("Second wall"), id: "22222222-2222-4222-8222-222222222222" };
+  const state = { mine: [readyItem("Office wall"), other], calls: [] as string[] };
+  await stubLibrary(page, state);
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  await page.route("**/api/backgrounds/*", async (route) => {
+    if (route.request().method() !== "DELETE") return route.fallback();
+    await gate; // the delete stays pending until the test lets it finish
+    state.mine = [other];
+    return route.fulfill({ status: 204 });
+  });
+  await page.goto("/");
+  await expect(select(page)).toBeEnabled();
+  await select(page).click();
+  await page.getByRole("radio", { name: /Office wall/ }).check({ force: true });
+  await page.getByRole("button", { name: "Delete Office wall" }).click();
+  // While the delete is pending the creator picks another background.
+  await page.getByRole("radio", { name: /Second wall/ }).check({ force: true });
+  release();
+  await expect(page.getByRole("radio", { name: /Office wall/ })).toHaveCount(0);
+  await expect(page.getByRole("radio", { name: /Second wall/ })).toBeChecked();
 });
