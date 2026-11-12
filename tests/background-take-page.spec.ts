@@ -155,6 +155,7 @@ async function setup(page: Page, baseURL: string, stub: Partial<Stub> = {}) {
 const section = (page: Page) => page.getByRole("region", { name: "Background", exact: true });
 const open = async (page: Page, id: string) => {
   await page.goto(`/takes/${id}`);
+  await page.getByRole("tab", { name: "Background" }).click();
   await expect(section(page).getByRole("radio", { name: /Keep original/ })).toBeVisible();
 };
 

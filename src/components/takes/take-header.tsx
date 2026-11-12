@@ -7,10 +7,9 @@ import { Icon } from "@/components/ui/icon";
 import type { TakeData } from "@/lib/take-api";
 import { expiryNote, formatClock } from "@/lib/take-display";
 import { RenameForm } from "./rename-form";
-import { StatusBadge } from "./status-badge";
 
 /**
- * The take's title with Rename (AC-9), status badge, length in mono and expiry note. Rename
+ * The take's title with Rename (AC-9), length in mono and expiry note (the status chip is in the top bar). Rename
  * swaps the heading for a labelled form; focus returns to Rename when it closes.
  */
 export function TakeHeader({
@@ -50,7 +49,6 @@ export function TakeHeader({
         </div>
       )}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-muted-foreground">
-        <StatusBadge status={take.status} />
         {take.durationMs !== null ? (
           <span className="mono">
             <span className="sr-only">Uploaded length </span>

@@ -34,7 +34,7 @@ export function PlayerControls({
 }) {
   const known = Number.isFinite(duration) && duration > 0;
   return (
-    <div className="flex items-center gap-2 sm:gap-3">
+    <div className="flex items-center gap-2 rounded-lg border border-line-dark bg-glass px-2 py-1 [backdrop-filter:var(--blur-glass)] sm:gap-3">
       <Button
         variant="ghost"
         size="icon"

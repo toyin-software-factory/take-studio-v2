@@ -2,9 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
-import { Icon } from "@/components/ui/icon";
 import { type TakeDetail, takeDetailSchema } from "@/lib/take-api";
 import {
   POLL,
@@ -13,15 +11,14 @@ import {
   keepPolling,
   tabTitle,
 } from "@/lib/take-display";
+import { usePublishCurrentTake } from "@/components/shell/current-take";
 import { callApi } from "./browser-io";
 import { createPlayerBridge } from "./player-bridge";
-import { EmailSwitch } from "./email-switch";
 import { TakeHeader } from "./take-header";
 import { TakeResult } from "./take-result";
 import { TakeSkeleton } from "./take-skeleton";
 import { TakeStage } from "./take-stage";
-import { BackgroundChange } from "./background-change";
-import { TranscriptPanel } from "./transcript-panel";
+import { TakeInspector } from "./take-inspector";
 import { usePoll, type PollResult } from "./use-poll";
 
 type Stop = "signed_out" | "not_found" | null;
@@ -80,6 +77,8 @@ export function TakeView({
   useEffect(() => {
     document.title = tabTitle(status, title);
   }, [status, title]);
+  // The top bar's breadcrumb and chip follow the live take (a rename, processing to ready).
+  usePublishCurrentTake(title, status);
 
   const onRetried = useCallback(() => {
     setDetail((d) =>
@@ -95,13 +94,6 @@ export function TakeView({
 
   return (
     <div className="flex flex-col gap-6">
-      <Link
-        href="/"
-        className="inline-flex w-fit items-center gap-1 rounded-sm text-small font-medium underline underline-offset-2 outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid"
-      >
-        <Icon icon={ArrowLeft} size="badge" />
-        Your takes
-      </Link>
       {stop === "signed_out" ? (
         <Alert variant="danger" title="You've been signed out">
           <Link href="/" className="underline underline-offset-2">
@@ -126,36 +118,33 @@ export function TakeView({
             take={detail.take}
             onRenamed={(t) => setDetail((d) => (d ? { ...d, take: t } : d))}
           />
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)] lg:items-start">
-            <div className="flex min-w-0 flex-col gap-6">
+          <div className="grid gap-6 min-[1200px]:grid-cols-[minmax(0,1fr)_380px] min-[1200px]:items-start">
+            <div className="flex min-w-0 flex-col gap-5">
               <TakeStage detail={detail} bridge={bridge} onRetried={onRetried} />
               <TakeResult detail={detail} />
-              <BackgroundChange
-                detail={detail}
-                bridge={bridge}
-                onStarted={(target) =>
-                  setDetail((d) =>
-                    d
-                      ? {
-                          ...d,
-                          backgroundJob: {
-                            status: "queued",
-                            failureCode: null,
-                            targetBackgroundId: target,
-                          },
-                        }
-                      : d,
-                  )
-                }
-                onUncertain={() => load()}
-                onStale={() => void load()}
-              />
             </div>
-            {detail.take.status === "ready" || detail.take.status === "expired" ? (
-              <TranscriptPanel takeId={detail.take.id} bridge={bridge} />
-            ) : null}
+            <TakeInspector
+              detail={detail}
+              bridge={bridge}
+              takeEmails={takeEmails}
+              onStarted={(target) =>
+                setDetail((d) =>
+                  d
+                    ? {
+                        ...d,
+                        backgroundJob: {
+                          status: "queued",
+                          failureCode: null,
+                          targetBackgroundId: target,
+                        },
+                      }
+                    : d,
+                )
+              }
+              onUncertain={() => load()}
+              onStale={() => void load()}
+            />
           </div>
-          <EmailSwitch initial={takeEmails} />
         </>
       ) : stop === null ? (
         <TakeSkeleton title={initialTitle} />

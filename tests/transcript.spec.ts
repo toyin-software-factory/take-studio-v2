@@ -9,6 +9,12 @@ import { replaceLatestRender, seedTakes, seedTranscript } from "./support/takes"
 // tests use a real transcript row, the real routes and a real caption track. Test users only.
 const expect = baseExpect.configure({ timeout: 15_000 });
 
+/** Opens the take page on its Transcript tab (the inspector's default tab is Export). */
+async function openTranscript(page: Page, id: string) {
+  await page.goto(`/takes/${id}`);
+  await page.getByRole("tab", { name: "Transcript" }).click();
+}
+
 const clip = readFileSync("tests/fixtures/clip.mp4");
 const R2 = "https://r2.test";
 
@@ -127,7 +133,7 @@ test.describe("states", () => {
         await page.setViewportSize(viewport);
         const id = await readyTake(page, baseURL!);
         await serve(page, [view]);
-        await page.goto(`/takes/${id}`);
+        await openTranscript(page, id);
         const panel = page.getByRole("region", { name: "Transcript" });
         await expect(panel).toContainText(text);
         if (name === "failed")
@@ -146,7 +152,7 @@ test.describe("states", () => {
   test("making turns into the transcript without a reload", async ({ page, baseURL }) => {
     const id = await readyTake(page, baseURL!);
     await serve(page, [{ state: "making", canMake: false }, READY]);
-    await page.goto(`/takes/${id}`);
+    await openTranscript(page, id);
     await expect(page.getByText("Making your transcript")).toBeVisible();
     await expect(page.getByText("second paragraph here")).toBeVisible();
     await expect(page.getByText("Making your transcript")).toBeHidden();
@@ -163,7 +169,7 @@ test.describe("states", () => {
       // Like the server: once the job exists, the read says it is being made.
       return route.fulfill({ json: { state: started ? "making" : "none", canMake: !started } });
     });
-    await page.goto(`/takes/${id}`);
+    await openTranscript(page, id);
     await page.getByRole("button", { name: "Make transcript" }).click();
     await expect(page.getByText("Making your transcript")).toBeVisible();
   });
@@ -173,7 +179,7 @@ test.describe("kept behaviour of the panel", () => {
   test("a load error shows beside a transcript that already loaded", async ({ page, baseURL }) => {
     const id = await readyTake(page, baseURL!);
     await serve(page, [{ state: "making", canMake: false }, 500]);
-    await page.goto(`/takes/${id}`);
+    await openTranscript(page, id);
     await expect(page.getByText(/We couldn.t load the transcript/)).toBeVisible();
     await expect(page.getByText("Making your transcript")).toBeVisible();
   });
@@ -184,7 +190,7 @@ test.describe("kept behaviour of the panel", () => {
   }) => {
     const id = await readyTake(page, baseURL!);
     await serve(page, [{ state: "making", canMake: false }, 404]);
-    await page.goto(`/takes/${id}`);
+    await openTranscript(page, id);
     await expect(page.getByText("Making your transcript")).toBeVisible();
     await expect(page.getByText(/can.t check on the transcript any more/)).toBeVisible();
     await expect(page.getByText("Making your transcript")).toHaveCount(0);
@@ -194,7 +200,7 @@ test.describe("kept behaviour of the panel", () => {
   test("no 'we'll keep trying' after a 404", async ({ page, baseURL }) => {
     const id = await readyTake(page, baseURL!);
     await serve(page, [404]);
-    await page.goto(`/takes/${id}`);
+    await openTranscript(page, id);
     await expect(page.getByRole("heading", { name: "Interview" })).toBeVisible();
     await expect(page.getByText("keep trying")).toHaveCount(0);
   });
@@ -221,7 +227,7 @@ test.describe("kept behaviour of the panel", () => {
       }
       return route.fulfill({ json: { state: "none", canMake: true } });
     });
-    await page.goto(`/takes/${id}`);
+    await openTranscript(page, id);
     await page.getByRole("button", { name: "Make transcript" }).click();
     await expect(page.getByRole("alert").filter({ hasText: "can't be made" })).toBeVisible();
     // The poll keeps reading `none`; the refusal is not cleared by it.
@@ -256,7 +262,7 @@ test("'still being made' goes once the job this page saw making has finished", a
     reading += 1;
     return route.fulfill({ json: next });
   });
-  await page.goto(`/takes/${id}`);
+  await openTranscript(page, id);
   await page.getByRole("button", { name: "Make transcript" }).click();
   await expect(page.getByText("still being made")).toBeVisible();
   await expect(page.getByText("second paragraph here")).toBeVisible();
@@ -280,7 +286,7 @@ test("the video has the take's thumbnail as its poster, so a phone paints someth
     route.fulfill({ body: jpeg, contentType: "image/jpeg" }),
   );
   await serve(page, [READY]);
-  await page.goto(`/takes/${id}`);
+  await openTranscript(page, id);
   await expect(page.locator("video")).toHaveAttribute("poster", `${R2}/thumb.jpg`);
 });
 
@@ -290,7 +296,7 @@ test("no thumbnail, no poster", async ({ page, baseURL }) => {
     route.fulfill({ status: 404, json: { error: "not_found", message: "x" } }),
   );
   await serve(page, [READY]);
-  await page.goto(`/takes/${id}`);
+  await openTranscript(page, id);
   await expect(page.locator("video")).toBeVisible();
   expect(await page.locator("video").getAttribute("poster")).toBeNull();
 });
@@ -305,7 +311,7 @@ test.describe("ready: words, seek and captions", () => {
       { w: "Second", startMs: 1500, endMs: 1900, para: true },
       { w: "part.", startMs: 1900, endMs: 2500 },
     ]);
-    await page.goto(`/takes/${id}`);
+    await openTranscript(page, id);
     await expect(page.getByRole("region", { name: "Transcript" })).toContainText("Second part.");
     return id;
   }
@@ -395,7 +401,7 @@ test.describe("ready: words, seek and captions", () => {
       { w: "Still", startMs: 0, endMs: 400, para: true },
       { w: "here.", startMs: 400, endMs: 900 },
     ]);
-    await page.goto(`/takes/${id}`);
+    await openTranscript(page, id);
     const panel = page.getByRole("region", { name: "Transcript" });
     await expect(panel).toContainText("Still here.");
     await expect(panel.getByRole("link", { name: "Download text" })).toBeVisible();
@@ -410,7 +416,7 @@ test.describe("touch targets on a phone", () => {
   test("the paragraph timestamp button is at least 44 px", async ({ page, baseURL }) => {
     const id = await readyTake(page, baseURL!);
     await serve(page, [READY]);
-    await page.goto(`/takes/${id}`);
+    await openTranscript(page, id);
     const box = await page.getByRole("button", { name: "Play from 0:01" }).boundingBox();
     expect(box?.height).toBeGreaterThanOrEqual(44);
     expect(box?.width).toBeGreaterThanOrEqual(44);
