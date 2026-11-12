@@ -8,12 +8,14 @@ import { completePreview, failPreview, loadPreviewWork } from "@/db/data/preview
 import type { Executor } from "@/db/types";
 import {
   PREVIEW_LIMITS,
+  PREVIEW_WIDTH,
   centreDifferenceShare,
   gateReadArgs,
   gateSize,
   isOnlyBackground,
   keyedPreviewGraph,
   plainPreviewFilter,
+  previewHeight,
   previewKey,
 } from "@/lib/background-preview";
 import { deadlineMs, runWithDeadline } from "@/lib/deadline";
@@ -183,8 +185,17 @@ export async function makePreview(
       // whatever the cause. Never record that as Ready: show the plain frame, no green screen.
       const gate = gateSize(facts.width, facts.height);
       const [still, backdrop] = await Promise.all([
-        io.readImage(gateReadArgs(out, gate, false), gate, signal),
-        io.readImage(gateReadArgs(imageUrl, gate, true, HTTP_INPUT), gate, signal),
+        io.readImage(gateReadArgs(out, gate, null), gate, signal),
+        io.readImage(
+          gateReadArgs(
+            imageUrl,
+            gate,
+            { width: PREVIEW_WIDTH, height: previewHeight(facts.width, facts.height) },
+            HTTP_INPUT,
+          ),
+          gate,
+          signal,
+        ),
       ]);
       if (isOnlyBackground(centreDifferenceShare(still, backdrop))) {
         logger.warn(

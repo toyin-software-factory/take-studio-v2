@@ -130,17 +130,20 @@ export function gateSize(takeWidth: number, takeHeight: number): { width: number
 
 /**
  * ffmpeg arguments that read one image as raw `rgb24` at the gate size on stdout. `cover` is for the
- * background (scaled to cover and centre cropped, as the preview graph does); the still is scaled.
+ * background: it takes the same two steps the keyed still took, so detailed edges blur the same
+ * way. First the preview graph's own background chain at the preview size (cover, centre crop,
+ * limited range, 4:2:0), then the downscale to the gate size. The still is only downscaled.
  */
 export function gateReadArgs(
   input: string,
   size: { readonly width: number; readonly height: number },
-  cover: boolean,
+  cover: { readonly width: number; readonly height: number } | null,
   inputOptions: readonly string[] = [],
 ): string[] {
+  const down = `scale=${size.width}:${size.height}`;
   const scale = cover
-    ? `scale=${size.width}:${size.height}:force_original_aspect_ratio=increase,crop=${size.width}:${size.height}`
-    : `scale=${size.width}:${size.height}`;
+    ? `scale=${cover.width}:${cover.height}:force_original_aspect_ratio=increase:out_range=tv,crop=${cover.width}:${cover.height},setsar=1,format=yuv420p,${down}`
+    : down;
   return [
     "-v",
     "error",

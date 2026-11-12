@@ -158,11 +158,11 @@ describe("the final gate (S3S-T12)", () => {
     expect(gateSize(1920, 1080)).toEqual({ width: 192, height: 108 });
     expect(gateSize(1080, 1920)).toEqual({ width: 192, height: 342 });
     const size = gateSize(1920, 1080);
-    expect(gateReadArgs("bg.jpg", size, true, ["-reconnect", "1"]).join(" ")).toContain(
-      "scale=192:108:force_original_aspect_ratio=increase,crop=192:108,format=rgb24",
+    expect(
+      gateReadArgs("bg.jpg", size, { width: 1280, height: 720 }, ["-reconnect", "1"]).join(" "),
+    ).toContain(
+      "scale=1280:720:force_original_aspect_ratio=increase:out_range=tv,crop=1280:720,setsar=1,format=yuv420p,scale=192:108,format=rgb24",
     );
-    expect(gateReadArgs("still.jpg", size, false).join(" ")).toContain(
-      "scale=192:108,format=rgb24",
-    );
+    expect(gateReadArgs("still.jpg", size, null).join(" ")).toContain("scale=192:108,format=rgb24");
   });
 });
