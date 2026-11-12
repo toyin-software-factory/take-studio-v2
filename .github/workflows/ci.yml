@@ -164,6 +164,33 @@ jobs:
             -v "$GITHUB_WORKSPACE":/work -v "$pnpm_dir":"$pnpm_dir":ro -v "$node_dir":"$node_dir":ro -w /work \
             "$PLAYWRIGHT_IMAGE" bash -c 'export PATH="$NODE_DIR/bin:$PNPM_HOME:$PATH" && node --version && pnpm exec playwright test'
 
+      # The production check: the same built Worker, served as production serves it (no
+      # `--var DESIGN_GALLERY:1`, which the normal run adds; the build is the same, the gallery is
+      # opt in at run time), and only the spec that says /design is not found. Without
+      # E2E_PRODUCTION=1 that check is skipped, so this step runs it and fails on any skipped
+      # test or if it did not report exactly 1 passed.
+      - name: E2E production mode (the gallery is not found)
+        timeout-minutes: 5
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm_dir="$(dirname "$PNPM_HOME")"
+          node_dir="$(dirname "$(dirname "$(command -v node)")")"
+          docker run --rm --network host --ipc=host --init \
+            --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -e CI -e E2E_PRODUCTION=1 -e PNPM_HOME -e NODE_DIR="$node_dir" -e DATABASE_URL -e DATABASE_URL_DIRECT \
+            -e CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE -e NEXT_TELEMETRY_DISABLED \
+            -v "$GITHUB_WORKSPACE":/work -v "$pnpm_dir":"$pnpm_dir":ro -v "$node_dir":"$node_dir":ro -w /work \
+            "$PLAYWRIGHT_IMAGE" bash -c 'export PATH="$NODE_DIR/bin:$PNPM_HOME:$PATH" && pnpm exec playwright test tests/design.spec.ts -g "design gallery \(production\)" --reporter=list' 2>&1 | tee /tmp/e2e-production.log
+          if sed 's/\x1b\[[0-9;]*m//g' /tmp/e2e-production.log | grep -E "^\s*[0-9]+ skipped"; then
+            echo "::error::The production mode check was skipped."
+            exit 1
+          fi
+          sed 's/\x1b\[[0-9;]*m//g' /tmp/e2e-production.log | grep -qE "^\s*1 passed" || {
+            echo "::error::The production mode check did not report 1 passed."
+            exit 1
+          }
+
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
