@@ -35,7 +35,7 @@ export function TopBar({
               <li className="shrink-0">
                 <Link
                   href="/"
-                  className="rounded-xs underline decoration-transparent underline-offset-[6px] transition-[text-decoration-color,text-underline-offset] duration-400 ease-ui outline-hidden hover:decoration-current hover:underline-offset-[3px] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-solid focus-visible:outline-ring"
+                  className="inline-flex items-center rounded-xs underline decoration-transparent pointer-coarse:min-h-11 pointer-coarse:min-w-11 underline-offset-[6px] transition-[text-decoration-color,text-underline-offset] duration-400 ease-ui outline-hidden hover:decoration-current hover:underline-offset-[3px] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-solid focus-visible:outline-ring"
                 >
                   Takes
                 </Link>

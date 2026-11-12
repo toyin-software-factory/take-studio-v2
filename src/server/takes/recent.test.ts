@@ -34,6 +34,18 @@ describe("recentForCreator (the sidebar's recent takes)", () => {
     expect(recent[0]).toMatchObject({ status: "ready", durationMs: 10_006 });
   });
 
+  it("is empty, not an error, when the query itself rejects", async () => {
+    const broken = new Proxy(
+      {},
+      {
+        get() {
+          throw new Error("connection lost");
+        },
+      },
+    ) as Db;
+    expect(await recentForCreator(broken, "any-creator")).toEqual([]);
+  });
+
   it("is empty for a creator with no takes", async () => {
     const creator = await createCreator(db);
     expect(await recentForCreator(db, creator.id)).toEqual([]);

@@ -14,7 +14,7 @@ function Brand({ onNavigate }: { readonly onNavigate?: () => void }) {
     <Link
       href="/"
       onClick={onNavigate}
-      className="flex items-center gap-2 rounded-md px-3 py-1 text-h4 outline-hidden focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-solid focus-visible:outline-ring"
+      className="flex items-center gap-2 rounded-md px-3 py-1 text-h4 outline-hidden pointer-coarse:min-h-11 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-solid focus-visible:outline-ring"
     >
       <Icon icon={Clapperboard} />
       Take Studio
@@ -47,7 +47,7 @@ export function SidebarBody({
       <nav aria-label="Main">
         <NavLinks onNavigate={onNavigate} />
       </nav>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 pb-1.5">
         <RecentTakes takes={recent} onNavigate={onNavigate} />
       </div>
       <UserMenu user={user} />

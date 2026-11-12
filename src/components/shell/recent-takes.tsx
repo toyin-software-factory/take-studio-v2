@@ -2,9 +2,29 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  CircleAlert,
+  CircleCheck,
+  Clock,
+  Hourglass,
+  LoaderCircle,
+  Upload,
+  type LucideIcon,
+} from "lucide-react";
+import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import { formatClock, statusBadge } from "@/lib/take-display";
 import type { RecentTake } from "@/server/takes/views";
+
+/** The icon that goes with each status word, so status is never text or colour alone. */
+const STATUS_ICONS: Readonly<Record<string, LucideIcon>> = {
+  uploading: Upload,
+  uploaded: Hourglass,
+  processing: LoaderCircle,
+  ready: CircleCheck,
+  failed: CircleAlert,
+  expired: Clock,
+};
 
 /** The line under a recent take's title: its status in words, then its length. */
 export function recentMeta(take: Pick<RecentTake, "status" | "durationMs">): string {
@@ -50,8 +70,9 @@ export function RecentTakes({
                 <span className={cn("block truncate text-small", current && "font-medium")}>
                   {take.title}
                 </span>
-                <span className="mono block truncate text-caption text-muted-foreground">
-                  {recentMeta(take)}
+                <span className="mono flex items-center gap-1 text-caption text-muted-foreground">
+                  <Icon icon={STATUS_ICONS[take.status] ?? Clock} size="badge" />
+                  <span className="truncate">{recentMeta(take)}</span>
                 </span>
               </Link>
             </li>

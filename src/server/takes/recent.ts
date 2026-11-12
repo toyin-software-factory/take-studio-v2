@@ -13,6 +13,11 @@ export async function recentForCreator(
   db: Executor,
   creatorId: string,
 ): Promise<readonly RecentTake[]> {
-  const page = await listForCreator(db, creatorId, { limit: RECENT_TAKES_LIMIT });
-  return page.ok ? page.data.rows.map(recentView) : [];
+  try {
+    const page = await listForCreator(db, creatorId, { limit: RECENT_TAKES_LIMIT });
+    return page.ok ? page.data.rows.map(recentView) : [];
+  } catch {
+    // A database error must not break the page for an optional list.
+    return [];
+  }
 }
