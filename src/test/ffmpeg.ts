@@ -52,13 +52,20 @@ export function ffmpegPlan(
 }
 
 /**
+ * Per test limit for suites that run the real tools. Vitest's 5 s default is too tight for a
+ * loaded CI runner (a real ffmpeg seek test took longer and failed `main`), so every such test
+ * gets 30 s.
+ */
+export const REAL_FFMPEG_TEST_TIMEOUT_MS = 30_000;
+
+/**
  * Registers `body` as a suite named `name` that runs only with the real tools. Without them:
  * in CI one failing test says why; locally the suite is skipped and a note is printed.
  */
 export function describeWithFfmpeg(name: string, body: () => void): void {
   const plan = ffmpegPlan(checkFfmpeg(), inCi(), name);
   if (plan.kind === "run") {
-    describe(name, body);
+    describe(name, { timeout: REAL_FFMPEG_TEST_TIMEOUT_MS }, body);
   } else if (plan.kind === "fail") {
     describe(name, () => {
       it("needs ffmpeg and ffprobe, which CI installs", () => {
