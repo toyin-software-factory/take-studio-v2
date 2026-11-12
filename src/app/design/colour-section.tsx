@@ -1,32 +1,30 @@
 import { Check, X } from "lucide-react";
 import { contrastRatio, meetsAA, minimumRatio } from "./contrast";
-import type { ColourToken, ContrastPair } from "./tokens";
+import { pairHexes, type ColourToken, type ContrastPair } from "./tokens";
 
 const paint = (name: string) => ({ backgroundColor: `var(--${name})` });
 
 /** One colour token: a swatch painted with its CSS variable, its name, value and use. */
-function Swatch({ token }: { readonly token: ColourToken }) {
+function Swatch({ token, onDark }: { readonly token: ColourToken; readonly onDark: boolean }) {
   return (
-    <li className="overflow-hidden rounded-md border bg-surface shadow-card">
-      <div className="h-16 border-b" style={paint(token.name)} />
+    <li className="overflow-hidden rounded-md border bg-card shadow-card">
+      {/* Translucent tokens are painted over the surface they are used on. */}
+      <div className={onDark ? "bg-dark" : "bg-bg"}>
+        <div className="h-16 border-b" style={paint(token.name)} />
+      </div>
       <div className="p-3">
-        <p className="text-small font-semibold">--{token.name}</p>
-        <p className="mono text-caption text-text-muted">{token.value}</p>
-        <p className="text-caption text-text-muted">{token.use}</p>
+        <p className="text-small font-medium">--{token.name}</p>
+        <p className="mono text-caption text-muted-foreground">{token.value}</p>
+        <p className="text-caption text-muted-foreground">{token.use}</p>
       </div>
     </li>
   );
 }
 
 /** One contrast pair: a live sample, the computed ratio and pass or fail as icon plus label. */
-function PairRow({
-  pair,
-  hexOf,
-}: {
-  readonly pair: ContrastPair;
-  readonly hexOf: (name: string) => string;
-}) {
-  const ratio = contrastRatio(hexOf(pair.fg), hexOf(pair.bg));
+function PairRow({ pair }: { readonly pair: ContrastPair }) {
+  const hexes = pairHexes(pair);
+  const ratio = contrastRatio(hexes.fg, hexes.bg);
   const pass = meetsAA(ratio, pair.kind);
   const Icon = pass ? Check : X;
   return (
@@ -34,7 +32,7 @@ function PairRow({
       <td className="py-2 pr-4">
         {pair.kind === "text" ? (
           <span
-            className="inline-block rounded-sm border px-2 py-1 font-semibold"
+            className="inline-block rounded-sm border px-2 py-1 font-medium"
             style={{ ...paint(pair.bg), color: `var(--${pair.fg})` }}
             aria-hidden="true"
           >
@@ -60,7 +58,7 @@ function PairRow({
       <td className="mono py-2 pr-4 text-small">{ratio.toFixed(1)}:1</td>
       <td className="py-2 text-small">
         {pair.kind === "decorative" ? (
-          <span className="text-text-muted">Decorative, no minimum</span>
+          <span className="text-muted-foreground">Decorative, no minimum</span>
         ) : (
           <span className="inline-flex items-center gap-1">
             <Icon size={16} strokeWidth={1.5} aria-hidden="true" />
@@ -78,36 +76,35 @@ export function ColourSection({
   title,
   colours,
   pairs,
-  allColours,
+  onDark = false,
 }: {
   readonly id: string;
   readonly title: string;
   readonly colours: readonly ColourToken[];
   readonly pairs: readonly ContrastPair[];
-  readonly allColours: readonly ColourToken[];
+  readonly onDark?: boolean;
 }) {
-  const hexOf = (name: string) => allColours.find((t) => t.name === name)?.value ?? "";
   return (
     <section aria-labelledby={id} className="space-y-6">
-      <h2 id={id} className="text-h2 font-semibold">
+      <h2 id={id} className="text-h2 font-medium">
         {title}
       </h2>
       <ul className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {colours.map((token) => (
-          <Swatch key={token.name} token={token} />
+          <Swatch key={token.name} token={token} onDark={onDark} />
         ))}
       </ul>
       {/* Scrolls sideways on phones; focusable so keyboard users can scroll it too. */}
       <div
-        className="overflow-x-auto rounded-md border bg-surface p-4 shadow-card"
+        className="overflow-x-auto rounded-md border bg-card p-4 shadow-card"
         role="region"
         aria-label={`${title} contrast pairs`}
         tabIndex={0}
       >
         <table className="w-full min-w-lg text-left">
-          <caption className="pb-2 text-left text-h3 font-semibold">Contrast pairs</caption>
+          <caption className="pb-2 text-left text-h3 font-medium">Contrast pairs</caption>
           <thead>
-            <tr className="text-small text-text-muted">
+            <tr className="text-small text-muted-foreground">
               <th scope="col" className="pb-2 font-medium">
                 Sample
               </th>
@@ -124,7 +121,7 @@ export function ColourSection({
           </thead>
           <tbody>
             {pairs.map((pair) => (
-              <PairRow key={`${pair.fg}-${pair.bg}`} pair={pair} hexOf={hexOf} />
+              <PairRow key={`${pair.fg}-${pair.bg}-${pair.kind}`} pair={pair} />
             ))}
           </tbody>
         </table>

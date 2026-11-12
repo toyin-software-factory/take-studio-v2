@@ -52,7 +52,7 @@ function Slider({
           key={index}
           aria-label={ariaLabel}
           aria-labelledby={ariaLabelledBy}
-          className="relative pointer-coarse:after:absolute pointer-coarse:after:-inset-3 block size-5 shrink-0 cursor-grab rounded-full border-2 border-primary bg-surface shadow-card transition-colors outline-hidden hover:bg-accent focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring data-[disabled]:cursor-not-allowed data-[disabled]:border-disabled-fg"
+          className="relative pointer-coarse:after:absolute pointer-coarse:after:-inset-3 block size-5 shrink-0 cursor-grab rounded-full border-2 border-primary bg-card shadow-card transition-colors outline-hidden hover:bg-hover-surface focus-visible:outline-2 focus-visible:outline-solid focus-visible:outline-offset-2 focus-visible:outline-ring data-[disabled]:cursor-not-allowed data-[disabled]:border-disabled-fg"
         />
       ))}
     </SliderPrimitive.Root>

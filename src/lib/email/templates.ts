@@ -35,20 +35,20 @@ type Block = {
 
 function render(block: Block): { readonly html: string; readonly text: string } {
   const p = (t: string) =>
-    `<p style="margin:0 0 16px;font-size:16px;line-height:24px;color:#003049">${escapeHtml(t)}</p>`;
+    `<p style="margin:0 0 16px;font-size:16px;line-height:24px;color:#030303">${escapeHtml(t)}</p>`;
   const button = block.button
-    ? `<p style="margin:24px 0"><a href="${escapeHtml(block.button.url)}" style="display:inline-block;padding:12px 20px;background:#C1121F;color:#ffffff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:600">${escapeHtml(block.button.label)}</a></p>`
+    ? `<p style="margin:24px 0"><a href="${escapeHtml(block.button.url)}" style="display:inline-block;padding:12px 20px;background:#030303;color:#ffffff;text-decoration:none;border-radius:8px;font-size:16px;font-weight:500">${escapeHtml(block.button.label)}</a></p>`
     : "";
   const footer = (block.footer ?? [])
     .map(
       (t) =>
-        `<p style="margin:0 0 8px;font-size:13px;line-height:20px;color:#4C6A73">${escapeHtml(t)}</p>`,
+        `<p style="margin:0 0 8px;font-size:13px;line-height:20px;color:#4f4f4f">${escapeHtml(t)}</p>`,
     )
     .join("");
   const footerLink = block.footerLink
-    ? `<p style="margin:0;font-size:13px;line-height:20px"><a href="${escapeHtml(block.footerLink.url)}" style="color:#4C6A73">${escapeHtml(block.footerLink.label)}</a></p>`
+    ? `<p style="margin:0;font-size:13px;line-height:20px"><a href="${escapeHtml(block.footerLink.url)}" style="color:#4f4f4f">${escapeHtml(block.footerLink.label)}</a></p>`
     : "";
-  const html = `<!doctype html><html lang="en"><body style="margin:0;padding:24px;background:#FDF0D5;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif"><div style="max-width:520px;margin:0 auto"><h1 style="margin:0 0 16px;font-size:22px;line-height:28px;color:#003049">${escapeHtml(block.heading)}</h1>${block.paragraphs.map(p).join("")}${button}${footer}${footerLink}</div></body></html>`;
+  const html = `<!doctype html><html lang="en"><body style="margin:0;padding:24px;background:#ffffff;font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif"><div style="max-width:520px;margin:0 auto"><h1 style="margin:0 0 16px;font-size:22px;line-height:28px;color:#030303">${escapeHtml(block.heading)}</h1>${block.paragraphs.map(p).join("")}${button}${footer}${footerLink}</div></body></html>`;
   const text = [
     block.heading,
     "",

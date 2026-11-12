@@ -21,9 +21,9 @@ export function UploadProgress({
   if (state.kind !== "uploading" && state.kind !== "completing") return null;
   const completing = state.kind === "completing";
   return (
-    <div className="flex flex-col gap-3 rounded-md bg-surface px-4 py-6 shadow-card sm:px-6">
+    <div className="flex flex-col gap-3 rounded-md bg-card px-4 py-6 shadow-card sm:px-6">
       <div className="flex items-center gap-3">
-        <Icon icon={FileVideo} className="text-text-muted" />
+        <Icon icon={FileVideo} className="text-muted-foreground" />
         <p className="min-w-0 flex-1 truncate font-medium" title={state.fileName}>
           {state.fileName}
         </p>
@@ -37,7 +37,7 @@ export function UploadProgress({
         aria-label={completing ? "Finishing upload" : "Upload progress"}
         value={completing ? undefined : state.percent}
       />
-      <div className="flex items-center justify-between gap-3 text-small text-text-muted">
+      <div className="flex items-center justify-between gap-3 text-small text-muted-foreground">
         {/* Only the phase is announced; the percent would be read out on every change. */}
         <p aria-live="polite">
           {completing ? "Finishing upload…" : "Uploading. Keep this tab open."}

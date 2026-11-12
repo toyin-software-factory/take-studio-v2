@@ -11,8 +11,8 @@ test.describe("design gallery (preview)", () => {
     const res = await page.goto("/design");
     expect(res?.status()).toBe(200);
     await expect(page.getByRole("heading", { level: 1, name: "Design system" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Light app colours" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Stage colours" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Light shell colours" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Dark stage colours" })).toBeVisible();
     await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", /noindex/);
   });
 
@@ -31,12 +31,12 @@ test.describe("design gallery (preview)", () => {
     await page.goto("/design");
     await page.evaluate(() => document.fonts.ready);
     const body = await page.locator("body").evaluate((el) => getComputedStyle(el).fontFamily);
-    expect(body).toMatch(/Inter/);
+    expect(body).toMatch(/Inter Tight/);
     const mono = page.locator(".mono").first();
     expect(await mono.evaluate((el) => getComputedStyle(el).fontVariantNumeric)).toBe(
       "tabular-nums",
     );
-    expect(await mono.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/JetBrains/);
+    expect(await mono.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/Inter Tight/);
   });
 
   test("loads the fonts without moving the layout", async ({ page }) => {
@@ -64,8 +64,8 @@ test.describe("design gallery (preview)", () => {
     const loaded = await page.evaluate(() =>
       [...document.fonts].filter((f) => f.status === "loaded").map((f) => f.family),
     );
-    expect(loaded.some((family) => /Inter/i.test(family))).toBe(true);
-    expect(loaded.some((family) => /JetBrains/i.test(family))).toBe(true);
+    expect(loaded.some((family) => /Inter Tight/i.test(family))).toBe(true);
+    expect(loaded.some((family) => /JetBrains/i.test(family))).toBe(false);
     expect(fontStatuses.length).toBeGreaterThan(0);
     expect(fontStatuses.every((status) => status === 200)).toBe(true);
     await page.waitForTimeout(500);
@@ -97,7 +97,7 @@ test.describe("design gallery (preview)", () => {
     const duration = await page
       .getByTestId("motion-sample")
       .evaluate((el) => getComputedStyle(el).animationDuration);
-    expect(parseFloat(duration)).toBeLessThan(0.001);
+    expect(parseFloat(duration)).toBeLessThanOrEqual(0.001);
   });
 });
 

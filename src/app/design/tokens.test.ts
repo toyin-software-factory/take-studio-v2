@@ -3,68 +3,102 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { contrastRatio, meetsAA } from "./contrast";
 import { isGalleryEnabled } from "./gallery";
-import { lightColours, lightPairs, stageColours, stagePairs } from "./tokens";
+import { allColours, lightPairs, pairHexes, stagePairs } from "./tokens";
 
 const srcDir = join(__dirname, "..", "..");
 const css = readFileSync(join(srcDir, "app", "globals.css"), "utf8");
-const rootBlock = css.slice(css.indexOf(":root {"), css.indexOf("}", css.indexOf(":root {")));
+const doc = readFileSync(join(srcDir, "..", "design.md"), "utf8");
 
-/** The value of `--name` in the `:root` block of globals.css. */
-const cssValue = (name: string): string | undefined =>
-  new RegExp(`--${name}:\\s*([^;]+);`).exec(rootBlock)?.[1]?.trim();
+/** Every `--name: value;` declaration in globals.css, first one wins (all layers). */
+const declared = new Map<string, string>();
+for (const m of css.matchAll(/^\s*(--[a-z0-9-]+):\s*([^;]+);/gm)) {
+  if (!declared.has(m[1]!)) declared.set(m[1]!, m[2]!.trim());
+}
 
-const allColours = [...lightColours, ...stageColours];
-const hexOf = (name: string): string => {
-  const token = allColours.find((t) => t.name === name);
-  if (!token?.value.startsWith("#")) throw new Error(`No opaque token named ${name}`);
-  return token.value;
-};
+/** Same value written two ways compares equal: spacing, case and rgb()/rgba() syntax. */
+const canon = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(
+      /rgba?\(\s*([\d.]+)[\s,]+([\d.]+)[\s,]+([\d.]+)\s*(?:[,/]\s*([\d.]+)(%)?)?\s*\)/g,
+      (_, r, g, b, a, pct) => {
+        const alpha = a === undefined ? "" : `,${pct ? parseFloat(a) / 100 : parseFloat(a)}`;
+        return `rgb(${r},${g},${b}${alpha})`;
+      },
+    )
+    .replace(/\s+/g, "");
 
 describe("design tokens", () => {
-  it.each(allColours)("--$name exists in globals.css with the gallery's value", (token) => {
-    const value = cssValue(token.name);
-    expect(value).toBeDefined();
-    if (token.value.startsWith("#")) expect(value).toBe(token.value);
+  it.each(allColours.filter((t) => t.hex))("--$name is $hex in globals.css", (token) => {
+    expect(canon(declared.get(`--${token.name}`) ?? "")).toBe(token.hex);
   });
 
-  it.each([...lightPairs, ...stagePairs])(
-    "$fg on $bg meets WCAG AA for $kind",
-    ({ fg, bg, kind }) => {
-      expect(meetsAA(contrastRatio(hexOf(fg), hexOf(bg)), kind)).toBe(true);
-    },
-  );
+  it.each(allColours.filter((t) => t.rgba))("--$name is $value in globals.css", (token) => {
+    expect(canon(declared.get(`--${token.name}`) ?? "")).toBe(canon(token.value));
+  });
+
+  it.each([...lightPairs, ...stagePairs])("$fg on $bg meets WCAG AA for $kind", (pair) => {
+    const { fg, bg } = pairHexes(pair);
+    expect(meetsAA(contrastRatio(fg, bg), pair.kind)).toBe(true);
+  });
 
   it.each([
-    ["text", "bg", 12.3],
-    ["primary", "surface", 6.2],
-    ["stage-accent", "stage-bg", 4.6],
+    ["color-ink", "color-bg", 20.6],
+    ["color-text-muted", "color-bg", 8.0],
+    ["color-on-dark-75", "color-dark", 11],
+    ["color-on-dark-60", "color-dark", 7],
+    ["color-accent", "color-dark", 17],
   ] as const)("%s on %s is about the %s:1 design.md quotes", (fg, bg, quoted) => {
-    expect(Math.abs(contrastRatio(hexOf(fg), hexOf(bg)) - quoted)).toBeLessThanOrEqual(0.1);
+    const { fg: f, bg: b } = pairHexes({ fg, bg, kind: "text" });
+    expect(Math.abs(contrastRatio(f, b) - quoted)).toBeLessThanOrEqual(1);
   });
 
-  it("keeps Steel Blue off light text and Brick Red off the stage (they fail)", () => {
-    expect(meetsAA(contrastRatio("#669bbc", hexOf("bg")), "text")).toBe(false);
-    expect(meetsAA(contrastRatio(hexOf("primary"), hexOf("stage-bg")), "text")).toBe(false);
+  it("keeps the lime accent off white text and muted text at #4f4f4f or darker (AC-8)", () => {
+    const lime = pairHexes({ fg: "color-accent", bg: "color-bg", kind: "text" });
+    expect(meetsAA(contrastRatio(lime.fg, lime.bg), "text")).toBe(false);
+    const muted = pairHexes({ fg: "color-text-muted", bg: "color-bg", kind: "text" });
+    expect(contrastRatio(muted.fg, muted.bg)).toBeGreaterThanOrEqual(7.5);
   });
 });
 
-describe("design.md and globals.css agree (AC-1)", () => {
-  // Lines like "- `--bg`: `#FDF0D5` (Papaya Whip), page background"; a line can document several
-  // tokens ("`--primary`: `#...`; `--primary-active`: `#...`"), so every match counts. Translucent
-  // tokens say "at 6%" instead of a hex, so only opaque tokens are compared.
-  const doc = readFileSync(join(srcDir, "..", "design.md"), "utf8");
-  const documented = [...doc.matchAll(/`--([a-z-]+)`: `(#[0-9a-f]{6})`(?! at \d+%)/gi)].map(
-    (m) => [m[1]!, m[2]!.toLowerCase()] as const,
+describe("design.md §2 and globals.css agree (AC-1)", () => {
+  const section = doc.slice(doc.indexOf("## 2. Design tokens"), doc.indexOf("## 3. Typography"));
+  const documented = [...section.matchAll(/^\s*(--[a-z0-9-]+):\s*([^;]+);/gm)].map(
+    (m) => [m[1]!, m[2]!.trim()] as const,
   );
-  const expand = (hex: string) =>
-    /^#[0-9a-f]{3}$/i.test(hex) ? `#${[...hex.slice(1)].map((c) => c + c).join("")}` : hex;
+  // Our font stack starts with the next/font variable, so it differs on purpose.
+  const comparable = documented.filter(([name]) => name !== "--font-sans");
 
-  it("documents the opaque palette (a parse that finds nothing would pass silently)", () => {
-    expect(documented.length).toBeGreaterThanOrEqual(19);
+  it("documents the whole token list (a parse that finds nothing would pass silently)", () => {
+    expect(documented.length).toBeGreaterThanOrEqual(100);
   });
 
-  it.each(documented)("--%s is %s in globals.css", (name, hex) => {
-    expect(expand(cssValue(name)?.toLowerCase() ?? "")).toBe(hex);
+  it.each(comparable)("%s has the value design.md §2 gives", (name, value) => {
+    expect(declared.has(name), `${name} is missing from globals.css`).toBe(true);
+    expect(canon(declared.get(name)!)).toBe(canon(value));
+  });
+
+  it("has loaded Inter Tight with a fallback that starts with the next/font variable", () => {
+    expect(declared.get("--font-sans")).toMatch(/^var\(--font-inter-tight\), "Inter Tight"/);
+  });
+});
+
+describe("v1 design is gone (AC-1, AC-2)", () => {
+  const v1 = ["780000", "c1121f", "fdf0d5", "003049", "669bbc", "jetbrains", "papaya", "brick red"];
+  const files = readdirSync(srcDir, { recursive: true, encoding: "utf8" }).filter((f) =>
+    /\.(css|tsx?)$/.test(f),
+  );
+  it("has no v1 palette value and no JetBrains Mono in src", () => {
+    const hits = files.filter((f) => {
+      if (f === join("app", "design", "tokens.test.ts")) return false;
+      const text = readFileSync(join(srcDir, f), "utf8").toLowerCase();
+      return v1.some((needle) => text.includes(needle));
+    });
+    expect(hits).toEqual([]);
+  });
+
+  it("has removed the v1 appendix from design.md", () => {
+    expect(doc).not.toContain("Appendix: v1 tokens");
   });
 });
 

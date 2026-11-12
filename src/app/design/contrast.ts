@@ -32,3 +32,18 @@ export const minimumRatio: Readonly<Record<PairKind, number>> = {
 export function meetsAA(ratio: number, kind: PairKind): boolean {
   return ratio >= minimumRatio[kind];
 }
+
+/** A colour as the gallery knows it: opaque `#rrggbb`, or red, green, blue and alpha (0 to 1). */
+export type Rgba = readonly [number, number, number, number];
+
+const toHex = (parts: readonly number[]): string =>
+  `#${parts.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`;
+
+/** Flattens a translucent colour over an opaque `#rrggbb` background, giving `#rrggbb`. */
+export function blend(fg: Rgba, bgHex: string): string {
+  const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(bgHex);
+  if (!match) throw new Error(`Not a #rrggbb colour: ${bgHex}`);
+  const bg = match.slice(1).map((part) => parseInt(part, 16));
+  const [r, g, b, a] = fg;
+  return toHex([r, g, b].map((v, i) => v * a + bg[i]! * (1 - a)));
+}

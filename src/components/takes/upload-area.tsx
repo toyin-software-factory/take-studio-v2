@@ -76,16 +76,16 @@ export function UploadArea() {
             take(event.dataTransfer.files);
           }}
           className={cn(
-            "flex flex-col items-center gap-3 rounded-md border-2 border-dashed border-border-strong bg-surface px-4 py-10 text-center transition-colors",
+            "flex flex-col items-center gap-3 rounded-md border-2 border-dashed border-border-strong bg-card px-4 py-10 text-center transition-colors",
             dragging && "border-primary bg-selected-surface",
           )}
         >
-          <Icon icon={Upload} size="empty" className="text-text-muted" />
+          <Icon icon={Upload} size="empty" className="text-muted-foreground" />
           <p className="font-medium">{dragging ? "Drop to upload" : "Drop a video here, or"}</p>
           <Button size="lg" onClick={() => input.current?.click()}>
             Choose a video
           </Button>
-          <p className="text-small text-text-muted">{LIMITS}</p>
+          <p className="text-small text-muted-foreground">{LIMITS}</p>
           <BackgroundSelect
             backgrounds={backgrounds}
             picked={picked}

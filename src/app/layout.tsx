@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { inter, jetbrainsMono } from "@/lib/fonts";
+import { interTight } from "@/lib/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 /** Root HTML shell for every page. Exposes the self hosted fonts as CSS variables. */
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={interTight.variable}>
       <body>{children}</body>
     </html>
   );

@@ -6,11 +6,11 @@ import { cn } from "@/lib/utils";
 
 // design.md: status is never colour alone, so every badge has an icon and a label.
 const badgeVariants = cva(
-  "inline-flex w-fit shrink-0 items-center gap-1 rounded-sm px-2 py-0.5 text-caption font-medium whitespace-nowrap",
+  "inline-flex w-fit shrink-0 items-center gap-1 rounded-full border border-transparent px-2.5 py-0.5 text-caption font-medium whitespace-nowrap",
   {
     variants: {
       variant: {
-        neutral: "bg-muted text-foreground",
+        neutral: "border-border bg-transparent text-foreground",
         info: "bg-info-bg text-info",
         success: "bg-success-bg text-success",
         warning: "bg-warning-bg text-warning",

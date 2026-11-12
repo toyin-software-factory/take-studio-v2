@@ -18,8 +18,6 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-const allColours = [...lightColours, ...stageColours];
-
 /** Token gallery (spec 0003, AC-7). Development and preview builds only; not found in production. */
 export default function DesignGalleryPage() {
   if (
@@ -40,29 +38,27 @@ export default function DesignGalleryPage() {
         className="mx-auto max-w-content space-y-12 px-4 py-8 outline-hidden md:px-6"
       >
         <header className="space-y-2">
-          <h1 className="text-h1 font-semibold">Design system</h1>
-          <p className="text-text-muted">
-            Every token and base component from design.md, on the light app and inside the dark
+          <h1 className="text-h1">Design system</h1>
+          <p className="text-muted-foreground">
+            Every token and base component from design.md, on the light shell and inside the dark
             stage. Contrast ratios are computed from the token values.
           </p>
         </header>
         <ColourSection
           id="light-colours"
-          title="Light app colours"
+          title="Light shell colours"
           colours={lightColours}
           pairs={lightPairs}
-          allColours={allColours}
         />
         <Stage className="space-y-6">
           <ColourSection
             id="stage-colours"
-            title="Stage colours"
+            title="Dark stage colours"
             colours={stageColours}
             pairs={stagePairs}
-            allColours={allColours}
           />
-          <p className="text-small text-text-muted">
-            Inside the stage, focus rings are cream:{" "}
+          <p className="text-small text-muted-foreground">
+            Inside the stage, focus rings are lime:{" "}
             <a href="#stage-colours" className="text-stage-text underline underline-offset-2">
               tab to this link
             </a>{" "}

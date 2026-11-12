@@ -97,7 +97,7 @@ export function BackgroundChange({
 
   return (
     <section aria-labelledby="background-heading" className="flex flex-col gap-4">
-      <h2 id="background-heading" className="text-h3 font-semibold">
+      <h2 id="background-heading" className="text-h3 font-medium">
         Background
       </h2>
       <BackgroundNotes
@@ -126,7 +126,7 @@ export function BackgroundChange({
         }}
       />
       {backgrounds.state.kind === "failed" ? (
-        <p role="status" className="text-small text-text-muted">
+        <p role="status" className="text-small text-muted-foreground">
           We couldn&rsquo;t load your backgrounds, so only the current one is shown.{" "}
           <button
             type="button"

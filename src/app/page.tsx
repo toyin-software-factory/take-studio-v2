@@ -29,8 +29,8 @@ function Landing() {
         tabIndex={-1}
         className="mx-auto flex min-h-dvh max-w-content flex-col items-start justify-center gap-4 px-4 outline-hidden md:px-6"
       >
-        <h1 className="text-h1 font-semibold">Take Studio</h1>
-        <p className="text-text-muted">
+        <h1 className="text-h1 font-medium">Take Studio</h1>
+        <p className="text-muted-foreground">
           Upload a take. Get it back trimmed, on a studio background, with a transcript.
         </p>
         <Button asChild size="lg">
@@ -65,7 +65,7 @@ export default async function Home() {
   return (
     <AppShell user={{ name: session.user.name, email: session.user.email }}>
       <div className="flex flex-col gap-8">
-        <h1 className="text-h1 font-semibold">Your takes</h1>
+        <h1 className="text-h1 font-medium">Your takes</h1>
         <UploadArea />
         <section aria-labelledby="takes-heading" className="flex flex-col gap-4">
           <h2 id="takes-heading" className="sr-only">

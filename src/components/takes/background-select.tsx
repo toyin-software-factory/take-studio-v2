@@ -58,11 +58,11 @@ export function BackgroundSelect({
           // eslint-disable-next-line @next/next/no-img-element -- a presigned R2 link
           <img src={current.thumbUrl} alt="" className="size-full object-cover" />
         ) : (
-          <Icon icon={ImageOff} size="badge" className="text-text-muted" />
+          <Icon icon={ImageOff} size="badge" className="text-muted-foreground" />
         )}
       </span>
       <span className="flex flex-col items-start text-left leading-tight">
-        <span className="text-small text-text-muted">Background</span>
+        <span className="text-small text-muted-foreground">Background</span>
         <span>{current?.name ?? "Keep original"}</span>
       </span>
       <Icon icon={ChevronDown} size="badge" />
@@ -87,7 +87,7 @@ export function BackgroundSelect({
         trigger
       )}
       {state.kind === "failed" ? (
-        <p role="status" className="text-small text-text-muted">
+        <p role="status" className="text-small text-muted-foreground">
           We couldn&rsquo;t load the backgrounds. You can still upload and keep your original.{" "}
           <button type="button" onClick={reload} className="underline underline-offset-2">
             Try again

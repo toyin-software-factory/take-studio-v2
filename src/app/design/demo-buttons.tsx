@@ -1,5 +1,6 @@
 import { Download, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Chip } from "@/components/ui/chip";
 import { Icon } from "@/components/ui/icon";
 import { DemoBlock, DemoGroup } from "./demo-block";
 
@@ -33,13 +34,13 @@ export function ButtonDemos() {
       <DemoBlock title="States: default, hover, pressed, focus, disabled, loading">
         <Button>Default</Button>
         <Button className="bg-primary-hover">Hover</Button>
-        <Button className="bg-primary-active">Pressed</Button>
-        <Button className="outline-2 outline-offset-2 outline-ring outline-solid">Focus</Button>
+        <Button className="scale-[.98] bg-primary-active">Pressed</Button>
+        <Button className="outline-2 outline-offset-3 outline-ring outline-solid">Focus</Button>
         <Button disabled>Disabled</Button>
         <Button loading>Rendering</Button>
       </DemoBlock>
       <DemoBlock title="Secondary and destructive states">
-        <Button variant="secondary" className="bg-accent">
+        <Button variant="secondary" className="bg-hover-surface">
           Hover
         </Button>
         <Button variant="secondary" disabled>
@@ -51,6 +52,13 @@ export function ButtonDemos() {
         <Button variant="destructive" loading>
           Deleting
         </Button>
+      </DemoBlock>
+      <DemoBlock title="Chip: off, on, disabled (toggle pills)">
+        <Chip pressed={false}>Trim pauses</Chip>
+        <Chip pressed>Studio background</Chip>
+        <Chip pressed={false} disabled>
+          Disabled
+        </Chip>
       </DemoBlock>
     </DemoGroup>
   );

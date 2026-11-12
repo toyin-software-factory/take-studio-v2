@@ -1,7 +1,7 @@
 # 0009. Design system v2: light Swiss shell, dark stage
 
 **Date**: 2026-11-12
-**Status**: Proposed
+**Status**: In Progress
 
 Supersedes [0003](../0003-design-system.md).
 

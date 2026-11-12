@@ -61,7 +61,7 @@ export function BackgroundGrid({
       </div>
       {list.builtIn.length > 0 ? (
         <section aria-labelledby={`${group}-studios`} className="flex flex-col gap-3">
-          <h3 id={`${group}-studios`} className="text-body font-semibold">
+          <h3 id={`${group}-studios`} className="text-body font-medium">
             Studios
           </h3>
           <div className={GRID}>{tiles(list.builtIn)}</div>
@@ -69,7 +69,7 @@ export function BackgroundGrid({
       ) : null}
       {extras.length > 0 ? (
         <section aria-labelledby={`${group}-extras`} className="flex flex-col gap-3">
-          <h3 id={`${group}-extras`} className="text-body font-semibold">
+          <h3 id={`${group}-extras`} className="text-body font-medium">
             Current and chosen
           </h3>
           <div className={GRID}>{tiles(extras)}</div>

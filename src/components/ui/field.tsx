@@ -38,7 +38,7 @@ export function Field({ id, label, helper, error, required, className, children 
     <div className={cn("grid gap-1.5", className)}>
       <Label htmlFor={id}>
         {label}
-        {required ? <span className="font-normal text-text-muted">(required)</span> : null}
+        {required ? <span className="font-normal text-muted-foreground">(required)</span> : null}
       </Label>
       {children({
         id,
@@ -56,7 +56,7 @@ export function Field({ id, label, helper, error, required, className, children 
         </p>
       ) : null}
       {helper ? (
-        <p id={helperId} className="text-small text-text-muted">
+        <p id={helperId} className="text-small text-muted-foreground">
           {helper}
         </p>
       ) : null}

@@ -3,7 +3,7 @@
 import { captureException } from "@sentry/core";
 import { useEffect } from "react";
 import { CircleAlert } from "lucide-react";
-import { inter, jetbrainsMono } from "@/lib/fonts";
+import { interTight } from "@/lib/fonts";
 import "./globals.css";
 
 /**
@@ -23,15 +23,15 @@ export default function GlobalError({
   }, [error]);
 
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrainsMono.variable}`}>
+    <html lang="en" className={interTight.variable}>
       <body>
         <main
           id="content"
           className="mx-auto flex min-h-dvh max-w-content flex-col items-start justify-center gap-4 px-4 md:px-6"
         >
           <CircleAlert size={40} strokeWidth={1.5} aria-hidden="true" className="text-danger" />
-          <h1 className="text-h1 font-semibold">Something went wrong</h1>
-          <p className="text-text-muted">
+          <h1 className="text-h1 font-medium">Something went wrong</h1>
+          <p className="text-muted-foreground">
             We couldn&rsquo;t load this page. We&rsquo;ve been told about it. Try again in a moment.
           </p>
           <button
