@@ -60,7 +60,7 @@ Read its "Heads up" list and clear every item before the task is done: context g
 - One task per branch and per PR. PR title `[TASK-ID] …`. Only touch the files your task lists; ask the lead before changing shared files.
 - Every acceptance criterion in the spec is the contract the PR is checked against.
 - Every PR that changes something a user can see or do shows proof, made with agent-browser (`.claude/skills/agent-browser`): screenshots at desktop and phone width, and a short video for any flow (forms, navigation, animation). Publish with `scripts/pr-proof.sh`, which puts the files on the `pr-assets` branch, and paste its output under `## Proof` in the PR body, mapped to the acceptance criteria. A PR whose task is done but has no proof isn't ready to merge. A change with nothing to show in a browser (a background job, a script, a library) shows the relevant test or command output in the PR instead. Docs-only and pure config PRs need no proof.
-- Run the project's lint, typecheck, test and build commands before every push.
+- Run the project's lint, typecheck and test commands before every push. Leave the full production build (`next build` and the like) to CI unless your task changes the build itself (build config, dependencies, bundling): see "Stay reachable while you work".
 - Wait for CI and CodeRabbit on your latest push, then fix their comments or reply why not. CodeRabbit puts out of diff comments in the review body, so read that too.
 - Retry limit: three attempts at a failing check or a CodeRabbit loop. Then stop and raise it with `ask_user` (lead) or to the lead (builders), with what you tried.
 - The lead merges with `gh pr merge <n> --squash --delete-branch`, one PR at a time, and decides per PR whether it needs CodeRabbit's review:
@@ -74,6 +74,8 @@ Read its "Heads up" list and clear every item before the task is done: context g
 - HQ hands you new `[HQ]` messages as soon as your current tool call finishes. Read them then. If one needs an answer (a question, "are you stuck?", a change of plan), answer it with send_message right away, in a line or two, then carry on with your task.
 - Long steps run in the background. Start anything that may take more than about 2 minutes (a full test suite, `next build`, an E2E run, a video render, a big install) with `run_in_background`, then check on it with short commands (read the last lines of its output) every minute or two while you do other useful work. Never wait for it in a foreground loop such as `until ! pgrep ...; do sleep ...; done` or a long `sleep`.
 - Keep every foreground command under about 2 minutes. If one might run longer, background it.
+- Don't sit waiting on a full production build. It is slow and memory hungry in the sandbox, and while you wait for it you are idle and slow to answer. Open the PR once lint, typecheck and tests pass and let CI's build prove it. If CI's build fails, fix that like any other failing check. Only run the build yourself when your task changes the build, and then in the background.
+- Don't end your turn just to wait for a background job when there is other work to do. If you do end it, tell the lead first what you are waiting for and roughly how long it should take.
 
 ## Keep agreements durable
 

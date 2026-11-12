@@ -19,7 +19,7 @@ pnpm install                  # install
 pnpm db:up && pnpm db:migrate # local Postgres (Docker) + migrations
 pnpm db:seed                  # install the built in studio backgrounds (R2 + rows; local database only)
 pnpm dev                      # next dev + trigger dev
-pnpm lint && pnpm typecheck && pnpm test && pnpm build   # run before every push
+pnpm lint && pnpm typecheck && pnpm test   # run before every push (CI runs the build; see ROLE.md)
 pnpm test:e2e                 # Playwright smoke tests
 pnpm db:generate              # new migration after a schema change (commit it)
 ```
