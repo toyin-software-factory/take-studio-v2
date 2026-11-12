@@ -86,7 +86,12 @@ export function UploadArea() {
             Choose a video
           </Button>
           <p className="text-small text-text-muted">{LIMITS}</p>
-          <BackgroundSelect backgrounds={backgrounds} picked={picked} onPick={setPicked} />
+          <BackgroundSelect
+            backgrounds={backgrounds}
+            picked={picked}
+            onPick={setPicked}
+            onForget={(id) => setPicked((now) => (now === id ? ORIGINAL_BACKGROUND : now))}
+          />
           <input
             ref={input}
             id={UPLOAD_INPUT_ID}

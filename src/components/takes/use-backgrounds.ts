@@ -32,9 +32,13 @@ export function useBackgrounds() {
       live = false;
     };
   }, []);
+  // A refresh keeps the list on screen (an open picker must not vanish while it reloads), and a
+  // failed refresh keeps the old list; only a first or failed load shows as loading.
   const reload = useCallback(() => {
-    setState({ kind: "loading" });
-    void fetchList().then(setState);
+    setState((prev) => (prev.kind === "ready" ? prev : { kind: "loading" }));
+    void fetchList().then((next) =>
+      setState((prev) => (next.kind === "failed" && prev.kind === "ready" ? prev : next)),
+    );
   }, []);
   return { state, reload };
 }

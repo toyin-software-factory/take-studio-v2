@@ -80,6 +80,27 @@ export function createR2(env: R2Env) {
       return signed.url;
     },
 
+    /**
+     * A presigned PUT for one whole object with its content type and exact length signed, so
+     * the link only accepts that type and that many bytes. `expiresSeconds` defaults to 15
+     * minutes. The browser sends `Content-Type` itself; `Content-Length` follows the body.
+     */
+    async presignPutObject(
+      key: string,
+      contentType: string,
+      bytes: number,
+      expiresSeconds: number = 15 * 60,
+    ): Promise<string> {
+      const url = new URL(objectUrl(key));
+      url.searchParams.set("X-Amz-Expires", String(expiresSeconds));
+      const signed = await client.sign(url.toString(), {
+        method: "PUT",
+        headers: { "content-type": contentType, "content-length": String(bytes) },
+        aws: { signQuery: true, allHeaders: true },
+      });
+      return signed.url;
+    },
+
     /** Uploads one part from memory (job side) and returns its ETag without quotes. */
     async uploadPart(
       key: string,

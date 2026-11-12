@@ -1,8 +1,9 @@
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { processingJob, render, storageDeletion, take, user } from "@/db/schema";
+import { background, processingJob, render, storageDeletion, take, user } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
+import { backgroundKeys } from "@/lib/background-rules";
 import { thumbnailKey } from "@/lib/take-rules";
 import { finish, markRunning, start } from "../jobs";
 import { completeLatest, create as createRender } from "../renders";
@@ -93,5 +94,53 @@ describe("account deletion (AC-17)", () => {
     });
     expect(deleted).toEqual({ queuedKeys: [], runIds: [] });
     expect(calls).toEqual({ cancelled: [], drains: 0 });
+  });
+});
+
+describe("account deletion and uploaded backgrounds (spec 0008, AC-10)", () => {
+  it("deletes the creator's backgrounds and queues all their files, leaving other creators' alone", async () => {
+    const creator = await createCreator(db);
+    const other = await createCreator(db);
+    const mine = [crypto.randomUUID(), crypto.randomUUID()];
+    const theirs = crypto.randomUUID();
+    const row = (id: string, creatorId: string, status: string) => ({
+      id,
+      creatorId,
+      name: "Wall",
+      status,
+      ...(status === "ready"
+        ? {
+            imageKey: backgroundKeys(creatorId, id).imageKey,
+            thumbKey: backgroundKeys(creatorId, id).thumbKey,
+            width: 1920,
+            height: 1080,
+          }
+        : {}),
+    });
+    await db
+      .insert(background)
+      .values([
+        row(mine[0]!, creator.id, "ready"),
+        row(mine[1]!, creator.id, "processing"),
+        row(theirs, other.id, "ready"),
+      ]);
+    const calls = { drains: 0 };
+    await deleteCreatorData(db, creator.id, {
+      cancelRuns: async () => 0,
+      requestStorageDrain: async () => void calls.drains++,
+    });
+    expect(calls.drains).toBe(1);
+    expect(
+      await db.select().from(background).where(eq(background.creatorId, creator.id)),
+    ).toHaveLength(0);
+    expect(await db.select().from(background).where(eq(background.id, theirs))).toHaveLength(1);
+    const queued = (await db.select().from(storageDeletion)).map((r) => r.objectKey);
+    for (const id of mine) {
+      const keys = backgroundKeys(creator.id, id);
+      expect(queued).toEqual(
+        expect.arrayContaining([keys.sourceKey, keys.imageKey, keys.thumbKey]),
+      );
+    }
+    expect(queued).not.toContain(backgroundKeys(other.id, theirs).imageKey);
   });
 });

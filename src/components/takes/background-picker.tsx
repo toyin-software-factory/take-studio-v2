@@ -17,6 +17,7 @@ import {
   type BackgroundListData,
   ORIGINAL_BACKGROUND,
 } from "@/lib/background-api";
+import { BackgroundMine, type MineActions } from "./background-mine";
 import { BackgroundTile } from "./background-tile";
 
 const GROUP = "background-choice";
@@ -58,14 +59,16 @@ export function BackgroundPicker({
   list,
   value,
   onChange,
+  mine: mineActions,
 }: {
   /** The button that opens the dialog; focus returns to it when the dialog closes. */
   readonly trigger: React.ReactNode;
   readonly list: BackgroundListData;
   readonly value: string;
   readonly onChange: (id: string) => void;
+  /** Uploading, deleting and the state of the upload (spec 0008, AC-8, AC-10). */
+  readonly mine: MineActions;
 }) {
-  const mine = list.mine.filter((item) => item.status === "ready");
   return (
     <Dialog>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
@@ -98,14 +101,13 @@ export function BackgroundPicker({
                 <Grid items={list.builtIn} value={value} onChange={onChange} />
               </section>
             ) : null}
-            {mine.length > 0 ? (
-              <section aria-labelledby="mine-heading" className="flex flex-col gap-3">
-                <h3 id="mine-heading" className="text-body font-semibold">
-                  Your backgrounds
-                </h3>
-                <Grid items={mine} value={value} onChange={onChange} />
-              </section>
-            ) : null}
+            <BackgroundMine
+              items={list.mine}
+              value={value}
+              onChange={onChange}
+              group={GROUP}
+              actions={mineActions}
+            />
           </fieldset>
         </DialogBody>
         <DialogFooter>

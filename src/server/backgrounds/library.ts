@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, or } from "drizzle-orm";
 import { background, user } from "@/db/schema";
 import type { Executor } from "@/db/types";
 
@@ -15,6 +15,8 @@ export type BackgroundItem = {
   readonly name: string;
   readonly alt: string;
   readonly status: string;
+  /** Why ingest refused an upload (`image_too_small` ...), for the friendly message; null otherwise. */
+  readonly failureCode: string | null;
   /** A presigned link for the 480 by 270 thumbnail; null until the image has been processed. */
   readonly thumbUrl: string | null;
 };
@@ -41,6 +43,7 @@ export async function listBackgrounds(
     name: row.name,
     alt: row.alt ?? row.name,
     status: row.status,
+    failureCode: row.failureCode,
     thumbUrl: row.status === "ready" && row.thumbKey ? await presign(row.thumbKey) : null,
   });
 
@@ -52,7 +55,13 @@ export async function listBackgrounds(
   const mine = await db
     .select()
     .from(background)
-    .where(eq(background.creatorId, creatorId))
+    // Not the hidden tombstones of deleted uploads (`removed`).
+    .where(
+      and(
+        eq(background.creatorId, creatorId),
+        or(isNull(background.failureCode), ne(background.failureCode, "removed")),
+      ),
+    )
     .orderBy(desc(background.createdAt), desc(background.id))
     .limit(MINE_LIMIT);
   const [profile] = await db

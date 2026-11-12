@@ -71,6 +71,19 @@ export function triggerForTranscribe() {
 }
 
 /**
+ * Triggers `ingest-background` for an uploaded background with the global idempotency key
+ * `ingest-{backgroundId}` (spec 0008), so repeated completions never ingest twice. Payload: the
+ * background ID only.
+ */
+export async function triggerIngest(backgroundId: string): Promise<{ readonly id: string }> {
+  const idempotencyKey = await idempotencyKeys.create(`ingest-${backgroundId}`, {
+    scope: "global",
+  });
+  const handle = await tasks.trigger("ingest-background", { backgroundId }, { idempotencyKey });
+  return { id: handle.id };
+}
+
+/**
  * Triggers `preview-background` for a preview (spec 0008). One preview at a time per take: the
  * concurrency key `preview-{takeId}` gives each take its own queue of limit 1. The idempotency
  * key holds the row's last change, so a repeated request for the same attempt never starts a

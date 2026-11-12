@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
+import { deleteCreatorBackgrounds } from "@/db/data/backgrounds";
 import { type DeletedTakes, deleteTakesInTx } from "@/db/data/deletion";
-import { take } from "@/db/schema";
+import { take, user } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { cancelRuns, requestStorageDrain } from "@/lib/trigger-runs";
 import type { AfterDelete } from "../takes";
@@ -9,8 +10,8 @@ import type { AfterDelete } from "../takes";
  * Account deletion (spec 0002, AC-17, "Security model"). Better Auth's `user.deleteUser` runs
  * `deleteCreatorData` in its `beforeDelete` hook (see ../auth.ts), then deletes the user row.
  *
- * In one transaction: lock all the creator's takes, queue every file key, delete the takes
- * (everything under them cascades). After commit: cancel their active runs and ask for a
+ * In one transaction: delete the creator's uploaded backgrounds (queueing their files), lock all
+ * the creator's takes, queue every file key, delete the takes (everything under them cascades). After commit: cancel their active runs and ask for a
  * queue drain, best effort. Usage accounting is keyed by an email HMAC, not the user, so
  * usage rows (slice 6) survive; the job rows holding charge hashes go with the takes.
  */
@@ -19,7 +20,13 @@ export async function deleteCreatorData(
   creatorId: string,
   after: AfterDelete = { cancelRuns, requestStorageDrain },
 ): Promise<DeletedTakes> {
+  let backgroundsDeleted = 0;
   const deleted = await db.transaction(async (tx) => {
+    // Lock order (src/db/AGENTS.md): the creator row first, which also holds off a new upload
+    // (it locks the same row), then the creator's backgrounds (uploaded images, previews and all
+    // their files), then the takes.
+    await tx.select({ id: user.id }).from(user).where(eq(user.id, creatorId)).for("update");
+    backgroundsDeleted = await deleteCreatorBackgrounds(tx, creatorId);
     const owned = await tx
       .select({ id: take.id })
       .from(take)
@@ -32,7 +39,7 @@ export async function deleteCreatorData(
   });
 
   await after.cancelRuns(deleted.runIds);
-  if (deleted.queuedKeys.length > 0) await after.requestStorageDrain();
+  if (deleted.queuedKeys.length > 0 || backgroundsDeleted > 0) await after.requestStorageDrain();
   return deleted;
 }
 
