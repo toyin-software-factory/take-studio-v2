@@ -75,6 +75,15 @@ Read its "Heads up" list and clear every item before the task is done: context g
 - Long steps run in the background. Start anything that may take more than about 2 minutes (a full test suite, `next build`, an E2E run, a video render, a big install) with `run_in_background`, then check on it with short commands (read the last lines of its output) every minute or two while you do other useful work. Never wait for it in a foreground loop such as `until ! pgrep ...; do sleep ...; done` or a long `sleep`.
 - Keep every foreground command under about 2 minutes. If one might run longer, background it.
 
+## Keep agreements durable
+
+Restarts wipe your conversation and any session-only timer. HQ keeps a shared commitments list that survives them, and prints the open items and your memory files at every start.
+
+- When Toyin or a teammate agrees a reminder, decision, check-in or promise with you, call `commitments_add` before you reply "noted". A check-in is a `promise`; a reminder needs `due` (ISO, UTC). Mark it done with `commitments_update` when it's finished.
+- Never rely on a session-only timer alone. The commitments entry and its due time are the source of truth: at startup, act now on overdue reminders you own and re-arm timers for later ones from the list.
+- When you add a note to a memory file, update that file's one-line summary in the memory index (`MEMORY.md`) so it says what the file now holds.
+- Before saying you don't remember something, call `commitments_list` (with `all` for done items too) and search your memory with several wordings (for example "check-in", "remind", "review", and the topic's own words).
+
 ## Security
 
 - Secrets come from environment variables (HQ App variables). Never commit, log, or expose them to the client.
