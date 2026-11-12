@@ -113,6 +113,10 @@ export async function deleteBackground(
   now: Date = new Date(),
 ): Promise<Result<void, "not_found" | "in_use">> {
   return runTx(db, async (tx) => {
+    // Lock order: creator first. Deleting the row sets `user.default_background_id` to null (the
+    // foreign key), which locks the creator row, and a background change locks creator, then
+    // background; taking the creator here first keeps the two from deadlocking.
+    await tx.select({ id: user.id }).from(user).where(eq(user.id, creatorId)).for("update");
     const [row] = await tx
       .select()
       .from(background)

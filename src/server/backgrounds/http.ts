@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NO_GREEN_SCREEN_NOTE } from "@/lib/take-display";
 import { type TakeHttpDeps, guard, json } from "../takes/http";
 import { hasActiveTranscribe } from "../transcripts";
 import { type ChangeBackgroundError, changeBackground } from ".";
@@ -16,6 +17,8 @@ const STATUS: Readonly<Record<ChangeBackgroundError | "invalid", number>> = {
   original_gone: 409,
   not_ready: 409,
   same_background: 409,
+  no_green_screen: 409,
+  background_change_limit: 429,
   background_not_ready: 409,
   dispatch_failed: 503,
 };
@@ -28,6 +31,9 @@ export const BACKGROUND_MESSAGES: Readonly<Record<ChangeBackgroundError | "inval
   original_gone: "This take's video has expired, so its background can't be changed.",
   not_ready: "This take isn't ready yet. Try again when it is.",
   same_background: "This take already has that background.",
+  no_green_screen: NO_GREEN_SCREEN_NOTE,
+  background_change_limit:
+    "You've changed backgrounds a lot in the last hour. Please try again later.",
   background_not_ready: "That background isn't ready yet. Try again in a moment.",
   dispatch_failed: "The new video didn't start. Please try again.",
 };

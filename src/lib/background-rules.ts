@@ -26,6 +26,14 @@ export const BACKGROUND_UPLOAD = {
   removedKeepMs: 15 * 60 * 1000 + 5 * 60 * 1000,
 } as const;
 
+/**
+ * Background changes (spec 0008, cost guard): each one is a full re render on a large machine,
+ * so a creator may start this many per hour (failed ones and retries count, like uploads).
+ */
+export const BACKGROUND_CHANGE = {
+  perHour: 10,
+} as const;
+
 export const BACKGROUND_IMAGE = {
   minWidth: 1280,
   minHeight: 720,

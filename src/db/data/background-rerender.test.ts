@@ -193,10 +193,35 @@ describe("startBackgroundJob", () => {
     });
   });
 
-  it("lets a no green screen take pick its background again: the video is not on it", async () => {
+  it("refuses a real background when the last render found no green screen; the original is not refused for it (no_green_screen)", async () => {
     const bg = await seedBackground();
+    const other = await seedBackground();
     const unkeyed = await readyTake({ backgroundId: bg.id, keyed: false });
-    expect((await change(unkeyed.creator.id, unkeyed.take.id, bg.id)).ok).toBe(true);
+    for (const target of [bg.id, other.id]) {
+      expect(await change(unkeyed.creator.id, unkeyed.take.id, target)).toEqual({
+        ok: false,
+        error: "no_green_screen",
+      });
+    }
+    // Back to the original is not a no_green_screen refusal: the video is on it already.
+    expect(await change(unkeyed.creator.id, unkeyed.take.id, null)).toEqual({
+      ok: false,
+      error: "same_background",
+    });
+    // After a failed job the original is a retry and goes through.
+    await db.insert(processingJob).values({
+      id: crypto.randomUUID(),
+      takeId: unkeyed.take.id,
+      kind: "rerender",
+      status: "failed",
+      failureCode: "internal_error",
+      secondsCharged: 0,
+      createdAt: new Date(Date.now() + 1000),
+    });
+    expect((await change(unkeyed.creator.id, unkeyed.take.id, null)).ok).toBe(true);
+    // A take with no render snapshot name at all (never keyed on a chosen background) is free.
+    const plain = await readyTake();
+    expect((await change(plain.creator.id, plain.take.id, bg.id)).ok).toBe(true);
   });
 
   it("lets a take keyed on a deleted background go back to the original or pick another", async () => {
@@ -465,5 +490,146 @@ describe("lock order with a background (spec 0008)", () => {
     const steps = await db.select().from(jobStep).where(eq(jobStep.jobId, started.data.id));
     expect(steps).toHaveLength(2);
     expect(await db.select().from(user).where(eq(user.id, creator.id))).toHaveLength(1);
+  });
+});
+
+/** A finished background change (a rerender with no trim step) started `startedAt`, on the take. */
+async function seedChange(takeId: string, startedAt: Date, withTrim = false) {
+  const id = crypto.randomUUID();
+  await db.insert(processingJob).values({
+    id,
+    takeId,
+    kind: "rerender",
+    status: "failed",
+    failureCode: "internal_error",
+    secondsCharged: 0,
+    createdAt: startedAt,
+  });
+  if (withTrim) {
+    await db
+      .insert(jobStep)
+      .values({ id: crypto.randomUUID(), jobId: id, name: "trim", position: 0, status: "failed" });
+  }
+}
+
+describe("background change limit (HRF-T01)", () => {
+  it("allows 10 changes in an hour and refuses the 11th, then allows one after the window", async () => {
+    const bg = await seedBackground();
+    const { creator, take: t } = await readyTake();
+    const now = new Date();
+    for (let i = 0; i < 10; i += 1) await seedChange(t.id, new Date(now.getTime() - i * 60_000));
+    const refused = await startBackgroundJob(db, {
+      creatorId: creator.id,
+      takeId: t.id,
+      backgroundId: bg.id,
+      now,
+    });
+    expect(refused).toEqual({ ok: false, error: "background_change_limit" });
+    // Nothing was started by the refusal.
+    expect(
+      (await db.select().from(processingJob).where(eq(processingJob.takeId, t.id))).filter(
+        (j) => j.status === "queued",
+      ),
+    ).toHaveLength(0);
+    // Once the oldest of the ten (made at `now`) is more than an hour old, the window has room.
+    const later = new Date(now.getTime() + 3_600_000 + 1_000);
+    const again = await startBackgroundJob(db, {
+      creatorId: creator.id,
+      takeId: t.id,
+      backgroundId: bg.id,
+      now: later,
+    });
+    expect(again.ok).toBe(true);
+  });
+
+  it("counts the nine below the limit as allowed, whatever way the change went (failed ones included)", async () => {
+    const bg = await seedBackground();
+    const { creator, take: t } = await readyTake();
+    const now = new Date();
+    for (let i = 0; i < 9; i += 1) await seedChange(t.id, now);
+    expect(
+      (
+        await startBackgroundJob(db, {
+          creatorId: creator.id,
+          takeId: t.id,
+          backgroundId: bg.id,
+          now,
+        })
+      ).ok,
+    ).toBe(true);
+  });
+
+  it("counts the creator's changes across all their takes, not one take's", async () => {
+    const bg = await seedBackground();
+    const { creator, take: first } = await readyTake();
+    const second = await seedTake(db, creator.id, { status: "ready", durationMs: 10_000 });
+    const now = new Date();
+    for (let i = 0; i < 6; i += 1) await seedChange(first.id, now);
+    for (let i = 0; i < 4; i += 1) await seedChange(second.id, now);
+    expect(
+      await startBackgroundJob(db, {
+        creatorId: creator.id,
+        takeId: first.id,
+        backgroundId: bg.id,
+        now,
+      }),
+    ).toEqual({ ok: false, error: "background_change_limit" });
+  });
+
+  it("does not count a re render that trims again (startJob's), and one creator never blocks another", async () => {
+    const bg = await seedBackground();
+    const { creator, take: t } = await readyTake();
+    const now = new Date();
+    for (let i = 0; i < 10; i += 1) await seedChange(t.id, now, true);
+    expect(
+      (
+        await startBackgroundJob(db, {
+          creatorId: creator.id,
+          takeId: t.id,
+          backgroundId: bg.id,
+          now,
+        })
+      ).ok,
+    ).toBe(true);
+
+    const busy = await readyTake();
+    for (let i = 0; i < 10; i += 1) await seedChange(busy.take.id, now);
+    const calm = await readyTake();
+    expect(
+      await startBackgroundJob(db, {
+        creatorId: busy.creator.id,
+        takeId: busy.take.id,
+        backgroundId: bg.id,
+        now,
+      }),
+    ).toEqual({ ok: false, error: "background_change_limit" });
+    expect(
+      (
+        await startBackgroundJob(db, {
+          creatorId: calm.creator.id,
+          takeId: calm.take.id,
+          backgroundId: bg.id,
+          now,
+        })
+      ).ok,
+    ).toBe(true);
+  });
+
+  it("parallel requests cannot both pass the last free slot (the creator's row is locked)", async () => {
+    const bg = await seedBackground();
+    const { creator } = await readyTake();
+    const takes = await Promise.all(
+      [0, 1].map(() => seedTake(db, creator.id, { status: "ready", durationMs: 10_000 })),
+    );
+    const now = new Date();
+    const filler = takes[0]!;
+    for (let i = 0; i < 9; i += 1) await seedChange(filler.id, now);
+    const results = await Promise.all(
+      takes.map((t) =>
+        startBackgroundJob(db, { creatorId: creator.id, takeId: t.id, backgroundId: bg.id, now }),
+      ),
+    );
+    expect(results.filter((r) => r.ok)).toHaveLength(1);
+    expect(results.filter((r) => !r.ok && r.error === "background_change_limit")).toHaveLength(1);
   });
 });

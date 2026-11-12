@@ -63,6 +63,9 @@ export const processTakeTask = task({
   machine: "large-1x",
   maxDuration: PROCESS_TAKE_LIMITS.maxDurationSeconds,
   retry: { maxAttempts: PROCESS_TAKE_LIMITS.maxAttempts },
+  // Per creator: every run is triggered with the concurrency key `creator-{id}` (`triggerForJob`),
+  // so each creator gets a queue of this size and cannot take every slot.
+  queue: { concurrencyLimit: PROCESS_TAKE_LIMITS.perCreatorConcurrency },
   run: async (payload: { readonly jobId: string }, { ctx }) => {
     const env = parseJobEnv();
     const r2 = createR2(env);

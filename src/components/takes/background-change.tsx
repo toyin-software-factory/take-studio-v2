@@ -58,6 +58,9 @@ export function BackgroundChange({
   // "Try again" only while the choice is the failed target; another pick is a new change.
   const retrying = failed && choice === (retryTarget ?? ORIGINAL_BACKGROUND);
   const start = useBackgroundStart(take.id, choice, onStarted, onUncertain);
+  // The last render found no green screen: a real background would show nowhere (the server
+  // refuses it too), so only "Keep original" can be used. The note above says why.
+  const noGreen = detail.noGreenScreen && choice !== ORIGINAL_BACKGROUND;
   const busy = start.starting || backgroundChangeActive(backgroundJob);
   const list = backgrounds.state.kind === "ready" ? backgrounds.state.list : NO_LIST;
   const listed = [...list.builtIn, ...list.mine].filter((b) => b.status === "ready");
@@ -151,7 +154,7 @@ export function BackgroundChange({
           type="button"
           onClick={start.change}
           loading={start.starting}
-          disabled={busy || (choice === current && !retrying)}
+          disabled={busy || noGreen || (choice === current && !retrying)}
         >
           {retrying
             ? "Try again"

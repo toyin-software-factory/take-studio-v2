@@ -9,7 +9,7 @@ import {
 } from "@/db/data/cleanup";
 import { parseJobEnv } from "@/lib/env";
 import { createR2 } from "@/lib/r2";
-import { cancelRuns, triggerProbe } from "@/lib/trigger-runs";
+import { cancelRuns, isRunWaiting, triggerProbe } from "@/lib/trigger-runs";
 import { storageDeletionTask } from "./storage-deletion";
 import { queueTakeEmail } from "./email/queue";
 
@@ -19,7 +19,8 @@ import { queueTakeEmail } from "./email/queue";
  *    dispatch the probe again with a fresh key; after 3 re-dispatches fail them (`internal_error`);
  * 1. fail abandoned uploads (`upload_abandoned`) and abort their multipart uploads (each one is
  *    checked against storage first: a stored original is never abandoned);
- * 2. fail stuck jobs with the refundable `stale_run` (and cancel their runs);
+ * 2. fail stuck jobs with the refundable `stale_run` (and cancel their runs); a `queued` job whose
+ *    run is still waiting in Trigger.dev's queue (a creator's concurrency limit) is not stale;
  * 3. expire takes past `video_expires_at`, queuing their video files;
  * 4. drain the file deletion queue.
  * Each step handles a batch; the next run continues. Logs counts and IDs only.
@@ -53,7 +54,8 @@ export const cleanupTask = schedules.task({
         }
       }
 
-      const stale = await failStaleJobs(db, now);
+      // A queued job whose run still waits (behind its creator's limit) is left alone.
+      const stale = await failStaleJobs(db, now, isRunWaiting);
       // AC-5: a job the sweep failed still owes its creator the "didn't finish" email.
       for (const job of stale) await queueTakeEmail(job.jobId, job.kind);
       const cancelled = await cancelRuns(stale.flatMap(({ runId }) => (runId ? [runId] : [])));
