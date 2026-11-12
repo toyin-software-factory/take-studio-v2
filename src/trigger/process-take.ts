@@ -16,7 +16,7 @@ import {
   whileJobActive,
 } from "@/db/data/jobs";
 import { completeLatest, create as createRender } from "@/db/data/renders";
-import { jobStep, processingJob, take } from "@/db/schema";
+import { background, jobStep, processingJob, take } from "@/db/schema";
 import { runTx } from "@/db/tx";
 import { ok } from "@/lib/result";
 import { renderKey } from "@/lib/cut-rules";
@@ -41,6 +41,8 @@ import { deadlineMs, isDeadlineExceeded, runWithDeadline } from "@/lib/deadline"
 import { PROCESS_TAKE_LIMITS } from "@/lib/cleanup-rules";
 import { RENDER_UPLOAD } from "@/lib/uploads";
 import { queueTakeEmail } from "./email/queue";
+import { toHex } from "@/lib/keying";
+import { BackgroundMissingError, detectInFile } from "./keying";
 import { MediaToolError, probeFile, runFfmpeg } from "./media";
 
 /**
@@ -146,37 +148,87 @@ async function processJob(
     const facts = await probeFile(source, signal);
     if (!facts) throw new MediaToolError("ffprobe", null, false);
 
-    // Trim.
+    // Trim. A take with no sound has nothing to trim: with no background it ends here (the
+    // original is the video); with one it still renders, below.
     await step("trim", "running", 0);
     if (!facts.hasAudio) {
       await step("trim", "skipped", 0);
-      await step("render", "skipped", 0);
-      signal.throwIfAborted();
-      await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
-      await queueTakeEmail(job.id, job.kind);
-      // The transcript job skips it as `no_speech` without calling Deepgram (spec 0007, AC-7).
-      await startTranscript(client, t.id);
-      return { jobId: job.id, takeId: t.id, outcome: "no_audio" as const };
+      if (!job.targetBackgroundId) {
+        await step("render", "skipped", 0);
+        signal.throwIfAborted();
+        await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
+        await queueTakeEmail(job.id, job.kind);
+        // The transcript job skips it as `no_speech` without calling Deepgram (spec 0007, AC-7).
+        await startTranscript(client, t.id);
+        return { jobId: job.id, takeId: t.id, outcome: "no_audio" as const };
+      }
     }
-    const trimProgress = throttledProgress((p) => step("trim", "running", p));
-    const stderr = await runFfmpeg(
-      ["-i", source, "-vn", "-af", silencedetectFilter(), "-f", "null", "-"],
-      {
-        timeoutMs: 15 * 60_000,
-        signal,
-        onOutTimeMs: (ms) => void trimProgress.report((ms / facts.durationMs) * 100),
-      },
-    );
-    const proposed = cutsFromSilences(parseSilences(stderr, facts.durationMs), facts.durationMs);
-    signal.throwIfAborted();
-    const analysed = await db((d) =>
-      whileJobActive(d, job.id, (tx) => reanalyse(tx, { takeId: t.id, proposed }), signal),
-    );
-    if (!analysed.ok) throw new Error(`reanalyse failed: ${analysed.error}`);
-    await trimProgress.flush();
-    await step("trim", "succeeded", 100);
+    let hasCuts = false;
+    if (facts.hasAudio) {
+      const trimProgress = throttledProgress((p) => step("trim", "running", p));
+      const stderr = await runFfmpeg(
+        ["-i", source, "-vn", "-af", silencedetectFilter(), "-f", "null", "-"],
+        {
+          timeoutMs: 15 * 60_000,
+          signal,
+          onOutTimeMs: (ms) => void trimProgress.report((ms / facts.durationMs) * 100),
+        },
+      );
+      const proposed = cutsFromSilences(parseSilences(stderr, facts.durationMs), facts.durationMs);
+      signal.throwIfAborted();
+      const analysed = await db((d) =>
+        whileJobActive(d, job.id, (tx) => reanalyse(tx, { takeId: t.id, proposed }), signal),
+      );
+      if (!analysed.ok) throw new Error(`reanalyse failed: ${analysed.error}`);
+      await trimProgress.flush();
+      await step("trim", "succeeded", 100);
+      hasCuts = analysed.data.cuts.some((c) => c.applied);
+    }
 
-    if (!analysed.data.cuts.some((c) => c.applied)) {
+    // Background (spec 0008): find the green screen and its colour; none usable keeps the
+    // original background and the step ends skipped.
+    let backgroundFacts: {
+      readonly id: string;
+      readonly name: string;
+      readonly imagePath: string;
+      readonly keyColor: string | null;
+    } | null = null;
+    if (job.targetBackgroundId) {
+      await step("background", "running", 0);
+      const [bg] = await db((d) =>
+        d.select().from(background).where(eq(background.id, job.targetBackgroundId!)),
+      );
+      if (!bg || bg.status !== "ready" || !bg.imageKey) throw new BackgroundMissingError();
+      const imagePath = join(work, "background.jpg");
+      await downloadToFile(
+        await r2.presignGet(bg.imageKey, { expiresSeconds: 60 * 60 }),
+        imagePath,
+        signal,
+      );
+      const detection = await detectInFile(source, facts, signal);
+      backgroundFacts = {
+        id: bg.id,
+        name: bg.name,
+        imagePath,
+        keyColor: detection.usable ? toHex(detection.keyColor) : null,
+      };
+      if (detection.usable) {
+        await step("background", "succeeded", 100);
+      } else {
+        await db((d) =>
+          updateStep(d, {
+            jobId: job.id,
+            name: "background",
+            status: "skipped",
+            progress: 0,
+            failureCode: "no_green_screen",
+          }),
+        );
+      }
+    }
+    const keyed = backgroundFacts?.keyColor != null;
+
+    if (!hasCuts && !keyed) {
       await step("render", "skipped", 0);
       signal.throwIfAborted();
       await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
@@ -188,7 +240,24 @@ async function processJob(
     // Render.
     await step("render", "running", 0);
     const created = await db((d) =>
-      whileJobActive(d, job.id, (tx) => createRender(tx, { takeId: t.id, jobId: job.id }), signal),
+      whileJobActive(
+        d,
+        job.id,
+        (tx) =>
+          createRender(tx, {
+            takeId: t.id,
+            jobId: job.id,
+            background: backgroundFacts
+              ? {
+                  backgroundId: backgroundFacts.id,
+                  backgroundName: backgroundFacts.name,
+                  keyed,
+                  keyColor: backgroundFacts.keyColor,
+                }
+              : undefined,
+          }),
+        signal,
+      ),
     );
     if (!created.ok) throw new Error(`render create failed: ${created.error}`);
     const renderId = created.data.id;
@@ -199,7 +268,17 @@ async function processJob(
     }
     const expectedMs = totalMs(keep);
     const script = join(work, "graph.txt");
-    await writeFile(script, renderFilterScript(keep, facts.hdrTransfer));
+    await writeFile(
+      script,
+      renderFilterScript(keep, {
+        hdr: facts.hdrTransfer,
+        hasAudio: facts.hasAudio,
+        background:
+          keyed && backgroundFacts?.keyColor
+            ? { keyColor: backgroundFacts.keyColor, width: facts.width, height: facts.height }
+            : undefined,
+      }),
+    );
     const output = join(work, "render.mp4");
     const renderProgress = throttledProgress((p) => step("render", "running", p));
     await runFfmpeg(
@@ -207,12 +286,15 @@ async function processJob(
         "-y",
         "-i",
         source,
+        // The background image, looped at the output frame rate, is input 1 of the key graph.
+        ...(keyed && backgroundFacts
+          ? ["-loop", "1", "-framerate", outputFps(facts.fps), "-i", backgroundFacts.imagePath]
+          : []),
         "-filter_complex_script",
         script,
         "-map",
         "[vout]",
-        "-map",
-        "[aout]",
+        ...(facts.hasAudio ? ["-map", "[aout]"] : []),
         "-fps_mode",
         "cfr",
         "-r",
@@ -228,10 +310,7 @@ async function processJob(
         ...(facts.hdrTransfer
           ? ["-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709"]
           : []),
-        "-c:a",
-        "aac",
-        "-b:a",
-        "192k",
+        ...(facts.hasAudio ? ["-c:a", "aac", "-b:a", "192k"] : []),
         "-movflags",
         "+faststart",
         output,
@@ -287,7 +366,7 @@ async function processJob(
       takeId: t.id,
       outcome: "rendered" as const,
       renderId,
-      cuts: analysed.data.cuts.length,
+      keyed,
       removedMs: facts.durationMs - expectedMs,
       renderMs: rendered.durationMs,
     };
@@ -332,6 +411,10 @@ async function startTranscript(client: JobDb, takeId: string): Promise<void> {
 export function failureCodeFor(error: unknown): FailureCode {
   // The attempt stopped itself before maxDuration (src/lib/deadline.ts).
   if (isDeadlineExceeded(error)) return "timeout";
+  // The background image vanished or was not ready while the job ran (spec 0008).
+  if ((error as { name?: string } | null)?.name === "BackgroundMissingError") {
+    return "background_missing";
+  }
   if (
     error instanceof MediaToolError ||
     (error as { name?: string } | null)?.name === "MediaToolError"

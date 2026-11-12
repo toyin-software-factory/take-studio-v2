@@ -1,7 +1,18 @@
 import { sql } from "drizzle-orm";
-import { bigint, check, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  type AnyPgColumn,
+  bigint,
+  check,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
 import { CONTAINERS, TAKE_TITLE_MAX, TAKE_TITLE_MIN } from "@/lib/processing";
 import { user } from "./auth";
+import { background } from "./background";
 import { inList, takeStatus, timestamps } from "./helpers";
 
 /** One uploaded video take, owned by a creator (spec 0002, slice 1). */
@@ -29,9 +40,17 @@ export const take = pgTable(
     probeAttempts: integer("probe_attempts").notNull().default(0),
     /** Open set: validated against the failure code registry in code, no DB CHECK. */
     failureCode: text("failure_code"),
+    /**
+     * The take's current background (spec 0008); null is the original. Changed only by upload
+     * create and by a successful background re render.
+     */
+    backgroundId: uuid("background_id").references((): AnyPgColumn => background.id, {
+      onDelete: "set null",
+    }),
     ...timestamps,
   },
   (t) => [
+    index("take_background_idx").on(t.backgroundId),
     index("take_creator_created_idx").on(t.creatorId, t.createdAt.desc(), t.id),
     index("take_status_expires_idx").on(t.status, t.videoExpiresAt),
     check(

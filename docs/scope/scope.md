@@ -147,7 +147,7 @@ Replace the green screen with a studio background: pick one of a few built in st
 **Done when:** a creator picks a preset or uploads an image (format and size checked), and the finished video shows the subject cleanly on that background with no visible green edges in normal lighting.
 - [x] Design it (spec): `/architect studio background swap`
 - [ ] Build it: `/develop studio background swap`
-   - [ ] First thread: keying in the video job, detection, always render with a background (AC-2, AC-3)
+   - [x] First thread: keying in the video job, detection, always render with a background (AC-2, AC-3)
    - [ ] Choose at upload and change later: upload choice and default, background re-renders that keep the take Ready (AC-1, AC-5, AC-6)
    - [ ] Previews and uploaded backgrounds: preview stills, upload, ingest, library, delete (AC-4, AC-8, AC-9, AC-10)
    - [ ] Picker, tips and the six studios, then end to end tests (AC-4, AC-7, AC-11, AC-12, AC-2, AC-5)

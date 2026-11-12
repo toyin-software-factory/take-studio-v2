@@ -140,7 +140,7 @@ describe("keepRanges and the render graph (AC-6)", () => {
         { startMs: 1_400, endMs: 3_250 },
         { startMs: 4_250, endMs: 17_600 },
       ],
-      "smpte2084",
+      { hdr: "smpte2084" },
     );
     expect(script.split("\n")).toEqual([
       "[0:v]trim=start=1.399999:end=3.249999,setpts=PTS-STARTPTS[v0];",
@@ -150,9 +150,48 @@ describe("keepRanges and the render graph (AC-6)", () => {
       "[v0][a0][v1][a1]concat=n=2:v=1:a=1[vc][aout];",
       "[vc]zscale=tin=smpte2084:min=bt2020nc:pin=bt2020:t=linear:npl=100,format=gbrpf32le,zscale=p=bt709,tonemap=tonemap=hable:desat=0,zscale=t=bt709:m=bt709:r=tv,format=yuv420p[vout]",
     ]);
-    expect(renderFilterScript([{ startMs: 0, endMs: 1_000 }], null)).toContain(
+    expect(renderFilterScript([{ startMs: 0, endMs: 1_000 }], { hdr: null })).toContain(
       "[vc]format=yuv420p[vout]",
     );
+  });
+
+  it("has no audio branch for a take with no sound", () => {
+    const script = renderFilterScript(
+      [
+        { startMs: 0, endMs: 1_000 },
+        { startMs: 2_000, endMs: 3_000 },
+      ],
+      { hdr: null, hasAudio: false },
+    );
+    expect(script).not.toContain("[0:a]");
+    expect(script).not.toContain("[aout]");
+    expect(script).toContain("[v0][v1]concat=n=2:v=1:a=0[vc];");
+  });
+
+  it("keys onto a background after the colour step, tone mapped first for HDR (spec 0008)", () => {
+    const background = { keyColor: "#00b140", width: 1080, height: 1920 };
+    const sdr = renderFilterScript([{ startMs: 0, endMs: 1_000 }], { hdr: null, background });
+    expect(sdr.split("\n").slice(-4)).toEqual([
+      "[vc]format=yuv420p[base];",
+      "[base]format=yuva444p,chromakey=0x00b140:0.12:0.08,despill=type=green[fg];",
+      "[1:v]scale=1080:1920:force_original_aspect_ratio=increase:out_range=tv,crop=1080:1920,setsar=1,format=yuv420p[bg];",
+      "[bg][fg]overlay=format=auto:shortest=1,format=yuv420p[vout]",
+    ]);
+    const hdr = renderFilterScript([{ startMs: 0, endMs: 1_000 }], {
+      hdr: "smpte2084",
+      background,
+    });
+    // The tone map comes before the key, so the key colour is measured on the same pixels.
+    expect(hdr.indexOf("tonemap=")).toBeLessThan(hdr.indexOf("chromakey="));
+    expect(hdr).toContain("[vc]zscale=tin=smpte2084");
+    // A render with a background and no sound keeps no audio branch and still composites.
+    const mute = renderFilterScript([{ startMs: 0, endMs: 1_000 }], {
+      hdr: null,
+      hasAudio: false,
+      background,
+    });
+    expect(mute).not.toContain("[aout]");
+    expect(mute).toContain("[vout]");
   });
 
   it("rounds the output frame rate to the source's average", () => {

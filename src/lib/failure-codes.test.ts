@@ -10,6 +10,8 @@ const REFUNDABLE = [
   "stale_run",
   "provider_error",
   "cancelled_before_start",
+  // Spec 0008: the background image vanished while the job ran.
+  "background_missing",
 ];
 const NOT_REFUNDABLE = [
   "invalid_media",
@@ -21,6 +23,11 @@ const NOT_REFUNDABLE = [
   "upload_abandoned",
   // Spec 0007: the transcript provider rejected the request; nothing was charged to refund.
   "provider_rejected",
+  // Spec 0008: ingest refused an uploaded background image.
+  "image_invalid",
+  "image_too_small",
+  "image_too_large",
+  "image_animated",
 ];
 
 describe("failure code registry (AC-13)", () => {

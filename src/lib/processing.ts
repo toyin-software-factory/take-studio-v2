@@ -45,10 +45,14 @@ export const JOB_KIND_SLICES = {
 export type JobKind = keyof typeof JOB_KIND_SLICES;
 export const JOB_KINDS = Object.keys(JOB_KIND_SLICES) as readonly JobKind[];
 
-/** The kinds whose finish can send the "take ready or didn't finish" email (spec 0006). */
-export const EMAIL_JOB_KINDS = ["initial", "rerender"] as const satisfies readonly JobKind[];
+/**
+ * The kinds whose finish can send the "take ready or didn't finish" email (spec 0006). Only the
+ * first run: a re render (a background change, spec 0008) is started from the take page, which
+ * shows the result, so it sends nothing.
+ */
+export const EMAIL_JOB_KINDS = ["initial"] as const satisfies readonly JobKind[];
 
-/** True for a job kind whose result is emailed; `transcribe` jobs never are (spec 0007). */
+/** True for a job kind whose result is emailed; `transcribe` and `rerender` jobs never are. */
 export function jobKindSendsEmail(kind: string): boolean {
   return (EMAIL_JOB_KINDS as readonly string[]).includes(kind);
 }
@@ -62,7 +66,13 @@ export function isTranscribeKind(kind: string): boolean {
  * Why a `transcript` step ended `skipped` (spec 0007). Stored in `job_step.failure_code`, and
  * only on a skipped step: a failed step carries a failure code instead (never both).
  */
-export const SKIP_REASONS = ["not_english", "no_speech", "original_gone"] as const;
+export const SKIP_REASONS = [
+  "not_english",
+  "no_speech",
+  "original_gone",
+  /** Spec 0008: the take has no usable green screen, so its background is kept. */
+  "no_green_screen",
+] as const;
 export type SkipReason = (typeof SKIP_REASONS)[number];
 
 export function isSkipReason(value: string): value is SkipReason {
@@ -88,9 +98,8 @@ export type StepName = keyof typeof STEPS;
 export const STEP_NAMES = Object.keys(STEPS) as readonly StepName[];
 
 /**
- * Ordered step list per job kind (`position` follows this order).
- * For `rerender`, `background` runs only if the take's background changed since the
- * latest render; jobs.start applies that rule.
+ * Ordered step list per job kind (`position` follows this order). `background` is only
+ * created when the job has a background to put in (`stepsFor` with `hasBackground`, spec 0008).
  */
 export const STEPS_BY_KIND = {
   initial: ["trim", "background", "ai_edit", "render"],
@@ -103,24 +112,22 @@ export const STEPS_BY_KIND = {
  * The latest product slice that is live. Steps and job kinds from later slices are allowed
  * in the database but not created yet. Bump it when a slice ships.
  */
-export const LIVE_SLICE = 2;
+export const LIVE_SLICE = 3;
 
 type StepsForOptions = {
   readonly liveSlice?: number;
-  /** For `rerender`: whether the take's background changed since the latest render. */
-  readonly backgroundChanged?: boolean;
+  /** Whether the job renders onto a background (`target_background_id` set, spec 0008). */
+  readonly hasBackground?: boolean;
 };
 
 /**
  * The ordered steps to create for a new job of `kind`: skips steps whose slice is not live,
- * and for a re render skips `background` unless the background changed.
+ * and the `background` step unless the job has a background to render onto.
  */
 export function stepsFor(kind: JobKind, options: StepsForOptions = {}): readonly StepName[] {
-  const { liveSlice = LIVE_SLICE, backgroundChanged = false } = options;
+  const { liveSlice = LIVE_SLICE, hasBackground = false } = options;
   return STEPS_BY_KIND[kind].filter(
-    (name) =>
-      STEPS[name].slice <= liveSlice &&
-      !(kind === "rerender" && name === "background" && !backgroundChanged),
+    (name) => STEPS[name].slice <= liveSlice && !(name === "background" && !hasBackground),
   );
 }
 
@@ -128,6 +135,18 @@ export function stepsFor(kind: JobKind, options: StepsForOptions = {}): readonly
 export function isFinalJobStatus(status: JobStatus): boolean {
   return status === "succeeded" || status === "failed" || status === "cancelled";
 }
+
+/** background.status (spec 0008); built in studios are always `ready`. */
+export const BACKGROUND_STATUSES = ["uploading", "processing", "ready", "failed"] as const;
+export type BackgroundStatus = (typeof BACKGROUND_STATUSES)[number];
+
+/** background_preview.status (spec 0008). */
+export const PREVIEW_STATUSES = ["making", "ready", "failed"] as const;
+export type PreviewStatus = (typeof PREVIEW_STATUSES)[number];
+
+/** background.name length bounds (spec 0008). */
+export const BACKGROUND_NAME_MIN = 1;
+export const BACKGROUND_NAME_MAX = 80;
 
 /** render.status. */
 export const RENDER_STATUSES = ["pending", "succeeded", "failed"] as const;

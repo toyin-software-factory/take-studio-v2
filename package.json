@@ -23,6 +23,7 @@
     "db:up": "docker compose up -d --wait postgres",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:seed": "tsx scripts/seed-backgrounds.ts",
     "auth:generate": "auth generate --config src/server/auth.cli.ts --output src/db/schema/auth.ts --yes",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "deploy:build": "rm -rf .wrangler-dist && pnpm run deploy:check-env && WORKER_SOURCE_MAPS=${SENTRY_AUTH_TOKEN:+1} opennextjs-cloudflare build && pnpm run deploy:check-maps && bash scripts/deploy-worker.sh build production ${SENTRY_RELEASE:-unknown}",

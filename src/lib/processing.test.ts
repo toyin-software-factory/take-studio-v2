@@ -38,7 +38,13 @@ describe("step registry (AC-7)", () => {
       "transcript",
       "render",
     ]);
-    expect(LIVE_SLICE).toBe(2);
+    expect(STEP_NAMES.filter((name) => STEPS[name].slice <= 3)).toEqual([
+      "trim",
+      "transcript",
+      "background",
+      "render",
+    ]);
+    expect(LIVE_SLICE).toBe(3);
   });
 
   it("defines every job kind from the spec: transcribe live from slice 2, reanalyse from slice 5", () => {
@@ -47,10 +53,10 @@ describe("step registry (AC-7)", () => {
     expect(JOB_KIND_SLICES.reanalyse).toBe(5);
   });
 
-  it("emails only the video kinds: transcribe jobs never send the take email", () => {
-    expect(EMAIL_JOB_KINDS).toEqual(["initial", "rerender"]);
+  it("emails only the first run: transcribe and re render jobs never send the take email", () => {
+    expect(EMAIL_JOB_KINDS).toEqual(["initial"]);
     expect(jobKindSendsEmail("initial")).toBe(true);
-    expect(jobKindSendsEmail("rerender")).toBe(true);
+    expect(jobKindSendsEmail("rerender")).toBe(false);
     expect(jobKindSendsEmail("transcribe")).toBe(false);
     expect(jobKindSendsEmail("something_new")).toBe(false);
     expect(isTranscribeKind("transcribe")).toBe(true);
@@ -58,23 +64,23 @@ describe("step registry (AC-7)", () => {
   });
 
   it("holds the skip reasons, separate from failure codes", () => {
-    expect(SKIP_REASONS).toEqual(["not_english", "no_speech", "original_gone"]);
+    expect(SKIP_REASONS).toEqual(["not_english", "no_speech", "original_gone", "no_green_screen"]);
     expect(isSkipReason("no_speech")).toBe(true);
     expect(isSkipReason("provider_error")).toBe(false);
     for (const reason of SKIP_REASONS) expect(isFailureCode(reason)).toBe(false);
   });
 
-  it("creates only live steps, and a re render's background only when it changed", () => {
+  it("creates only live steps, and the background step only for a job with a background", () => {
     expect(stepsFor("initial")).toEqual(["trim", "render"]);
+    expect(stepsFor("initial", { hasBackground: true })).toEqual(["trim", "background", "render"]);
     expect(stepsFor("rerender")).toEqual(["render"]);
+    expect(stepsFor("rerender", { hasBackground: true })).toEqual(["background", "render"]);
     expect(stepsFor("transcribe")).toEqual(["transcript"]);
     expect(stepsFor("transcribe", { liveSlice: 1 })).toEqual([]);
-    expect(stepsFor("initial", { liveSlice: 5 })).toEqual(STEPS_BY_KIND.initial);
-    expect(stepsFor("rerender", { liveSlice: 3 })).toEqual(["render"]);
-    expect(stepsFor("rerender", { liveSlice: 3, backgroundChanged: true })).toEqual([
-      "background",
-      "render",
-    ]);
+    expect(stepsFor("initial", { liveSlice: 2, hasBackground: true })).toEqual(["trim", "render"]);
+    expect(stepsFor("initial", { liveSlice: 5, hasBackground: true })).toEqual(
+      STEPS_BY_KIND.initial,
+    );
     expect(stepsFor("reanalyse", { liveSlice: 5 })).toEqual(["ai_edit", "render"]);
   });
 });

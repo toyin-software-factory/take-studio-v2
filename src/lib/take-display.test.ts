@@ -72,7 +72,7 @@ describe("expiryNote (AC-1)", () => {
   });
 });
 
-describe("overallPercent (AC-8: trim 10 %, render 90 %)", () => {
+describe("overallPercent (AC-8: trim 10, background 5, render 85, of the steps the job has)", () => {
   const step = (name: string, status: string, progress: number | null = null) => ({
     name,
     status,
@@ -83,6 +83,12 @@ describe("overallPercent (AC-8: trim 10 %, render 90 %)", () => {
     [[step("trim", "pending"), step("render", "pending")], 0],
     [[step("trim", "running", 50), step("render", "pending")], 5],
     [[step("trim", "succeeded"), step("render", "running", 50)], 55],
+    // With a background the bar has three steps: 10 + 5 + 85.
+    [[step("trim", "succeeded"), step("background", "running", 0), step("render", "pending")], 10],
+    [
+      [step("trim", "succeeded"), step("background", "succeeded"), step("render", "running", 50)],
+      57,
+    ],
     [[step("trim", "skipped"), step("render", "skipped")], 100],
     [[step("trim", "succeeded"), step("render", "succeeded")], 100],
   ])("%j → %i", (steps, percent) => {

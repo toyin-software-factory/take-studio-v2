@@ -122,23 +122,31 @@ describe("notifyTakeFinished (spec 0006, AC-5, AC-6, AC-8)", () => {
     expect(sent[0]?.text).not.toContain("Upload the video again");
   });
 
-  it("never emails a transcribe job, even when called for one directly (spec 0007)", async () => {
-    const creator = await createCreator(db);
-    const t = await seedTake(db, creator.id, { status: "ready" });
-    const [job] = await db
-      .insert(processingJob)
-      .values({
-        id: crypto.randomUUID(),
-        takeId: t.id,
-        kind: "transcribe",
-        status: "succeeded",
-        secondsCharged: 0,
-      })
-      .returning();
-    const { sent, deps } = fakeSender();
-    expect(await notifyTakeFinished(db, job!.id, deps)).toEqual(ok("not_emailed"));
-    expect(sent).toHaveLength(0);
-    const [row] = await db.select().from(processingJob).where(eq(processingJob.id, job!.id));
-    expect(row?.notifiedAt).toBeNull();
-  });
+  it.each([
+    ["transcribe", "succeeded", null],
+    ["rerender", "succeeded", null],
+    ["rerender", "failed", "ffmpeg_error"],
+  ] as const)(
+    "never emails a %s job that %s, even when called for one directly (specs 0007, 0008)",
+    async (kind, status, failureCode) => {
+      const creator = await createCreator(db);
+      const t = await seedTake(db, creator.id, { status: "ready" });
+      const [job] = await db
+        .insert(processingJob)
+        .values({
+          id: crypto.randomUUID(),
+          takeId: t.id,
+          kind,
+          status,
+          failureCode,
+          secondsCharged: 0,
+        })
+        .returning();
+      const { sent, deps } = fakeSender();
+      expect(await notifyTakeFinished(db, job!.id, deps)).toEqual(ok("not_emailed"));
+      expect(sent).toHaveLength(0);
+      const [row] = await db.select().from(processingJob).where(eq(processingJob.id, job!.id));
+      expect(row?.notifiedAt).toBeNull();
+    },
+  );
 });

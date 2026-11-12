@@ -17,6 +17,7 @@
 ```bash
 pnpm install                  # install
 pnpm db:up && pnpm db:migrate # local Postgres (Docker) + migrations
+pnpm db:seed                  # install the built in studio backgrounds (R2 + rows; local database only)
 pnpm dev                      # next dev + trigger dev
 pnpm lint && pnpm typecheck && pnpm test && pnpm build   # run before every push
 pnpm test:e2e                 # Playwright smoke tests
