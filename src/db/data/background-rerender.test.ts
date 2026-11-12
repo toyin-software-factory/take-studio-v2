@@ -3,7 +3,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { background, jobStep, processingJob, render, storageDeletion, take, user } from "../schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "../testing/test-db";
 import type { Db } from "../types";
-import { pgErrorCode } from "../types";
 import {
   finish,
   markRunning,
@@ -358,11 +357,15 @@ describe("finishing a background change (AC-5)", () => {
 
 describe("lock order with a background (spec 0008)", () => {
   const ROUNDS = 20;
+  /**
+   * Runs the pair `ROUNDS` times and counts every operation that rejected, a deadlock (40P01) or
+   * any other error: a pair that fails for another reason must not pass as "no deadlock".
+   */
   const deadlocks = async (run: () => Promise<PromiseSettledResult<unknown>[]>) => {
     let found = 0;
     for (let i = 0; i < ROUNDS; i++) {
       for (const s of await run()) {
-        if (s.status === "rejected" && pgErrorCode(s.reason).code === "40P01") found += 1;
+        if (s.status === "rejected") found += 1;
       }
     }
     return found;
@@ -440,8 +443,9 @@ describe("lock order with a background (spec 0008)", () => {
         finish(db, { jobId: started.data.id, status: "succeeded" }),
         db.delete(background).where(eq(background.id, newBg.id)),
       ]);
+      // Both must succeed: a rejection of any kind fails the test, not only a deadlock.
       for (const s of settled) {
-        if (s.status === "rejected" && pgErrorCode(s.reason).code === "40P01") found += 1;
+        if (s.status === "rejected") found += 1;
       }
     }
     expect(found).toBe(0);

@@ -388,3 +388,22 @@ describe("GET /api/takes/[id] background fields (spec 0008)", () => {
     expect((await get(creator.id, t.id)).backgroundJob).toBeNull();
   });
 });
+
+describe("lock order: cancelling a change and deleting its target (spec 0008)", () => {
+  it("never deadlock, and neither rejects", async () => {
+    let failed = 0;
+    for (let i = 0; i < 20; i++) {
+      const target = await seedBackground();
+      const { creator, take: t } = await readyTake();
+      const res = await call(deps(creator.id), t.id, { backgroundId: target.id });
+      await markRunning(db, { jobId: res.json.jobId as string, triggerRunId: "run" });
+      const settled = await Promise.allSettled([
+        cancel(db, { creatorId: creator.id, jobId: res.json.jobId as string }),
+        db.delete(background).where(eq(background.id, target.id)),
+      ]);
+      // Any rejection fails the round: a deadlock (40P01) or any other error.
+      failed += settled.filter((s) => s.status === "rejected").length;
+    }
+    expect(failed).toBe(0);
+  }, 60_000);
+});

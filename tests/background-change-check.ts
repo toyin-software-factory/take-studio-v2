@@ -110,16 +110,24 @@ async function frameOf(videoKey: string, name: string) {
 async function waitJob(jobId: string, takeId: string) {
   const samples: { take: string; render: string | undefined; job: string }[] = [];
   for (let i = 0; i < 900; i++) {
-    const [job] = await db
-      .select()
-      .from(schema.processingJob)
-      .where(eq(schema.processingJob.id, jobId));
-    const t = await takeRow(takeId);
-    samples.push({
-      take: t.status,
-      render: (await latestRender(takeId))?.id,
-      job: job?.status ?? "missing",
-    });
+    // The job, the take and the latest render come from one snapshot (repeatable read), so a
+    // finish that commits between the reads cannot pair `running` with the new render.
+    const { job, takeStatus, renderId } = await db.transaction(
+      async (tx) => {
+        const [j] = await tx
+          .select()
+          .from(schema.processingJob)
+          .where(eq(schema.processingJob.id, jobId));
+        const [t] = await tx.select().from(schema.take).where(eq(schema.take.id, takeId));
+        const renders = await tx
+          .select()
+          .from(schema.render)
+          .where(eq(schema.render.takeId, takeId));
+        return { job: j, takeStatus: t!.status, renderId: renders.find((r) => r.isLatest)?.id };
+      },
+      { isolationLevel: "repeatable read" },
+    );
+    samples.push({ take: takeStatus, render: renderId, job: job?.status ?? "missing" });
     if (job && ["succeeded", "failed", "cancelled"].includes(job.status)) return { job, samples };
     await sleep(300);
   }
@@ -250,11 +258,12 @@ try {
     done.samples.every((s) => s.take === "ready"),
     "the take stayed Ready the whole time",
   );
-  // Every poll taken while the job had not yet succeeded must still show the old video: the
-  // status is sampled with each render, so this does not rely on the order of the renders.
+  // Every poll taken while the job had not yet succeeded must still show the old video. A change
+  // that finishes before the first poll leaves no such poll, which is fine: the renders are
+  // checked below either way.
   const before = done.samples.filter((s) => s.job !== "succeeded");
   expect(
-    before.length > 0 && before.every((s) => s.render === first!.id),
+    before.every((s) => s.render === first!.id),
     `the old video stayed current in all ${before.length} polls before the change succeeded`,
   );
   const second1 = await latestRender(takeId);

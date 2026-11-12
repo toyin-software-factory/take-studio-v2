@@ -31,13 +31,15 @@ export function BackgroundChange({
   /** The change started: `target` is the background asked for (null is the original). */
   readonly onStarted: (target: string | null) => void;
   /** The PUT's outcome is unknown (the response was lost): look at the take again. */
-  readonly onUncertain: () => void;
+  readonly onUncertain: () => Promise<unknown>;
 }) {
   const [options, setOptions] = useState<readonly { id: string; name: string }[]>([]);
   // What the creator picked; null until they touch the select.
   const [picked, setPicked] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // True while the page looks at the take again after a PUT whose outcome is unknown.
+  const [checking, setChecking] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,9 +81,14 @@ export function BackgroundChange({
       if (reply.status === 202) onStarted(target);
       else setError(apiMessage(reply.data, "The change didn't start. Please try again."));
     } catch {
-      // The request may have reached the server: look before saying anything is wrong.
-      setError("We couldn't confirm the change started. Checking now.");
-      onUncertain();
+      // The request may have reached the server: look before saying anything is wrong. The
+      // message lives only while we look; afterwards the page shows what the take really is.
+      setChecking(true);
+      try {
+        await onUncertain();
+      } finally {
+        setChecking(false);
+      }
     } finally {
       setStarting(false);
     }
@@ -124,8 +131,10 @@ export function BackgroundChange({
           {failed ? "Try again" : "Use this background"}
         </Button>
       </div>
-      {/* An uncertain start is settled once the job shows up in the take. */}
-      {error && !jobActive ? <p role="alert">{error}</p> : null}
+      {checking ? (
+        <p role="status">We couldn&rsquo;t confirm the change started. Checking now.</p>
+      ) : null}
+      {error ? <p role="alert">{error}</p> : null}
       <p className="text-small text-muted-foreground">
         Tip: for clean edges, use even light with no shadows on the green, and stand a step away
         from it.

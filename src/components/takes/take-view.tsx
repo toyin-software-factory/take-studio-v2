@@ -139,7 +139,7 @@ export function TakeView({
                       : d,
                   )
                 }
-                onUncertain={() => void load()}
+                onUncertain={() => load()}
               />
             </div>
             {detail.take.status === "ready" || detail.take.status === "expired" ? (
