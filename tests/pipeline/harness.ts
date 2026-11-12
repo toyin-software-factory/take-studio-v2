@@ -29,7 +29,9 @@ export const env = z
     R2_SECRET_ACCESS_KEY: z.string().min(1),
     R2_BUCKET: z.string().min(1),
     /** Transcripts (spec 0007): real Deepgram, tiny synthetic fixtures. Reaches `trigger dev` through the shell env. */
-    DEEPGRAM_API_KEY: z.string().min(1),
+    /** Optional only for `PIPELINE_ONLY=background`, which runs no transcript checks. */
+    DEEPGRAM_API_KEY:
+      process.env.PIPELINE_ONLY === "background" ? z.string().optional() : z.string().min(1),
   })
   .parse(process.env);
 if (new URL(env.PIPELINE_DATABASE_URL).hostname !== "localhost") {

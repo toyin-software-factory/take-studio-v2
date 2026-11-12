@@ -169,6 +169,8 @@ export function frameStats(path: string, atSeconds = 1) {
     ],
     { maxBuffer: 64 << 20 },
   ).stdout;
+  // A stream without a decoded frame must fail the check, not read as a grey corner.
+  if (raw.length < 3) throw new Error(`no frame decoded from ${path}`);
   let green = 0;
   for (let i = 0; i + 2 < raw.length; i += 3) {
     if (isGreen({ r: raw[i]!, g: raw[i + 1]!, b: raw[i + 2]! })) green += 1;
@@ -176,7 +178,7 @@ export function frameStats(path: string, atSeconds = 1) {
   return {
     width: probe.streams[0]!.width,
     height: probe.streams[0]!.height,
-    greenShare: raw.length > 0 ? green / (raw.length / 3) : 1,
-    corner: { r: raw[0] ?? 0, g: raw[1] ?? 0, b: raw[2] ?? 0 },
+    greenShare: green / (raw.length / 3),
+    corner: { r: raw[0]!, g: raw[1]!, b: raw[2]! },
   };
 }
