@@ -1,10 +1,11 @@
 import { and, count, eq, gt, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { queueDeletions } from "@/db/data/jobs";
-import { transitionTake } from "@/db/data/takes";
+import { touchUploading, transitionTake } from "@/db/data/takes";
 import { background, take, user } from "@/db/schema";
 import { runTx } from "@/db/tx";
 import type { Db, Take } from "@/db/types";
+import { CLEANUP } from "@/lib/cleanup-rules";
 import { CONTAINERS } from "@/lib/processing";
 import { R2CompleteError, type R2 } from "@/lib/r2";
 import { type Result, err, ok } from "@/lib/result";
@@ -176,6 +177,8 @@ export async function presignParts(
   const total = partCount(t.originalBytes);
   if (parsed.data.partNumbers.some((n) => n > total)) return err("bad_parts");
 
+  // The creator is still sending: note it, so the cleanup does not call a slow upload idle.
+  await touchUploading(deps.db, t.id, deps.now?.() ?? new Date(), CLEANUP.uploadTouchEveryMs);
   const uploadId = t.uploadId;
   const parts = await Promise.all(
     parsed.data.partNumbers.map(async (partNumber) => ({

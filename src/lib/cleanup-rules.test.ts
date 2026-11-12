@@ -11,7 +11,8 @@ describe("cleanup cut offs (AC-18)", () => {
   it("derives each cut off from now and the constants", () => {
     const now = new Date("2026-11-11T12:00:00Z");
     expect(cleanupCutoffs(now)).toEqual({
-      abandonedUploadBefore: new Date("2026-11-11T10:45:00Z"), // 60 min link + 15 min margin
+      idleUploadBefore: new Date("2026-11-11T11:30:00Z"), // 15 min link + 15 min margin
+      uploadBackstopBefore: new Date("2026-11-11T06:00:00Z"), // 6 hours
       queuedJobBefore: new Date("2026-11-11T11:45:00Z"), // 15 min
       runningJobBefore: new Date("2026-11-11T10:35:00Z"), // 2 attempts x 40 min maxDuration + 5 min margin
       transcribeRunningJobBefore: new Date("2026-11-11T11:10:00Z"), // 3 attempts x 15 min + 5 min margin
