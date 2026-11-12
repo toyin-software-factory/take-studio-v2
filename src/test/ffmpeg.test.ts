@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { checkFfmpeg, ffmpegPlan, inCi } from "./ffmpeg";
+import {
+  REAL_FFMPEG_TEST_TIMEOUT_MS,
+  checkFfmpeg,
+  describeWithFfmpeg,
+  ffmpegPlan,
+  inCi,
+} from "./ffmpeg";
 
 describe("ffmpeg guard (HRF-T06)", () => {
   const missing = { ok: false, reason: "ffmpeg was not found" } as const;
@@ -36,5 +42,12 @@ describe("ffmpeg guard (HRF-T06)", () => {
   it("reports a reason when the tools are missing (this machine either has them or says why not)", () => {
     const check = checkFfmpeg();
     if (!check.ok) expect(check.reason).toMatch(/ffmpeg|ffprobe|libwebp/);
+  });
+});
+
+describeWithFfmpeg("real ffmpeg suites have an explicit test timeout", () => {
+  it("gives each test 30 s, not Vitest's 5 s default", ({ task }) => {
+    expect(REAL_FFMPEG_TEST_TIMEOUT_MS).toBe(30_000);
+    expect(task.timeout).toBe(REAL_FFMPEG_TEST_TIMEOUT_MS);
   });
 });
