@@ -511,3 +511,134 @@ test("a click on the preview reaches the video (play and pause still work)", asy
   );
   expect(topmost).toBe("VIDEO");
 });
+
+// S3S-T13: the page after a background change.
+test("a render finishing swaps the player source and the page, without a reload, and clears the preview", async ({
+  page,
+  baseURL,
+}) => {
+  const { id, state } = await setup(page, baseURL!, {
+    detail: { latestRender: { id: "render-1", status: "succeeded", durationMs: 3000 } },
+    preview: {
+      post: {
+        status: 200,
+        json: { state: "ready", url: `${R2}/preview.png`, noGreenScreen: false },
+      },
+    },
+  });
+  let plays = 0;
+  await page.route("**/api/takes/*/media?kind=play", (r) => {
+    plays += 1;
+    return r.fulfill({
+      json: { url: `${R2}/${plays === 1 ? "clip" : "clip2"}.mp4`, expiresInSeconds: 3600 },
+    });
+  });
+  await page.route(`${R2}/clip2.mp4`, (r) =>
+    r.fulfill({
+      body: clip,
+      contentType: "video/mp4",
+      headers: { "access-control-allow-origin": "*", "accept-ranges": "bytes" },
+    }),
+  );
+  const downloads: string[] = [];
+  await page.route("**/api/takes/*/media?kind=download", (r) => {
+    downloads.push(r.request().url());
+    return r.fulfill({ status: 500, json: { error: "x", message: "stub" } });
+  });
+  await open(page, id);
+  await expect(page.locator("video")).toHaveAttribute("src", `${R2}/clip.mp4`);
+  await page.locator("video").evaluate((v) => v.setAttribute("data-mark", "same"));
+  // This tab picked Warm studio and is looking at its preview.
+  await section(page)
+    .getByRole("radio", { name: /Warm studio/ })
+    .check({ force: true });
+  await expect(page.getByAltText("Preview of your take on Warm studio")).toBeVisible();
+
+  // Meanwhile the change finished (in this tab or another): the next check finds a new render.
+  state.detail = {
+    latestRender: { id: "render-2", status: "succeeded", durationMs: 3000 },
+    background: { id: WARM, name: "Warm studio", keyed: true },
+  };
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await expect(page.locator("video")).toHaveAttribute("src", `${R2}/clip2.mp4`);
+  // Same element, no reload: the page and the stage both caught up.
+  await expect(page.locator("video[data-mark=same]")).toHaveCount(1);
+  await expect(section(page)).toContainText("Now: Warm studio");
+  await expect(page.getByText("Preview, not your video yet")).toHaveCount(0);
+  // Download asks the server when clicked, so it gives the new render.
+  await page.getByRole("button", { name: "Download", exact: true }).click();
+  await expect.poll(() => downloads.length).toBe(1);
+});
+
+test("a change refused because one is already running says so, and the page catches up", async ({
+  page,
+  baseURL,
+}) => {
+  const { id, state } = await setup(page, baseURL!, {
+    put: {
+      status: 409,
+      json: {
+        error: "job_active",
+        message: "A background change is already running. It'll show here when it's done.",
+      },
+    },
+  });
+  await open(page, id);
+  await section(page)
+    .getByRole("radio", { name: /Calm studio/ })
+    .check({ force: true });
+  // The other tab's change is running by the time this tab asks.
+  state.detail = {
+    backgroundJob: { status: "running", failureCode: null, targetBackgroundId: WARM },
+  };
+  await section(page).getByRole("button", { name: "Use this background" }).click();
+  await expect(
+    section(page).getByRole("alert").filter({
+      hasText: "A background change is already running. It'll show here when it's done.",
+    }),
+  ).toBeVisible();
+  // The refusal also read the take again: the running change now shows and blocks the button.
+  await expect(section(page)).toContainText("Making your video with the new background");
+  await expect(section(page).getByRole("button", { name: "Use this background" })).toBeDisabled();
+});
+
+test("a refusal with no message body still tells the creator (never silent)", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!, { put: { status: 502, json: undefined } });
+  await open(page, id);
+  await section(page)
+    .getByRole("radio", { name: /Calm studio/ })
+    .check({ force: true });
+  await section(page).getByRole("button", { name: "Use this background" }).click();
+  await expect(section(page).getByRole("alert").filter({ hasText: "didn't start" })).toBeVisible();
+});
+
+test("the Keep original tile shows the take's thumbnail, and gets a fresh link when the old one has expired", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!);
+  let links = 0;
+  await page.route("**/api/takes/*/media?kind=thumb", (r) => {
+    links += 1;
+    // The first link has expired (R2 answers 403); the second works.
+    return r.fulfill({
+      json: { url: `${R2}/${links === 1 ? "expired" : "original"}.png`, expiresInSeconds: 3600 },
+    });
+  });
+  await page.route(`${R2}/expired.png`, (r) =>
+    r.fulfill({ status: 403, body: "Request has expired" }),
+  );
+  await open(page, id);
+  const tile = section(page)
+    .getByRole("radio", { name: /Keep original/ })
+    .locator("..");
+  const img = tile.locator("img");
+  await expect(img).toBeVisible();
+  await expect
+    .poll(() => img.evaluate((el) => (el as HTMLImageElement).naturalWidth))
+    .toBeGreaterThan(0);
+  expect(links).toBeGreaterThanOrEqual(1);
+});

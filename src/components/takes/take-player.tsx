@@ -22,9 +22,12 @@ import { usePlayerKeys } from "./use-player-keys";
  */
 export function TakePlayer({
   takeId,
+  renderId,
   bridge,
 }: {
   readonly takeId: string;
+  /** The latest render's id: when it changes the video was made again (S3S-T13). */
+  readonly renderId: string | null;
   readonly bridge: PlayerBridge;
 }) {
   const video = useRef<HTMLVideoElement>(null);
@@ -37,7 +40,8 @@ export function TakePlayer({
   const [duration, setDuration] = useState(0);
   const [muted, setMuted] = useState(false);
   const captions = useCaptions(bridge, video, link.kind === "ready");
-  const poster = usePoster(takeId);
+  const poster = usePoster(takeId).url;
+  const shownRender = useRef(renderId);
 
   const fetchLink = useCallback(() => {
     void playLink(takeId).then(setLink);
@@ -45,13 +49,23 @@ export function TakePlayer({
 
   useEffect(() => {
     let live = true;
+    // A new render (a background change finished, here or in another tab): fetch its link and
+    // swap the source without a reload, resuming where the viewer was and keeping paused or
+    // playing. The video element stays mounted, so only `src` changes.
+    const swapping = shownRender.current !== renderId;
+    shownRender.current = renderId;
+    if (swapping && video.current) {
+      resumeAt.current = video.current.currentTime;
+      resumePlaying.current = !video.current.paused;
+      refreshed.current = false;
+    }
     void playLink(takeId).then((next) => {
       if (live) setLink(next);
     });
     return () => {
       live = false;
     };
-  }, [takeId]);
+  }, [takeId, renderId]);
 
   const toggle = useCallback(() => {
     const v = video.current;
@@ -125,7 +139,10 @@ export function TakePlayer({
           }}
           onLoadedMetadata={(e) => {
             setDuration(e.currentTarget.duration);
-            if (resumeAt.current > 0) e.currentTarget.currentTime = resumeAt.current;
+            if (resumeAt.current > 0) {
+              e.currentTarget.currentTime = Math.min(resumeAt.current, e.currentTarget.duration);
+              resumeAt.current = 0;
+            }
             // A replacement link loads paused; carry on if it was playing when the link failed.
             if (resumePlaying.current) void e.currentTarget.play().catch(() => undefined);
             resumePlaying.current = false;

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Check, ImageOff } from "lucide-react";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,7 @@ export function BackgroundTile({
   thumbUrl,
   checked,
   onSelect,
+  onThumbError,
 }: {
   readonly group: string;
   readonly value: string;
@@ -24,7 +26,12 @@ export function BackgroundTile({
   readonly thumbUrl: string | null;
   readonly checked: boolean;
   readonly onSelect: () => void;
+  /** The image did not load (an expired link): ask for a fresh one. */
+  readonly onThumbError?: () => void;
 }) {
+  // A thumbnail that fails shows the placeholder, never the browser's broken image icon; a new
+  // link (a changed `thumbUrl`) gets another try.
+  const [broken, setBroken] = useState<string | null>(null);
   return (
     <label className="group relative flex cursor-pointer flex-col gap-1">
       <input
@@ -42,9 +49,18 @@ export function BackgroundTile({
           checked && "ring-2 ring-primary ring-offset-2 ring-offset-surface",
         )}
       >
-        {thumbUrl ? (
+        {thumbUrl && broken !== thumbUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- a presigned R2 link, sized by the tile
-          <img src={thumbUrl} alt={alt} className="size-full object-cover" loading="lazy" />
+          <img
+            src={thumbUrl}
+            alt={alt}
+            className="size-full object-cover"
+            loading="lazy"
+            onError={() => {
+              setBroken(thumbUrl);
+              onThumbError?.();
+            }}
+          />
         ) : (
           <span role="img" aria-label={alt} className="flex size-full items-center justify-center">
             <Icon icon={ImageOff} size="ui" className="text-text-muted" />
