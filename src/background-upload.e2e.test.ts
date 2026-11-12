@@ -18,16 +18,13 @@ import {
   removeBackground,
 } from "@/server/backgrounds/upload";
 import { type IngestIo, ingestBackground, realIo } from "@/trigger/ingest-background";
+import { describeWithFfmpeg } from "@/test/ffmpeg";
 
 // Spec 0008, AC-8 to AC-10, end to end without real R2: the routes' functions, the real database,
 // the real ffprobe and ffmpeg, and a small HTTP server standing in for R2. The stand in is used
 // the way R2 is: a presigned PUT whose content type and exact length are checked, a HEAD for the
 // size, and the ingest reading the source through a URL with the real download code. The real R2
 // path is covered by the pipeline run (S3S-T07).
-const ffmpegOk = (() => {
-  const run = spawnSync("ffmpeg", ["-hide_banner", "-encoders"], { encoding: "utf8" });
-  return run.status === 0 && run.stdout.includes("libwebp");
-})();
 
 let testDb: TestDb;
 let db: Db;
@@ -117,7 +114,7 @@ function ports() {
   };
 }
 
-describe.skipIf(!ffmpegOk)("upload, ingest and delete through a stand in for R2", () => {
+describeWithFfmpeg("upload, ingest and delete through a stand in for R2", () => {
   it("takes a turned JPEG from the signed PUT to a ready background, then deletes it with its files", async () => {
     const photo = join(dir, "photo.jpg");
     ffmpeg(["-f", "lavfi", "-i", "testsrc2=s=2560x1440:d=1", "-frames:v", "1", photo]);
