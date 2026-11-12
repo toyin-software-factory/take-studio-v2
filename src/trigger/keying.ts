@@ -12,6 +12,7 @@ import {
   transparentShare,
 } from "@/lib/keying";
 import { toneMapFilter } from "@/lib/trim";
+import { JOB_ERROR_NAMES } from "@/lib/job-errors";
 import { MediaToolError, runFfmpegBytes } from "./media";
 
 /**
@@ -22,7 +23,7 @@ import { MediaToolError, runFfmpegBytes } from "./media";
 
 /** The background the job should render onto is gone or not ready (refundable, spec 0008). */
 export class BackgroundMissingError extends Error {
-  override name = "BackgroundMissingError";
+  override name = JOB_ERROR_NAMES.backgroundMissing;
   constructor() {
     super("The background for this job is missing or not ready");
   }

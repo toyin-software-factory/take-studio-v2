@@ -8,6 +8,8 @@
  * that crashes.
  */
 
+import { JOB_ERROR_NAMES, hasJobErrorName } from "./job-errors";
+
 /**
  * Seconds before `maxDuration` at which an attempt stops itself. The failure hooks run inside
  * the same budget: the global Sentry hook (flush, 2 s), then the task's own, which opens a job
@@ -21,7 +23,7 @@ const WIND_DOWN_MS = 10_000;
 
 /** The attempt ran out of its own time. The message holds nothing about the work. */
 export class DeadlineExceeded extends Error {
-  override name = "DeadlineExceeded";
+  override name = JOB_ERROR_NAMES.deadlineExceeded;
   constructor() {
     super("The job ran out of time and was stopped");
   }
@@ -29,7 +31,7 @@ export class DeadlineExceeded extends Error {
 
 /** True for a `DeadlineExceeded` (also across module copies, which keep the name). */
 export function isDeadlineExceeded(error: unknown): boolean {
-  return (error as { name?: string } | null | undefined)?.name === "DeadlineExceeded";
+  return hasJobErrorName(error, JOB_ERROR_NAMES.deadlineExceeded);
 }
 
 /** Milliseconds a task with this `maxDuration` may work before it stops itself. */

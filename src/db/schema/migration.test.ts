@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { ONE_ACTIVE_JOB_INDEX } from "./constraint-names";
 
 /**
  * Checks the committed migrations (spec 0002, AC-1, AC-4, AC-10). drizzle-kit has dropped
@@ -36,7 +37,7 @@ describe("slice 1 migration", () => {
   });
 
   it("keeps at most one active job per take with a partial unique index (AC-4)", () => {
-    const index = statement("processing_job_one_active_per_take_uidx");
+    const index = statement(ONE_ACTIVE_JOB_INDEX);
     expect(index).toMatch(/^CREATE UNIQUE INDEX/);
     expect(index).toContain(`ON "processing_job" USING btree ("take_id")`);
     expect(index).toContain(`WHERE "processing_job"."status" IN ('queued', 'running')`);
