@@ -55,13 +55,13 @@ describe("deploy.yml gate (HRF-T04)", () => {
     expect(job.indexOf("concurrency:")).toBeLessThan(job.indexOf("steps:"));
   });
 
-  it("rejects an automated run for the deployed commit or an older one, before any production write", () => {
+  it("deploys an automated run only while its commit is the tip of main, before any production write", () => {
     const order = at("- id: order");
     expect(order).toBeLessThan(at("pnpm run deploy:build"));
     expect(code).toContain('"$GITHUB_EVENT_NAME" = "workflow_run"');
-    expect(code).toContain('git merge-base --is-ancestor "$DEPLOY_SHA" refs/tags/production');
-    expect(code).toMatch(/ref: \$\{\{ env\.DEPLOY_SHA \}\}\s*\n\s+fetch-depth: 0/);
-    // Every step after the check (installs, the four phases and the tag) honours it.
+    expect(code).toContain("git ls-remote origin refs/heads/main");
+    expect(code).toContain('[ "$tip" != "$DEPLOY_SHA" ]');
+    // Every step after the check (installs and the four phases) honours it.
     for (const text of [
       "pnpm/action-setup@v4",
       "pnpm install --frozen-lockfile",
@@ -69,7 +69,6 @@ describe("deploy.yml gate (HRF-T04)", () => {
       "pnpm db:migrate",
       "pnpm deploy:trigger",
       "pnpm run deploy:ship",
-      "git tag -f production",
     ]) {
       const index = code.indexOf(text);
       expect(index, text).toBeGreaterThan(-1);
@@ -80,10 +79,9 @@ describe("deploy.yml gate (HRF-T04)", () => {
     }
   });
 
-  it("moves the production tag to the deployed commit, last, with write access only on that job", () => {
-    expect(at('git tag -f production "$DEPLOY_SHA"')).toBeGreaterThan(at("pnpm run deploy:ship"));
-    expect(code.match(/^\s+contents: write/gm) ?? []).toHaveLength(1);
-    expect(code).toMatch(/^permissions:\s*\n\s+contents: read/m);
+  it("needs no write access to the repository", () => {
+    expect(code).not.toMatch(/contents: write/);
+    expect(code.match(/^permissions:\s*\n\s+contents: read/m)).not.toBeNull();
   });
 });
 
@@ -101,12 +99,9 @@ describe("deploy.yml order", () => {
   it("only the last step ships the Worker", () => {
     expect(workflow.match(/wrangler deploy/g) ?? []).toHaveLength(0);
     expect(workflow.match(/deploy:ship/g) ?? []).toHaveLength(1);
-    // Only the tag that marks the deployed commit runs after the ship step.
+    // Nothing runs after the ship step.
     const afterShip = workflow.slice(workflow.indexOf("deploy:ship"));
-    expect((afterShip.match(/^\s+- name:.*$/gm) ?? []).map((l) => l.trim())).toEqual([
-      "- name: 5. Mark this commit as the deployed one",
-    ]);
-    expect(afterShip.match(/^\s+- (run|uses):/gm) ?? []).toHaveLength(0);
+    expect(afterShip.match(/^\s+- (name|run|uses):/gm) ?? []).toHaveLength(0);
   });
 
   it("the package scripts keep the phases apart and `deploy` runs both in order", () => {

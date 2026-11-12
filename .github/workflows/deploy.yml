@@ -90,29 +90,26 @@ jobs:
     concurrency:
       group: deploy-production
       cancel-in-progress: false
-    # contents: write only to move the `production` tag after a successful ship (below).
-    permissions:
-      contents: write
     env:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ env.DEPLOY_SHA }}
-          # Full history and tags: the order check below needs the ancestry of the deployed commit.
-          fetch-depth: 0
 
       - id: order
-        # Serialized by the concurrency group, before any production write. An automated run
-        # (workflow_run) for a commit that is the deployed one or older (a rerun of an old CI run)
-        # stops here without failing main. A manual run (workflow_dispatch) is exempt: an
-        # intentional rollback stays possible. The `production` tag marks the deployed commit.
+        # Serialized by the concurrency group and before any production write: an automated run
+        # (workflow_run) deploys only while its commit is still the tip of main, so a rerun of CI
+        # for an older commit can never put old code over newer. Otherwise it stops here with a
+        # notice, without failing main (the newer commit has its own CI run and deploy). A manual
+        # run (workflow_dispatch) is exempt, so an intentional rollback stays possible.
         run: |
           stale=false
-          if [ "$GITHUB_EVENT_NAME" = "workflow_run" ] && git rev-parse -q --verify refs/tags/production > /dev/null; then
-            if git merge-base --is-ancestor "$DEPLOY_SHA" refs/tags/production; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_run" ]; then
+            tip=$(git ls-remote origin refs/heads/main | cut -f1)
+            if [ "$tip" != "$DEPLOY_SHA" ]; then
               stale=true
-              echo "::notice::Deploy skipped. $DEPLOY_SHA is the deployed commit or older than it ($(git rev-parse --short refs/tags/production))."
+              echo "::notice::Deploy skipped. $DEPLOY_SHA is no longer the tip of main (${tip:-unknown}); the tip deploys after its own CI run."
             fi
           fi
           echo "stale=$stale" >> "$GITHUB_OUTPUT"
@@ -174,11 +171,3 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           SENTRY_RELEASE: ${{ env.DEPLOY_SHA }}
-
-      - name: 5. Mark this commit as the deployed one
-        if: steps.order.outputs.stale != 'true'
-        # After the Worker shipped. If this fails the deploy still happened; the next run then only
-        # lacks the order check against this commit.
-        run: |
-          git tag -f production "$DEPLOY_SHA"
-          git push --force origin refs/tags/production
