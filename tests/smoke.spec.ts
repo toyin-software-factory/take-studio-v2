@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
 
-test("landing placeholder renders with a sign in link", async ({ page }) => {
+test("the signed out homepage renders with a sign in link in the top bar", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1, name: "Take Studio" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Film one take. Get it back ready to post." }),
+  ).toBeVisible();
+  // The page has more than one sign in link (top bar, closing section, footer): the bar's one.
+  await expect(page.getByRole("banner").getByRole("link", { name: "Sign in" })).toBeVisible();
 });
 
 test("health reports the database reachable through Hyperdrive", async ({ request }) => {

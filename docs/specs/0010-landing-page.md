@@ -1,7 +1,7 @@
 # 0010. Landing page and SEO
 
 **Date**: 2026-11-12
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 
@@ -31,7 +31,7 @@ Toyin decided (Slack, 2026-11-12): keep "Made for solo creators" and "The limits
 - **AC-8**: With `prefers-reduced-motion`, nothing loops, nothing scrubs, Lenis is off, WebGL draws at most one static frame and every piece of content is visible.
 - **AC-9**: Accessibility: skip link first, one `h1`, split headings keep an `aria-label` with word spans `aria-hidden`, decorative canvas, wordmark and cursor `aria-hidden`, every target at least 44px, focus visible on light and dark, and axe reports no serious or critical issues.
 - **AC-10**: Performance on mobile: Lighthouse performance 90 or more, CLS 0.02 or less, initial JS 90KB gzip or less excluding `three`, deferred `three` plus the field 170KB gzip or less.
-- **AC-11**: Media come from `docs/design/home-v2.html` as real files, not base64: images as AVIF with WebP fallback at 480, 960, 1440 and 1920 widths via `next/image` or `srcset`, videos as MP4 plus WebM, no audio, each tile 2.5MB or less, the reel 8MB or less with a poster; tile videos load on intent or in view.
+- **AC-11**: Media come from `docs/design/home-v2.html` as real files, not base64: images as AVIF with WebP fallback at 480, 960, 1440 and 1920 widths, stopping at the source width (never upscaled; the draft's media are 500 to 1280px wide) via `next/image` or `srcset`, videos as MP4 plus WebM, no audio, each tile 2.5MB or less, the reel 8MB or less with a poster; tile videos load on intent or in view.
 
 ## Decision
 

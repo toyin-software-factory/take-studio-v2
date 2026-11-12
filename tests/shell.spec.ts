@@ -135,9 +135,11 @@ test("sign out from the user menu returns to the signed out page", async ({ page
   await page.goto("/");
   await page.getByRole("button", { name: /Account menu/ }).click();
   await page.getByRole("menuitem", { name: "Sign out" }).click();
-  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+  // The signed out homepage: its top bar has the sign in link.
+  const signIn = page.getByRole("banner").getByRole("link", { name: "Sign in" });
+  await expect(signIn).toBeVisible();
   await page.reload();
-  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+  await expect(signIn).toBeVisible();
 });
 
 test.describe("on a phone", () => {
@@ -175,7 +177,11 @@ test.describe("on a phone", () => {
     // The menu must sit above the sheet, not hidden behind it.
     await expect(signOut).toBeVisible();
     await signOut.click();
-    await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+    // The signed out homepage on a phone: the top bar keeps only the short call to action, so the
+    // sign in link to look for is the footer's.
+    await expect(
+      page.getByRole("contentinfo").getByRole("link", { name: "Sign in" }),
+    ).toBeVisible();
   });
 
   test("signed in home passes axe on a phone", async ({ page }) => {

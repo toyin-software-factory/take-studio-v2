@@ -1,45 +1,49 @@
-import { Suspense } from "react";
+import { Suspense, cache } from "react";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { headers } from "next/headers";
+import { HomePage } from "@/components/home/home-page";
 import { AppShell } from "@/components/shell/app-shell";
-import { Button } from "@/components/ui/button";
-import { SkipLink } from "@/components/shell/skip-link";
 import { LibrarySkeleton } from "@/components/takes/library-skeleton";
 import { TakeLibrary } from "@/components/takes/take-library";
 import { UploadArea } from "@/components/takes/upload-area";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, siteOrigin } from "@/lib/site";
 import { getDb, getSession } from "@/server/request";
 import { listForCreator } from "@/server/takes";
 import { cardView } from "@/server/takes/views";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = { title: "Your takes · Take Studio" };
+/** One session lookup per request, shared by the page and its metadata. */
+const loadSession = cache(async () => getSession(await headers()));
+
+/**
+ * Signed in: the library's own title. Signed out: the homepage's title, description, canonical
+ * URL and share cards (spec 0010, AC-3). The share image is `opengraph-image.jpg` next to this
+ * file; the absolute URLs need the site origin, which comes from `BETTER_AUTH_URL`.
+ */
+export async function generateMetadata(): Promise<Metadata> {
+  if (await loadSession()) return { title: "Your takes · Take Studio" };
+  const origin = siteOrigin(process.env.BETTER_AUTH_URL);
+  const title = `${SITE_TITLE} · ${SITE_NAME}`;
+  return {
+    ...(origin ? { metadataBase: new URL(origin) } : {}),
+    title,
+    description: SITE_DESCRIPTION,
+    // Relative URLs resolve against `metadataBase`; without an origin they are left out.
+    ...(origin ? { alternates: { canonical: "/" } } : {}),
+    openGraph: {
+      type: "website",
+      siteName: SITE_NAME,
+      title,
+      description: SITE_DESCRIPTION,
+      ...(origin ? { url: "/" } : {}),
+    },
+    twitter: { card: "summary_large_image", title, description: SITE_DESCRIPTION },
+  };
+}
 
 /** Library page size (AC-1); the same as GET /api/takes. */
 const PAGE_SIZE = 24;
-
-/** Signed out landing placeholder: name, one line, sign in. The real landing page is feature 15. */
-function Landing() {
-  return (
-    <>
-      <SkipLink />
-      <main
-        id="content"
-        tabIndex={-1}
-        className="mx-auto flex min-h-dvh max-w-content flex-col items-start justify-center gap-4 px-4 outline-hidden md:px-6"
-      >
-        <h1 className="text-h1 font-medium">Take Studio</h1>
-        <p className="text-muted-foreground">
-          Upload a take. Get it back trimmed, on a studio background, with a transcript.
-        </p>
-        <Button asChild size="lg">
-          <Link href="/sign-in">Sign in</Link>
-        </Button>
-      </main>
-    </>
-  );
-}
 
 /** The first page of the creator's takes. Throws to the error boundary if it can't load. */
 async function Library({ creatorId }: { readonly creatorId: string }) {
@@ -57,10 +61,10 @@ async function Library({ creatorId }: { readonly creatorId: string }) {
   );
 }
 
-/** Home: the library when signed in (AC-1): upload area on top, takes below. */
+/** Home: the homepage when signed out (spec 0010), the library when signed in (AC-1): upload area on top, takes below. */
 export default async function Home() {
-  const session = await getSession(await headers());
-  if (!session) return <Landing />;
+  const session = await loadSession();
+  if (!session) return <HomePage origin={siteOrigin(process.env.BETTER_AUTH_URL)} />;
 
   return (
     <AppShell user={{ id: session.user.id, name: session.user.name, email: session.user.email }}>
