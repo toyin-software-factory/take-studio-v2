@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { chargeSeconds, chargedMonth, refundSeconds } from "@/lib/billing";
 import { renderKey } from "@/lib/cut-rules";
@@ -272,10 +272,20 @@ export async function finishInTx(
   // 0. Lock order (src/db/AGENTS.md): the take, then the job. Deletion and the transcript
   //    save already start from the take, so finishing must too, or two of them can deadlock.
   const [owner] = await tx
-    .select({ takeId: processingJob.takeId })
+    .select({ takeId: processingJob.takeId, backgroundId: processingJob.targetBackgroundId })
     .from(processingJob)
     .where(eq(processingJob.id, input.jobId));
   if (!owner) return err("not_found");
+  // Spec 0008: creator, background, take, job. A finish that may write `take.background_id`
+  // takes that background `FOR KEY SHARE` first, so a background delete (which locks it
+  // `FOR UPDATE` and then updates the jobs and takes that point at it) cannot cross it.
+  if (owner.backgroundId) {
+    await tx
+      .select({ id: background.id })
+      .from(background)
+      .where(eq(background.id, owner.backgroundId))
+      .for("key share");
+  }
   await tx.select({ id: take.id }).from(take).where(eq(take.id, owner.takeId)).for("update");
 
   // 1. Job compare and swap.
@@ -300,6 +310,39 @@ export async function finishInTx(
     const [current] = await tx.select().from(take).where(eq(take.id, job.takeId));
     if (!current) return err("not_found");
     return ok({ job, take: current, refundedSeconds: 0, queuedKeys: [] });
+  }
+
+  // A background change (spec 0008, `startBackgroundJob`) is a `rerender` job that works beside
+  // a take that stays `ready`: no take transition, no refund (it charged nothing). A re render
+  // started by `startJob` has the take in `processing` and takes the normal path below.
+  if (job.kind === "rerender") {
+    const [current] = await tx.select().from(take).where(eq(take.id, job.takeId));
+    if (!current) return err("not_found");
+    if (current.status !== "processing") {
+      if (input.status === "succeeded") {
+        // The new render becomes the latest and the take's background becomes the job's target
+        // (null is the original), in this transaction.
+        const queuedKeys = await flipLatestRender(tx, { takeId: job.takeId, jobId: job.id });
+        // The take's background comes from the render that was just made (its snapshot), not
+        // from `target_background_id`: a delete of the background clears that reference on the
+        // job, and the render's snapshot says what the video really is on. A render with no
+        // background (the original, or the background gone) leaves the take on the original.
+        const [made] = await tx
+          .select({ backgroundId: render.backgroundId })
+          .from(render)
+          .where(and(eq(render.jobId, job.id), eq(render.isLatest, true)));
+        const [updated] = await tx
+          .update(take)
+          .set({ backgroundId: made ? made.backgroundId : job.targetBackgroundId })
+          .where(eq(take.id, job.takeId))
+          .returning();
+        return ok({ job, take: updated ?? current, refundedSeconds: 0, queuedKeys });
+      }
+      // Failed or cancelled: the take, its latest render and its background stay as they are;
+      // only the files of this job's own renders go.
+      const queuedKeys = await discardJobRenders(tx, { takeId: job.takeId, jobId: job.id });
+      return ok({ job, take: current, refundedSeconds: 0, queuedKeys });
+    }
   }
 
   // 2. On success this job's render becomes the latest; otherwise its renders' files go.
@@ -641,4 +684,146 @@ export async function whileJobActive<T, E extends string>(
     if (signal?.aborted) return err("aborted");
     return result;
   });
+}
+
+/** Stands for "keyed on a background that has since been deleted" when comparing targets. */
+const DELETED_BACKGROUND = "deleted";
+
+export type BackgroundStartError =
+  | "not_found"
+  | "invalid_transition"
+  | "original_gone"
+  | "job_active"
+  | "same_background"
+  | "background_not_ready";
+
+/**
+ * `startBackgroundJob` (spec 0008, "Job seam"), one transaction. Like `startTranscribeJob` it
+ * never moves the take and never charges; it starts a `rerender` job that renders the take's
+ * current cuts onto `backgroundId` (null is the original):
+ * 1. lock the background `FOR KEY SHARE`, then the take `FOR UPDATE` (lock order);
+ * 2. the background must exist and be built in or the creator's (`not_found` otherwise, so
+ *    another creator's ID leaks nothing) and `ready` (`background_not_ready`);
+ * 3. the take must be `ready` (`invalid_transition`) with its original still stored
+ *    (`original_gone`) and no active job (`job_active`);
+ * 4. refuse `same_background` when the target equals the latest render's effective background
+ *    (`keyed ? background_id : null`), unless the latest video job failed (Try again);
+ * 5. insert the job (0 seconds, `target_background_id`) and its steps.
+ */
+export async function startBackgroundJob(
+  db: Executor,
+  input: {
+    readonly creatorId: string;
+    readonly takeId: string;
+    readonly backgroundId: string | null;
+    readonly now?: Date;
+  },
+): Promise<Result<StartedJob, BackgroundStartError>> {
+  if (!z.uuid().safeParse(input.takeId).success) return err("not_found");
+  if (input.backgroundId !== null && !z.uuid().safeParse(input.backgroundId).success) {
+    return err("not_found");
+  }
+  const now = input.now ?? new Date();
+
+  try {
+    return await runTx(db, async (tx) => {
+      let target: string | null = null;
+      if (input.backgroundId !== null) {
+        const [chosen] = await tx
+          .select()
+          .from(background)
+          .where(eq(background.id, input.backgroundId))
+          .for("key share");
+        if (!chosen || (chosen.creatorId !== null && chosen.creatorId !== input.creatorId)) {
+          return err("not_found");
+        }
+        if (chosen.status !== "ready") return err("background_not_ready");
+        target = chosen.id;
+      }
+
+      const [current] = await tx
+        .select()
+        .from(take)
+        .where(and(eq(take.id, input.takeId), eq(take.creatorId, input.creatorId)))
+        .for("update");
+      if (!current) return err("not_found");
+
+      const expired =
+        current.status === "expired" ||
+        (current.videoExpiresAt !== null && current.videoExpiresAt.getTime() <= now.getTime());
+      if (expired) return err("original_gone");
+      if (current.status !== "ready") return err("invalid_transition");
+
+      const [active] = await tx
+        .select({ id: processingJob.id })
+        .from(processingJob)
+        .where(
+          and(
+            eq(processingJob.takeId, current.id),
+            inArray(processingJob.status, ACTIVE_JOB_STATUSES),
+          ),
+        );
+      if (active) return err("job_active");
+
+      const [latestRender] = await tx
+        .select({ keyed: render.keyed, backgroundId: render.backgroundId })
+        .from(render)
+        .where(and(eq(render.takeId, current.id), eq(render.isLatest, true)));
+      // A keyed render whose background was deleted (the reference is now null) is on a
+      // background that no request can name, so it never equals the original (null) or any ID.
+      const effective = latestRender?.keyed
+        ? (latestRender.backgroundId ?? DELETED_BACKGROUND)
+        : null;
+      if (target === effective) {
+        // Asking for what the video already has is refused, unless the last video job failed:
+        // then it is a retry of that change.
+        const [latestJob] = await tx
+          .select({ status: processingJob.status })
+          .from(processingJob)
+          .where(and(eq(processingJob.takeId, current.id), ne(processingJob.kind, "transcribe")))
+          .orderBy(desc(processingJob.createdAt))
+          .limit(1);
+        if (latestJob?.status !== "failed") return err("same_background");
+      }
+
+      const jobId = crypto.randomUUID();
+      const [job] = await tx
+        .insert(processingJob)
+        .values({
+          id: jobId,
+          takeId: current.id,
+          kind: "rerender",
+          status: "queued",
+          targetBackgroundId: target,
+          secondsCharged: 0,
+          chargedMonth: null,
+          chargedAccountHash: null,
+        })
+        .returning();
+      if (!job) return err("job_active");
+
+      const steps = await tx
+        .insert(jobStep)
+        .values(
+          stepsFor("rerender", { hasBackground: target !== null }).map((name, position) => ({
+            id: crypto.randomUUID(),
+            jobId,
+            name,
+            position,
+            status: "pending",
+            progress: 0,
+          })),
+        )
+        .returning();
+
+      return ok({ ...job, steps: [...steps].sort((a, b) => a.position - b.position) });
+    });
+  } catch (error) {
+    // The partial unique index is the last guard against two active jobs on one take.
+    const { code, constraint } = pgErrorCode(error);
+    if (code === "23505" && constraint === "processing_job_one_active_per_take_uidx") {
+      return err("job_active");
+    }
+    throw error;
+  }
 }

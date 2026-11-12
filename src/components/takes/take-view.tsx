@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Icon } from "@/components/ui/icon";
 import { type TakeDetail, takeDetailSchema } from "@/lib/take-api";
-import { POLL, isInFlight, tabTitle } from "@/lib/take-display";
+import { POLL, backgroundChangeActive, isInFlight, tabTitle } from "@/lib/take-display";
 import { callApi } from "./browser-io";
 import { createPlayerBridge } from "./player-bridge";
 import { EmailSwitch } from "./email-switch";
@@ -14,6 +14,7 @@ import { TakeHeader } from "./take-header";
 import { TakeResult } from "./take-result";
 import { TakeSkeleton } from "./take-skeleton";
 import { TakeStage } from "./take-stage";
+import { BackgroundChange } from "./background-change";
 import { TranscriptPanel } from "./transcript-panel";
 import { usePoll, type PollResult } from "./use-poll";
 
@@ -55,12 +56,17 @@ export function TakeView({
     }
     setFailures(0);
     setDetail(parsed.data);
-    return isInFlight(parsed.data.take.status) ? "continue" : "stop";
+    // A background change leaves the take Ready, so keep checking while it runs (spec 0008).
+    return isInFlight(parsed.data.take.status) || backgroundChangeActive(parsed.data.backgroundJob)
+      ? "continue"
+      : "stop";
   }, [takeId]);
 
   const status = detail?.take.status ?? initialStatus;
   const title = detail?.take.title ?? initialTitle;
-  usePoll(load, POLL.takeMs, stop === null && (detail === null || isInFlight(status)), {
+  const polling =
+    detail === null || isInFlight(status) || backgroundChangeActive(detail.backgroundJob);
+  usePoll(load, POLL.takeMs, stop === null && polling, {
     immediate: true,
   });
 
@@ -117,6 +123,24 @@ export function TakeView({
             <div className="flex min-w-0 flex-col gap-6">
               <TakeStage detail={detail} bridge={bridge} onRetried={onRetried} />
               <TakeResult detail={detail} />
+              <BackgroundChange
+                detail={detail}
+                onStarted={(target) =>
+                  setDetail((d) =>
+                    d
+                      ? {
+                          ...d,
+                          backgroundJob: {
+                            status: "queued",
+                            failureCode: null,
+                            targetBackgroundId: target,
+                          },
+                        }
+                      : d,
+                  )
+                }
+                onUncertain={() => load()}
+              />
             </div>
             {detail.take.status === "ready" || detail.take.status === "expired" ? (
               <TranscriptPanel takeId={detail.take.id} bridge={bridge} />

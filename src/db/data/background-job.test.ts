@@ -148,6 +148,32 @@ describe("renders.create snapshot (spec 0008)", () => {
   });
 });
 
+describe("renders.create when the background was deleted meanwhile (spec 0008)", () => {
+  it("records no reference but keeps the name and the colour, instead of failing", async () => {
+    const bg = await seedBackground();
+    const { creator, take: t } = await takeWith(bg.id);
+    const started = await start(creator.id, t.id);
+    if (!started.ok) throw new Error(started.error);
+    await db.delete(background).where(eq(background.id, bg.id));
+    const made = await createRender(db, {
+      takeId: t.id,
+      jobId: started.data.id,
+      background: {
+        backgroundId: bg.id,
+        backgroundName: bg.name,
+        keyed: true,
+        keyColor: "#00b140",
+      },
+    });
+    expect(made.ok && made.data).toMatchObject({
+      backgroundId: null,
+      backgroundName: "Test studio",
+      keyed: true,
+      keyColor: "#00b140",
+    });
+  });
+});
+
 describe("background lock order (spec 0008)", () => {
   it("a background delete and a job start, or a guarded write, never deadlock", async () => {
     let deadlocks = 0;

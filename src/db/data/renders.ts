@@ -2,7 +2,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { removedRanges, renderKey } from "@/lib/cut-rules";
 import { type Result, err, ok } from "@/lib/result";
-import { cut, processingJob, render } from "../schema";
+import { background, cut, processingJob, render } from "../schema";
 import { runTx } from "../tx";
 import type { Executor, Render } from "../types";
 
@@ -50,6 +50,18 @@ export async function create(
       .where(eq(cut.takeId, input.takeId))
       .orderBy(asc(cut.startMs));
 
+    // The background may have been deleted since the job loaded it: then the render records no
+    // reference (it still keeps the name) instead of failing on the foreign key.
+    let backgroundId = input.background?.backgroundId ?? null;
+    if (backgroundId) {
+      const [still] = await tx
+        .select({ id: background.id })
+        .from(background)
+        .where(eq(background.id, backgroundId))
+        .for("key share");
+      if (!still) backgroundId = null;
+    }
+
     const [created] = await tx
       .insert(render)
       .values({
@@ -58,7 +70,7 @@ export async function create(
         jobId: input.jobId,
         status: "pending",
         removedRanges: removedRanges(cuts),
-        backgroundId: input.background?.backgroundId ?? null,
+        backgroundId,
         backgroundName: input.background?.backgroundName ?? null,
         keyed: input.background?.keyed ?? false,
         keyColor: input.background?.keyColor ?? null,

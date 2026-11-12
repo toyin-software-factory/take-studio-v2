@@ -125,7 +125,7 @@ export async function handleGet(
   if (creator instanceof Response) return creator;
   const found = await getForCreator(creator.db, creator.creatorId, takeId);
   if (!found.ok) return errorResponse("not_found");
-  const { take, latestJob, latestRender } = found.data;
+  const { take, latestJob, latestRender, background, noGreenScreen, backgroundJob } = found.data;
 
   // The latest render's snapshot, or else the applied cuts (spec 0004, value sourcing).
   let ranges = latestRender?.removedRanges ?? null;
@@ -140,6 +140,11 @@ export async function handleGet(
     latestRender: latestRender ? renderView(latestRender) : null,
     removedMs: removedMs(ranges),
     note: takeNote(latestJob, latestRender?.status === "succeeded"),
+    // Spec 0008: the background of the finished video, the no green screen note, and the latest
+    // background change (for the "Try again" message).
+    background: background ? { ...background, keyed: true } : null,
+    noGreenScreen,
+    backgroundJob,
   });
 }
 

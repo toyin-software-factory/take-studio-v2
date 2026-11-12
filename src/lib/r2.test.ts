@@ -95,3 +95,32 @@ describe("headObject and createMultipartUpload", () => {
     expect(await r2.createMultipartUpload("k", "video/mp4")).toBe("abc123");
   });
 });
+
+describe("putObject and the job deadline", () => {
+  it("passes the caller's signal to the request, so an aborted attempt stops its upload", async () => {
+    let seen: AbortSignal | undefined;
+    // aws4fetch signs the call and hands fetch a Request, which carries the signal.
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      seen = (input instanceof Request ? input.signal : init?.signal) ?? undefined;
+      return new Response(null, { status: 200 });
+    });
+    const controller = new AbortController();
+    await r2.putObject("previews/t/p.jpg", new Uint8Array([1]), "image/jpeg", {
+      signal: controller.signal,
+    });
+    expect(seen?.aborted).toBe(false);
+    controller.abort(new Error("deadline"));
+    expect(seen?.aborted).toBe(true);
+  });
+
+  it("still has its own 30 s limit without a signal", async () => {
+    let seen: AbortSignal | undefined;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      seen = (input instanceof Request ? input.signal : init?.signal) ?? undefined;
+      return new Response(null, { status: 200 });
+    });
+    await r2.putObject("previews/t/p.jpg", new Uint8Array([1]), "image/jpeg");
+    expect(seen).toBeDefined();
+    expect(seen?.aborted).toBe(false);
+  });
+});

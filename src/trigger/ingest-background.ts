@@ -197,7 +197,7 @@ export function realIo(r2: R2): IngestIo {
     },
     put: async (key, path, contentType, signal) => {
       const bytes = await readFile(path);
-      await r2.putObject(key, new Uint8Array(bytes), contentType, signal);
+      await r2.putObject(key, new Uint8Array(bytes), contentType, { signal });
     },
   };
 }

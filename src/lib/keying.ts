@@ -158,6 +158,26 @@ export function detectGreenScreen(frames: readonly RawFrame[]): Detection {
   };
 }
 
+/**
+ * Detection on one frame (the preview, spec 0008 pipeline 4): usable when at least 10 of the 16
+ * border patches are green in that frame. The key colour is the median of the green patches.
+ */
+export function detectInFrame(frame: RawFrame): Detection {
+  const greens = patchRects(frame.width, frame.height)
+    .map((patch) => patchMedian(frame, patch))
+    .filter(isGreen);
+  if (greens.length < DETECTION.minGreenPatches) return { usable: false, greenFrames: 0 };
+  return {
+    usable: true,
+    greenFrames: 1,
+    keyColor: {
+      r: Math.round(median(greens.map((c) => c.r))),
+      g: Math.round(median(greens.map((c) => c.g))),
+      b: Math.round(median(greens.map((c) => c.b))),
+    },
+  };
+}
+
 /** Times (ms) of the frames to sample: 10, 30, 50, 70 and 90 % of the take. */
 export function sampleTimesMs(durationMs: number): number[] {
   return DETECTION.sampleFractions.map((f) => Math.round(durationMs * f));

@@ -7,6 +7,8 @@ import {
   failureMessage,
   formatClock,
   isInFlight,
+  backgroundChangeActive,
+  backgroundFailureMessage,
   overallPercent,
   pollDelay,
   removedNote,
@@ -159,5 +161,22 @@ describe("failureMessage when the take can't be retried", () => {
     const take = { failureCode: "internal_error", durationMs: null };
     expect(failureMessage(take, false)).toMatch(/Upload the video again\.$/);
     expect(failureMessage(take)).toMatch(/Try again\.$/);
+  });
+});
+
+describe("background change helpers (spec 0008)", () => {
+  it("is active only while queued or running", () => {
+    expect(backgroundChangeActive({ status: "queued" })).toBe(true);
+    expect(backgroundChangeActive({ status: "running" })).toBe(true);
+    expect(backgroundChangeActive({ status: "succeeded" })).toBe(false);
+    expect(backgroundChangeActive({ status: "failed" })).toBe(false);
+    expect(backgroundChangeActive(null)).toBe(false);
+    expect(backgroundChangeActive(undefined)).toBe(false);
+  });
+
+  it("explains a failed change, with a special word for a vanished background", () => {
+    expect(backgroundFailureMessage("background_missing")).toContain("isn't available any more");
+    expect(backgroundFailureMessage("ffmpeg_error")).toContain("Your video is unchanged");
+    expect(backgroundFailureMessage(null)).toContain("Try again");
   });
 });

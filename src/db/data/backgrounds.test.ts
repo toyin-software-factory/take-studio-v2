@@ -315,7 +315,8 @@ describe("deleting an upload whose link may still be live", () => {
     const source = backgroundKeys(creator.id, id).sourceKey;
     expect(await count(source)).toBe(1);
     // Too early to purge: a PUT sent with the link could still land.
-    expect(await purgeRemovedBackgrounds(db, new Date(now.getTime() + 10 * 60_000))).toBe(0);
+    // (The count is not asserted: this database keeps other runs' tombstones, which may be due.)
+    await purgeRemovedBackgrounds(db, new Date(now.getTime() + 10 * 60_000));
     expect(await db.select().from(background).where(eq(background.id, id))).toHaveLength(1);
     // After the link has expired (15 minutes and a margin): queued again, row deleted.
     const later = new Date(now.getTime() + 21 * 60_000);

@@ -11,7 +11,7 @@ import {
   markRunning,
   updateStep,
 } from "@/db/data/jobs";
-import { processingJob, take } from "@/db/schema";
+import { background, processingJob, take } from "@/db/schema";
 import { runTx } from "@/db/tx";
 import type { Executor } from "@/db/types";
 import { type Result, err } from "@/lib/result";
@@ -54,7 +54,22 @@ export function cancel(
   if (!z.uuid().safeParse(input.jobId).success) return Promise.resolve(err("not_found"));
 
   return runTx(db, async (tx) => {
-    // Lock order (src/db/AGENTS.md): the take, then the job. The ownership check is the take lock.
+    // Lock order (src/db/AGENTS.md): background, then take, then job. A job that renders onto a
+    // background holds it (key share) first, because finishing may write the take's background;
+    // a background delete locks it `FOR UPDATE` and then waits for the take and job.
+    const [target] = await tx
+      .select({ backgroundId: processingJob.targetBackgroundId })
+      .from(processingJob)
+      .innerJoin(take, eq(take.id, processingJob.takeId))
+      .where(and(eq(processingJob.id, input.jobId), eq(take.creatorId, input.creatorId)));
+    if (target?.backgroundId) {
+      await tx
+        .select({ id: background.id })
+        .from(background)
+        .where(eq(background.id, target.backgroundId))
+        .for("key share");
+    }
+    // Then the take, then the job. The ownership check is the take lock.
     const [owned] = await tx
       .select({ id: take.id })
       .from(take)

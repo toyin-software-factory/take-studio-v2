@@ -6,6 +6,7 @@ import {
   type Rgb,
   compositeFilters,
   detectGreenScreen,
+  detectInFrame,
   frameSampleArgs,
   fromHex,
   isGreen,
@@ -235,5 +236,19 @@ describe("compositeFilters", () => {
     expect(text).toContain(
       "scale=1080:1920:force_original_aspect_ratio=increase:out_range=tv,crop=1080:1920",
     );
+  });
+});
+
+describe("detectInFrame (the preview frame)", () => {
+  it("is usable with one green screen frame and returns the key colour", () => {
+    const result = detectInFrame(frame(GREEN, person));
+    expect(result.usable).toBe(true);
+    if (result.usable) expect(result.keyColor).toEqual(GREEN);
+  });
+
+  it("is not usable without a green screen, or with only part of the border green", () => {
+    expect(detectInFrame(frame(GRAY, person)).usable).toBe(false);
+    const narrow = frame(GRAY, [{ x0: 0, y0: 0, x1: 0.15, y1: 1, color: GREEN }]);
+    expect(detectInFrame(narrow).usable).toBe(false);
   });
 });
