@@ -6,6 +6,7 @@ import { HomeFooter } from "./footer";
 import { HomeHero } from "./hero";
 import { JsonLd } from "./json-ld";
 import { HomeLimits } from "./limits";
+import { HomeMotion } from "./motion";
 import { HomeNav } from "./nav";
 import { HomeProof } from "./proof";
 import { HomeReel } from "./reel";
@@ -25,6 +26,7 @@ export function HomePage({ origin }: { readonly origin: string | null }) {
       <noscript>
         <style>{".home .h-acc-panel{display:block !important}"}</style>
       </noscript>
+      <HomeMotion />
       <SkipLink target="main" />
       <HomeNav />
       <main id="main" tabIndex={-1}>

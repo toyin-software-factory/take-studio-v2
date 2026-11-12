@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { NAV_LINKS } from "./content";
+import { HomeMenu } from "./menu";
 
 /** The wordmark: a rounded square with a play mark, and the name. */
 export function Logo() {
@@ -39,6 +40,7 @@ export function HomeNav() {
           <span className="h-cta-long">Upload a take</span>
           <span className="h-cta-short">Start</span>
         </Link>
+        <HomeMenu />
       </div>
     </header>
   );
