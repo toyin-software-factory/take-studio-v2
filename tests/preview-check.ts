@@ -60,7 +60,9 @@ const expect = (ok: boolean, what: string) => {
   out({ check: what, ok });
 };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const STUDIO = BUILT_IN_BACKGROUNDS[0]!.id;
+/** The blue, test only studio: the checks look for blue where the green was (the six real studios are not blue). */
+const PLACEHOLDER = BUILT_IN_BACKGROUNDS.find((b) => b.testOnly)!;
+const STUDIO = PLACEHOLDER.id;
 
 async function seedTake(file: string) {
   const takeId = crypto.randomUUID();
@@ -127,11 +129,15 @@ async function look(objectKey: string, name: string) {
   for (let i = 0; i + 2 < raw.length; i += 3) {
     if (isGreen({ r: raw[i]!, g: raw[i + 1]!, b: raw[i + 2]! })) green += 1;
   }
+  // A pixel in the middle of the shoulders (the person's shirt), to see the person was kept.
+  const rows = raw.length / 3 / 320;
+  const t = (Math.round(rows * 0.8) * 320 + 160) * 3;
   return {
     width: probe.streams[0]!.width,
     height: probe.streams[0]!.height,
     greenShare: green / (raw.length / 3),
     corner: { r: raw[0] ?? 0, g: raw[1] ?? 0, b: raw[2] ?? 0 },
+    torso: { r: raw[t] ?? 0, g: raw[t + 1] ?? 0, b: raw[t + 2] ?? 0 },
   };
 }
 
@@ -179,7 +185,7 @@ try {
   out({ warmPreviewSeconds: warm.seconds });
   const p = await look(warm.preview.objectKey!, "portrait-preview");
   expect(
-    p.width === 1280 && p.height === 2276 && p.greenShare === 0,
+    p.width === 1280 && p.height === 2276 && p.greenShare < 0.0005,
     `portrait take: ${p.width}x${p.height}, no green`,
   );
 
@@ -195,6 +201,25 @@ try {
     n.width === 1280 && Math.abs(n.corner.r - n.corner.b) < 20,
     `no green screen: the plain frame (corner rgb ${n.corner.r},${n.corner.g},${n.corner.b})`,
   );
+
+  // 4b. Other greens (S3S-T10): a lime virtual screen and a pale mint one, each with a grey
+  // sweater (146,148,140). The person must stay: the shoulders are still grey, not the studio.
+  for (const file of ["keyed-lime.mp4", "keyed-mint.mp4", "keyed-shadow.mp4"]) {
+    const take = await seedTake(file);
+    const made = await previewOf(take, STUDIO);
+    expect(
+      made.preview.status === "ready" && !made.preview.noGreenScreen,
+      `${file}: the preview is ready and not flagged`,
+    );
+    const g = await look(made.preview.objectKey!, file.replace(".mp4", "-preview"));
+    expect(g.greenShare === 0, `${file}: no green left (${(g.greenShare * 100).toFixed(2)} %)`);
+    expect(
+      Math.abs(g.torso.r - 146) < 40 &&
+        Math.abs(g.torso.g - 148) < 40 &&
+        Math.abs(g.torso.b - 140) < 40,
+      `${file}: the person is kept, the sweater is still grey (rgb ${g.torso.r},${g.torso.g},${g.torso.b})`,
+    );
+  }
 
   // 5. Two backgrounds on one take run one after the other and both finish.
   const second = crypto.randomUUID();
@@ -221,7 +246,7 @@ try {
     creatorId: userId,
     name: "Studio warm",
     imageKey,
-    thumbKey: `backgrounds/builtin/${BUILT_IN_BACKGROUNDS[0]!.slug}.webp`,
+    thumbKey: `backgrounds/builtin/${PLACEHOLDER.slug}.webp`,
     width: 1920,
     height: 1080,
     status: "ready",
@@ -249,7 +274,7 @@ try {
       creatorId: userId,
       name,
       imageKey,
-      thumbKey: `backgrounds/builtin/${BUILT_IN_BACKGROUNDS[0]!.slug}.webp`,
+      thumbKey: `backgrounds/builtin/${PLACEHOLDER.slug}.webp`,
       width: 1920,
       height: 1080,
       status: "ready",

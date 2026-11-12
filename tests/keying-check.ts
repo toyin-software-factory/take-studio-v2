@@ -56,7 +56,9 @@ const media = (name: string) => new URL(`./fixtures/media/${name}`, import.meta.
 const out = (o: unknown) => console.log(JSON.stringify(o));
 const userId = `keying-check-${crypto.randomUUID()}`;
 const keys: string[] = [];
-const BACKGROUND_ID = BUILT_IN_BACKGROUNDS[0]!.id;
+/** The blue, test only studio: the checks look for blue where the green was (the six real studios are not blue). */
+const PLACEHOLDER = BUILT_IN_BACKGROUNDS.find((b) => b.testOnly)!;
+const BACKGROUND_ID = PLACEHOLDER.id;
 
 const FIXTURES = process.argv.slice(2).length
   ? process.argv.slice(2)
@@ -66,6 +68,9 @@ const FIXTURES = process.argv.slice(2).length
       "keyed-hdr.mp4",
       "keyed-no-pauses.mp4",
       "keyed-no-audio.mp4",
+      "keyed-lime.mp4",
+      "keyed-mint.mp4",
+      "keyed-shadow.mp4",
       "nogreen-none.mp4",
       "nogreen-no-pauses.mp4",
       "nogreen-no-audio.mp4",
@@ -155,7 +160,25 @@ function outlineGreen(sourcePath: string, outputPath: string, hdr: boolean) {
       if (isGreen(c)) green += 1;
     }
   }
-  return { bandPixels: band, greenInBand: green };
+  // The person must survive the key (S3S-T10): inside the subject (shrunk by the band), the
+  // output must still look like the source, not like the studio.
+  let inside = 0;
+  let kept = 0;
+  for (let i = 0; i < fg.length; i++) {
+    if (shrunk[i] !== 1) continue;
+    inside += 1;
+    const delta =
+      Math.abs(render.data[i * 3]! - src.data[i * 3]!) +
+      Math.abs(render.data[i * 3 + 1]! - src.data[i * 3 + 1]!) +
+      Math.abs(render.data[i * 3 + 2]! - src.data[i * 3 + 2]!);
+    if (delta < 90) kept += 1;
+  }
+  return {
+    bandPixels: band,
+    greenInBand: green,
+    subjectPixels: inside,
+    subjectKept: inside === 0 ? 0 : kept / inside,
+  };
 }
 
 async function seedTake(file: string) {
@@ -306,10 +329,14 @@ try {
     const o = row.output as { audio?: boolean } | undefined;
     if (o && o.audio !== want.audio) problems.push(`output audio=${o.audio}`);
     if (want.keyed) {
-      const outline = row.outline as { greenInBand: number; bandPixels: number } | undefined;
+      const outline = row.outline as
+        { greenInBand: number; bandPixels: number; subjectKept: number } | undefined;
       if (!outline || outline.bandPixels === 0) problems.push("no outline measured");
-      else if (outline.greenInBand !== 0) {
-        problems.push(`${outline.greenInBand} green outline pixels`);
+      else {
+        if (outline.greenInBand !== 0) problems.push(`${outline.greenInBand} green outline pixels`);
+        if (outline.subjectKept < 0.98) {
+          problems.push(`only ${(outline.subjectKept * 100).toFixed(1)} % of the person kept`);
+        }
       }
     }
     row.ok = problems.length === 0;
