@@ -29,7 +29,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 5 | Core take loop | Slice 1 | done |
 | 6 | Error monitoring | Slice 1 | done |
 | 7 | Transcript | Slice 2 | done |
-| 8 | Studio background swap | Slice 3 | in-progress |
+| 8 | Studio background swap | Slice 3 | done |
 | 9 | Cut review timeline | Slice 4 | planned |
 | 10 | AI editing agents | Slice 5 | planned |
 | 11 | Take library, delete & retention | Slice 6 | planned |
@@ -142,17 +142,17 @@ Spec [0007](../specs/0007-transcript.md) · code in `src/trigger/transcribe-take
 
 ## Slice 3: Studio background
 
-### 8. Studio background swap · in-progress
+### 8. Studio background swap · done
 Replace the green screen with a studio background: pick one of a few built in studios or upload your own image.
 **Done when:** a creator picks a preset or uploads an image (format and size checked), and the finished video shows the subject cleanly on that background with no visible green edges in normal lighting.
 - [x] Design it (spec): `/architect studio background swap`
-- [ ] Build it: `/develop studio background swap`
+- [x] Build it: `/develop studio background swap`
    - [x] First thread: keying in the video job, detection, always render with a background (AC-2, AC-3)
-   - [ ] Choose at upload and change later: upload choice and default, background re-renders that keep the take Ready (AC-1, AC-5, AC-6) (re render and its route done in S3S-T03; upload choice in S3S-T02)
-   - [ ] Previews and uploaded backgrounds: preview stills, upload, ingest, library, delete (AC-4, AC-8, AC-9, AC-10)
-   - [ ] Picker, tips and the six studios, then end to end tests (AC-4, AC-7, AC-11, AC-12, AC-2, AC-5)
-- [ ] Verify it: `/check verify studio background swap`
-- [ ] Test it: `/test studio background swap`
+   - [x] Choose at upload and change later: upload choice and default, background re-renders that keep the take Ready (AC-1, AC-5, AC-6) (re render and its route done in S3S-T03; upload choice in S3S-T02)
+   - [x] Previews and uploaded backgrounds: preview stills, upload, ingest, library, delete (AC-4, AC-8, AC-9, AC-10)
+   - [x] Picker, tips and the six studios, then end to end tests (AC-4, AC-7, AC-11, AC-12, AC-2, AC-5)
+- [x] Verify it: `/check verify studio background swap` (`docs/reviews/0008-studio-background-verify.md`: all of AC-1 to AC-12 pass; AC-7 confirmed live by Toyin)
+- [x] Test it: `/test studio background swap` (tests written with each part: `src/lib/keying.test.ts`, `src/lib/built-in-backgrounds.test.ts`, `src/db/data/background-rerender.test.ts`, `src/server/backgrounds/*.test.ts`, `src/trigger/ingest-background.test.ts`, `src/background-upload.e2e.test.ts`, `src/trigger/built-in-backgrounds.test.ts`, `tests/background-picker.spec.ts`, `tests/background-take-page.spec.ts`, `tests/pipeline/background.ts`)
 Spec [0008](../specs/0008-studio-background.md) · code in `src/lib/keying.ts`, `src/trigger/process-take.ts`, `src/trigger/preview-background.ts`, `src/trigger/ingest-background.ts`, `src/db/data/jobs.ts`, `src/app/api/backgrounds/`, `src/components/takes/`
 
 ## Slice 4: Review the cuts
