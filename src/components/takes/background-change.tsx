@@ -15,8 +15,11 @@ import { callApi } from "./browser-io";
 const ORIGINAL = "original";
 
 /** The built in studios, as `GET /api/backgrounds` lists them (only what this select needs). */
+const itemSchema = z.object({ id: z.string(), name: z.string(), status: z.string() });
 const listSchema = z.object({
-  builtIn: z.array(z.object({ id: z.string(), name: z.string(), status: z.string() })),
+  builtIn: z.array(itemSchema),
+  /** The creator's own uploads; only the ready ones can be used. */
+  mine: z.array(itemSchema).default([]),
 });
 
 /**
@@ -42,7 +45,9 @@ export function BackgroundChange({
       .then((reply) => {
         const parsed = listSchema.safeParse(reply.data);
         if (!cancelled && reply.status === 200 && parsed.success) {
-          setOptions(parsed.data.builtIn.filter((b) => b.status === "ready"));
+          setOptions(
+            [...parsed.data.builtIn, ...parsed.data.mine].filter((b) => b.status === "ready"),
+          );
         }
       })
       .catch(() => undefined);
