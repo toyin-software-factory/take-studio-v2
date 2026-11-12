@@ -13,7 +13,7 @@ const API_TIMEOUT_MS = 30_000;
 /** A JSON request to our own API. The body, if any, is sent as JSON; `data` is null if none. */
 export async function callApi(
   path: string,
-  method: "GET" | "POST" | "PATCH" | "DELETE",
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
   body?: unknown,
 ): Promise<ApiReply> {
   const response = await fetch(path, {

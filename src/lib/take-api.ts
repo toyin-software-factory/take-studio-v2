@@ -49,6 +49,20 @@ export const takeDetailSchema = z.object({
     .nullable(),
   removedMs: z.number(),
   note: z.enum(["no_audio", "no_cuts"]).nullable(),
+  /** Spec 0008: the background the finished video is on (green replaced), else null. */
+  background: z
+    .object({ id: z.string().nullable(), name: z.string(), keyed: z.boolean() })
+    .nullable()
+    .default(null),
+  noGreenScreen: z.boolean().default(false),
+  backgroundJob: z
+    .object({
+      status: z.string(),
+      failureCode: z.string().nullable(),
+      targetBackgroundId: z.string().nullable().default(null),
+    })
+    .nullable()
+    .default(null),
 });
 export type TakeDetail = z.infer<typeof takeDetailSchema>;
 

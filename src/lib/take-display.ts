@@ -206,3 +206,21 @@ export const POLL = {
 export function pollDelay(baseMs: number, failures: number): number {
   return Math.min(baseMs * 2 ** failures, POLL.maxBackoffMs);
 }
+
+/** True while a background change is queued or running (the take itself stays Ready). */
+export function backgroundChangeActive(
+  job: { readonly status: string } | null | undefined,
+): boolean {
+  return job?.status === "queued" || job?.status === "running";
+}
+
+/** What the take page says about a background change that failed (spec 0008, AC-5). */
+export function backgroundFailureMessage(failureCode: string | null): string {
+  return failureCode === "background_missing"
+    ? "That background isn't available any more. Pick another one."
+    : "The new background didn't finish. Your video is unchanged. Try again.";
+}
+
+/** The note shown when the take has no usable green screen (spec 0008, AC-3). */
+export const NO_GREEN_SCREEN_NOTE =
+  "We couldn't find a green screen in this take, so we kept the original background.";

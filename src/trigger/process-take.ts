@@ -148,10 +148,16 @@ async function processJob(
     const facts = await probeFile(source, signal);
     if (!facts) throw new MediaToolError("ffprobe", null, false);
 
+    // A background change (spec 0008): a `rerender` job on a take that is already Ready. It
+    // reuses the take's applied cuts (the render snapshot reads them), so it neither trims nor
+    // re analyses, always renders, and starts no transcript. A re render of a take that failed
+    // (take `processing`) is a full run again, as before.
+    const isBackgroundChange = job.kind === "rerender" && t.status === "ready";
+
     // Trim. A take with no sound has nothing to trim: with no background it ends here (the
     // original is the video); with one it still renders, below.
-    await step("trim", "running", 0);
-    if (!facts.hasAudio) {
+    if (!isBackgroundChange) await step("trim", "running", 0);
+    if (!isBackgroundChange && !facts.hasAudio) {
       await step("trim", "skipped", 0);
       if (!job.targetBackgroundId) {
         await step("render", "skipped", 0);
@@ -164,7 +170,7 @@ async function processJob(
       }
     }
     let hasCuts = false;
-    if (facts.hasAudio) {
+    if (!isBackgroundChange && facts.hasAudio) {
       const trimProgress = throttledProgress((p) => step("trim", "running", p));
       const stderr = await runFfmpeg(
         ["-i", source, "-vn", "-af", silencedetectFilter(), "-f", "null", "-"],
@@ -238,7 +244,7 @@ async function processJob(
 
     // Spec 0008 AC-2: a take with a chosen background is always rendered (the whole take when
     // there are no cuts), keyed or not, so the render records which background it was for.
-    if (!hasCuts && !backgroundFacts) {
+    if (!isBackgroundChange && !hasCuts && !backgroundFacts) {
       await step("render", "skipped", 0);
       signal.throwIfAborted();
       await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
@@ -369,7 +375,7 @@ async function processJob(
     const finished = await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
     if (!finished.ok) throw new Error(`finish failed: ${finished.error}`);
     await queueTakeEmail(job.id, job.kind);
-    await startTranscript(client, t.id);
+    if (!isBackgroundChange) await startTranscript(client, t.id);
 
     return {
       jobId: job.id,
