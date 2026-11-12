@@ -283,11 +283,13 @@ test.describe("the words, the fill lines and the arc (AC-6)", () => {
       const top = el.getBoundingClientRect().top + window.scrollY;
       window.scrollTo(0, top - 720 * 0.8 + 200);
     });
-    await expect
-      .poll(() => line.evaluate((el) => el.style.getPropertyValue("--fill-progress")), {
-        timeout: 8000,
-      })
-      .toMatch(/^(?!0\.00%|100)/);
+    // A real number above 0 (NaN, from an unset property, fails this), then below 100.
+    const progress = () =>
+      line.evaluate((el) => parseFloat(el.style.getPropertyValue("--fill-progress")));
+    await expect.poll(progress, { timeout: 8000 }).toBeGreaterThan(0);
+    const half = await progress();
+    expect(Number.isFinite(half)).toBe(true);
+    expect(half).toBeLessThan(100);
     await page.emulateMedia({ reducedMotion: "reduce" });
     await expect
       .poll(() => line.evaluate((el) => el.style.getPropertyValue("--fill-progress")))
