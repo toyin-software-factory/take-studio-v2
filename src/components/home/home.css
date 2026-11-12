@@ -410,6 +410,11 @@
 .h-reel.is-scrub .h-reel-title {
   margin-bottom: 0;
 }
+/* The head sits above the video; it takes no pointer input, so the play and pause button under
+   the corner slot gets its clicks. */
+.h-reel.is-scrub .h-reel-head {
+  pointer-events: none;
+}
 .h-reel.is-scrub .h-reel-slot {
   display: block;
   width: clamp(280px, 34vw, 496px);
@@ -1078,8 +1083,9 @@ html:has(.h-menu[open]) {
   bottom: 12px;
 }
 .h-reel.is-scrub .h-reel-toggle {
-  right: 24px;
-  bottom: 24px;
+  /* inside the corner slot's rectangle (set by motion/reel.ts), which the clip never leaves */
+  right: var(--toggle-right, 24px);
+  bottom: var(--toggle-bottom, 24px);
 }
 
 /* Entrances (recipe 7.3): hidden only once scripts run, and only when motion is allowed */

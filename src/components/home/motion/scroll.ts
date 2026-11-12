@@ -35,6 +35,10 @@ export function wireAnchors(root: HTMLElement, lenis: Lenis | null): () => void 
     event.preventDefault();
     if (lenis) lenis.scrollTo(target, { offset: -80 });
     else target.scrollIntoView();
+    // preventDefault stopped the browser updating the address: do it, so the section's URL can be
+    // copied and Back returns to the previous place.
+    const hash = link.getAttribute("href") ?? "";
+    if (window.location.hash !== hash) window.history.pushState(null, "", hash);
     if (!target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
     target.focus({ preventScroll: true });
   };

@@ -45,6 +45,27 @@ test.describe("nav (AC-4)", () => {
     await expect(nav).not.toHaveClass(/is-float/);
     await expect(nav).not.toHaveClass(/is-dark/);
   });
+
+  test("stays a floating pill at the very bottom of the page", async ({ page }) => {
+    await motionReady(page);
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.waitForTimeout(800);
+    expect(
+      await page.evaluate(
+        () => window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2,
+      ),
+    ).toBe(true);
+    await expect(page.locator("header#nav")).toHaveClass(/is-float/);
+  });
+
+  test("a link to a section updates the address, and Back returns", async ({ page }) => {
+    await motionReady(page);
+    await page.locator("header#nav").getByRole("link", { name: "faq" }).click();
+    await expect(page).toHaveURL(/#faq$/);
+    await expect(page.locator("#faq")).toBeFocused();
+    await page.goBack();
+    await expect(page).not.toHaveURL(/#faq$/);
+  });
 });
 
 test.describe("menu dialog on a phone (AC-4)", () => {
@@ -123,6 +144,65 @@ test.describe("hero fan (AC-5)", () => {
     await expect.poll(() => cardAngle(page), { timeout: 15_000 }).not.toBe(held);
   });
 
+  test("a card nobody can see is out of the tab order, and a focused card stops the loop", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await motionReady(page);
+    await page.waitForTimeout(1500);
+    const states = await page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>(".h-fan-card")].map((card) => ({
+        tabindex: card.getAttribute("tabindex"),
+        x: card.getBoundingClientRect().left,
+      })),
+    );
+    // At least one card is on the panel (focusable) and the far ones are not.
+    expect(states.some((s) => s.tabindex === null)).toBe(true);
+    expect(states.some((s) => s.tabindex === "-1")).toBe(true);
+    for (const s of states) {
+      if (s.x < -200 || s.x > 600) expect(s.tabindex).toBe("-1");
+    }
+    // Focus a card that is on the panel: the wheel holds still while it has focus.
+    await page.locator(".h-fan-card:not([tabindex])").first().focus();
+    await page.waitForTimeout(400);
+    const held = await cardAngle(page);
+    await page.waitForTimeout(1500);
+    expect(await cardAngle(page)).toBe(held);
+  });
+
+  test("a fan paused earlier in the visit does not open or turn after a reload", async ({
+    page,
+  }) => {
+    await motionReady(page);
+    await page.getByRole("button", { name: "Pause the card animation" }).click();
+    await page.reload();
+    await expect(page.locator(".h-fan.is-fan")).toHaveCount(1);
+    // The cards are on the wheel at once (not collapsing to a stack and opening) and stay put.
+    await page.waitForTimeout(250);
+    const early = await cardAngle(page);
+    expect(early).not.toBe(0);
+    await page.waitForTimeout(2500);
+    expect(await cardAngle(page)).toBe(early);
+  });
+
+  test("turning reduced motion on while the page is open stops the loop and smooth scroll", async ({
+    page,
+  }) => {
+    await motionReady(page);
+    await expect(page.getByRole("button", { name: "Pause the card animation" })).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.classList.contains("lenis"))).toBe(
+      true,
+    );
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(page.getByRole("button", { name: /card animation/ })).toHaveCount(0);
+    expect(await page.evaluate(() => document.documentElement.classList.contains("lenis"))).toBe(
+      false,
+    );
+    const angle = await cardAngle(page);
+    await page.waitForTimeout(1200);
+    expect(await cardAngle(page)).toBe(angle);
+  });
+
   test("pauses while the fan is out of view", async ({ page }) => {
     await motionReady(page);
     // Past the opening (900 ms plus 800 ms) and the loop's own 1.7 s delay: it is turning.
@@ -168,6 +248,31 @@ test.describe("reel (AC-5)", () => {
     await page.mouse.wheel(0, 120);
     await page.waitForTimeout(700);
     expect(await video.evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
+  });
+
+  test("the pause button is on screen and clickable before the reel has opened", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await motionReady(page);
+    await page.evaluate(() => {
+      const top = document.querySelector(".h-reel")!.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo(0, top + 20);
+    });
+    const video = page.locator(".h-reel-media video");
+    await expect.poll(() => video.evaluate((v: HTMLVideoElement) => !v.paused)).toBe(true);
+    const pause = page.getByRole("button", { name: "Pause the reel" });
+    await expect(pause).toBeVisible();
+    // The button (or its icon) is the topmost thing at its own centre: not clipped away behind
+    // the corner window and not covered by the heading area.
+    const hit = await pause.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return top !== null && el.contains(top);
+    });
+    expect(hit).toBe(true);
+    await pause.click();
+    await expect(page.getByRole("button", { name: "Play the reel" })).toBeVisible();
   });
 
   test("below 810 px it is an inline 16:9 video that starts only on play", async ({ page }) => {

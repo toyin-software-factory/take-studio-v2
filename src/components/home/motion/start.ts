@@ -1,6 +1,5 @@
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { prefersReducedMotion } from "./eases";
 import { setupEntrances, setupWordReveals } from "./enter";
 import { setupFan } from "./fan";
 import { playIntro } from "./intro";
@@ -20,9 +19,27 @@ export function startHomeMotion(): () => void {
   const root = document.querySelector<HTMLElement>(".home");
   if (!root) return () => undefined;
   gsap.registerPlugin(ScrollTrigger);
-  const reduced = prefersReducedMotion();
   document.documentElement.classList.add("js");
 
+  // The motion is built for the current setting and rebuilt when the visitor changes it while
+  // the page is open (turning reduced motion on stops Lenis and the loops at once).
+  const query = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let stopCurrent = run(root, query.matches);
+  const onChange = (event: MediaQueryListEvent) => {
+    stopCurrent();
+    stopCurrent = run(root, event.matches);
+  };
+  query.addEventListener("change", onChange);
+
+  return () => {
+    query.removeEventListener("change", onChange);
+    stopCurrent();
+    document.documentElement.classList.remove("js");
+  };
+}
+
+/** One build of the motion for `reduced` (see `startHomeMotion`); returns its teardown. */
+function run(root: HTMLElement, reduced: boolean): () => void {
   const teardown: (() => void)[] = [];
   const smooth = reduced ? null : startSmoothScroll();
   if (smooth) {
@@ -53,8 +70,5 @@ export function startHomeMotion(): () => void {
   window.addEventListener("load", refresh);
   teardown.push(() => window.removeEventListener("load", refresh));
 
-  return () => {
-    teardown.reverse().forEach((fn) => fn());
-    document.documentElement.classList.remove("js");
-  };
+  return () => teardown.reverse().forEach((fn) => fn());
 }

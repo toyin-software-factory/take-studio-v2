@@ -13,8 +13,9 @@ export function watchNav(root: HTMLElement): () => void {
   if (!nav) return () => undefined;
   const triggers = [
     ScrollTrigger.create({
+      // Far past the end of any page: "max" would turn the trigger off at the very bottom.
       start: NAV_FLOAT_AT,
-      end: "max",
+      end: 1e7,
       onToggle: (self) => nav.classList.toggle("is-float", self.isActive),
     }),
     ...Array.from(root.querySelectorAll<HTMLElement>('[data-theme="dark"]')).map((section) =>

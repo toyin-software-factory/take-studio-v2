@@ -4,10 +4,16 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 /** Scroll distance over which the reel opens from its corner to full bleed (recipe 7.5). */
 export const REEL_SCRUB_PX = 806;
 
-/** `clip-path` that shows exactly the corner slot, measured when the trigger refreshes. */
-function slotInset(sticky: HTMLElement, slot: HTMLElement): string {
+/**
+ * `clip-path` that shows exactly the corner slot, measured when the trigger refreshes. The clip
+ * only grows from there, so the play and pause button is placed inside the slot's rectangle (CSS
+ * variables on the media element): it is never clipped away and always takes pointer input.
+ */
+function slotInset(sticky: HTMLElement, slot: HTMLElement, media: HTMLElement): string {
   const s = slot.getBoundingClientRect();
   const b = sticky.getBoundingClientRect();
+  media.style.setProperty("--toggle-right", `${b.right - s.right + 12}px`);
+  media.style.setProperty("--toggle-bottom", `${b.bottom - s.bottom + 12}px`);
   return `inset(${s.top - b.top}px ${b.right - s.right}px ${b.bottom - s.bottom}px ${s.left - b.left}px round 10px)`;
 }
 
@@ -41,7 +47,7 @@ export function setupReel(root: HTMLElement): gsap.MatchMedia {
     });
     tl.fromTo(
       media,
-      { clipPath: () => slotInset(sticky, slot) },
+      { clipPath: () => slotInset(sticky, slot, media) },
       { clipPath: "inset(0px 0px 0px 0px round 0px)", ease: "none" },
       0,
     )
@@ -62,6 +68,8 @@ export function setupReel(root: HTMLElement): gsap.MatchMedia {
       player.kill();
       video.pause();
       reel.classList.remove("is-scrub");
+      media.style.removeProperty("--toggle-right");
+      media.style.removeProperty("--toggle-bottom");
       gsap.set([media, video, ".h-reel-title"], { clearProps: "all" });
     };
   });
