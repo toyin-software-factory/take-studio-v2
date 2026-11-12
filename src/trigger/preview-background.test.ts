@@ -104,11 +104,16 @@ async function pending(opts: { keyedRender?: boolean } = {}) {
 }
 
 function fakeIo(
-  over: Partial<PreviewIo> & { frame?: RawFrame; onEncode?: () => Promise<void> } = {},
+  over: Partial<PreviewIo> & {
+    frame?: RawFrame;
+    keyedShare?: number;
+    onEncode?: () => Promise<void>;
+  } = {},
 ) {
   const puts: { key: string; type: string; bytes: number }[] = [];
   const deleted: string[] = [];
   const sampled = vi.fn(async () => over.frame ?? GREEN_FRAME);
+  const keyedShares = vi.fn(async () => over.keyedShare ?? 0.45);
   const encodes: (readonly string[])[] = [];
   const io: PreviewIo = {
     r2: {
@@ -131,6 +136,7 @@ function fakeIo(
         hdrTransfer: null,
       }) as never,
     sampleFrame: sampled,
+    sampleKeyedShare: keyedShares,
     encode: async (args) => {
       encodes.push(args);
       await over.onEncode?.();
@@ -269,6 +275,27 @@ describe("makePreview (AC-4)", () => {
     await makePreview(db, preview.id, io);
     expect(sampled).not.toHaveBeenCalled();
     expect(encodes[0]!.join(" ")).toContain("chromakey=0x12ab34");
+  });
+
+  it("shows the plain frame when the key would erase the person (S3S-T10)", async () => {
+    // A key that makes 98 % of the frame transparent removed the subject with the screen.
+    const { preview } = await pending({ keyedRender: true });
+    const { io, encodes } = fakeIo({ keyedShare: 0.98 });
+    expect(await makePreview(db, preview.id, io)).toEqual({
+      outcome: "ready",
+      noGreenScreen: true,
+    });
+    expect(encodes[0]!.join(" ")).not.toContain("chromakey");
+  });
+
+  it("does not reuse a latest render key that is too close to neutral, and detects again (S3S-T10)", async () => {
+    const { preview } = await pending({ keyedRender: true });
+    const { io, sampled } = fakeIo({ frame: GRAY_FRAME });
+    // The stored key colour is changed to a near grey green, which cannot be told from grey.
+    const { render } = await import("@/db/schema");
+    await db.update(render).set({ keyColor: "#a0a8a2" });
+    expect(await makePreview(db, preview.id, io)).toMatchObject({ noGreenScreen: true });
+    expect(sampled).toHaveBeenCalled();
   });
 
   it("flags a take with no green screen and shows its plain frame", async () => {

@@ -5,6 +5,7 @@ import {
   PREVIEW_RUN_MS,
   PREVIEW_STALE_MS,
   PREVIEW_WIDTH,
+  PREVIEW_STILL_VERSION,
   cutVersion,
   isStalePreview,
   keyedPreviewGraph,
@@ -36,6 +37,16 @@ describe("preview rules (spec 0008, AC-4)", () => {
     const none = await cutVersion([]);
     expect(none).toMatch(/^[0-9a-f]{16}$/);
     expect(none).not.toBe(a);
+  });
+
+  it("includes the still version, so a keying change makes every cached preview miss (S3S-T10)", async () => {
+    expect(PREVIEW_STILL_VERSION).toBeGreaterThanOrEqual(2);
+    // The version 1 identity of "no cuts" (what a still made before S3S-T10 was stored under).
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(""));
+    const oldNone = [...new Uint8Array(digest).slice(0, 8)]
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    expect(await cutVersion([])).not.toBe(oldNone);
   });
 
   it("derives the stale threshold from the job's limits: every attempt plus a queue margin", () => {

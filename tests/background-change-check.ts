@@ -54,7 +54,9 @@ const media = (name: string) => new URL(`./fixtures/media/${name}`, import.meta.
 const out = (o: unknown) => console.log(JSON.stringify(o));
 const userId = `bgchange-check-${crypto.randomUUID()}`;
 const keys: string[] = [];
-const FIRST = BUILT_IN_BACKGROUNDS[0]!.id;
+/** The blue, test only studio: the checks look for blue where the green was (the six real studios are not blue). */
+const PLACEHOLDER = BUILT_IN_BACKGROUNDS.find((b) => b.testOnly)!;
+const FIRST = PLACEHOLDER.id;
 const problems: string[] = [];
 const expect = (ok: boolean, what: string) => {
   if (!ok) problems.push(what);
@@ -159,9 +161,7 @@ async function newBackground(name: string, imageBytes: Uint8Array<ArrayBuffer> |
     creatorId: userId,
     name,
     imageKey,
-    thumbKey: BUILT_IN_BACKGROUNDS[0]
-      ? `backgrounds/builtin/${BUILT_IN_BACKGROUNDS[0].slug}.webp`
-      : "x",
+    thumbKey: PLACEHOLDER ? `backgrounds/builtin/${PLACEHOLDER.slug}.webp` : "x",
     width: 1920,
     height: 1080,
     status: "ready",

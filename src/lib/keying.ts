@@ -28,7 +28,7 @@ export const DETECTION = {
   /** A patch is green when its median HSV is in these ranges. */
   hueMinDeg: 80,
   hueMaxDeg: 160,
-  minSaturation: 0.3,
+  minSaturation: 0.2,
   minValue: 0.25,
   /** Usable when at least this many of the 16 patches are green ... */
   minGreenPatches: 10,
@@ -38,11 +38,65 @@ export const DETECTION = {
   frameWidth: 320,
 } as const;
 
-/** Chroma key settings, tuned with the fixtures (spec 0008 build step 1). */
+/**
+ * Chroma key settings, tuned with the fixtures (spec 0008 build step 1) and made adaptive in
+ * S3S-T10. `similarity` and `blend` are the ceilings, right for a saturated chroma green. ffmpeg's
+ * `chromakey` compares only the U and V planes, so a pale or dark green sits close to neutral in
+ * UV, and a grey sweater, skin or dark clothing sit inside a fixed 0.12 + 0.08 window and are
+ * keyed out with the screen. `keySettings` therefore scales both with the key colour's own
+ * distance from neutral, and a key too close to neutral (below `minChroma`) is not used at all.
+ */
 export const KEYING = {
   similarity: 0.12,
   blend: 0.08,
+  /** Similarity is at most this share of the key's distance from neutral (UV, chromakey units). */
+  similarityPerChroma: 0.3,
+  /** Blend is at most this share of it. */
+  blendPerChroma: 0.22,
+  /** A key colour closer to neutral than this cannot be told from grey and skin: no green screen. */
+  minChroma: 0.12,
+  /** A key that would make more of the frame transparent than this erases the subject too. */
+  maxKeyedShare: 0.85,
 } as const;
+
+/**
+ * How far a colour is from neutral in the U and V planes, in the units `chromakey`'s similarity
+ * uses (0 neutral, about 0.5 for a pure saturated colour). It uses the same BT.601 integer
+ * formula as ffmpeg's `chromakey` does for its key colour.
+ */
+export function keyChroma({ r, g, b }: Rgb): number {
+  const u = ((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128;
+  const v = ((112 * r - 94 * g - 18 * b + 128) >> 8) + 128;
+  return Math.hypot(u - 128, v - 128) / (128 * Math.SQRT2);
+}
+
+/** The `chromakey` similarity and blend for a key colour: the ceilings, scaled down for a pale or dark green. */
+export function keySettings(key: Rgb): { readonly similarity: number; readonly blend: number } {
+  const chroma = keyChroma(key);
+  const round = (n: number) => Math.round(n * 10_000) / 10_000;
+  return {
+    similarity: round(Math.min(KEYING.similarity, KEYING.similarityPerChroma * chroma)),
+    blend: round(Math.min(KEYING.blend, KEYING.blendPerChroma * chroma)),
+  };
+}
+
+/** True when the key colour is far enough from neutral to separate the screen from the subject. */
+export function isKeyable(key: Rgb): boolean {
+  return keyChroma(key) >= KEYING.minChroma;
+}
+
+/** The share (0 to 1) of an 8 bit alpha plane that is transparent (below half). */
+export function transparentShare(alpha: Uint8Array): number {
+  if (alpha.length === 0) return 1;
+  let transparent = 0;
+  for (const a of alpha) if (a < 128) transparent += 1;
+  return transparent / alpha.length;
+}
+
+/** True when keying would remove so much of the frame that the subject must be gone too. */
+export function erasesSubject(share: number): boolean {
+  return share > KEYING.maxKeyedShare;
+}
 
 export type Patch = {
   readonly x: number;
@@ -125,8 +179,11 @@ export function isGreen(color: Rgb): boolean {
   );
 }
 
+/** Why a take has no usable key: no green screen found, a key too close to neutral, or a key that would erase the subject. */
+export type NoKeyReason = "no_green" | "low_chroma" | "erases_subject";
+
 export type Detection =
-  | { readonly usable: false; readonly greenFrames: number }
+  | { readonly usable: false; readonly greenFrames: number; readonly reason?: NoKeyReason }
   | { readonly usable: true; readonly greenFrames: number; readonly keyColor: Rgb };
 
 /**
@@ -145,17 +202,15 @@ export function detectGreenScreen(frames: readonly RawFrame[]): Detection {
     greens.push(...found);
   }
   if (greenFrames < DETECTION.minGreenFrames || greens.length === 0) {
-    return { usable: false, greenFrames };
+    return { usable: false, greenFrames, reason: "no_green" };
   }
-  return {
-    usable: true,
-    greenFrames,
-    keyColor: {
-      r: Math.round(median(greens.map((c) => c.r))),
-      g: Math.round(median(greens.map((c) => c.g))),
-      b: Math.round(median(greens.map((c) => c.b))),
-    },
+  const keyColor = {
+    r: Math.round(median(greens.map((c) => c.r))),
+    g: Math.round(median(greens.map((c) => c.g))),
+    b: Math.round(median(greens.map((c) => c.b))),
   };
+  if (!isKeyable(keyColor)) return { usable: false, greenFrames, reason: "low_chroma" };
+  return { usable: true, greenFrames, keyColor };
 }
 
 /**
@@ -166,16 +221,16 @@ export function detectInFrame(frame: RawFrame): Detection {
   const greens = patchRects(frame.width, frame.height)
     .map((patch) => patchMedian(frame, patch))
     .filter(isGreen);
-  if (greens.length < DETECTION.minGreenPatches) return { usable: false, greenFrames: 0 };
-  return {
-    usable: true,
-    greenFrames: 1,
-    keyColor: {
-      r: Math.round(median(greens.map((c) => c.r))),
-      g: Math.round(median(greens.map((c) => c.g))),
-      b: Math.round(median(greens.map((c) => c.b))),
-    },
+  if (greens.length < DETECTION.minGreenPatches) {
+    return { usable: false, greenFrames: 0, reason: "no_green" };
+  }
+  const keyColor = {
+    r: Math.round(median(greens.map((c) => c.r))),
+    g: Math.round(median(greens.map((c) => c.g))),
+    b: Math.round(median(greens.map((c) => c.b))),
   };
+  if (!isKeyable(keyColor)) return { usable: false, greenFrames: 1, reason: "low_chroma" };
+  return { usable: true, greenFrames: 1, keyColor };
 }
 
 /** Times (ms) of the frames to sample: 10, 30, 50, 70 and 90 % of the take. */
@@ -231,6 +286,44 @@ export function frameSampleArgs(
   ];
 }
 
+/**
+ * ffmpeg arguments that decode one frame of `source` at `timeMs`, tone mapped like the render,
+ * key it with the settings the render would use, and write the alpha plane as raw 8 bit gray
+ * bytes (`width * height`). Counting the transparent bytes (`transparentShare`) shows what the
+ * key would remove, on the real decode path, whatever the cause of a bad key.
+ */
+export function frameAlphaArgs(
+  source: string,
+  timeMs: number,
+  size: { readonly width: number; readonly height: number },
+  toneMap: string | null,
+  keyColor: string,
+): string[] {
+  const { similarity, blend } = keySettings(fromHex(keyColor) ?? { r: 0, g: 177, b: 64 });
+  const filters = [
+    toneMap,
+    `scale=${size.width}:${size.height}`,
+    `format=yuva444p,chromakey=0x${keyColor.replace("#", "")}:${similarity}:${blend}`,
+    "alphaextract",
+    "format=gray",
+  ].filter(Boolean);
+  return [
+    "-v",
+    "error",
+    "-ss",
+    (timeMs / 1000).toFixed(3),
+    "-i",
+    source,
+    "-frames:v",
+    "1",
+    "-vf",
+    filters.join(","),
+    "-f",
+    "rawvideo",
+    "-",
+  ];
+}
+
 /** What the render needs to put a keyed take on a background. */
 export type BackgroundComposite = {
   /** The detected green, `#rrggbb`. */
@@ -250,8 +343,9 @@ export type BackgroundComposite = {
 export function compositeFilters(composite: BackgroundComposite): string[] {
   const { keyColor, width, height } = composite;
   const key = `0x${keyColor.replace("#", "")}`;
+  const { similarity, blend } = keySettings(fromHex(keyColor) ?? { r: 0, g: 177, b: 64 });
   return [
-    `[base]format=yuva444p,chromakey=${key}:${KEYING.similarity}:${KEYING.blend},despill=type=green[fg];`,
+    `[base]format=yuva444p,chromakey=${key}:${similarity}:${blend},despill=type=green[fg];`,
     `[1:v]scale=${width}:${height}:force_original_aspect_ratio=increase:out_range=tv,crop=${width}:${height},setsar=1,format=yuv420p[bg];`,
     "[bg][fg]overlay=format=auto:shortest=1,format=yuv420p[vout]",
   ];

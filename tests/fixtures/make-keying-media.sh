@@ -72,6 +72,20 @@ frame 1280 720 "$GREEN" "$BLUE" "$tmp/mid.png"
 clip "$tmp/mid.png" "$out/keyed-no-pauses.mp4" 5 30 "0.4*sin(2*PI*440*t)" 0
 clip "$tmp/mid.png" "$out/keyed-no-audio.mp4" 4 30 none 0
 
+# Other greens (S3S-T10): a lime virtual green screen (125 245 75, a grey sweater on it), a
+# pale mint screen (170 230 190) and a shadowed cloth green (40 110 55). Low chroma greens sit close to grey in the U and V planes, so
+# a fixed key used to erase the person; both must key cleanly.
+LIME="125 245 75"
+MINT="170 230 190"
+SHADOW="40 110 55"   # a darker, shadowed cloth green
+SWEATER="146 148 140"
+frame 1280 720 "$LIME" "$SWEATER" "$tmp/lime.png"
+clip "$tmp/lime.png" "$out/keyed-lime.mp4" 5 30 "$(tone 5 2 3.5)" 0
+frame 1280 720 "$MINT" "$SWEATER" "$tmp/mint.png"
+clip "$tmp/mint.png" "$out/keyed-mint.mp4" 5 30 "$(tone 5 2 3.5)" 0
+frame 1280 720 "$SHADOW" "$SWEATER" "$tmp/shadow.png"
+clip "$tmp/shadow.png" "$out/keyed-shadow.mp4" 5 30 "$(tone 5 2 3.5)" 0
+
 # Without a usable green screen (spec 0008 AC-3).
 frame 1280 720 "$GRAY" "$BLUE" "$tmp/none.png"
 clip "$tmp/none.png" "$out/nogreen-none.mp4" 5 30 "$(tone 5 2 3.5)" 0

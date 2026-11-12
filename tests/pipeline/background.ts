@@ -40,7 +40,9 @@ type TakeJson = {
 };
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-const STUDIO = BUILT_IN_BACKGROUNDS[0]!;
+/** The blue, test only studio: the checks look for blue where the green was (the six real studios are not blue). */
+const PLACEHOLDER = BUILT_IN_BACKGROUNDS.find((b) => b.testOnly)!;
+const STUDIO = PLACEHOLDER;
 const S = "background";
 
 /** Waits (polling every 2 s) until `done` says so; null on timeout. */

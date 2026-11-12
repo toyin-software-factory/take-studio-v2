@@ -17,9 +17,14 @@ import { parseJobEnv } from "@/lib/env";
 import {
   type RawFrame,
   detectInFrame,
+  erasesSubject,
+  frameAlphaArgs,
   frameSampleArgs,
+  fromHex,
+  isKeyable,
   sampleFrameSize,
   toHex,
+  transparentShare,
 } from "@/lib/keying";
 import { thumbnailSeconds } from "@/lib/probe";
 import { type R2, createR2 } from "@/lib/r2";
@@ -54,6 +59,15 @@ export type PreviewIo = {
     toneMap: string | null,
     signal?: AbortSignal,
   ) => Promise<RawFrame>;
+  /** The share of that frame keying with `keyColor` would make transparent (S3S-T10 guard). */
+  readonly sampleKeyedShare: (
+    url: string,
+    timeMs: number,
+    size: { readonly width: number; readonly height: number },
+    toneMap: string | null,
+    keyColor: string,
+    signal?: AbortSignal,
+  ) => Promise<number>;
   /** Runs ffmpeg with `args` (the job adds nothing); the result is the JPEG at `outPath`. */
   readonly encode: (args: readonly string[], signal?: AbortSignal) => Promise<void>;
 };
@@ -86,15 +100,22 @@ export async function makePreview(
   const timeMs = thumbnailSeconds(facts.durationMs) * 1000;
   const toneMap = facts.hdrTransfer ? toneMapFilter(facts.hdrTransfer) : null;
 
-  // The key colour: the latest render's when it was keyed, else detected on this frame.
+  // The key colour: the latest render's when it was keyed (and still usable), else detected on
+  // this frame. Either way it is tried on the frame first (S3S-T10): a key that would make more
+  // than 85 % of it transparent would erase the person, so the preview shows the plain frame.
+  const size = sampleFrameSize(facts.width, facts.height);
   let keyColor: string | null = null;
-  if (work.latestRender?.keyed && work.latestRender.keyColor) {
-    keyColor = work.latestRender.keyColor;
+  const renderKey = work.latestRender?.keyed ? fromHex(work.latestRender.keyColor ?? "") : null;
+  if (renderKey && isKeyable(renderKey)) {
+    keyColor = toHex(renderKey);
   } else {
-    const size = sampleFrameSize(facts.width, facts.height);
     const frame = await io.sampleFrame(originalUrl, timeMs, size, toneMap, signal);
     const found = detectInFrame(frame);
     keyColor = found.usable ? toHex(found.keyColor) : null;
+  }
+  if (keyColor) {
+    const share = await io.sampleKeyedShare(originalUrl, timeMs, size, toneMap, keyColor, signal);
+    if (erasesSubject(share)) keyColor = null;
   }
 
   const work_dir = await mkdtemp(join(tmpdir(), `preview-${previewId}-`));
@@ -208,6 +229,16 @@ export const previewBackgroundTask = task({
                 throw new MediaToolError("ffmpeg", null, false);
               }
               return { width: size.width, height: size.height, data: new Uint8Array(bytes) };
+            },
+            sampleKeyedShare: async (url, timeMs, size, toneMap, keyColor, stop) => {
+              const bytes = await runFfmpegBytes(
+                [...HTTP_INPUT, ...frameAlphaArgs(url, timeMs, size, toneMap, keyColor)],
+                { timeoutMs: 60_000, signal: stop },
+              );
+              if (bytes.length !== size.width * size.height) {
+                throw new MediaToolError("ffmpeg", null, false);
+              }
+              return transparentShare(new Uint8Array(bytes));
             },
             encode: async (args, stop) => {
               await runFfmpeg(args, { timeoutMs: 90_000, signal: stop });
