@@ -7,9 +7,16 @@ test.describe.configure({ timeout: 90_000 });
 /** Scripts the page loads, as text, collected from the first call on. */
 function collectScripts(page: Page): Promise<string>[] {
   const bodies: Promise<string>[] = [];
-  page.on("response", (response) => {
-    if (!(response.headers()["content-type"] ?? "").includes("javascript")) return;
-    bodies.push(response.text().catch(() => ""));
+  // From the moment a script request STARTS (not when its answer arrives), so a request that is
+  // sent early but answered late is still counted when the bodies are awaited.
+  page.on("request", (request) => {
+    if (request.resourceType() !== "script") return;
+    bodies.push(
+      request
+        .response()
+        .then((response) => (response ? response.text().catch(() => "") : ""))
+        .catch(() => ""),
+    );
   });
   return bodies;
 }
@@ -17,6 +24,16 @@ const loadedThree = async (bodies: Promise<string>[]) =>
   (await Promise.all(bodies)).some((body) => /WebGLRenderer/.test(body));
 
 const field = (page: Page) => page.locator("canvas.h-studio-field");
+
+/** Counts WebGL context requests, so a test can see when the page first asks for one. */
+const PROBE_COUNTER = `window.__glProbes = 0;
+  const get = HTMLCanvasElement.prototype.getContext;
+  HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
+    if (/webgl/.test(String(type))) window.__glProbes += 1;
+    return get.call(this, type, ...rest);
+  };`;
+const probes = (page: Page) =>
+  page.evaluate(() => (window as unknown as { __glProbes: number }).__glProbes);
 
 /**
  * A capable device: 8 GB of memory, whatever the machine running the test reports (a small
@@ -56,6 +73,32 @@ test.describe("the particle field loads lazily (AC-6, AC-10)", () => {
     expect(await loadedThree(bodies)).toBe(true);
     // At most 24,000 points on desktop.
     expect(Number(await field(page).getAttribute("data-field-points"))).toBe(24_000);
+  });
+
+  test("the WebGL probe waits until the section is near", async ({ page }) => {
+    await page.addInitScript(PROBE_COUNTER);
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await open(page);
+    await page.waitForTimeout(1500);
+    expect(await probes(page)).toBe(0);
+    await scrollToStudio(page, 1100);
+    await expect(field(page)).toHaveAttribute("data-field", "ready", { timeout: 30_000 });
+    expect(await probes(page)).toBeGreaterThan(0);
+  });
+
+  test("a chunk that fails to load leaves the glow and no half started state", async ({ page }) => {
+    await page.route(/\.js(\?|$)/, async (route) => {
+      const response = await route.fetch();
+      const body = await response.text();
+      if (/WebGLRenderer/.test(body)) return route.abort();
+      return route.fulfill({ response, body });
+    });
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await open(page);
+    await scrollToStudio(page, 1100);
+    await expect(field(page)).toHaveAttribute("data-field", "skipped", { timeout: 30_000 });
+    await expect(field(page)).toHaveAttribute("data-field-reason", "load-failed");
+    await expect(field(page)).toHaveCSS("background-image", /radial-gradient/);
   });
 
   test("8,000 points under 810 px", async ({ page }) => {
@@ -142,6 +185,7 @@ test.describe("fallbacks keep the CSS glow and never fetch three (AC-6)", () => 
   ];
   for (const [name, reason, script] of cases) {
     test(`when ${name}`, async ({ page }) => {
+      await page.addInitScript(PROBE_COUNTER);
       await page.addInitScript(script);
       await page.setViewportSize({ width: 1280, height: 720 });
       const bodies = collectScripts(page);
@@ -151,6 +195,8 @@ test.describe("fallbacks keep the CSS glow and never fetch three (AC-6)", () => 
       await expect(field(page)).toHaveAttribute("data-field-reason", reason);
       await page.waitForTimeout(800);
       expect(await loadedThree(bodies)).toBe(false);
+      // The cheap limits are enough: no WebGL context is created just to find out.
+      if (reason !== "no-webgl") expect(await probes(page)).toBe(0);
       // The glow is the canvas's own background.
       await expect(field(page)).toHaveCSS("background-image", /radial-gradient/);
     });
@@ -226,6 +272,30 @@ test.describe("the words, the fill lines and the arc (AC-6)", () => {
     // The text itself is real, readable text (the white copy over it is aria-hidden).
     await expect(line).toContainText("No editing timeline.");
     await expect(line.locator(".h-fill-top")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  test("turning reduced motion on clears a half filled line", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await open(page);
+    const line = page.locator("[data-fill]").first();
+    // Scroll to where the line is about half filled.
+    await line.evaluate((el) => {
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo(0, top - 720 * 0.8 + 200);
+    });
+    await expect
+      .poll(() => line.evaluate((el) => el.style.getPropertyValue("--fill-progress")), {
+        timeout: 8000,
+      })
+      .toMatch(/^(?!0\.00%|100)/);
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect
+      .poll(() => line.evaluate((el) => el.style.getPropertyValue("--fill-progress")))
+      .toBe("");
+    await expect(line.locator(".h-fill-top")).toHaveCSS(
+      "clip-path",
+      /inset\(0px 0(px|%) 0px 0px\)/,
+    );
   });
 
   test("the arc flattens from full height to a quarter as the section arrives", async ({

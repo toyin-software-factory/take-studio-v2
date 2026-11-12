@@ -71,6 +71,7 @@ void main(){
   vec2 uv = gl_PointCoord - .5;
   if (abs(uv.y) > .14 || abs(uv.x) > .46) discard;
   gl_FragColor = vec4(mix(uC2, uC1, vDepth), .85);
+  #include <colorspace_fragment>
 }`;
 
 /** A colour token from the page's CSS, so no colour value is written in this file. */

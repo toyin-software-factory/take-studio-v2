@@ -49,6 +49,9 @@ export function setupStudio(root: HTMLElement, reduced: boolean): () => void {
     gsap.utils.toArray<HTMLElement>("[data-fill]", section).forEach((line) => {
       const apply = (progress: number) =>
         line.style.setProperty("--fill-progress", `${(progress * 100).toFixed(2)}%`);
+      // The inline value would outlive the motion and keep the white copy clipped after a switch
+      // to reduced motion: remove it on the way out so the CSS default (fully filled) applies.
+      teardown.push(() => line.style.removeProperty("--fill-progress"));
       ScrollTrigger.create({
         trigger: line,
         start: "top 80%",
@@ -88,30 +91,38 @@ export function setupStudio(root: HTMLElement, reduced: boolean): () => void {
     });
   }
 
-  // The field: asked about the browser first, so a device that cannot or should not draw it
-  // never even requests the Three.js chunk. The CSS glow behind the canvas stays either way.
+  // The field: the cheap limits (save data, memory) are checked now, so a device that should not
+  // draw it never even requests the Three.js chunk; the WebGL probe, which creates a context,
+  // waits until the section is near. The CSS glow behind the canvas stays whatever happens.
   const browser = navigator as Browser;
-  const support = fieldSupport({
+  const limits = fieldSupport({
     saveData: browser.connection?.saveData,
     deviceMemory: browser.deviceMemory,
-    webgl: hasWebgl(),
+    webgl: true,
   });
-  if (!support.ok) {
+  if (!limits.ok) {
     canvas.dataset.field = "skipped";
-    canvas.dataset.fieldReason = support.reason;
+    canvas.dataset.fieldReason = limits.reason;
     return () => teardown.reverse().forEach((fn) => fn());
   }
 
   let stopped = false;
   let dispose: (() => void) | null = null;
+  const skip = (reason: string) => {
+    canvas.dataset.field = "skipped";
+    canvas.dataset.fieldReason = reason;
+  };
   const load = async () => {
+    if (!hasWebgl()) return skip("no-webgl");
     canvas.dataset.field = "loading";
-    const { mountField } = await import("./field");
-    if (stopped) return;
-    dispose = mountField({ canvas, section, words: wordBlock, reduced });
-    if (!dispose) {
-      canvas.dataset.field = "skipped";
-      canvas.dataset.fieldReason = "no-context";
+    try {
+      const { mountField } = await import("./field");
+      if (stopped) return;
+      dispose = mountField({ canvas, section, words: wordBlock, reduced });
+      if (!dispose) skip("no-context");
+    } catch {
+      // The chunk did not load (network): the glow stays and nothing is left "loading".
+      if (!stopped) skip("load-failed");
     }
   };
   // Within one viewport of coming on screen (recipe 7.7), once.
