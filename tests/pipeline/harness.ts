@@ -137,13 +137,20 @@ export async function startServices(): Promise<void> {
   start("trigger", ["exec", "trigger", "dev", "--skip-update-check", "--env-file", proxyEnv], {});
   // Wait for the Trigger.dev dev worker to register its tasks (up to 3 minutes).
   const triggerLog = join(work, "trigger.log");
-  for (let i = 0; i < 90; i++) {
+  let workerReady = false;
+  for (let i = 0; i < 90 && !workerReady; i++) {
     const log = existsSync(triggerLog) ? readFileSync(triggerLog, "utf8") : "";
-    if (log.includes("Local worker ready")) break;
+    if (log.includes("Local worker ready")) {
+      workerReady = true;
+      break;
+    }
     if (log.includes("Build failed")) {
       throw new Error(`The Trigger.dev worker did not build: see ${triggerLog}`);
     }
     await new Promise((r) => setTimeout(r, 2_000));
+  }
+  if (!workerReady) {
+    throw new Error(`The Trigger.dev worker was not ready after 3 minutes: see ${triggerLog}`);
   }
 }
 
