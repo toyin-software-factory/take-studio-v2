@@ -1,4 +1,18 @@
-import { and, asc, eq, inArray, isNotNull, lt, lte, ne, notExists, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  eq,
+  gte,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  ne,
+  notExists,
+  or,
+  sql,
+} from "drizzle-orm";
 import { ACTIVE_JOB_STATUSES } from "@/lib/processing";
 import { CLEANUP, cleanupCutoffs } from "@/lib/cleanup-rules";
 import { processingJob, take } from "../schema";
@@ -111,23 +125,28 @@ export async function failStaleJobs(
    * Whether a run is still waiting its turn (Trigger.dev). A `queued` job whose run is waiting,
    * for instance behind its creator's concurrency limit, is not failed as `stale_run` until the
    * 6 hour backstop. Without it (or without a run ID) a queued job is stale after 15 minutes.
+   * Asked at most `CLEANUP.queuedRunChecksPerSweep` times per call, so a slow API cannot eat
+   * the rest of the cleanup; the answer for the rest is "waiting".
    */
   isRunWaiting?: (runId: string) => Promise<boolean>,
 ): Promise<readonly StaleJob[]> {
   const { queuedJobBefore, queuedBackstopBefore, runningJobBefore, transcribeRunningJobBefore } =
     cleanupCutoffs(now);
+  // Scan 1: everything that is stale without asking anyone. A queued job whose run may still be
+  // waiting is left out here, so retained jobs can never crowd a stale one out of the batch.
+  const needsNoCheck = isRunWaiting
+    ? or(isNull(processingJob.triggerRunId), lt(processingJob.createdAt, queuedBackstopBefore))
+    : undefined;
   const candidates = await db
-    .select({
-      id: processingJob.id,
-      kind: processingJob.kind,
-      status: processingJob.status,
-      createdAt: processingJob.createdAt,
-      runId: processingJob.triggerRunId,
-    })
+    .select({ id: processingJob.id, kind: processingJob.kind })
     .from(processingJob)
     .where(
       or(
-        and(eq(processingJob.status, "queued"), lt(processingJob.createdAt, queuedJobBefore)),
+        and(
+          eq(processingJob.status, "queued"),
+          lt(processingJob.createdAt, queuedJobBefore),
+          needsNoCheck,
+        ),
         and(
           eq(processingJob.status, "running"),
           ne(processingJob.kind, "transcribe"),
@@ -146,17 +165,7 @@ export async function failStaleJobs(
     .limit(CLEANUP.batchSize);
 
   const failed: StaleJob[] = [];
-  for (const { id, kind, status, createdAt, runId } of candidates) {
-    // Still waiting in a queue (and not past the backstop): not stale.
-    if (
-      status === "queued" &&
-      isRunWaiting &&
-      runId !== null &&
-      createdAt > queuedBackstopBefore &&
-      (await isRunWaiting(runId))
-    ) {
-      continue;
-    }
+  const failStale = async (id: string, kind: string) => {
     const result = await finish(db, { jobId: id, status: "failed", failureCode: "stale_run", now });
     // `already_final`: it finished on its own meanwhile.
     if (result.ok) {
@@ -166,6 +175,37 @@ export async function failStaleJobs(
         refundedSeconds: result.data.refundedSeconds,
         runId: result.data.job.triggerRunId,
       });
+    }
+  };
+  for (const { id, kind } of candidates) await failStale(id, kind);
+
+  // Scan 2: queued jobs with a run, past 15 minutes. Ask Trigger.dev about a bounded number,
+  // least recently checked first (a job found waiting is touched, so the next sweep asks about
+  // the others): a run that has ended is failed, one that still waits is left alone.
+  if (isRunWaiting) {
+    const waiting = await db
+      .select({ id: processingJob.id, kind: processingJob.kind, runId: processingJob.triggerRunId })
+      .from(processingJob)
+      .where(
+        and(
+          eq(processingJob.status, "queued"),
+          lt(processingJob.createdAt, queuedJobBefore),
+          isNotNull(processingJob.triggerRunId),
+          gte(processingJob.createdAt, queuedBackstopBefore),
+        ),
+      )
+      .orderBy(asc(processingJob.updatedAt))
+      .limit(CLEANUP.queuedRunChecksPerSweep);
+    for (const { id, kind, runId } of waiting) {
+      if (runId === null) continue;
+      if (await isRunWaiting(runId)) {
+        await db
+          .update(processingJob)
+          .set({ updatedAt: now })
+          .where(and(eq(processingJob.id, id), eq(processingJob.status, "queued")));
+      } else {
+        await failStale(id, kind);
+      }
     }
   }
   return failed;

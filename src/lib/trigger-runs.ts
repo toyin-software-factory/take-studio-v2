@@ -1,4 +1,5 @@
 import { idempotencyKeys, runs, tasks } from "@trigger.dev/sdk";
+import { CLEANUP } from "./cleanup-rules";
 
 /**
  * Small Trigger.dev helpers shared by the web app and jobs. They read TRIGGER_SECRET_KEY from
@@ -57,10 +58,25 @@ export function isWaitingRunStatus(status: string): boolean {
  */
 export async function isRunWaiting(runId: string): Promise<boolean> {
   try {
-    const run = await runs.retrieve(runId);
+    const run = await withTimeout(runs.retrieve(runId), CLEANUP.runCheckTimeoutMs);
     return isWaitingRunStatus(String(run.status));
   } catch {
     return true;
+  }
+}
+
+/** Rejects when `promise` takes longer than `ms` (the timer is always cleared). */
+async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("timeout")), ms);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
   }
 }
 

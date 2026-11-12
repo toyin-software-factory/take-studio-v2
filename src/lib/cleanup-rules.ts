@@ -78,6 +78,13 @@ export const CLEANUP = {
    */
   queuedBackstopMs: 6 * 60 * MINUTE,
   /**
+   * Trigger.dev run lookups per sweep for queued jobs, and the time one may take (a lookup that
+   * is slower counts as "still waiting"): together at most about two minutes of the 10 minute
+   * cleanup task, so the expiry and deletion steps after it always get their time.
+   */
+  queuedRunChecksPerSweep: 25,
+  runCheckTimeoutMs: 5_000,
+  /**
    * How long a `running` job may legitimately last: every attempt can use the full
    * maxDuration, and a retry keeps the first attempt's `started_at`.
    */

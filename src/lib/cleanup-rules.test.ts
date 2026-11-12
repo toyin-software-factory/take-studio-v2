@@ -25,6 +25,10 @@ describe("cleanup cut offs (AC-18)", () => {
     // One creator's queue drains at 2 full runs at a time; the backstop outlasts several of them.
     expect(CLEANUP.queuedBackstopMs).toBeGreaterThan(CLEANUP.jobMaxDurationMs);
     expect(CLEANUP.queuedBackstopMs).toBeGreaterThan(CLEANUP.queuedStaleMs);
+    // The lookups of one sweep are bounded well inside the 10 minute cleanup task (about 2 minutes).
+    expect(CLEANUP.queuedRunChecksPerSweep * CLEANUP.runCheckTimeoutMs).toBeLessThanOrEqual(
+      3 * 60_000,
+    );
   });
 
   it("derives the transcribe window from its own limits (3 attempts, 15 minutes), 50 minutes in all", () => {
