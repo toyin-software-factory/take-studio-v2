@@ -82,7 +82,7 @@ Before slice 6, `seconds_charged` and the charged month and hash are recorded on
 **Step list per kind** (rows created at job start, `position` in this order; a step whose slice is not live yet is not created):
 - `initial`: `trim` (slice 1), `background` (slice 3), `ai_edit` (slice 5), `render` (slice 1). The transcript runs as its own job (below), so a take is ready without waiting for it (spec 0007).
 - `transcribe` (slice 2, spec 0007): `transcript` only; 0 seconds charged; started by `startTranscribeJob`, never moves the take's status, sends no email.
-- `rerender`: `background` only if the take's background changed since the latest render, then `render`; derived by `jobs.start` (a take that already has a succeeded initial job) and moves the take to `processing` like `initial` (slice 4 re-renders after cut edits use it).
+- `rerender`: `background` when the take has a background (composited onto the re-cut render), then `render`; derived by `jobs.start` (a take that already has a succeeded initial job) and moves the take to `processing` like `initial` (slice 4 re-renders after cut edits use it).
 - `background` (slice 3, spec 0008): `background` (only when the target is a background), then `render`; started by `startBackgroundJob`, which keeps the take Ready, charges 0 and records `target_background_id`; it reuses the take's cuts and sends no email. A separate kind (not a `rerender` told apart by the take's status or its steps), so every place that handles it is checked by the type checker (outside review, 2026-11-12, HRF-T08).
 - `reanalyse` (slice 5): `ai_edit`, `render`.
 Overall progress shown to creators is the average of step progress (weights can be tuned later).
