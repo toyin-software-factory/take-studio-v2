@@ -14,9 +14,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false
+# The one-at-a-time rule is on the deploy job below, not on the workflow: a run that is not
+# eligible (a failed or cancelled CI run) must never join the `deploy-production` group, because a
+# waiting run there is replaced by the next one that arrives, even when it will only be skipped.
 
 permissions:
   contents: read
@@ -85,23 +85,52 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: production
+    # Only a run that passed the gate gets here, so only an eligible run can wait in this group or
+    # replace a waiting one. A running deploy is never cancelled.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    # contents: write only to move the `production` tag after a successful ship (below).
+    permissions:
+      contents: write
     env:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v5
         with:
           ref: ${{ env.DEPLOY_SHA }}
+          # Full history and tags: the order check below needs the ancestry of the deployed commit.
+          fetch-depth: 0
+
+      - id: order
+        # Serialized by the concurrency group, before any production write. An automated run
+        # (workflow_run) for a commit that is the deployed one or older (a rerun of an old CI run)
+        # stops here without failing main. A manual run (workflow_dispatch) is exempt: an
+        # intentional rollback stays possible. The `production` tag marks the deployed commit.
+        run: |
+          stale=false
+          if [ "$GITHUB_EVENT_NAME" = "workflow_run" ] && git rev-parse -q --verify refs/tags/production > /dev/null; then
+            if git merge-base --is-ancestor "$DEPLOY_SHA" refs/tags/production; then
+              stale=true
+              echo "::notice::Deploy skipped. $DEPLOY_SHA is the deployed commit or older than it ($(git rev-parse --short refs/tags/production))."
+            fi
+          fi
+          echo "stale=$stale" >> "$GITHUB_OUTPUT"
 
       - uses: pnpm/action-setup@v4
+        if: steps.order.outputs.stale != 'true'
 
       - uses: actions/setup-node@v5
+        if: steps.order.outputs.stale != 'true'
         with:
           node-version-file: .nvmrc
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      - if: steps.order.outputs.stale != 'true'
+        run: pnpm install --frozen-lockfile
 
       - name: 1. Build and check the Worker (nothing ships yet)
+        if: steps.order.outputs.stale != 'true'
         run: pnpm run deploy:build
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -119,6 +148,7 @@ jobs:
           NEXT_PUBLIC_SENTRY_RELEASE: ${{ env.DEPLOY_SHA }}
 
       - name: 2. Migrate Neon (direct URL)
+        if: steps.order.outputs.stale != 'true'
         run: pnpm db:migrate
         env:
           DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
@@ -126,6 +156,7 @@ jobs:
           MIGRATE_TARGET: prod
 
       - name: 3. Deploy Trigger.dev tasks (prod)
+        if: steps.order.outputs.stale != 'true'
         run: pnpm deploy:trigger --env prod
         env:
           TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
@@ -137,8 +168,17 @@ jobs:
           SENTRY_RELEASE: ${{ env.DEPLOY_SHA }}
 
       - name: 4. Ship the Worker (the bundle built and checked in step 1)
+        if: steps.order.outputs.stale != 'true'
         run: pnpm run deploy:ship
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           SENTRY_RELEASE: ${{ env.DEPLOY_SHA }}
+
+      - name: 5. Mark this commit as the deployed one
+        if: steps.order.outputs.stale != 'true'
+        # After the Worker shipped. If this fails the deploy still happened; the next run then only
+        # lacks the order check against this commit.
+        run: |
+          git tag -f production "$DEPLOY_SHA"
+          git push --force origin refs/tags/production
