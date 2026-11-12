@@ -1,7 +1,7 @@
 # 0008. Studio background swap
 
 **Date**: 2026-11-12
-**Status**: Accepted
+**Status**: In Progress
 
 ## Summary
 
