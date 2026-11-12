@@ -9,8 +9,11 @@ import {
   STEPS,
   STEPS_BY_KIND,
   STEP_NAMES,
+  isBackgroundChange,
+  isBackgroundKind,
   isSkipReason,
   isTranscribeKind,
+  jobFamily,
   jobKindSendsEmail,
   stepsFor,
 } from "./processing";
@@ -20,6 +23,7 @@ describe("step registry (AC-7)", () => {
     // Spec 0007: `transcript` left the initial job and became its own job kind.
     expect(STEPS_BY_KIND.initial).toEqual(["trim", "background", "ai_edit", "render"]);
     expect(STEPS_BY_KIND.rerender).toEqual(["background", "render"]);
+    expect(STEPS_BY_KIND.background).toEqual(["background", "render"]);
     expect(STEPS_BY_KIND.transcribe).toEqual(["transcript"]);
     expect(STEPS_BY_KIND.reanalyse).toEqual(["ai_edit", "render"]);
   });
@@ -48,15 +52,39 @@ describe("step registry (AC-7)", () => {
   });
 
   it("defines every job kind from the spec: transcribe live from slice 2, reanalyse from slice 5", () => {
-    expect(JOB_KINDS).toEqual(["initial", "rerender", "transcribe", "reanalyse"]);
+    expect(JOB_KINDS).toEqual(["initial", "rerender", "background", "transcribe", "reanalyse"]);
     expect(JOB_KIND_SLICES.transcribe).toBe(2);
     expect(JOB_KIND_SLICES.reanalyse).toBe(5);
+  });
+
+  it("places every job kind in a family, and only `background` is a background change", () => {
+    // `jobFamily` has no default branch, so a new kind fails the type check until it is placed;
+    // this checks the placements and that every registered kind answers.
+    expect(Object.fromEntries(JOB_KINDS.map((k) => [k, jobFamily(k)]))).toEqual({
+      initial: "video",
+      rerender: "video",
+      background: "background",
+      transcribe: "transcript",
+      reanalyse: "video",
+    });
+    expect(JOB_KINDS.filter(isBackgroundKind)).toEqual(["background"]);
+    expect(isBackgroundKind("rerender")).toBe(false);
+  });
+
+  it("LEGACY: a `rerender` on a take that is not processing is still a background change", () => {
+    expect(isBackgroundChange("background", "ready")).toBe(true);
+    expect(isBackgroundChange("background", "processing")).toBe(true);
+    expect(isBackgroundChange("rerender", "ready")).toBe(true);
+    expect(isBackgroundChange("rerender", "processing")).toBe(false);
+    expect(isBackgroundChange("initial", "ready")).toBe(false);
+    expect(isBackgroundChange("transcribe", "ready")).toBe(false);
   });
 
   it("emails only the first run: transcribe and re render jobs never send the take email", () => {
     expect(EMAIL_JOB_KINDS).toEqual(["initial"]);
     expect(jobKindSendsEmail("initial")).toBe(true);
     expect(jobKindSendsEmail("rerender")).toBe(false);
+    expect(jobKindSendsEmail("background")).toBe(false);
     expect(jobKindSendsEmail("transcribe")).toBe(false);
     expect(jobKindSendsEmail("something_new")).toBe(false);
     expect(isTranscribeKind("transcribe")).toBe(true);
@@ -75,6 +103,8 @@ describe("step registry (AC-7)", () => {
     expect(stepsFor("initial", { hasBackground: true })).toEqual(["trim", "background", "render"]);
     expect(stepsFor("rerender")).toEqual(["render"]);
     expect(stepsFor("rerender", { hasBackground: true })).toEqual(["background", "render"]);
+    expect(stepsFor("background")).toEqual(["render"]);
+    expect(stepsFor("background", { hasBackground: true })).toEqual(["background", "render"]);
     expect(stepsFor("transcribe")).toEqual(["transcript"]);
     expect(stepsFor("transcribe", { liveSlice: 1 })).toEqual([]);
     expect(stepsFor("initial", { liveSlice: 2, hasBackground: true })).toEqual(["trim", "render"]);

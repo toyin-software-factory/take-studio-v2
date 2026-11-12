@@ -88,7 +88,7 @@ describe("startBackgroundJob", () => {
     const started = await change(creator.id, t.id, bg.id);
     if (!started.ok) throw new Error(started.error);
     expect(started.data).toMatchObject({
-      kind: "rerender",
+      kind: "background",
       status: "queued",
       secondsCharged: 0,
       chargedMonth: null,
@@ -212,7 +212,7 @@ describe("startBackgroundJob", () => {
     await db.insert(processingJob).values({
       id: crypto.randomUUID(),
       takeId: unkeyed.take.id,
-      kind: "rerender",
+      kind: "background",
       status: "failed",
       failureCode: "internal_error",
       secondsCharged: 0,
@@ -292,6 +292,20 @@ describe("finishing a background change (AC-5)", () => {
     const keys = await queued();
     expect(keys).toContain(`renders/${ctx.take.id}/${ctx.renderId}.mp4`);
     expect(keys).not.toContain(ctx.newKey);
+  });
+
+  it("LEGACY: a `rerender` an old Worker started on a Ready take finishes as a background change", async () => {
+    const newBg = await seedBackground();
+    const ctx = await running(newBg.id, { backgroundId: null, keyed: false });
+    // What an old Worker would have written: the same job, but of kind `rerender`.
+    await db.update(processingJob).set({ kind: "rerender" }).where(eq(processingJob.id, ctx.jobId));
+    const done = await finish(db, { jobId: ctx.jobId, status: "succeeded" });
+    if (!done.ok) throw new Error(done.error);
+    expect(done.data.refundedSeconds).toBe(0);
+    const t = await takeRow(ctx.take.id);
+    expect(t).toMatchObject({ status: "ready", backgroundId: newBg.id });
+    const renders = await db.select().from(render).where(eq(render.takeId, ctx.take.id));
+    expect(renders.find((r) => r.isLatest)?.id).toBe(ctx.newRenderId);
   });
 
   it("sets the take's background from the new render, so a delete mid job cannot leave a dangling target", async () => {
@@ -493,19 +507,27 @@ describe("lock order with a background (spec 0008)", () => {
   });
 });
 
-/** A finished background change (a rerender with no trim step) started `startedAt`, on the take. */
-async function seedChange(takeId: string, startedAt: Date, withTrim = false) {
+/**
+ * A finished job started `startedAt`, on the take: a background change, a `rerender` (startJob's,
+ * which has a `trim` step once it runs), or a LEGACY `rerender` with no `trim` step (a background
+ * change an old Worker started).
+ */
+async function seedChange(
+  takeId: string,
+  startedAt: Date,
+  kind: "background" | "rerender" | "legacy" = "background",
+) {
   const id = crypto.randomUUID();
   await db.insert(processingJob).values({
     id,
     takeId,
-    kind: "rerender",
+    kind: kind === "background" ? "background" : "rerender",
     status: "failed",
     failureCode: "internal_error",
     secondsCharged: 0,
     createdAt: startedAt,
   });
-  if (withTrim) {
+  if (kind === "rerender") {
     await db
       .insert(jobStep)
       .values({ id: crypto.randomUUID(), jobId: id, name: "trim", position: 0, status: "failed" });
@@ -576,11 +598,11 @@ describe("background change limit (HRF-T01)", () => {
     ).toEqual({ ok: false, error: "background_change_limit" });
   });
 
-  it("does not count a re render that trims again (startJob's), and one creator never blocks another", async () => {
+  it("does not count a re render (kind `rerender`, startJob's), and one creator never blocks another", async () => {
     const bg = await seedBackground();
     const { creator, take: t } = await readyTake();
     const now = new Date();
-    for (let i = 0; i < 10; i += 1) await seedChange(t.id, now, true);
+    for (let i = 0; i < 10; i += 1) await seedChange(t.id, now, "rerender");
     expect(
       (
         await startBackgroundJob(db, {
@@ -613,6 +635,21 @@ describe("background change limit (HRF-T01)", () => {
         })
       ).ok,
     ).toBe(true);
+  });
+
+  it("LEGACY: a `rerender` with no trim step (an old Worker's change) still counts toward the limit", async () => {
+    const bg = await seedBackground();
+    const { creator, take: t } = await readyTake();
+    const now = new Date();
+    for (let i = 0; i < 10; i += 1) await seedChange(t.id, now, "legacy");
+    expect(
+      await startBackgroundJob(db, {
+        creatorId: creator.id,
+        takeId: t.id,
+        backgroundId: bg.id,
+        now,
+      }),
+    ).toEqual({ ok: false, error: "background_change_limit" });
   });
 
   it("parallel requests cannot both pass the last free slot (the creator's row is locked)", async () => {

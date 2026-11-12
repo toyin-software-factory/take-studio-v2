@@ -37,7 +37,13 @@ export type Container = (typeof CONTAINERS)[number];
  */
 export const JOB_KIND_SLICES = {
   initial: 1,
+  /** A re render started by `startJob`: the take is `processing` again and the run is a full one. */
   rerender: 1,
+  /**
+   * Spec 0008: a background change started by `startBackgroundJob` on a Ready take. It reuses the
+   * take's cuts, never moves the take, charges nothing and sends no email.
+   */
+  background: 3,
   /** Spec 0007: makes the transcript; never moves the take, charges nothing, sends no email. */
   transcribe: 2,
   reanalyse: 5,
@@ -47,12 +53,12 @@ export const JOB_KINDS = Object.keys(JOB_KIND_SLICES) as readonly JobKind[];
 
 /**
  * The kinds whose finish can send the "take ready or didn't finish" email (spec 0006). Only the
- * first run: a re render (a background change, spec 0008) is started from the take page, which
- * shows the result, so it sends nothing.
+ * first run: a background change (spec 0008) is started from the take page, which shows the
+ * result, so it sends nothing.
  */
 export const EMAIL_JOB_KINDS = ["initial"] as const satisfies readonly JobKind[];
 
-/** True for a job kind whose result is emailed; `transcribe` and `rerender` jobs never are. */
+/** True for a job kind whose result is emailed; only `initial` is. */
 export function jobKindSendsEmail(kind: string): boolean {
   return (EMAIL_JOB_KINDS as readonly string[]).includes(kind);
 }
@@ -60,6 +66,51 @@ export function jobKindSendsEmail(kind: string): boolean {
 /** True for a kind that works on the take without ever changing its status (spec 0007). */
 export function isTranscribeKind(kind: string): boolean {
   return kind === "transcribe";
+}
+
+/**
+ * True for a background change (spec 0008): works beside a Ready take, never moves it, charges
+ * nothing. The kind is the only rule: nothing looks at the take's status or the step list.
+ */
+export function isBackgroundKind(kind: string): boolean {
+  return kind === "background";
+}
+
+/**
+ * Whether a job is a background change (spec 0008): kind `background`, or, only while old Workers
+ * may still be running (the deploy window of HRF-T08), a `rerender` on a take that is not
+ * `processing` (the way background changes were recognised before the kind existed; a re render
+ * started by `startJob` has the take in `processing`). Used where a running job is acted on:
+ * `finishInTx` and `process-take`. LEGACY: a later cleanup task removes the `rerender` branch,
+ * leaving `isBackgroundKind`; new changes create only `background` jobs.
+ */
+export function isBackgroundChange(kind: string, takeStatus: string): boolean {
+  return isBackgroundKind(kind) || (kind === "rerender" && takeStatus !== "processing");
+}
+
+/** How a job relates to its take: owns it (`video`), changes only its look (`background`), or
+ *  works beside it (`transcript`). */
+export type JobFamily = "video" | "background" | "transcript";
+
+/**
+ * The family of a job kind. A `switch` with no default, so adding a kind to `JOB_KIND_SLICES`
+ * fails the type check here until the new kind is placed.
+ */
+export function jobFamily(kind: JobKind): JobFamily {
+  switch (kind) {
+    case "initial":
+    case "rerender":
+    case "reanalyse":
+      return "video";
+    case "background":
+      return "background";
+    case "transcribe":
+      return "transcript";
+    default: {
+      const unplaced: never = kind;
+      return unplaced;
+    }
+  }
 }
 
 /**
@@ -104,6 +155,7 @@ export const STEP_NAMES = Object.keys(STEPS) as readonly StepName[];
 export const STEPS_BY_KIND = {
   initial: ["trim", "background", "ai_edit", "render"],
   rerender: ["background", "render"],
+  background: ["background", "render"],
   transcribe: ["transcript"],
   reanalyse: ["ai_edit", "render"],
 } as const satisfies Readonly<Record<JobKind, readonly StepName[]>>;

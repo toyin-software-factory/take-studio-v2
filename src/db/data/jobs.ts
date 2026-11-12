@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, inArray, ne, notExists, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { BACKGROUND_CHANGE } from "@/lib/background-rules";
 import { chargeSeconds, chargedMonth, refundSeconds } from "@/lib/billing";
@@ -13,6 +13,7 @@ import {
   type StepStatus,
   type JobKind,
   isSkipReason,
+  isBackgroundChange,
   isTranscribeKind,
   stepsFor,
   type TakeStatus,
@@ -254,6 +255,14 @@ type FinishInput = {
  * 4. refund once (`refunded` compare and swap) when the failure code is refundable.
  * A `transcribe` job only does step 1: it never moves the take, touches renders or refunds.
  */
+/**
+ * LEGACY (HRF-T08 deploy window): a `rerender` job with no `trim` step is how background changes
+ * were recognised before the `background` kind existed, and an old Worker may still start one for
+ * a few minutes. The hourly count and the latest change lookup treat it as a background change.
+ * A later cleanup task removes this with the `rerender` branch of `isBackgroundChange`.
+ */
+export const legacyBackgroundRerender = sql`(${processingJob.kind} = 'rerender' and not exists (select 1 from ${jobStep} where ${jobStep.jobId} = ${processingJob.id} and ${jobStep.name} = 'trim'))`;
+
 export function finish(
   db: Executor,
   input: FinishInput,
@@ -315,37 +324,40 @@ export async function finishInTx(
     return ok({ job, take: current, refundedSeconds: 0, queuedKeys: [] });
   }
 
-  // A background change (spec 0008, `startBackgroundJob`) is a `rerender` job that works beside
-  // a take that stays `ready`: no take transition, no refund (it charged nothing). A re render
-  // started by `startJob` has the take in `processing` and takes the normal path below.
-  if (job.kind === "rerender") {
-    const [current] = await tx.select().from(take).where(eq(take.id, job.takeId));
-    if (!current) return err("not_found");
-    if (current.status !== "processing") {
-      if (input.status === "succeeded") {
-        // The new render becomes the latest and the take's background becomes the job's target
-        // (null is the original), in this transaction.
-        const queuedKeys = await flipLatestRender(tx, { takeId: job.takeId, jobId: job.id });
-        // The take's background comes from the render that was just made (its snapshot), not
-        // from `target_background_id`: a delete of the background clears that reference on the
-        // job, and the render's snapshot says what the video really is on. A render with no
-        // background (the original, or the background gone) leaves the take on the original.
-        const [made] = await tx
-          .select({ backgroundId: render.backgroundId })
-          .from(render)
-          .where(and(eq(render.jobId, job.id), eq(render.isLatest, true)));
-        const [updated] = await tx
-          .update(take)
-          .set({ backgroundId: made ? made.backgroundId : job.targetBackgroundId })
-          .where(eq(take.id, job.takeId))
-          .returning();
-        return ok({ job, take: updated ?? current, refundedSeconds: 0, queuedKeys });
-      }
-      // Failed or cancelled: the take, its latest render and its background stay as they are;
-      // only the files of this job's own renders go.
-      const queuedKeys = await discardJobRenders(tx, { takeId: job.takeId, jobId: job.id });
-      return ok({ job, take: current, refundedSeconds: 0, queuedKeys });
+  // A background change (spec 0008, `startBackgroundJob`) is a `background` job that works
+  // beside a take that stays `ready`: no take transition, no refund (it charged nothing). A re
+  // render started by `startJob` is a `rerender` with the take in `processing` and takes the
+  // normal path below. LEGACY (HRF-T08 deploy window): a `rerender` on a take that is not
+  // `processing` is still a background change (`isBackgroundChange`), because an old Worker may
+  // have started it; a later cleanup task removes that branch.
+  const [current] =
+    job.kind === "background" || job.kind === "rerender"
+      ? await tx.select().from(take).where(eq(take.id, job.takeId))
+      : [];
+  if (current && isBackgroundChange(job.kind, current.status)) {
+    if (input.status === "succeeded") {
+      // The new render becomes the latest and the take's background becomes the job's target
+      // (null is the original), in this transaction.
+      const queuedKeys = await flipLatestRender(tx, { takeId: job.takeId, jobId: job.id });
+      // The take's background comes from the render that was just made (its snapshot), not
+      // from `target_background_id`: a delete of the background clears that reference on the
+      // job, and the render's snapshot says what the video really is on. A render with no
+      // background (the original, or the background gone) leaves the take on the original.
+      const [made] = await tx
+        .select({ backgroundId: render.backgroundId })
+        .from(render)
+        .where(and(eq(render.jobId, job.id), eq(render.isLatest, true)));
+      const [updated] = await tx
+        .update(take)
+        .set({ backgroundId: made ? made.backgroundId : job.targetBackgroundId })
+        .where(eq(take.id, job.takeId))
+        .returning();
+      return ok({ job, take: updated ?? current, refundedSeconds: 0, queuedKeys });
     }
+    // Failed or cancelled: the take, its latest render and its background stay as they are;
+    // only the files of this job's own renders go.
+    const queuedKeys = await discardJobRenders(tx, { takeId: job.takeId, jobId: job.id });
+    return ok({ job, take: current, refundedSeconds: 0, queuedKeys });
   }
 
   // 2. On success this job's render becomes the latest; otherwise its renders' files go.
@@ -697,7 +709,7 @@ export type BackgroundStartError =
 
 /**
  * `startBackgroundJob` (spec 0008, "Job seam"), one transaction. Like `startTranscribeJob` it
- * never moves the take and never charges; it starts a `rerender` job that renders the take's
+ * never moves the take and never charges; it starts a `background` job that renders the take's
  * current cuts onto `backgroundId` (null is the original):
  * 0. lock the creator's row (lock order: creator, background, take, job), so the hourly limit
  *    below cannot be passed by parallel requests;
@@ -798,8 +810,9 @@ export async function startBackgroundJob(
         return err("no_green_screen");
       }
 
-      // A background change is a `rerender` with no `trim` step (`startJob`'s re render of a
-      // failed take trims again and does not count). Failed ones and retries count.
+      // Background changes are the jobs of kind `background`, plus (LEGACY, HRF-T08 deploy window)
+      // a `rerender` with no `trim` step that an old Worker may have started. Failed ones and
+      // retries count.
       const [recent] = await tx
         .select({ n: count() })
         .from(processingJob)
@@ -807,14 +820,8 @@ export async function startBackgroundJob(
         .where(
           and(
             eq(take.creatorId, input.creatorId),
-            eq(processingJob.kind, "rerender"),
+            or(eq(processingJob.kind, "background"), legacyBackgroundRerender),
             gt(processingJob.createdAt, new Date(now.getTime() - 3_600_000)),
-            notExists(
-              tx
-                .select({ one: sql`1` })
-                .from(jobStep)
-                .where(and(eq(jobStep.jobId, processingJob.id), eq(jobStep.name, "trim"))),
-            ),
           ),
         );
       if ((recent?.n ?? 0) >= BACKGROUND_CHANGE.perHour) return err("background_change_limit");
@@ -825,7 +832,7 @@ export async function startBackgroundJob(
         .values({
           id: jobId,
           takeId: current.id,
-          kind: "rerender",
+          kind: "background",
           status: "queued",
           targetBackgroundId: target,
           secondsCharged: 0,
@@ -838,7 +845,7 @@ export async function startBackgroundJob(
       const steps = await tx
         .insert(jobStep)
         .values(
-          stepsFor("rerender", { hasBackground: target !== null }).map((name, position) => ({
+          stepsFor("background", { hasBackground: target !== null }).map((name, position) => ({
             id: crypto.randomUUID(),
             jobId,
             name,
