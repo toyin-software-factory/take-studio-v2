@@ -16,6 +16,8 @@ export const FAILURE_CODES = {
   // Spec 0007: the transcript provider rejected the request (for example out of credit).
   // Nothing is charged for a transcript, so there is nothing to refund.
   provider_rejected: { refundable: false },
+  // Spec 0008: the background image vanished or was not ready while the job ran.
+  background_missing: { refundable: true },
   cancelled_before_start: { refundable: true },
   // Not refundable: the media was rejected, or the creator cancelled a running job.
   invalid_media: { refundable: false },
@@ -26,6 +28,11 @@ export const FAILURE_CODES = {
   cancelled_while_running: { refundable: false },
   // The upload never completed within the upload link lifetime (cleanup task).
   upload_abandoned: { refundable: false },
+  // Spec 0008: an uploaded background image was refused by the ingest job.
+  image_invalid: { refundable: false },
+  image_too_small: { refundable: false },
+  image_too_large: { refundable: false },
+  image_animated: { refundable: false },
 } as const satisfies Readonly<Record<string, { readonly refundable: boolean }>>;
 
 export type FailureCode = keyof typeof FAILURE_CODES;

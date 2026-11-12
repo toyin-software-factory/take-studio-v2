@@ -14,13 +14,28 @@ import type { Executor, Render } from "../types";
  * the same transaction). These functions only create a render and record its success.
  */
 
+/** What a render records about its background (spec 0008); none means the original. */
+export type BackgroundSnapshot = {
+  readonly backgroundId: string | null;
+  readonly backgroundName: string | null;
+  /** True only when the green was actually replaced. */
+  readonly keyed: boolean;
+  /** The detected key colour (`#rrggbb`), null when not keyed. */
+  readonly keyColor: string | null;
+};
+
 /**
  * `renders.create`: a `pending` render for a job, snapshotting the applied cuts as
- * `removed_ranges` at render step start (AC-9: a re render never recomputes cuts).
+ * `removed_ranges` at render step start (AC-9: a re render never recomputes cuts) and, with
+ * `background`, the background it is made for (spec 0008).
  */
 export async function create(
   db: Executor,
-  input: { readonly takeId: string; readonly jobId: string },
+  input: {
+    readonly takeId: string;
+    readonly jobId: string;
+    readonly background?: BackgroundSnapshot;
+  },
 ): Promise<Result<Render, "not_found">> {
   return runTx(db, async (tx) => {
     const [job] = await tx
@@ -43,6 +58,10 @@ export async function create(
         jobId: input.jobId,
         status: "pending",
         removedRanges: removedRanges(cuts),
+        backgroundId: input.background?.backgroundId ?? null,
+        backgroundName: input.background?.backgroundName ?? null,
+        keyed: input.background?.keyed ?? false,
+        keyColor: input.background?.keyColor ?? null,
       })
       .returning();
     return created ? ok(created) : err("not_found");

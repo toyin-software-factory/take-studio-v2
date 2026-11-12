@@ -3,7 +3,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { DeadlineExceeded } from "./deadline";
-import { type MultipartTarget, downloadToFile, uploadFileMultipart } from "./r2-file-upload";
+import {
+  type MultipartTarget,
+  R2DownloadError,
+  downloadToFile,
+  uploadFileMultipart,
+} from "./r2-file-upload";
 import { partCount } from "./uploads";
 
 let dir: string;
@@ -217,5 +222,23 @@ describe("the job deadline (S2T-T07)", () => {
     expect(tries).toBe(1);
     expect(Date.now() - started).toBeLessThan(5_000);
     expect(log).toEqual(["abort"]);
+  });
+
+  it("reports a missing object as R2DownloadError 404, with no URL in the error", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("gone", { status: 404 }));
+    try {
+      const error = await downloadToFile(
+        "https://r2.test/x?X-Amz-Signature=SECRET",
+        join(dir, "missing.bin"),
+      ).catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(R2DownloadError);
+      expect((error as R2DownloadError).status).toBe(404);
+      expect(String(error)).toBe("R2DownloadError: R2 download failed: HTTP 404");
+      expect(JSON.stringify(error)).not.toContain("SECRET");
+    } finally {
+      fetchSpy.mockRestore();
+    }
   });
 });

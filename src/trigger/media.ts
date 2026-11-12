@@ -191,3 +191,36 @@ export async function probeFile(path: string, signal?: AbortSignal): Promise<Pro
     return null;
   }
 }
+
+/**
+ * Runs ffmpeg and returns what it wrote to stdout (raw frame bytes), killing it when `signal`
+ * aborts and settling only after it exited, like `runTool`. Errors carry the exit code only.
+ */
+export function runFfmpegBytes(
+  args: readonly string[],
+  options: { readonly timeoutMs: number; readonly signal?: AbortSignal },
+): Promise<Buffer> {
+  const { signal } = options;
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(signal.reason);
+    const child = execFile(
+      FFMPEG,
+      [...args],
+      {
+        timeout: options.timeoutMs,
+        maxBuffer: 64 * 1024 * 1024,
+        killSignal: "SIGKILL",
+        encoding: "buffer",
+      },
+      (error, stdout) => {
+        signal?.removeEventListener("abort", onAbort);
+        if (signal?.aborted) return reject(signal.reason);
+        if (!error) return resolve(stdout);
+        const code = typeof error.code === "number" ? error.code : null;
+        reject(new MediaToolError("ffmpeg", code, error.killed === true));
+      },
+    );
+    const onAbort = () => child.kill("SIGKILL");
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}

@@ -152,6 +152,14 @@ async function withRetry<T>(
  * Streams a presigned GET to a local file (never into memory). Errors carry the HTTP status,
  * never the URL. Returns the bytes written.
  */
+/** A presigned GET answered with a failure status (never carries the URL). */
+export class R2DownloadError extends Error {
+  override name = "R2DownloadError";
+  constructor(readonly status: number) {
+    super(`R2 download failed: HTTP ${status}`);
+  }
+}
+
 export async function downloadToFile(
   url: string,
   path: string,
@@ -159,7 +167,7 @@ export async function downloadToFile(
 ): Promise<number> {
   const limit = AbortSignal.timeout(30 * 60_000);
   const res = await fetch(url, { signal: signal ? AbortSignal.any([limit, signal]) : limit });
-  if (!res.ok || !res.body) throw new Error(`R2 download failed: HTTP ${res.status}`);
+  if (!res.ok || !res.body) throw new R2DownloadError(res.status);
   await pipeline(
     Readable.fromWeb(res.body as unknown as WebReadableStream),
     createWriteStream(path),

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   check,
   date,
@@ -14,6 +15,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import { ACTIVE_JOB_STATUSES, JOB_KINDS, STEP_NAMES, STEP_STATUSES } from "@/lib/processing";
+import { background } from "./background";
 import { inList, jobStatus, timestamps } from "./helpers";
 import { take } from "./take";
 
@@ -40,9 +42,14 @@ export const processingJob = pgTable(
     finishedAt: timestamp("finished_at", { withTimezone: true }),
     /** Spec 0006, AC-5: when this job's "take ready or failed" email was sent; null until then. */
     notifiedAt: timestamp("notified_at", { withTimezone: true }),
+    /** The background this job renders onto (spec 0008); null is the original. */
+    targetBackgroundId: uuid("target_background_id").references((): AnyPgColumn => background.id, {
+      onDelete: "set null",
+    }),
     ...timestamps,
   },
   (t) => [
+    index("processing_job_target_background_idx").on(t.targetBackgroundId),
     // AC-4: at most one queued or running job per take.
     uniqueIndex("processing_job_one_active_per_take_uidx")
       .on(t.takeId)

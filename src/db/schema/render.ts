@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   boolean,
   check,
   index,
@@ -11,6 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { RENDER_STATUSES } from "@/lib/processing";
+import { background } from "./background";
 import { inList, timestamps } from "./helpers";
 import { processingJob } from "./processing";
 import { take } from "./take";
@@ -38,6 +40,16 @@ export const render = pgTable(
     durationMs: integer("duration_ms"),
     removedRanges: jsonb("removed_ranges").$type<readonly RemovedRange[]>().notNull(),
     isLatest: boolean("is_latest").notNull().default(false),
+    /** Spec 0008: the background this render was made for, snapshot at render start. */
+    backgroundId: uuid("background_id").references((): AnyPgColumn => background.id, {
+      onDelete: "set null",
+    }),
+    /** Kept when the background is deleted, so the take page can still name it. */
+    backgroundName: text("background_name"),
+    /** True only when the green was actually replaced (a skipped `no_green_screen` is false). */
+    keyed: boolean("keyed").notNull().default(false),
+    /** The detected key colour as hex (null when not keyed). */
+    keyColor: text("key_color"),
     ...timestamps,
   },
   (t) => [

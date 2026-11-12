@@ -135,8 +135,11 @@ export type StepView = {
   readonly progress: number | null;
 };
 
-/** Weights of the live steps in the overall bar (AC-8): trim 10 %, render 90 %. */
-const STEP_WEIGHTS: Readonly<Record<string, number>> = { trim: 10, render: 90 };
+/**
+ * Weights of the live steps in the overall bar (AC-8): trim 10 %, background 5 % (only when the
+ * job has one; the bar divides by the steps it has), render 90 % of the rest.
+ */
+const STEP_WEIGHTS: Readonly<Record<string, number>> = { trim: 10, background: 5, render: 85 };
 
 /** A step's own percent: done or skipped is 100, pending 0, running its reported progress. */
 export function stepPercent(step: StepView): number {

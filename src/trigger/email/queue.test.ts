@@ -8,12 +8,16 @@ import { queueTakeEmail } from "./queue";
 
 beforeEach(() => trigger.mockClear());
 
-describe("queueTakeEmail (spec 0007: no email for transcribe jobs)", () => {
-  it("queues the email for the video kinds", async () => {
+describe("queueTakeEmail (specs 0006, 0007, 0008: only the first run is emailed)", () => {
+  it("queues the email for the first run", async () => {
     await queueTakeEmail("job_1", "initial");
-    await queueTakeEmail("job_2", "rerender");
-    expect(trigger).toHaveBeenCalledTimes(2);
+    expect(trigger).toHaveBeenCalledTimes(1);
     expect(trigger).toHaveBeenCalledWith({ jobId: "job_1" });
+  });
+
+  it("queues nothing for a re render (a background change shows its result on the page)", async () => {
+    await queueTakeEmail("job_2", "rerender");
+    expect(trigger).not.toHaveBeenCalled();
   });
 
   it("queues nothing for a transcribe job, nor for a kind it doesn't know", async () => {

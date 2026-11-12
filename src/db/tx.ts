@@ -9,7 +9,7 @@ class RollbackWith extends Error {
 }
 
 /**
- * Lock order rule: creator, then take, then job, then the rows under them. Read it in
+ * Lock order rule: creator, then background, then take, then job, then the rows under them. Read it in
  * src/db/AGENTS.md before locking two kinds of row in one transaction; the stress test
  * src/server/lock-order.test.ts fails on a deadlock.
  *

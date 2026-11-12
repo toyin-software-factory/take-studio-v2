@@ -18,7 +18,16 @@ import {
 } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
 import { usageAccountHash } from "@/lib/usage-hash";
-import { jobStep, processingJob, render, storageDeletion, take, transcript, user } from "../schema";
+import {
+  background,
+  jobStep,
+  processingJob,
+  render,
+  storageDeletion,
+  take,
+  transcript,
+  user,
+} from "../schema";
 import { runTx } from "../tx";
 import {
   type Executor,
@@ -387,7 +396,21 @@ export async function startJob(
   const now = input.now ?? new Date();
 
   try {
+    // Lock order (src/db/AGENTS.md): creator, background, take, job. The take's current
+    // background is read first so it can be locked (key share) before the take.
+    const [peek] = await db
+      .select({ backgroundId: take.backgroundId })
+      .from(take)
+      .where(and(eq(take.id, input.takeId), eq(take.creatorId, input.creatorId)));
+
     return await runTx(db, async (tx) => {
+      if (peek?.backgroundId) {
+        await tx
+          .select({ id: background.id })
+          .from(background)
+          .where(eq(background.id, peek.backgroundId))
+          .for("key share");
+      }
       const [locked] = await tx
         .select({ take, email: user.email })
         .from(take)
@@ -437,6 +460,8 @@ export async function startJob(
           takeId: current.id,
           kind,
           status: "queued",
+          // Spec 0008: the background this job renders onto (null is the original).
+          targetBackgroundId: current.backgroundId,
           secondsCharged,
           chargedMonth: charged ? chargedMonth(now) : null,
           chargedAccountHash: charged
@@ -446,7 +471,7 @@ export async function startJob(
         .returning();
       if (!job) return err("job_in_progress");
 
-      const names = stepsFor(kind);
+      const names = stepsFor(kind, { hasBackground: current.backgroundId !== null });
       const steps = await tx
         .insert(jobStep)
         .values(
@@ -588,10 +613,19 @@ export async function whileJobActive<T, E extends string>(
 ): Promise<Result<T, E | "job_final" | "aborted">> {
   return runTx<T, E | "job_final" | "aborted">(db, async (tx) => {
     const [owner] = await tx
-      .select({ takeId: processingJob.takeId })
+      .select({ takeId: processingJob.takeId, backgroundId: processingJob.targetBackgroundId })
       .from(processingJob)
       .where(eq(processingJob.id, jobId));
     if (!owner) return err("job_final");
+    // Lock order: creator, background, take, job. A job that renders onto a background holds
+    // it (key share) first, so a background delete waits for the write instead of crossing it.
+    if (owner.backgroundId) {
+      await tx
+        .select({ id: background.id })
+        .from(background)
+        .where(eq(background.id, owner.backgroundId))
+        .for("key share");
+    }
     await tx.select({ id: take.id }).from(take).where(eq(take.id, owner.takeId)).for("update");
     const [job] = await tx
       .select({ status: processingJob.status })

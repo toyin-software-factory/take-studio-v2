@@ -1,5 +1,14 @@
 import { relations } from "drizzle-orm";
-import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
+import {
+  type AnyPgColumn,
+  pgTable,
+  text,
+  timestamp,
+  boolean,
+  index,
+  uuid,
+} from "drizzle-orm/pg-core";
+import { background } from "./background";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -9,6 +18,14 @@ export const user = pgTable("user", {
   image: text("image"),
   /** Spec 0006, AC-6: false once the creator turned "take ready" emails off. */
   takeEmails: boolean("take_emails").default(true).notNull(),
+  /**
+   * Spec 0008, AC-1: the creator's last background pick (null keeps the original). A plain
+   * Drizzle column, not a Better Auth field: never written through Better Auth and always read
+   * from the database, not the session cache.
+   */
+  defaultBackgroundId: uuid("default_background_id").references((): AnyPgColumn => background.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()

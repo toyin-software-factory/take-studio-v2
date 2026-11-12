@@ -1,3 +1,4 @@
+import { type BackgroundComposite, compositeFilters } from "./keying";
 import type { HdrTransfer } from "./probe";
 
 /**
@@ -168,22 +169,46 @@ const seconds = (ms: number) => (ms / 1000).toFixed(6);
  */
 const videoSeconds = (ms: number) => (Math.max(0, ms - 0.001) / 1000).toFixed(6);
 
+export type RenderGraphOptions = {
+  /** The source's HDR transfer (tone mapped to SDR), or null for SDR. */
+  readonly hdr: HdrTransfer | null;
+  /** False for a take with no audio stream: the graph then has no audio branch. Default true. */
+  readonly hasAudio?: boolean;
+  /**
+   * Put the keyed take on a background (spec 0008). The graph then reads the background image
+   * as input 1 (`-loop 1 -framerate {fps} -i image`).
+   */
+  readonly background?: BackgroundComposite;
+};
+
 /**
  * The `-filter_complex_script` for a render (AC-6): per keep range a `trim` and an `atrim` with
- * reset timestamps, one `concat`, then the colour step (tone map for HDR, else yuv420p).
- * Outputs `[vout]` and `[aout]`. Video and audio are cut at the same times, so they stay in sync.
+ * reset timestamps, one `concat`, then the colour step (tone map for HDR, else yuv420p) and,
+ * with a background, the chroma key and overlay (`compositeFilters`). Outputs `[vout]` and,
+ * when the take has audio, `[aout]`. Video and audio are cut at the same times, so they stay
+ * in sync.
  */
-export function renderFilterScript(
-  keep: readonly Range[],
-  hdrTransfer: HdrTransfer | null,
-): string {
+export function renderFilterScript(keep: readonly Range[], options: RenderGraphOptions): string {
+  const { hdr, background } = options;
+  const hasAudio = options.hasAudio ?? true;
   const lines = keep.flatMap((r, i) => [
     `[0:v]trim=start=${videoSeconds(r.startMs)}:end=${videoSeconds(r.endMs)},setpts=PTS-STARTPTS[v${i}];`,
-    `[0:a]atrim=start=${seconds(r.startMs)}:end=${seconds(r.endMs)},asetpts=PTS-STARTPTS[a${i}];`,
+    ...(hasAudio
+      ? [
+          `[0:a]atrim=start=${seconds(r.startMs)}:end=${seconds(r.endMs)},asetpts=PTS-STARTPTS[a${i}];`,
+        ]
+      : []),
   ]);
-  const inputs = keep.map((_, i) => `[v${i}][a${i}]`).join("");
-  lines.push(`${inputs}concat=n=${keep.length}:v=1:a=1[vc][aout];`);
-  lines.push(`[vc]${hdrTransfer ? toneMapFilter(hdrTransfer) : "format=yuv420p"}[vout]`);
+  const inputs = keep.map((_, i) => (hasAudio ? `[v${i}][a${i}]` : `[v${i}]`)).join("");
+  lines.push(
+    `${inputs}concat=n=${keep.length}:v=1:a=${hasAudio ? 1 : 0}[vc]${hasAudio ? "[aout]" : ""};`,
+  );
+  const color = hdr ? toneMapFilter(hdr) : "format=yuv420p";
+  if (background) {
+    lines.push(`[vc]${color}[base];`, ...compositeFilters(background));
+  } else {
+    lines.push(`[vc]${color}[vout]`);
+  }
   return lines.join("\n");
 }
 

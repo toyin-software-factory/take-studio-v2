@@ -1,7 +1,7 @@
 # 0008. Studio background swap
 
 **Date**: 2026-11-12
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 
@@ -218,7 +218,7 @@ Tracer Bullet: a thin thread from one built in background to a keyed video first
 
 **Negative / tradeoffs**:
 - Edge quality depends on the creator's lighting; some takes will show faint edges or be skipped.
-- Keying makes renders slower; long 1080p takes approach the job's time budget (measured in step 1).
+- Keying makes renders slower: measured in step 1 on 4 vCPUs (the `large-1x` size), a keyed 10 minute 1080p render takes about 15 minutes against 2 minutes plain, so a worst case job (download, trim, detection, render, upload) stays near 20 minutes of the 38.5 minute deadline. Real footage must be timed again before launch.
 - Previews need a job run, so they take seconds, and each one reads part of the original.
 - Detection thresholds are heuristics that will need tuning with real takes.
 - More moving parts in the job layer: a second start path, two new tasks, a seed script.
