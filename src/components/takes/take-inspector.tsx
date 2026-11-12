@@ -20,6 +20,8 @@ type InspectorProps = {
   readonly detail: TakeDetail;
   readonly bridge: PlayerBridge;
   readonly takeEmails: boolean;
+  /** The email switch saved a new value: the page keeps it across the not ready to ready swap. */
+  readonly onEmailsSaved: (value: boolean) => void;
   readonly onStarted: (target: string | null) => void;
   readonly onUncertain: () => Promise<PollResult>;
   readonly onStale: () => void;
@@ -30,7 +32,7 @@ export function TakeInspector(props: InspectorProps) {
   if (take.status === "ready" || take.status === "expired") return <ReadyInspector {...props} />;
   return (
     <section aria-label="Take details" className="rounded-lg bg-card p-4 shadow-card">
-      <TakeDetails take={take} takeEmails={props.takeEmails} />
+      <TakeDetails take={take} takeEmails={props.takeEmails} onEmailsSaved={props.onEmailsSaved} />
     </section>
   );
 }
@@ -40,6 +42,7 @@ function ReadyInspector({
   detail,
   bridge,
   takeEmails,
+  onEmailsSaved,
   onStarted,
   onUncertain,
   onStale,
@@ -80,7 +83,7 @@ function ReadyInspector({
           <TranscriptPanel takeId={take.id} bridge={bridge} transcript={transcript} />
         </TabsContent>
         <TabsContent value="details" className={pane}>
-          <TakeDetails take={take} takeEmails={takeEmails} />
+          <TakeDetails take={take} takeEmails={takeEmails} onEmailsSaved={onEmailsSaved} />
         </TabsContent>
       </Tabs>
     </div>

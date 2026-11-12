@@ -129,3 +129,26 @@ test("a take that is not ready has the details only, and the chip says Processin
   await expect(page.getByRole("region", { name: "Take details" })).toBeVisible();
   await expect(page.getByRole("banner").getByText("Processing")).toBeVisible();
 });
+
+test("a ready take whose video has expired shows Expired in the top bar, not Ready", async ({
+  page,
+  baseURL,
+}) => {
+  const { user, cleanup } = await signIn(page.context(), baseURL!);
+  cleanups.push(cleanup);
+  const [id] = await seedTakes(user.id, [
+    {
+      title: "Old take",
+      status: "ready",
+      durationMs: 20_000,
+      expiresInDays: -2,
+      steps: [
+        { name: "trim", status: "succeeded" },
+        { name: "render", status: "succeeded" },
+      ],
+    },
+  ]);
+  await page.goto(`/takes/${id}`);
+  await expect(page.getByRole("banner").getByText("Expired")).toBeVisible();
+  await expect(page.getByRole("banner").getByText("Ready")).toHaveCount(0);
+});

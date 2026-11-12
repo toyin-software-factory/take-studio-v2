@@ -13,9 +13,11 @@ import { StatusBadge } from "./status-badge";
 export function TakeDetails({
   take,
   takeEmails,
+  onEmailsSaved,
 }: {
   readonly take: TakeData;
   readonly takeEmails: boolean;
+  readonly onEmailsSaved: (value: boolean) => void;
 }) {
   const expiry = expiryNote(take.videoExpiresAt, take.expired, new Date());
   const rows: readonly (readonly [string, React.ReactNode])[] = [
@@ -43,7 +45,7 @@ export function TakeDetails({
           </div>
         ))}
       </dl>
-      <EmailSwitch initial={takeEmails} />
+      <EmailSwitch initial={takeEmails} onSaved={onEmailsSaved} />
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { type TakeDetail, takeDetailSchema } from "@/lib/take-api";
 import {
   POLL,
   backgroundChangeActive,
+  effectiveStatus,
   isInFlight,
   keepPolling,
   tabTitle,
@@ -32,7 +33,7 @@ export function TakeView({
   takeId,
   initialTitle,
   initialStatus,
-  takeEmails,
+  takeEmails: savedEmails,
 }: {
   readonly takeId: string;
   readonly initialTitle: string;
@@ -41,6 +42,9 @@ export function TakeView({
   readonly takeEmails: boolean;
 }) {
   const [detail, setDetail] = useState<TakeDetail | null>(null);
+  // The email setting lives here, above the inspector, so a change saved while the take was
+  // processing is still shown after the inspector swaps to its ready tabs.
+  const [takeEmails, setTakeEmails] = useState(savedEmails);
   const [stop, setStop] = useState<Stop>(null);
   const [failures, setFailures] = useState(0);
   // What the player and the transcript panel share (time, seek, caption track).
@@ -78,7 +82,17 @@ export function TakeView({
     document.title = tabTitle(status, title);
   }, [status, title]);
   // The top bar's breadcrumb and chip follow the live take (a rename, processing to ready).
-  usePublishCurrentTake(title, status);
+  usePublishCurrentTake(
+    title,
+    detail
+      ? effectiveStatus(
+          detail.take.status,
+          detail.take.videoExpiresAt,
+          detail.take.expired,
+          new Date(),
+        )
+      : status,
+  );
 
   const onRetried = useCallback(() => {
     setDetail((d) =>
@@ -127,6 +141,7 @@ export function TakeView({
               detail={detail}
               bridge={bridge}
               takeEmails={takeEmails}
+              onEmailsSaved={setTakeEmails}
               onStarted={(target) =>
                 setDetail((d) =>
                   d
