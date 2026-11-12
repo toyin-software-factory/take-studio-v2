@@ -642,3 +642,48 @@ test("the Keep original tile shows the take's thumbnail, and gets a fresh link w
     .toBeGreaterThan(0);
   expect(links).toBeGreaterThanOrEqual(1);
 });
+
+test("when the new video's link fails, the current video keeps playing and Try again swaps it", async ({
+  page,
+  baseURL,
+}) => {
+  const { id, state } = await setup(page, baseURL!, {
+    detail: { latestRender: { id: "render-1", status: "succeeded", durationMs: 3000 } },
+  });
+  let fresh = false;
+  let broken = false;
+  await page.route("**/api/takes/*/media?kind=play", (r) =>
+    broken
+      ? r.fulfill({ status: 500, json: { error: "storage_error", message: "stub" } })
+      : r.fulfill({
+          json: { url: `${R2}/${fresh ? "clip2" : "clip"}.mp4`, expiresInSeconds: 3600 },
+        }),
+  );
+  await page.route(`${R2}/clip2.mp4`, (r) =>
+    r.fulfill({
+      body: clip,
+      contentType: "video/mp4",
+      headers: { "access-control-allow-origin": "*", "accept-ranges": "bytes" },
+    }),
+  );
+  await open(page, id);
+  await expect(page.locator("video")).toHaveAttribute("src", `${R2}/clip.mp4`);
+  await page.locator("video").evaluate((v) => v.setAttribute("data-mark", "same"));
+
+  broken = true;
+  state.detail = { latestRender: { id: "render-2", status: "succeeded", durationMs: 3000 } };
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  // A few quiet tries, then a message; the working video is never taken away.
+  await expect(page.getByText("didn't load.")).toBeVisible({ timeout: 45_000 });
+  await expect(page.locator("video[data-mark=same]")).toHaveAttribute("src", `${R2}/clip.mp4`);
+
+  broken = false;
+  fresh = true;
+  await page
+    .getByRole("status")
+    .filter({ hasText: "didn't load." })
+    .getByRole("button", { name: "Try again" })
+    .click();
+  await expect(page.locator("video[data-mark=same]")).toHaveAttribute("src", `${R2}/clip2.mp4`);
+  await expect(page.getByText("didn't load.")).toHaveCount(0);
+});

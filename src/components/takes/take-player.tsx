@@ -42,6 +42,8 @@ export function TakePlayer({
   const captions = useCaptions(bridge, video, link.kind === "ready");
   const poster = usePoster(takeId).url;
   const shownRender = useRef(renderId);
+  const retrySwap = useRef<() => void>(() => undefined);
+  const [swapFailed, setSwapFailed] = useState(false);
 
   const fetchLink = useCallback(() => {
     void playLink(takeId).then(setLink);
@@ -54,19 +56,37 @@ export function TakePlayer({
     // playing. The video element stays mounted, so only `src` changes.
     const swapping = shownRender.current !== renderId;
     shownRender.current = renderId;
-    void playLink(takeId).then((next) => {
-      if (!live) return;
-      // Read the position and the state now, just before the source changes: the viewer may have
-      // played on, paused or pressed play while the link was being fetched.
-      if (swapping && video.current) {
-        resumeAt.current = video.current.currentTime;
-        resumePlaying.current = !video.current.paused;
-        refreshed.current = false;
-      }
-      setLink(next);
-    });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const attempt = (retriesLeft: number) => {
+      void playLink(takeId).then((next) => {
+        if (!live) return;
+        const playing = video.current;
+        // A swap that cannot get its link leaves the working video alone: try again a few
+        // times, then say so with a button (the new link is applied only once it is in hand).
+        if (swapping && playing && next.kind !== "ready") {
+          if (retriesLeft > 0) timer = setTimeout(() => attempt(retriesLeft - 1), 3000);
+          else setSwapFailed(true);
+          return;
+        }
+        // Read the position and the state now, just before the source changes: the viewer may
+        // have played on, paused or pressed play while the link was being fetched.
+        if (swapping && playing) {
+          resumeAt.current = playing.currentTime;
+          resumePlaying.current = !playing.paused;
+          refreshed.current = false;
+        }
+        setSwapFailed(false);
+        setLink(next);
+      });
+    };
+    retrySwap.current = () => {
+      setSwapFailed(false);
+      attempt(0);
+    };
+    attempt(2);
     return () => {
       live = false;
+      clearTimeout(timer);
     };
   }, [takeId, renderId]);
 
@@ -172,6 +192,18 @@ export function TakePlayer({
         </video>
         <BackgroundPreviewOverlay bridge={bridge} />
       </StageLetterbox>
+      {swapFailed ? (
+        <p role="status" className="text-small text-stage-text-muted">
+          A new version of this video is ready, but it didn&rsquo;t load.{" "}
+          <button
+            type="button"
+            onClick={() => retrySwap.current()}
+            className="underline underline-offset-2"
+          >
+            Try again
+          </button>
+        </p>
+      ) : null}
       <PlayerControls
         playing={playing}
         current={current}
