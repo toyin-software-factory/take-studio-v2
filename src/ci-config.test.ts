@@ -28,6 +28,16 @@ function step(name: string): string {
   return ci.slice(start, next === -1 ? undefined : next);
 }
 
+describe("CI runs on main, which gates the deploy (HRF-T04)", () => {
+  it("is named CI and runs on every push to main and on pull requests", () => {
+    const code = withoutComments(ci);
+    expect(code).toMatch(/^name: CI\s*$/m);
+    expect(code).toMatch(/^on:\s*\n\s+pull_request:\s*\n\s+push:\s*\n\s+branches: \[main\]/m);
+    // The deploy waits for this exact name.
+    expect(readFileSync(".github/workflows/deploy.yml", "utf8")).toContain("workflows: [CI]");
+  });
+});
+
 describe("CI workflows", () => {
   it("pin every job's runner to ubuntu-24.04, never ubuntu-latest", () => {
     const files = readdirSync(".github/workflows").filter((f) => /\.ya?ml$/.test(f));
