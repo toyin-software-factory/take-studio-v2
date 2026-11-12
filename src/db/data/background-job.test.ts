@@ -172,17 +172,34 @@ describe("background lock order (spec 0008)", () => {
     if (!started.ok) throw new Error(started.error);
     await markRunning(db, { jobId: started.data.id, triggerRunId: "run" });
     const order: string[] = [];
+    // The write signals when it holds its locks; the delete starts only then, and the write
+    // finishes only after the delete has been issued (no sleeps, so a slow database can't
+    // reorder the two).
+    let entered: () => void = () => undefined;
+    let release: () => void = () => undefined;
+    const hasEntered = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const mayFinish = new Promise<void>((resolve) => {
+      release = resolve;
+    });
     const write = whileJobActive(db, started.data.id, async () => {
       order.push("write started");
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      entered();
+      await mayFinish;
       order.push("write done");
       return { ok: true as const, data: 1 };
     });
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await hasEntered;
     const del = db
       .delete(background)
       .where(eq(background.id, bg.id))
       .then(() => order.push("deleted"));
+    // Give the delete time to reach Postgres and block on the background lock, then let the
+    // write finish; the delete can only complete after it.
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(order).toEqual(["write started"]);
+    release();
     await Promise.all([write, del]);
     expect(order).toEqual(["write started", "write done", "deleted"]);
   });

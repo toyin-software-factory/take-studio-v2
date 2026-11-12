@@ -67,6 +67,8 @@ const FIXTURES = process.argv.slice(2).length
       "keyed-no-pauses.mp4",
       "keyed-no-audio.mp4",
       "nogreen-none.mp4",
+      "nogreen-no-pauses.mp4",
+      "nogreen-no-audio.mp4",
       "nogreen-dark-patchy.mp4",
       "nogreen-green-shirt.mp4",
       "nogreen-narrow.mp4",
@@ -208,6 +210,17 @@ async function runJob(takeId: string) {
   throw new Error("job did not finish in 15 minutes");
 }
 
+/** What each fixture must give (spec 0008 AC-2, AC-3); any mismatch makes the script exit 1. */
+function expected(file: string): { keyed: boolean; trimSkipped: boolean; audio: boolean } {
+  return {
+    keyed: file.startsWith("keyed-"),
+    trimSkipped: file.endsWith("-no-audio.mp4"),
+    audio: !file.endsWith("-no-audio.mp4"),
+  };
+}
+
+let failed = 0;
+
 await db
   .insert(schema.user)
   .values({ id: userId, name: "Keying check", email: `${userId}@example.com` });
@@ -271,6 +284,39 @@ try {
         join(outDir, `${file.replace(".mp4", "")}-output.png`),
       ]);
     }
+    // Compare with the expected outcome.
+    const want = expected(file);
+    const problems: string[] = [];
+    const stepText = (row.steps as string[]).join(" ");
+    if (job.status !== "succeeded") problems.push(`job ${job.status} ${job.failureCode ?? ""}`);
+    if (t?.status !== "ready") problems.push(`take ${t?.status}`);
+    if (want.keyed && !stepText.includes("background:succeeded")) {
+      problems.push("background step not succeeded");
+    }
+    if (!want.keyed && !stepText.includes("background:skipped(no_green_screen)")) {
+      problems.push("background step not skipped with no_green_screen");
+    }
+    if (want.trimSkipped !== stepText.includes("trim:skipped")) problems.push("trim step wrong");
+    // A take with a background is always rendered, keyed or not (AC-2).
+    if (!latest?.videoKey) problems.push("no render");
+    if (latest && latest.keyed !== want.keyed) problems.push(`render keyed=${latest.keyed}`);
+    if (latest && latest.backgroundName === null) {
+      problems.push("render does not name its background");
+    }
+    const o = row.output as { audio?: boolean } | undefined;
+    if (o && o.audio !== want.audio) problems.push(`output audio=${o.audio}`);
+    if (want.keyed) {
+      const outline = row.outline as { greenInBand: number; bandPixels: number } | undefined;
+      if (!outline || outline.bandPixels === 0) problems.push("no outline measured");
+      else if (outline.greenInBand !== 0) {
+        problems.push(`${outline.greenInBand} green outline pixels`);
+      }
+    }
+    row.ok = problems.length === 0;
+    if (problems.length > 0) {
+      row.problems = problems;
+      failed += 1;
+    }
     out(row);
   }
 } finally {
@@ -280,5 +326,6 @@ try {
   await db.delete(schema.user).where(eq(schema.user.id, userId));
   await client.end();
   rmSync(work, { recursive: true, force: true });
-  out({ cleanup: { keys: keys.length, deleteFailures: failures } });
+  out({ cleanup: { keys: keys.length, deleteFailures: failures }, fixturesFailed: failed });
+  if (failed > 0 || failures > 0) process.exitCode = 1;
 }

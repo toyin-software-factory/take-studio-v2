@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DeadlineExceeded } from "@/lib/deadline";
+import { BackgroundMissingError } from "./keying";
 import { MediaToolError } from "./media";
 import { failureCodeFor } from "./process-take";
 
@@ -19,6 +20,13 @@ describe("failureCodeFor (spec 0004 Flow step 5)", () => {
   it("maps a run that stopped itself before maxDuration to timeout, ahead of any tool error", () => {
     expect(failureCodeFor(new DeadlineExceeded())).toBe("timeout");
     expect(failureCodeFor({ name: "DeadlineExceeded", message: "x" })).toBe("timeout");
+  });
+
+  it("maps a missing background to background_missing", () => {
+    expect(failureCodeFor(new BackgroundMissingError())).toBe("background_missing");
+    expect(failureCodeFor({ name: "BackgroundMissingError", message: "x" })).toBe(
+      "background_missing",
+    );
   });
 
   it("maps anything else (download, upload, database) to internal_error", () => {

@@ -24,7 +24,7 @@ import type { FailureCode } from "@/lib/failure-codes";
 import { parseJobEnv } from "@/lib/env";
 import { isFinalJobStatus, type StepName } from "@/lib/processing";
 import { type R2, createR2 } from "@/lib/r2";
-import { downloadToFile, uploadFileMultipart } from "@/lib/r2-file-upload";
+import { R2DownloadError, downloadToFile, uploadFileMultipart } from "@/lib/r2-file-upload";
 import {
   alignToFrames,
   cutsFromSilences,
@@ -200,11 +200,19 @@ async function processJob(
       );
       if (!bg || bg.status !== "ready" || !bg.imageKey) throw new BackgroundMissingError();
       const imagePath = join(work, "background.jpg");
-      await downloadToFile(
-        await r2.presignGet(bg.imageKey, { expiresSeconds: 60 * 60 }),
-        imagePath,
-        signal,
-      );
+      try {
+        await downloadToFile(
+          await r2.presignGet(bg.imageKey, { expiresSeconds: 60 * 60 }),
+          imagePath,
+          signal,
+        );
+      } catch (error) {
+        // The row is ready but its image is gone from R2: the job's own code (spec 0008).
+        if (error instanceof R2DownloadError && error.status === 404) {
+          throw new BackgroundMissingError();
+        }
+        throw error;
+      }
       const detection = await detectInFile(source, facts, signal);
       backgroundFacts = {
         id: bg.id,
@@ -228,7 +236,9 @@ async function processJob(
     }
     const keyed = backgroundFacts?.keyColor != null;
 
-    if (!hasCuts && !keyed) {
+    // Spec 0008 AC-2: a take with a chosen background is always rendered (the whole take when
+    // there are no cuts), keyed or not, so the render records which background it was for.
+    if (!hasCuts && !backgroundFacts) {
       await step("render", "skipped", 0);
       signal.throwIfAborted();
       await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));

@@ -79,6 +79,9 @@ frame 1280 720 "0 45 15" "$BLUE" "$tmp/dark.png"
 clip "$tmp/dark.png" "$out/nogreen-dark-patchy.mp4" 5 30 "$(tone 5 2 3.5)" 0
 frame 1280 720 "$GRAY" "$GREEN" "$tmp/shirt.png"
 clip "$tmp/shirt.png" "$out/nogreen-green-shirt.mp4" 5 30 "$(tone 5 2 3.5)" 0
+frame 1280 720 "$GRAY" "$BLUE" "$tmp/none2.png"
+clip "$tmp/none2.png" "$out/nogreen-no-pauses.mp4" 5 30 "0.4*sin(2*PI*440*t)" 0
+clip "$tmp/none2.png" "$out/nogreen-no-audio.mp4" 4 30 none 0
 frame 1280 720 "$GREEN" "$BLUE" "$tmp/narrow.png" strip
 clip "$tmp/narrow.png" "$out/nogreen-narrow.mp4" 5 30 "$(tone 5 2 3.5)" 0
 

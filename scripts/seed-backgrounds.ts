@@ -27,7 +27,8 @@ const env = z
 
 const host = new URL(env.DATABASE_URL_DIRECT).hostname;
 const local = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(host);
-if (!local && !env.CI && env.MIGRATE_TARGET !== "prod") {
+// Only the exact values authorise a remote database: CI "false" or "1" does not.
+if (!local && env.CI !== "true" && env.MIGRATE_TARGET !== "prod") {
   throw new Error(
     `Refusing to seed the non local database host ${host}. Use a local database, or set MIGRATE_TARGET=prod on purpose.`,
   );
