@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, lt, ne, notExists, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { type DeletedTakes, deleteTakesInTx } from "@/db/data/deletion";
 import { markUploaded, transition } from "@/db/data/takes";
@@ -91,6 +91,12 @@ export type TakeDetail = {
   readonly take: Take;
   readonly latestRender: Render | null;
   readonly latestJob: (ProcessingJob & { readonly steps: readonly JobStep[] }) | null;
+  /** The background the finished video is on (green replaced); null when it is the original. */
+  readonly background: { readonly id: string | null; readonly name: string } | null;
+  /** The take has no usable green screen, so its background request kept the original (AC-3). */
+  readonly noGreenScreen: boolean;
+  /** The latest background change job (a `rerender` with no trim step), for "Try again". */
+  readonly backgroundJob: { readonly status: string; readonly failureCode: string | null } | null;
 };
 
 /** `takes.getForCreator`: the take with its latest render and latest job (with steps). */
@@ -125,10 +131,41 @@ export async function getForCreator(
         .orderBy(asc(jobStep.position))
     : [];
 
+  // The latest background change: a `rerender` job whose steps have no `trim` (a re render of a
+  // failed take, started by `startJob`, trims again and is not a background change).
+  const [backgroundJob] = await db
+    .select({ status: processingJob.status, failureCode: processingJob.failureCode })
+    .from(processingJob)
+    .where(
+      and(
+        eq(processingJob.takeId, takeId),
+        eq(processingJob.kind, "rerender"),
+        notExists(
+          db
+            .select({ one: sql`1` })
+            .from(jobStep)
+            .where(and(eq(jobStep.jobId, processingJob.id), eq(jobStep.name, "trim"))),
+        ),
+      ),
+    )
+    .orderBy(desc(processingJob.createdAt))
+    .limit(1);
+
+  const keyedBackground =
+    latestRender?.keyed && latestRender.backgroundName
+      ? { id: latestRender.backgroundId, name: latestRender.backgroundName }
+      : null;
+  const noGreenScreen =
+    (latestRender?.backgroundName != null && latestRender.keyed === false) ||
+    steps.some((s) => s.name === "background" && s.failureCode === "no_green_screen");
+
   return ok({
     take: found,
     latestRender: latestRender ?? null,
     latestJob: latestJob ? { ...latestJob, steps } : null,
+    background: keyedBackground,
+    noGreenScreen,
+    backgroundJob: backgroundJob ?? null,
   });
 }
 
