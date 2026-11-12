@@ -24,6 +24,7 @@ export function BackgroundGrid({
   value,
   onChange,
   mine,
+  original = { thumbUrl: null },
 }: {
   readonly group: string;
   readonly list: BackgroundListData;
@@ -31,6 +32,8 @@ export function BackgroundGrid({
   readonly value: string;
   readonly onChange: (id: string) => void;
   readonly mine: MineActions;
+  /** The take's own thumbnail for "Keep original" (the take page); the upload area has none. */
+  readonly original?: { readonly thumbUrl: string | null; readonly onThumbError?: () => void };
 }) {
   const tiles = (items: readonly BackgroundItem[]) =>
     items.map((item) => (
@@ -54,7 +57,8 @@ export function BackgroundGrid({
           value={ORIGINAL_BACKGROUND}
           name="Keep original"
           alt="Keep the background you filmed with"
-          thumbUrl={null}
+          thumbUrl={original.thumbUrl}
+          onThumbError={original.onThumbError}
           checked={value === ORIGINAL_BACKGROUND}
           onSelect={() => onChange(ORIGINAL_BACKGROUND)}
         />

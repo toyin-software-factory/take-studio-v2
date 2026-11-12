@@ -243,7 +243,9 @@ describe("PUT /api/takes/[id]/background (spec 0008, AC-5, AC-6)", () => {
     ).toBe(202);
     const busy = await call(deps(first.creator.id), first.take.id, { backgroundId: bg.id });
     expect([busy.status, busy.json.error]).toEqual([409, "job_active"]);
-    expect(busy.json.message).toBe("Your video is still being made. Try again in a moment.");
+    expect(busy.json.message).toBe(
+      "A background change is already running. It'll show here when it's done.",
+    );
 
     const second = await readyTake();
     await startTranscribeJob(db, { takeId: second.take.id });

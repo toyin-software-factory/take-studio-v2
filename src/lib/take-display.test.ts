@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { isMediaFailure } from "./failure-codes";
 import {
+  POLL,
+  keepPolling,
   effectiveStatus,
   expiryNote,
   shortDate,
@@ -178,5 +180,34 @@ describe("background change helpers (spec 0008)", () => {
     expect(backgroundFailureMessage("background_missing")).toContain("isn't available any more");
     expect(backgroundFailureMessage("ffmpeg_error")).toContain("Your video is unchanged");
     expect(backgroundFailureMessage(null)).toContain("Try again");
+  });
+});
+
+describe("keepPolling (S3S-T13)", () => {
+  const take = (status: string, expired = false) => ({ status, expired });
+  it("keeps going while the take is in flight or a background change runs", () => {
+    expect(keepPolling({ take: take("processing") })).toBe(true);
+    expect(keepPolling({ take: take("ready"), backgroundJob: { status: "running" } })).toBe(true);
+  });
+  it("keeps checking a ready take, slowly, so a second tab sees a change made elsewhere", () => {
+    expect(keepPolling({ take: take("ready"), backgroundJob: { status: "succeeded" } })).toBe(true);
+    expect(POLL.idleMs).toBeGreaterThan(POLL.takeMs);
+  });
+  it("stops for a failed or expired take", () => {
+    expect(keepPolling({ take: take("failed") })).toBe(false);
+    expect(keepPolling({ take: take("ready", true) })).toBe(false);
+    expect(keepPolling({ take: take("expired") })).toBe(false);
+  });
+});
+
+describe("pollDelay keeps the idle interval (S3S-T13)", () => {
+  it("does not cap a base above the backoff cap", () => {
+    expect(pollDelay(POLL.idleMs, 0)).toBe(POLL.idleMs);
+    expect(pollDelay(POLL.idleMs, 3)).toBe(POLL.idleMs);
+  });
+  it("still doubles the 2 s base up to 10 s", () => {
+    expect(pollDelay(POLL.takeMs, 0)).toBe(2000);
+    expect(pollDelay(POLL.takeMs, 1)).toBe(4000);
+    expect(pollDelay(POLL.takeMs, 5)).toBe(POLL.maxBackoffMs);
   });
 });
