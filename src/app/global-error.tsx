@@ -2,7 +2,7 @@
 
 import { captureException } from "@sentry/core";
 import { useEffect } from "react";
-import { CircleAlert } from "lucide-react";
+import { CircleAlert, Clapperboard } from "lucide-react";
 import { interTight } from "@/lib/fonts";
 import "./globals.css";
 
@@ -25,19 +25,30 @@ export default function GlobalError({
   return (
     <html lang="en" className={interTight.variable}>
       <body>
+        <header className="mx-auto flex w-full max-w-content items-center px-[clamp(16px,2.4vw,32px)] py-5">
+          {/* A plain link: this page stands alone, so it must not depend on the router. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a full load is the point here */}
+          <a
+            href="/"
+            className="flex items-center gap-2 rounded-md px-1 py-1 text-h4 outline-hidden focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-solid focus-visible:outline-ring pointer-coarse:min-h-11"
+          >
+            <Clapperboard size={20} strokeWidth={1.5} aria-hidden="true" />
+            Take Studio
+          </a>
+        </header>
         <main
           id="content"
-          className="mx-auto flex min-h-dvh max-w-content flex-col items-start justify-center gap-4 px-4 md:px-6"
+          className="mx-auto flex min-h-[calc(100dvh-6rem)] max-w-content flex-col items-start justify-center gap-4 px-[clamp(16px,2.4vw,32px)] pb-16"
         >
           <CircleAlert size={40} strokeWidth={1.5} aria-hidden="true" className="text-danger" />
-          <h1 className="text-h1 font-medium">Something went wrong</h1>
+          <h1 className="text-h2">Something went wrong</h1>
           <p className="text-muted-foreground">
             We couldn&rsquo;t load this page. We&rsquo;ve been told about it. Try again in a moment.
           </p>
           <button
             type="button"
             onClick={() => reset()}
-            className="inline-flex h-10 cursor-pointer items-center rounded-md bg-primary px-4 text-small font-medium text-primary-fg hover:bg-primary-hover active:bg-primary-active focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid focus-visible:outline-ring pointer-coarse:min-h-11"
+            className="inline-flex h-10 cursor-pointer items-center rounded-full bg-primary px-6 text-body font-medium text-primary-fg transition-[background-color,transform] duration-300 ease-ui hover:bg-primary-hover active:scale-[.98] focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-solid focus-visible:outline-ring pointer-coarse:min-h-11"
           >
             Retry
           </button>

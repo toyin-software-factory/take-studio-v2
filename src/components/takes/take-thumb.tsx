@@ -7,7 +7,7 @@ import { mediaLinkSchema } from "@/lib/take-api";
 import { callApi } from "./browser-io";
 
 /**
- * A card's 16:9 thumbnail (spec 0004, Data model). Once the card scrolls near the viewport it
+ * A card's 16:9 thumbnail (spec 0004, Data model); it grows 4% on hover over 600 ms (design.md §5). Once the card scrolls near the viewport it
  * asks GET /api/takes/{id}/media?kind=thumb for a 1 hour link; with no file, no link or an
  * image that fails to load it keeps the placeholder. Decorative: the title names the take.
  */
@@ -53,14 +53,14 @@ export function TakeThumb({
   return (
     <div
       ref={box}
-      className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-t-md bg-stage-bg text-stage-text-muted"
+      className="flex aspect-video w-full items-center justify-center overflow-hidden rounded-md bg-stage-bg text-stage-text-muted"
     >
       {src && !failed && available ? (
         // eslint-disable-next-line @next/next/no-img-element -- images are unoptimized (spec 0001)
         <img
           src={src}
           alt=""
-          className="size-full object-contain"
+          className="size-full object-contain transition-transform duration-[600ms] ease-out group-hover:scale-[1.04]"
           onError={() => setFailed(true)}
         />
       ) : (
