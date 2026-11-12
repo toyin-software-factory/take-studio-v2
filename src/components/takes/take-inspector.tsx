@@ -50,11 +50,19 @@ function ReadyInspector({
   return (
     <div className="rounded-lg bg-card p-4 shadow-card min-[1200px]:sticky min-[1200px]:top-[88px]">
       <Tabs defaultValue="export">
-        <TabsList aria-label="Take tools">
-          <TabsTrigger value="export">Export</TabsTrigger>
-          <TabsTrigger value="background">Background</TabsTrigger>
-          <TabsTrigger value="transcript">Transcript</TabsTrigger>
-          <TabsTrigger value="details">Details</TabsTrigger>
+        <TabsList aria-label="Take tools" className="w-full justify-start gap-1.5">
+          <TabsTrigger value="export" className="px-3">
+            Export
+          </TabsTrigger>
+          <TabsTrigger value="background" className="px-3">
+            Background
+          </TabsTrigger>
+          <TabsTrigger value="transcript" className="px-3">
+            Transcript
+          </TabsTrigger>
+          <TabsTrigger value="details" className="px-3">
+            Details
+          </TabsTrigger>
         </TabsList>
         <TabsContent value="export" className={pane}>
           <TakeExport detail={detail} transcript={transcript} />
