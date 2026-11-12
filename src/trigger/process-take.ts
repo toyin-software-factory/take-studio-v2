@@ -22,7 +22,11 @@ import { ok } from "@/lib/result";
 import { renderKey } from "@/lib/cut-rules";
 import type { FailureCode } from "@/lib/failure-codes";
 import { parseJobEnv } from "@/lib/env";
-import { isFinalJobStatus, type StepName } from "@/lib/processing";
+import {
+  isBackgroundChange as isBackgroundChangeJob,
+  isFinalJobStatus,
+  type StepName,
+} from "@/lib/processing";
 import { type R2, createR2 } from "@/lib/r2";
 import { R2DownloadError, downloadToFile, uploadFileMultipart } from "@/lib/r2-file-upload";
 import {
@@ -151,11 +155,13 @@ async function processJob(
     const facts = await probeFile(source, signal);
     if (!facts) throw new MediaToolError("ffprobe", null, false);
 
-    // A background change (spec 0008): a `rerender` job on a take that is already Ready. It
-    // reuses the take's applied cuts (the render snapshot reads them), so it neither trims nor
-    // re analyses, always renders, and starts no transcript. A re render of a take that failed
-    // (take `processing`) is a full run again, as before.
-    const isBackgroundChange = job.kind === "rerender" && t.status === "ready";
+    // A background change (spec 0008): a job of kind `background`, on a take that is already
+    // Ready. It reuses the take's applied cuts (the render snapshot reads them), so it neither
+    // trims nor re analyses, always renders, and starts no transcript. A `rerender` (a re render
+    // of a take that failed, take `processing`) is a full run again, as before. LEGACY (HRF-T08
+    // deploy window): a `rerender` on a take that is not `processing` is still a background
+    // change (`isBackgroundChange` in `src/lib/processing.ts`).
+    const isBackgroundChange = isBackgroundChangeJob(job.kind, t.status);
 
     // Trim. A take with no sound has nothing to trim: with no background it ends here (the
     // original is the video); with one it still renders, below.

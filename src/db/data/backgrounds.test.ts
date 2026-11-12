@@ -218,7 +218,7 @@ describe("deleteBackground (AC-9, AC-10)", () => {
     await db.insert(processingJob).values({
       id: jobId,
       takeId: t.id,
-      kind: "rerender",
+      kind: "background",
       status: "running",
       secondsCharged: 0,
       targetBackgroundId: id,

@@ -117,7 +117,7 @@ describe("PUT /api/takes/[id]/background (spec 0008, AC-5, AC-6)", () => {
       .from(processingJob)
       .where(eq(processingJob.id, res.json.jobId as string));
     expect(job).toMatchObject({
-      kind: "rerender",
+      kind: "background",
       status: "queued",
       secondsCharged: 0,
       targetBackgroundId: bg.id,
@@ -222,7 +222,7 @@ describe("PUT /api/takes/[id]/background (spec 0008, AC-5, AC-6)", () => {
       await db.insert(processingJob).values({
         id: crypto.randomUUID(),
         takeId: t.id,
-        kind: "rerender",
+        kind: "background",
         status: "failed",
         failureCode: "internal_error",
         secondsCharged: 0,
@@ -260,7 +260,7 @@ describe("PUT /api/takes/[id]/background (spec 0008, AC-5, AC-6)", () => {
     const res = await call(deps(creator.id, [], true), t.id, { backgroundId: bg.id });
     expect(res.status).toBe(503);
     const jobs = await db.select().from(processingJob).where(eq(processingJob.takeId, t.id));
-    const rerender = jobs.find((j) => j.kind === "rerender");
+    const rerender = jobs.find((j) => j.kind === "background");
     expect(rerender).toMatchObject({ status: "failed", failureCode: "trigger_failed" });
     const [row] = await db.select().from(take).where(eq(take.id, t.id));
     expect(row?.status).toBe("ready");
@@ -398,27 +398,21 @@ describe("GET /api/takes/[id] background fields (spec 0008)", () => {
     expect((await get(creator.id, t.id)).noGreenScreen).toBe(false);
   });
 
-  it("ignores a re render that trims again (a retry of a failed take) as a background change", async () => {
+  it("LEGACY: a `rerender` (what background changes were before the kind) is still the latest change", async () => {
     const creator = await createCreator(db);
     const t = await seedTake(db, creator.id, { status: "ready", durationMs: 5_000 });
-    const jobId = crypto.randomUUID();
     await db.insert(processingJob).values({
-      id: jobId,
+      id: crypto.randomUUID(),
       takeId: t.id,
       kind: "rerender",
       status: "failed",
       failureCode: "ffmpeg_error",
       secondsCharged: 0,
     });
-    await db.insert(jobStep).values({
-      id: crypto.randomUUID(),
-      jobId,
-      name: "trim",
-      position: 0,
+    expect((await get(creator.id, t.id)).backgroundJob).toMatchObject({
       status: "failed",
-      progress: 0,
+      failureCode: "ffmpeg_error",
     });
-    expect((await get(creator.id, t.id)).backgroundJob).toBeNull();
   });
 });
 

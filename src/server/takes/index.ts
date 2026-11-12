@@ -1,6 +1,7 @@
-import { and, asc, desc, eq, gt, lt, ne, notExists, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, lt, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { type DeletedTakes, deleteTakesInTx } from "@/db/data/deletion";
+import { legacyBackgroundRerender } from "@/db/data/jobs";
 import { markUploaded, transition } from "@/db/data/takes";
 import { jobStep, processingJob, render, take } from "@/db/schema";
 import { runTx } from "@/db/tx";
@@ -95,7 +96,7 @@ export type TakeDetail = {
   readonly background: { readonly id: string | null; readonly name: string } | null;
   /** The take has no usable green screen, so its background request kept the original (AC-3). */
   readonly noGreenScreen: boolean;
-  /** The latest background change job (a `rerender` with no trim step), for "Try again". */
+  /** The latest background change job (a `background` job), for "Try again". */
   readonly backgroundJob: {
     readonly status: string;
     readonly failureCode: string | null;
@@ -132,8 +133,8 @@ export async function getForCreator(
         .orderBy(asc(jobStep.position))
     : [];
 
-  // The latest background change: a `rerender` job whose steps have no `trim` (a re render of a
-  // failed take, started by `startJob`, trims again and is not a background change).
+  // The latest background change: the latest job of kind `background` (LEGACY, HRF-T08: or a
+  // `rerender`, which is what background changes were before the kind existed).
   const [backgroundJob] = await db
     .select({
       status: processingJob.status,
@@ -144,13 +145,7 @@ export async function getForCreator(
     .where(
       and(
         eq(processingJob.takeId, takeId),
-        eq(processingJob.kind, "rerender"),
-        notExists(
-          db
-            .select({ one: sql`1` })
-            .from(jobStep)
-            .where(and(eq(jobStep.jobId, processingJob.id), eq(jobStep.name, "trim"))),
-        ),
+        or(eq(processingJob.kind, "background"), legacyBackgroundRerender),
       ),
     )
     .orderBy(desc(processingJob.createdAt))

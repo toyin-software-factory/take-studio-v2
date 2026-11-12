@@ -5,7 +5,7 @@
  */
 import { type ChildProcess, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdtempSync, openSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -123,7 +123,6 @@ export async function startServices(): Promise<void> {
     BETTER_AUTH_URL: base,
     PORT: String(env.PIPELINE_PORT),
   });
-  start("trigger", ["exec", "trigger", "dev", "--skip-update-check", "--env-file", proxyEnv], {});
 
   for (let i = 0; i < 90; i++) {
     const ok = await fetch(`${base}/api/health`)
@@ -133,8 +132,26 @@ export async function startServices(): Promise<void> {
     if (i === 89) throw new Error(`The app didn't start: see ${join(work, "next.log")}`);
     await new Promise((r) => setTimeout(r, 2_000));
   }
-  // Give the Trigger.dev dev worker time to register its tasks.
-  await new Promise((r) => setTimeout(r, 30_000));
+  // `trigger dev` starts only now: building its worker while `next dev` compiles on a small
+  // machine (3 GB) times the worker out ("Worker timed out") on most runs.
+  start("trigger", ["exec", "trigger", "dev", "--skip-update-check", "--env-file", proxyEnv], {});
+  // Wait for the Trigger.dev dev worker to register its tasks (up to 3 minutes).
+  const triggerLog = join(work, "trigger.log");
+  let workerReady = false;
+  for (let i = 0; i < 90 && !workerReady; i++) {
+    const log = existsSync(triggerLog) ? readFileSync(triggerLog, "utf8") : "";
+    if (log.includes("Local worker ready")) {
+      workerReady = true;
+      break;
+    }
+    if (log.includes("Build failed")) {
+      throw new Error(`The Trigger.dev worker did not build: see ${triggerLog}`);
+    }
+    await new Promise((r) => setTimeout(r, 2_000));
+  }
+  if (!workerReady) {
+    throw new Error(`The Trigger.dev worker was not ready after 3 minutes: see ${triggerLog}`);
+  }
 }
 
 // A Ctrl+C or a kill must not leave `next dev` and `trigger dev` behind (they keep database
