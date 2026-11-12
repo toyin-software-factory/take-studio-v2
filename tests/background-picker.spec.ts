@@ -6,12 +6,17 @@ import { signIn } from "./support/session";
 // The upload area's Background select and picker dialog (spec 0008, AC-1, AC-12), against the
 // real routes with seeded test backgrounds. The thumbnails are presigned R2 links, so they are
 // answered with a tiny PNG here. Test users only.
-const expect = baseExpect.configure({ timeout: 15_000 });
+// The first signed in page after a cold server start can take a while.
+const expect = baseExpect.configure({ timeout: 30_000 });
 
 const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
   "base64",
 );
+
+// Built in studios belong to nobody, so every test here sees every other test's studios. They
+// run one after another in this file so the seeded studios never overlap.
+test.describe.configure({ mode: "serial", timeout: 90_000 });
 
 let cleanups: (() => Promise<void>)[] = [];
 test.afterEach(async () => {
