@@ -138,7 +138,7 @@ Every processed take gets an English transcript, shown in the app with timestamp
    - [x] Take page transcript panel and player CC, then end to end tests with real Deepgram (AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-10, AC-12)
 - [x] Verify it: `/check verify transcript` (`docs/reviews/0007-transcript-verify.md`: all of AC-1 to AC-12 pass)
 - [x] Test it: `/test transcript` (`src/lib/transcript-timeline.test.ts`, `src/lib/transcript-download.test.ts`, `src/lib/deepgram.test.ts`, `src/trigger/transcribe-take.test.ts`, `src/server/transcripts/*.test.ts`, `src/db/data/transcribe-jobs.test.ts`, `tests/transcript.spec.ts`, `tests/pipeline/transcript.ts`)
-Spec [0007](../specs/0007-transcript.md) · code in `src/trigger/transcribe-take.ts`, `src/lib/transcript-timeline.ts`, `src/db/data/jobs.ts`, `src/app/api/takes/[id]/transcript/`, `src/components/takes/`
+Spec [0007](../specs/0007-transcript.md) · code in `src/trigger/transcribe-take.ts`, `src/lib/transcript-timeline.ts`, `src/db/data/jobs/`, `src/app/api/takes/[id]/transcript/`, `src/components/takes/`
 
 ## Slice 3: Studio background
 
@@ -153,7 +153,7 @@ Replace the green screen with a studio background: pick one of a few built in st
    - [ ] Picker, tips and the six studios, then end to end tests (AC-4, AC-7, AC-11, AC-12, AC-2, AC-5)
 - [ ] Verify it: `/check verify studio background swap` (`docs/reviews/0008-studio-background-verify.md`: not closed, AC-2 and AC-4 fail on real footage, S3S-T10; the other ten criteria pass)
 - [ ] Test it: `/test studio background swap`
-Spec [0008](../specs/0008-studio-background.md) · code in `src/lib/keying.ts`, `src/trigger/process-take.ts`, `src/trigger/preview-background.ts`, `src/trigger/ingest-background.ts`, `src/db/data/jobs.ts`, `src/app/api/backgrounds/`, `src/components/takes/`
+Spec [0008](../specs/0008-studio-background.md) · code in `src/lib/keying.ts`, `src/trigger/process-take.ts`, `src/trigger/preview-background.ts`, `src/trigger/ingest-background.ts`, `src/db/data/jobs/`, `src/app/api/backgrounds/`, `src/components/takes/`
 
 ## Slice 4: Review the cuts
 
