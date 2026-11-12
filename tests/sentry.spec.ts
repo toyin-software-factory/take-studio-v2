@@ -10,7 +10,7 @@ test("without a DSN the app sends nothing to Sentry, even on a browser error", a
   page.on("pageerror", (error) => pageErrors.push(error));
 
   await page.goto("/");
-  await expect(page.getByRole("link", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByRole("banner").getByRole("link", { name: "Sign in" })).toBeVisible();
   // An unhandled error in the browser: with a DSN this would be reported (AC-2).
   await page.evaluate(() => {
     setTimeout(() => {
