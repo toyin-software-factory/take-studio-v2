@@ -107,6 +107,8 @@ function fakeIo(
   over: Partial<PreviewIo> & {
     frame?: RawFrame;
     keyedShare?: number;
+    /** The keyed still is just the background in the final gate (the person is gone). */
+    onlyBackground?: boolean;
     onEncode?: () => Promise<void>;
   } = {},
 ) {
@@ -137,6 +139,14 @@ function fakeIo(
       }) as never,
     sampleFrame: sampled,
     sampleKeyedShare: keyedShares,
+    // The final gate reads the still, then the background (the only one read over HTTP). A normal
+    // still differs from the background in the centre third; a person-less one does not.
+    readImage: async (args, size) => {
+      const isBackground = args.includes("-reconnect");
+      const data = new Uint8Array(size.width * size.height * 3);
+      if (!isBackground && !over.onlyBackground) data.fill(200);
+      return { width: size.width, height: size.height, data };
+    },
     encode: async (args) => {
       encodes.push(args);
       await over.onEncode?.();
@@ -286,6 +296,28 @@ describe("makePreview (AC-4)", () => {
       noGreenScreen: true,
     });
     expect(encodes[0]!.join(" ")).not.toContain("chromakey");
+  });
+
+  it("never records a Ready still of only the background: plain frame, no green screen, IDs only logged (S3S-T12)", async () => {
+    const { preview } = await pending();
+    const { io, encodes, puts } = fakeIo({ onlyBackground: true });
+    expect(await makePreview(db, preview.id, io)).toEqual({
+      outcome: "ready",
+      noGreenScreen: true,
+    });
+    // The keyed graph ran first, the gate caught it, and the plain frame was encoded after it.
+    expect(encodes).toHaveLength(2);
+    expect(encodes[0]!.join(" ")).toContain("chromakey");
+    expect(encodes[1]!.join(" ")).not.toContain("chromakey");
+    expect(puts).toHaveLength(1);
+    expect((await rowOf(preview.id))?.noGreenScreen).toBe(true);
+  });
+
+  it("keeps a keyed still that differs from the background (S3S-T12)", async () => {
+    const { preview } = await pending();
+    const { io, encodes } = fakeIo();
+    expect(await makePreview(db, preview.id, io)).toMatchObject({ noGreenScreen: false });
+    expect(encodes).toHaveLength(1);
   });
 
   it("does not reuse a latest render key that is too close to neutral, and detects again (S3S-T10)", async () => {

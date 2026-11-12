@@ -6,7 +6,11 @@ import {
   PREVIEW_STALE_MS,
   PREVIEW_WIDTH,
   PREVIEW_STILL_VERSION,
+  centreDifferenceShare,
   cutVersion,
+  gateReadArgs,
+  gateSize,
+  isOnlyBackground,
   isStalePreview,
   keyedPreviewGraph,
   plainPreviewFilter,
@@ -40,7 +44,7 @@ describe("preview rules (spec 0008, AC-4)", () => {
   });
 
   it("includes the still version, so a keying change makes every cached preview miss (S3S-T10)", async () => {
-    expect(PREVIEW_STILL_VERSION).toBeGreaterThanOrEqual(2);
+    expect(PREVIEW_STILL_VERSION).toBeGreaterThanOrEqual(3);
     // The version 1 identity of "no cuts" (what a still made before S3S-T10 was stored under).
     const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(""));
     const oldNone = [...new Uint8Array(digest).slice(0, 8)]
@@ -105,6 +109,60 @@ describe("preview rules (spec 0008, AC-4)", () => {
     );
     expect(plainPreviewFilter({ takeWidth: 1920, takeHeight: 1080, toneMap: "TM" })).toBe(
       "TM,scale=1280:720,format=yuvj420p",
+    );
+  });
+});
+
+describe("the final gate (S3S-T12)", () => {
+  const frame = (w: number, h: number, paint: (x: number, y: number) => number[]) => {
+    const data = new Uint8Array(w * h * 3);
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) data.set(paint(x, y), (y * w + x) * 3);
+    return { width: w, height: h, data };
+  };
+  const bg = frame(30, 12, () => [90, 60, 40]);
+
+  it("sees an identical still (or one with only JPEG noise) as only the background", () => {
+    const noisy = frame(30, 12, (x, y) => [90 + ((x + y) % 5), 60, 40 - ((x * y) % 4)]);
+    expect(centreDifferenceShare(bg, bg)).toBe(0);
+    expect(centreDifferenceShare(noisy, bg)).toBe(0);
+    expect(isOnlyBackground(centreDifferenceShare(noisy, bg))).toBe(true);
+  });
+
+  it("does not trip on a still with a person in the centre, large or small", () => {
+    const person = (half: number) =>
+      frame(30, 12, (x) => (Math.abs(x - 15) < half ? [120, 120, 125] : [90, 60, 40]));
+    // a head and shoulders fill most of the centre third; a distant one a small part of it
+    expect(centreDifferenceShare(person(5), bg)).toBeGreaterThanOrEqual(0.9);
+    expect(isOnlyBackground(centreDifferenceShare(person(1), bg))).toBe(false);
+  });
+
+  it("counts a difference only above 30 of 255 in some channel, in the middle third only", () => {
+    const small = frame(30, 12, (x) => (x >= 10 && x < 20 ? [90, 60, 70] : [90, 60, 40])); // blue +30
+    const over = frame(30, 12, (x) => (x >= 10 && x < 20 ? [90, 60, 71] : [90, 60, 40])); // blue +31
+    const edges = frame(30, 12, (x) => (x < 10 || x >= 20 ? [255, 0, 0] : [90, 60, 40]));
+    expect(centreDifferenceShare(small, bg)).toBe(0);
+    expect(centreDifferenceShare(over, bg)).toBe(1);
+    expect(centreDifferenceShare(edges, bg)).toBe(0);
+  });
+
+  it("treats frames of different sizes as different, so it never keeps a bad comparison silently wrong", () => {
+    expect(
+      centreDifferenceShare(
+        bg,
+        frame(30, 10, () => [0, 0, 0]),
+      ),
+    ).toBe(1);
+  });
+
+  it("reads both images at 192 wide with an even height, the background covered and cropped", () => {
+    expect(gateSize(1920, 1080)).toEqual({ width: 192, height: 108 });
+    expect(gateSize(1080, 1920)).toEqual({ width: 192, height: 342 });
+    const size = gateSize(1920, 1080);
+    expect(gateReadArgs("bg.jpg", size, true, ["-reconnect", "1"]).join(" ")).toContain(
+      "scale=192:108:force_original_aspect_ratio=increase,crop=192:108,format=rgb24",
+    );
+    expect(gateReadArgs("still.jpg", size, false).join(" ")).toContain(
+      "scale=192:108,format=rgb24",
     );
   });
 });

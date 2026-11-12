@@ -173,7 +173,7 @@ describe("keepRanges and the render graph (AC-6)", () => {
     const sdr = renderFilterScript([{ startMs: 0, endMs: 1_000 }], { hdr: null, background });
     expect(sdr.split("\n").slice(-4)).toEqual([
       "[vc]format=yuv420p[base];",
-      "[base]format=yuva444p,chromakey=0x00b140:0.12:0.08,despill=type=green[fg];",
+      "[base]setpts=PTS-STARTPTS,format=yuva444p,chromakey=0x00b140:0.12:0.08,despill=type=green[fg];",
       "[1:v]scale=1080:1920:force_original_aspect_ratio=increase:out_range=tv,crop=1080:1920,setsar=1,format=yuv420p[bg];",
       "[bg][fg]overlay=format=auto:shortest=1,format=yuv420p[vout]",
     ]);

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { describeWithFfmpeg } from "@/test/ffmpeg";
 import { keyedPreviewGraph } from "./background-preview";
+import { thumbnailSeconds } from "./probe";
 import {
   type Rgb,
   compositeFilters,
@@ -63,7 +64,7 @@ function ffmpeg(args: string[], input?: Buffer): Buffer {
 }
 
 /** An encoded clip: the green with the four subjects, ±10 noise, tagged BT.709 like real footage. */
-function makeClip(path: string, green: Rgb): void {
+function makeClip(path: string, green: Rgb, opts: { frames?: number; fps?: string } = {}): void {
   const draw = Object.entries(BOXES)
     .map(
       ([name, b]) =>
@@ -74,9 +75,9 @@ function makeClip(path: string, green: Rgb): void {
     "-f",
     "lavfi",
     "-i",
-    `color=c=${hex(green)}:s=${WIDTH}x${HEIGHT}:d=1,${draw},noise=alls=10:allf=t+u:all_seed=7,format=rgb24,scale=out_color_matrix=bt709:out_range=tv,format=yuv420p`,
+    `color=c=${hex(green)}:s=${WIDTH}x${HEIGHT}:r=${opts.fps ?? "25"}:d=10,${draw},noise=alls=10:allf=t+u:all_seed=7,format=rgb24,scale=out_color_matrix=bt709:out_range=tv,format=yuv420p`,
     "-frames:v",
-    "3",
+    String(opts.frames ?? 3),
     "-c:v",
     "libx264",
     "-crf",
@@ -233,3 +234,142 @@ describeWithFfmpeg("keeping the person on every green (S3S-T10)", () => {
     expect(detection.usable).toBe(false);
   });
 });
+
+/**
+ * S3S-T12: the preview seeks (`-ss`) into the take, so the keyed frame's timestamp is a little
+ * above 0 when no frame sits exactly on the seek point (any 23.976 or 29.97 fps phone clip, since
+ * `thumbnailSeconds` is exactly 1 s), while the background is one image frame at 0. `overlay` then
+ * had no keyed frame at the background's time and passed the background through: a still with
+ * the whole person gone, though the key and the 85 % guard were right.
+ */
+const LIME_REAL: Rgb = { r: 135, g: 255, b: 80 };
+const SATURATED: Rgb = { r: 10, g: 140, b: 10 }; // G minus max(R,B) is +130
+
+/** A one frame image file, the shape of a studio background (the real one is a JPEG). */
+function makeBackgroundImage(path: string, width: number, height: number): void {
+  ffmpeg([
+    "-f",
+    "lavfi",
+    "-i",
+    `color=c=0x0000ff:s=${width}x${height}:d=1`,
+    "-frames:v",
+    "1",
+    path,
+  ]);
+}
+
+/** The preview's own command shape: seek, then the take and a single image as inputs 0 and 1. */
+function composeSeeked(
+  clip: string,
+  image: string,
+  seconds: number,
+  graph: string,
+  width: number,
+  height: number,
+): Uint8Array {
+  const out = ffmpeg([
+    "-ss",
+    seconds.toFixed(3),
+    "-i",
+    clip,
+    "-i",
+    image,
+    "-filter_complex",
+    graph,
+    "-map",
+    "[vout]",
+    "-frames:v",
+    "1",
+    "-pix_fmt",
+    "rgb24",
+    "-f",
+    "rawvideo",
+    "-",
+  ]);
+  expect(out.length).toBe(width * height * 3);
+  return new Uint8Array(out);
+}
+
+describeWithFfmpeg(
+  "the preview keeps the person when the seek lands between frames (S3S-T12)",
+  () => {
+    let dir: string;
+    beforeAll(() => {
+      dir = mkdtempSync(join(tmpdir(), "keying-seek-"));
+    });
+    afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+    // 23.976 fps: no frame at 1.000 s (frames are at k * 1.001 / 24), the real case of a phone clip.
+    const FRAME = 1001 / 24_000;
+    const OFFSETS: ReadonlyArray<readonly [string, number]> = [
+      ["on the thumbnail time (first frame at 1.001 s)", 0],
+      ["+0.01 s", 0.01],
+      ["+0.02 s", 0.02],
+      ["+half a frame", FRAME / 2],
+    ];
+
+    for (const [greenName, green] of [
+      ["Toyin's lime (135, 255, 80)", LIME_REAL],
+      ["a saturated green (G minus max(R,B) +130)", SATURATED],
+    ] as const) {
+      for (const [offsetName, offset] of OFFSETS) {
+        it(`${greenName}, seek ${offsetName}`, () => {
+          const clip = join(dir, `seek-${greenName.length}-${offset}.mp4`);
+          makeClip(clip, green, { frames: 96, fps: "24000/1001" });
+          const image = join(dir, "bg.png");
+          makeBackgroundImage(image, 1280, 720);
+          const detection = detectInFrame(rawFrame(clip));
+          expect(detection.usable).toBe(true);
+          if (!detection.usable) return;
+          const keyColor = toHex(detection.keyColor);
+
+          const durationMs = 4_000; // over 2 s, so the seek is the real thumbnailSeconds: 1 s
+          const seek = thumbnailSeconds(durationMs) + offset;
+          const rgb = composeSeeked(
+            clip,
+            image,
+            seek,
+            keyedPreviewGraph({ keyColor, takeWidth: WIDTH, takeHeight: HEIGHT, toneMap: null }),
+            1280,
+            720,
+          );
+          for (const [subject, box] of Object.entries(BOXES)) {
+            expect(keyedShare(rgb, 1280, box), `${subject} keyed away`).toBeLessThan(0.02);
+          }
+          expect(greenLeft(rgb, 1280), "green left").toBeLessThan(0.01);
+        });
+      }
+    }
+
+    it("the render path: compositeFilters keeps the person when the take's first frame is not at 0", () => {
+      const clip = join(dir, "render.mp4");
+      makeClip(clip, LIME_REAL, { frames: 48, fps: "24000/1001" });
+      const image = join(dir, "bg-render.png");
+      makeBackgroundImage(image, WIDTH, HEIGHT);
+      const detection = detectInFrame(rawFrame(clip));
+      expect(detection.usable).toBe(true);
+      if (!detection.usable) return;
+      const keyColor = toHex(detection.keyColor);
+      // The render's [base] is a concat whose first frame can start after 0 (a trim keeps a range
+      // that does not begin on a frame, an edit list, an audio first start): shift it the same way.
+      for (const shift of [0.001, 0.02, 0.04]) {
+        const rgb = composeSeeked(
+          clip,
+          image,
+          0,
+          [
+            `[0:v]setpts=PTS+${shift}/TB[base];`,
+            ...compositeFilters({ keyColor, width: WIDTH, height: HEIGHT }),
+          ].join("\n"),
+          WIDTH,
+          HEIGHT,
+        );
+        for (const [subject, box] of Object.entries(BOXES)) {
+          expect(keyedShare(rgb, WIDTH, box), `shift ${shift}: ${subject} keyed away`).toBeLessThan(
+            0.02,
+          );
+        }
+      }
+    });
+  },
+);
