@@ -200,6 +200,18 @@ describe("startBackgroundJob", () => {
     expect((await change(unkeyed.creator.id, unkeyed.take.id, bg.id)).ok).toBe(true);
   });
 
+  it("lets a take keyed on a deleted background go back to the original or pick another", async () => {
+    const gone = await seedBackground();
+    const keyed = await readyTake({ backgroundId: gone.id, keyed: true });
+    await db.delete(background).where(eq(background.id, gone.id));
+    // The render is still keyed (its name kept) but its reference is null: not the original.
+    expect((await change(keyed.creator.id, keyed.take.id, null)).ok).toBe(true);
+    const other = await readyTake({ backgroundId: (await seedBackground()).id, keyed: true });
+    const dead = await seedBackground();
+    await db.update(render).set({ backgroundId: null }).where(eq(render.takeId, other.take.id));
+    expect((await change(other.creator.id, other.take.id, dead.id)).ok).toBe(true);
+  });
+
   it("allows the same background again after a failed change (Try again)", async () => {
     const bg = await seedBackground();
     const other = await seedBackground();
@@ -256,6 +268,25 @@ describe("finishing a background change (AC-5)", () => {
     const keys = await queued();
     expect(keys).toContain(`renders/${ctx.take.id}/${ctx.renderId}.mp4`);
     expect(keys).not.toContain(ctx.newKey);
+  });
+
+  it("sets the take's background from the new render, so a delete mid job cannot leave a dangling target", async () => {
+    const oldBg = await seedBackground();
+    const newBg = await seedBackground();
+    const ctx = await running(newBg.id, { backgroundId: oldBg.id, keyed: true });
+    // The studio is deleted after the render was made: the references clear, the name stays.
+    await db.delete(background).where(eq(background.id, newBg.id));
+    const done = await finish(db, { jobId: ctx.jobId, status: "succeeded" });
+    if (!done.ok) throw new Error(done.error);
+    const t = await takeRow(ctx.take.id);
+    expect(t).toMatchObject({ status: "ready", backgroundId: null });
+    const made = (await db.select().from(render).where(eq(render.id, ctx.newRenderId)))[0];
+    expect(made).toMatchObject({
+      isLatest: true,
+      backgroundId: null,
+      backgroundName: "New",
+      keyed: true,
+    });
   });
 
   it("a change back to the original clears the take's background", async () => {
@@ -375,6 +406,45 @@ describe("lock order with a background (spec 0008)", () => {
       ]);
     });
     expect(count).toBe(0);
+  }, 60_000);
+
+  it("finishing a change and deleting its target never deadlock", async () => {
+    let found = 0;
+    for (let i = 0; i < 20; i++) {
+      const oldBg = await seedBackground();
+      const newBg = await seedBackground();
+      const ctx = await readyTake({ backgroundId: oldBg.id, keyed: true });
+      const started = await change(ctx.creator.id, ctx.take.id, newBg.id);
+      if (!started.ok) throw new Error(started.error);
+      await markRunning(db, { jobId: started.data.id, triggerRunId: "run" });
+      const made = await createRender(db, {
+        takeId: ctx.take.id,
+        jobId: started.data.id,
+        background: {
+          backgroundId: newBg.id,
+          backgroundName: "New",
+          keyed: true,
+          keyColor: "#00b140",
+        },
+      });
+      if (!made.ok) throw new Error(made.error);
+      await db
+        .update(render)
+        .set({
+          status: "succeeded",
+          videoKey: `renders/${ctx.take.id}/${made.data.id}.mp4`,
+          durationMs: 9_000,
+        })
+        .where(eq(render.id, made.data.id));
+      const settled = await Promise.allSettled([
+        finish(db, { jobId: started.data.id, status: "succeeded" }),
+        db.delete(background).where(eq(background.id, newBg.id)),
+      ]);
+      for (const s of settled) {
+        if (s.status === "rejected" && pgErrorCode(s.reason).code === "40P01") found += 1;
+      }
+    }
+    expect(found).toBe(0);
   }, 60_000);
 
   it("a background delete leaves a running change's job without a target but intact", async () => {

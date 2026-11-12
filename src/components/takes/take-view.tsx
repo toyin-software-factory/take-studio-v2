@@ -125,11 +125,21 @@ export function TakeView({
               <TakeResult detail={detail} />
               <BackgroundChange
                 detail={detail}
-                onStarted={() =>
+                onStarted={(target) =>
                   setDetail((d) =>
-                    d ? { ...d, backgroundJob: { status: "queued", failureCode: null } } : d,
+                    d
+                      ? {
+                          ...d,
+                          backgroundJob: {
+                            status: "queued",
+                            failureCode: null,
+                            targetBackgroundId: target,
+                          },
+                        }
+                      : d,
                   )
                 }
+                onUncertain={() => void load()}
               />
             </div>
             {detail.take.status === "ready" || detail.take.status === "expired" ? (

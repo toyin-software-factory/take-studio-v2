@@ -96,7 +96,12 @@ export type TakeDetail = {
   /** The take has no usable green screen, so its background request kept the original (AC-3). */
   readonly noGreenScreen: boolean;
   /** The latest background change job (a `rerender` with no trim step), for "Try again". */
-  readonly backgroundJob: { readonly status: string; readonly failureCode: string | null } | null;
+  readonly backgroundJob: {
+    readonly status: string;
+    readonly failureCode: string | null;
+    /** The background that change was for (null is the original), so "Try again" repeats it. */
+    readonly targetBackgroundId: string | null;
+  } | null;
 };
 
 /** `takes.getForCreator`: the take with its latest render and latest job (with steps). */
@@ -134,7 +139,11 @@ export async function getForCreator(
   // The latest background change: a `rerender` job whose steps have no `trim` (a re render of a
   // failed take, started by `startJob`, trims again and is not a background change).
   const [backgroundJob] = await db
-    .select({ status: processingJob.status, failureCode: processingJob.failureCode })
+    .select({
+      status: processingJob.status,
+      failureCode: processingJob.failureCode,
+      targetBackgroundId: processingJob.targetBackgroundId,
+    })
     .from(processingJob)
     .where(
       and(
@@ -155,9 +164,13 @@ export async function getForCreator(
     latestRender?.keyed && latestRender.backgroundName
       ? { id: latestRender.backgroundId, name: latestRender.backgroundName }
       : null;
+  // The render's own snapshot, or a job that is running or succeeded and skipped the green
+  // screen. A failed or cancelled job never produced the video on the page, so it does not count.
   const noGreenScreen =
     (latestRender?.backgroundName != null && latestRender.keyed === false) ||
-    steps.some((s) => s.name === "background" && s.failureCode === "no_green_screen");
+    (latestJob?.status !== "failed" &&
+      latestJob?.status !== "cancelled" &&
+      steps.some((s) => s.name === "background" && s.failureCode === "no_green_screen"));
 
   return ok({
     take: found,

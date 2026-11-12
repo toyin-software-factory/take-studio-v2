@@ -272,10 +272,20 @@ export async function finishInTx(
   // 0. Lock order (src/db/AGENTS.md): the take, then the job. Deletion and the transcript
   //    save already start from the take, so finishing must too, or two of them can deadlock.
   const [owner] = await tx
-    .select({ takeId: processingJob.takeId })
+    .select({ takeId: processingJob.takeId, backgroundId: processingJob.targetBackgroundId })
     .from(processingJob)
     .where(eq(processingJob.id, input.jobId));
   if (!owner) return err("not_found");
+  // Spec 0008: creator, background, take, job. A finish that may write `take.background_id`
+  // takes that background `FOR KEY SHARE` first, so a background delete (which locks it
+  // `FOR UPDATE` and then updates the jobs and takes that point at it) cannot cross it.
+  if (owner.backgroundId) {
+    await tx
+      .select({ id: background.id })
+      .from(background)
+      .where(eq(background.id, owner.backgroundId))
+      .for("key share");
+  }
   await tx.select({ id: take.id }).from(take).where(eq(take.id, owner.takeId)).for("update");
 
   // 1. Job compare and swap.
@@ -313,9 +323,17 @@ export async function finishInTx(
         // The new render becomes the latest and the take's background becomes the job's target
         // (null is the original), in this transaction.
         const queuedKeys = await flipLatestRender(tx, { takeId: job.takeId, jobId: job.id });
+        // The take's background comes from the render that was just made (its snapshot), not
+        // from `target_background_id`: a delete of the background clears that reference on the
+        // job, and the render's snapshot says what the video really is on. A render with no
+        // background (the original, or the background gone) leaves the take on the original.
+        const [made] = await tx
+          .select({ backgroundId: render.backgroundId })
+          .from(render)
+          .where(and(eq(render.jobId, job.id), eq(render.isLatest, true)));
         const [updated] = await tx
           .update(take)
-          .set({ backgroundId: job.targetBackgroundId })
+          .set({ backgroundId: made ? made.backgroundId : job.targetBackgroundId })
           .where(eq(take.id, job.takeId))
           .returning();
         return ok({ job, take: updated ?? current, refundedSeconds: 0, queuedKeys });
@@ -668,6 +686,9 @@ export async function whileJobActive<T, E extends string>(
   });
 }
 
+/** Stands for "keyed on a background that has since been deleted" when comparing targets. */
+const DELETED_BACKGROUND = "deleted";
+
 export type BackgroundStartError =
   | "not_found"
   | "invalid_transition"
@@ -748,7 +769,11 @@ export async function startBackgroundJob(
         .select({ keyed: render.keyed, backgroundId: render.backgroundId })
         .from(render)
         .where(and(eq(render.takeId, current.id), eq(render.isLatest, true)));
-      const effective = latestRender?.keyed ? (latestRender.backgroundId ?? null) : null;
+      // A keyed render whose background was deleted (the reference is now null) is on a
+      // background that no request can name, so it never equals the original (null) or any ID.
+      const effective = latestRender?.keyed
+        ? (latestRender.backgroundId ?? DELETED_BACKGROUND)
+        : null;
       if (target === effective) {
         // Asking for what the video already has is refused, unless the last video job failed:
         // then it is a retry of that change.

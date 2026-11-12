@@ -262,7 +262,11 @@ describe("GET /api/takes/[id] background fields (spec 0008)", () => {
     return (await res.json()) as {
       background: { id: string | null; name: string; keyed: boolean } | null;
       noGreenScreen: boolean;
-      backgroundJob: { status: string; failureCode: string | null } | null;
+      backgroundJob: {
+        status: string;
+        failureCode: string | null;
+        targetBackgroundId: string | null;
+      } | null;
     };
   };
 
@@ -303,6 +307,7 @@ describe("GET /api/takes/[id] background fields (spec 0008)", () => {
     expect((await get(creator.id, t.id)).backgroundJob).toEqual({
       status: "queued",
       failureCode: null,
+      targetBackgroundId: bg.id,
     });
     await markRunning(db, { jobId: res.json.jobId as string, triggerRunId: "run" });
     await finish(db, {
@@ -313,7 +318,51 @@ describe("GET /api/takes/[id] background fields (spec 0008)", () => {
     expect((await get(creator.id, t.id)).backgroundJob).toEqual({
       status: "failed",
       failureCode: "ffmpeg_error",
+      targetBackgroundId: bg.id,
     });
+  });
+
+  it("returns the target of the latest change, so Try again repeats it", async () => {
+    const bg = await seedBackground();
+    const { creator, take: t } = await readyTake();
+    const res = await call(deps(creator.id), t.id, { backgroundId: bg.id });
+    await markRunning(db, { jobId: res.json.jobId as string, triggerRunId: "run" });
+    await finish(db, {
+      jobId: res.json.jobId as string,
+      status: "failed",
+      failureCode: "ffmpeg_error",
+    });
+    expect((await get(creator.id, t.id)).backgroundJob).toEqual({
+      status: "failed",
+      failureCode: "ffmpeg_error",
+      targetBackgroundId: bg.id,
+    });
+    const orig = await call(deps(creator.id), t.id, { backgroundId: "original" });
+    await markRunning(db, { jobId: orig.json.jobId as string, triggerRunId: "run" });
+    await finish(db, {
+      jobId: orig.json.jobId as string,
+      status: "failed",
+      failureCode: "ffmpeg_error",
+    });
+    expect((await get(creator.id, t.id)).backgroundJob?.targetBackgroundId).toBeNull();
+  });
+
+  it("does not take the no green screen note from a change that failed", async () => {
+    const bg = await seedBackground();
+    const other = await seedBackground();
+    const { creator, take: t } = await readyTake({ backgroundId: bg.id, keyed: true });
+    const res = await call(deps(creator.id), t.id, { backgroundId: other.id });
+    const jobId = res.json.jobId as string;
+    await markRunning(db, { jobId, triggerRunId: "run" });
+    await db
+      .update(jobStep)
+      .set({ status: "skipped", failureCode: "no_green_screen" })
+      .where(eq(jobStep.jobId, jobId));
+    // While it runs, the skip is what the page is about to show.
+    expect((await get(creator.id, t.id)).noGreenScreen).toBe(true);
+    await finish(db, { jobId, status: "failed", failureCode: "ffmpeg_error" });
+    // The video on the page is still the keyed one: no note.
+    expect((await get(creator.id, t.id)).noGreenScreen).toBe(false);
   });
 
   it("ignores a re render that trims again (a retry of a failed take) as a background change", async () => {

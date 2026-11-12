@@ -56,7 +56,11 @@ export const takeDetailSchema = z.object({
     .default(null),
   noGreenScreen: z.boolean().default(false),
   backgroundJob: z
-    .object({ status: z.string(), failureCode: z.string().nullable() })
+    .object({
+      status: z.string(),
+      failureCode: z.string().nullable(),
+      targetBackgroundId: z.string().nullable().default(null),
+    })
     .nullable()
     .default(null),
 });

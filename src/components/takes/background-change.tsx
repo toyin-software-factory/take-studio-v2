@@ -27,15 +27,23 @@ const listSchema = z.object({
  * button. The picker with thumbnails and previews is a later part. The take stays Ready and its
  * video playable while the new one is made; `onStarted` makes the page poll again.
  */
+/** Stands for "keyed on a background that was deleted": not the original, and nothing to pick. */
+const DELETED = "deleted";
+
 export function BackgroundChange({
   detail,
   onStarted,
+  onUncertain,
 }: {
   readonly detail: TakeDetail;
-  readonly onStarted: () => void;
+  /** The change started: `target` is the background asked for (null is the original). */
+  readonly onStarted: (target: string | null) => void;
+  /** The PUT's outcome is unknown (the response was lost): look at the take again. */
+  readonly onUncertain: () => void;
 }) {
   const [options, setOptions] = useState<readonly { id: string; name: string }[]>([]);
-  const [choice, setChoice] = useState<string>(detail.background?.id ?? ORIGINAL);
+  // What the creator picked; null until they touch the select.
+  const [picked, setPicked] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,21 +65,31 @@ export function BackgroundChange({
   }, []);
 
   const { take, background, backgroundJob, noGreenScreen } = detail;
+  const jobActive = backgroundChangeActive(backgroundJob);
   if (take.status !== "ready" || take.expired) return null;
-  const busy = starting || backgroundChangeActive(backgroundJob);
-  const current = background?.id ?? ORIGINAL;
+  const busy = starting || jobActive;
+  // What the video is on now. A keyed render whose background was deleted is its own state, so
+  // "Keep original" stays available for it.
+  const current = background ? (background.id ?? DELETED) : ORIGINAL;
+  const failed = backgroundJob?.status === "failed";
+  // After a failed change "Try again" repeats that change, not the current background.
+  const retryTarget = failed ? (backgroundJob.targetBackgroundId ?? ORIGINAL) : null;
+  const choice = picked ?? retryTarget ?? (current === DELETED ? ORIGINAL : current);
 
   const change = async () => {
     setStarting(true);
     setError(null);
+    const target = choice === ORIGINAL ? null : choice;
     try {
       const reply = await callApi(`/api/takes/${take.id}/background`, "PUT", {
         backgroundId: choice,
       });
-      if (reply.status === 202) onStarted();
+      if (reply.status === 202) onStarted(target);
       else setError(apiMessage(reply.data, "The change didn't start. Please try again."));
     } catch {
-      setError("The change didn't start. Check your connection and try again.");
+      // The request may have reached the server: look before saying anything is wrong.
+      setError("We couldn't confirm the change started. Checking now.");
+      onUncertain();
     } finally {
       setStarting(false);
     }
@@ -89,7 +107,7 @@ export function BackgroundChange({
           Making your video with the new background. You can keep watching this one.
         </p>
       ) : null}
-      {backgroundJob?.status === "failed" ? (
+      {failed ? (
         <Alert variant="warning" title={backgroundFailureMessage(backgroundJob.failureCode)} />
       ) : null}
       <div className="flex flex-wrap items-center gap-3">
@@ -99,7 +117,7 @@ export function BackgroundChange({
         <select
           id="background-choice"
           value={choice}
-          onChange={(e) => setChoice(e.target.value)}
+          onChange={(e) => setPicked(e.target.value)}
           disabled={busy}
           className="min-h-11 rounded-md border border-border bg-background px-3 text-small"
         >
@@ -110,15 +128,12 @@ export function BackgroundChange({
             </option>
           ))}
         </select>
-        <Button
-          type="button"
-          onClick={change}
-          disabled={busy || (choice === current && backgroundJob?.status !== "failed")}
-        >
-          {backgroundJob?.status === "failed" ? "Try again" : "Use this background"}
+        <Button type="button" onClick={change} disabled={busy || (choice === current && !failed)}>
+          {failed ? "Try again" : "Use this background"}
         </Button>
       </div>
-      {error ? <p role="alert">{error}</p> : null}
+      {/* An uncertain start is settled once the job shows up in the take. */}
+      {error && !jobActive ? <p role="alert">{error}</p> : null}
       <p className="text-small text-muted-foreground">
         Tip: for clean edges, use even light with no shadows on the green, and stand a step away
         from it.

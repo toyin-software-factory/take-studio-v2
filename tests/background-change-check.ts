@@ -108,14 +108,18 @@ async function frameOf(videoKey: string, name: string) {
 }
 
 async function waitJob(jobId: string, takeId: string) {
-  const samples: { take: string; render: string | undefined }[] = [];
+  const samples: { take: string; render: string | undefined; job: string }[] = [];
   for (let i = 0; i < 900; i++) {
     const [job] = await db
       .select()
       .from(schema.processingJob)
       .where(eq(schema.processingJob.id, jobId));
     const t = await takeRow(takeId);
-    samples.push({ take: t.status, render: (await latestRender(takeId))?.id });
+    samples.push({
+      take: t.status,
+      render: (await latestRender(takeId))?.id,
+      job: job?.status ?? "missing",
+    });
     if (job && ["succeeded", "failed", "cancelled"].includes(job.status)) return { job, samples };
     await sleep(300);
   }
@@ -246,12 +250,12 @@ try {
     done.samples.every((s) => s.take === "ready"),
     "the take stayed Ready the whole time",
   );
-  const sawOld = done.samples.some((s) => s.render === first!.id);
-  const switched = done.samples.findIndex((s) => s.render !== first!.id);
+  // Every poll taken while the job had not yet succeeded must still show the old video: the
+  // status is sampled with each render, so this does not rely on the order of the renders.
+  const before = done.samples.filter((s) => s.job !== "succeeded");
   expect(
-    sawOld &&
-      (switched === -1 || done.samples.slice(0, switched).every((s) => s.render === first!.id)),
-    "the old video stayed current until the change succeeded",
+    before.length > 0 && before.every((s) => s.render === first!.id),
+    `the old video stayed current in all ${before.length} polls before the change succeeded`,
   );
   const second1 = await latestRender(takeId);
   expect(
