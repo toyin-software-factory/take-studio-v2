@@ -202,6 +202,39 @@ describe("PUT /api/takes/[id]/background (spec 0008, AC-5, AC-6)", () => {
     expect(String(sameRes.json.message)).toContain("already has that background");
   });
 
+  it("refuses a real background on a take with no green screen (409 no_green_screen) but not the original path", async () => {
+    const bg = await seedBackground();
+    const unkeyed = await readyTake({ backgroundId: bg.id, keyed: false });
+    const refused = await call(deps(unkeyed.creator.id), unkeyed.take.id, { backgroundId: bg.id });
+    expect([refused.status, refused.json.error]).toEqual([409, "no_green_screen"]);
+    expect(String(refused.json.message)).toContain("couldn't find a green screen");
+    // The original is not refused as no_green_screen (the video is on it already).
+    const original = await call(deps(unkeyed.creator.id), unkeyed.take.id, {
+      backgroundId: "original",
+    });
+    expect(original.json.error).not.toBe("no_green_screen");
+  });
+
+  it("answers 429 background_change_limit with a friendly message after 10 changes in an hour, and triggers nothing", async () => {
+    const bg = await seedBackground();
+    const { creator, take: t } = await readyTake();
+    for (let i = 0; i < 10; i += 1) {
+      await db.insert(processingJob).values({
+        id: crypto.randomUUID(),
+        takeId: t.id,
+        kind: "rerender",
+        status: "failed",
+        failureCode: "internal_error",
+        secondsCharged: 0,
+      });
+    }
+    const triggered: string[] = [];
+    const res = await call(deps(creator.id, triggered), t.id, { backgroundId: bg.id });
+    expect([res.status, res.json.error]).toEqual([429, "background_change_limit"]);
+    expect(String(res.json.message)).toContain("changed backgrounds a lot");
+    expect(triggered).toEqual([]);
+  });
+
   it("says the video is still being made while another job runs, and the transcript wording while a transcript is", async () => {
     const bg = await seedBackground();
     const first = await readyTake();

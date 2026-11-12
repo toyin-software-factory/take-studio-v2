@@ -5,7 +5,7 @@ import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/t
 import type { Db } from "@/db/types";
 import { R2CompleteError } from "@/lib/r2";
 import { UPLOAD } from "@/lib/uploads";
-import type { UploadDeps } from ".";
+import { type UploadDeps, presignParts } from ".";
 import { type HttpDeps, handleAbort, handleComplete, handleCreate, handleParts } from "./http";
 
 const ORIGIN = "https://take-studio.example";
@@ -193,6 +193,79 @@ describe("POST /api/uploads/{takeId}/parts (AC-3, AC-12)", () => {
       httpDeps(creator.id, r2),
     );
     expect(res.status).toBe(409);
+  });
+});
+
+describe("part links keep a slow upload alive (AC-18)", () => {
+  const touched = async (id: string) =>
+    (await db.select().from(take).where(eq(take.id, id)))[0]?.updatedAt.getTime() ?? 0;
+  const links = (creatorId: string, r2: UploadDeps["r2"], takeId: string, now: Date) =>
+    presignParts(
+      { db, r2, dispatchProbe: async () => undefined, now: () => now },
+      creatorId,
+      takeId,
+      { partNumbers: [1] },
+    );
+
+  it("touches the take's updated_at when it issues links, at most once a minute", async () => {
+    const { r2 } = fakeR2();
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, {
+      status: "uploading",
+      uploadId: "mpu-1",
+      originalBytes: 40 * MiB,
+      updatedAt: new Date("2026-11-11T10:00:00Z"),
+    });
+    const t0 = new Date("2026-11-11T12:00:00Z");
+    expect((await links(creator.id, r2, t.id, t0)).ok).toBe(true);
+    expect(await touched(t.id)).toBe(t0.getTime());
+    // Ten seconds later: no new write.
+    expect((await links(creator.id, r2, t.id, new Date(t0.getTime() + 10_000))).ok).toBe(true);
+    expect(await touched(t.id)).toBe(t0.getTime());
+    // A minute and a bit later: written again.
+    const t1 = new Date(t0.getTime() + 61_000);
+    expect((await links(creator.id, r2, t.id, t1)).ok).toBe(true);
+    expect(await touched(t.id)).toBe(t1.getTime());
+  });
+
+  it("does not touch a take that is not uploading, or one that is refused", async () => {
+    const { r2 } = fakeR2();
+    const creator = await createCreator(db);
+    const old = new Date("2026-11-11T10:00:00Z");
+    const done = await seedTake(db, creator.id, { status: "uploaded", updatedAt: old });
+    const badParts = await seedTake(db, creator.id, {
+      status: "uploading",
+      uploadId: "mpu-2",
+      originalBytes: 40 * MiB,
+      updatedAt: old,
+    });
+    const now = new Date("2026-11-11T12:00:00Z");
+    expect((await links(creator.id, r2, done.id, now)).ok).toBe(false);
+    expect(await touched(done.id)).toBe(old.getTime());
+    const bad = await presignParts(
+      { db, r2, dispatchProbe: async () => undefined, now: () => now },
+      creator.id,
+      badParts.id,
+      { partNumbers: [99] },
+    );
+    expect(bad.ok).toBe(false);
+    expect(await touched(badParts.id)).toBe(old.getTime());
+  });
+
+  it("does not touch another creator's take (not found)", async () => {
+    const { r2 } = fakeR2();
+    const owner = await createCreator(db);
+    const other = await createCreator(db);
+    const old = new Date("2026-11-11T10:00:00Z");
+    const t = await seedTake(db, owner.id, {
+      status: "uploading",
+      uploadId: "mpu-3",
+      originalBytes: 40 * MiB,
+      updatedAt: old,
+    });
+    const res = await links(other.id, r2, t.id, new Date("2026-11-11T12:00:00Z"));
+    expect(res).toEqual({ ok: false, error: "not_found" });
+    expect(await touched(t.id)).toBe(old.getTime());
   });
 });
 

@@ -22,6 +22,8 @@ beforeAll(async () => {
   // The stuck row sweep scans every stale row, so this suite owns its database.
   testDb = await openTestDb({ database: "take_studio_test_background_data" });
   db = testDb.db;
+  // Rows from earlier runs would crowd the sweep's batch of 50, so start from none.
+  await db.delete(background);
 });
 afterAll(() => testDb?.close());
 

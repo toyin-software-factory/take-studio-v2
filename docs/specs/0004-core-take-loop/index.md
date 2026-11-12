@@ -117,7 +117,7 @@ Tracer Bullet: one thin thread first (upload → trim → download), then thicke
 - Polling costs a few database reads per minute per open page (fine at this scale).
 - Rules only trimming will sometimes cut a deliberate pause; the review timeline (slice 4) and AI (slice 5) fix that.
 - HDR tone mapping adds processing time; a 10 minute take may take 10 to 20 minutes on `large-1x` (the timing spike sets expectations).
-- Closing the tab mid upload loses it (no resume yet); cleanup fails it later.
+- Closing the tab mid upload loses it (no resume yet); cleanup fails it once no part links were requested for longer than the part link lifetime plus a margin (spec 0002 AC-18). A slow upload that keeps requesting part links is never failed, up to a 6 hour backstop.
 
 **Neutral**:
 - Usage is charged and recorded now; the monthly limit is enforced from slice 6.

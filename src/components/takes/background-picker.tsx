@@ -12,42 +12,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  type BackgroundItem,
-  type BackgroundListData,
-  ORIGINAL_BACKGROUND,
-} from "@/lib/background-api";
-import { BackgroundMine, type MineActions } from "./background-mine";
-import { BackgroundTile } from "./background-tile";
+import type { BackgroundListData } from "@/lib/background-api";
+import { BackgroundGrid } from "./background-grid";
+import type { MineActions } from "./background-mine";
 
 const GROUP = "background-choice";
-
-function Grid({
-  items,
-  value,
-  onChange,
-}: {
-  readonly items: readonly BackgroundItem[];
-  readonly value: string;
-  readonly onChange: (id: string) => void;
-}) {
-  return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-      {items.map((item) => (
-        <BackgroundTile
-          key={item.id}
-          group={GROUP}
-          value={item.id}
-          name={item.name}
-          alt={item.alt}
-          thumbUrl={item.thumbUrl}
-          checked={value === item.id}
-          onSelect={() => onChange(item.id)}
-        />
-      ))}
-    </div>
-  );
-}
 
 /**
  * The background picker dialog (spec 0008, AC-1, AC-12; a bottom sheet on phones): "Keep
@@ -80,35 +49,13 @@ export function BackgroundPicker({
           </DialogDescription>
         </DialogHeader>
         <DialogBody>
-          <fieldset className="m-0 flex flex-col gap-6 border-0 p-0">
-            <legend className="sr-only">Choose a background</legend>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              <BackgroundTile
-                group={GROUP}
-                value={ORIGINAL_BACKGROUND}
-                name="Keep original"
-                alt="Keep the background you filmed with"
-                thumbUrl={null}
-                checked={value === ORIGINAL_BACKGROUND}
-                onSelect={() => onChange(ORIGINAL_BACKGROUND)}
-              />
-            </div>
-            {list.builtIn.length > 0 ? (
-              <section aria-labelledby="studios-heading" className="flex flex-col gap-3">
-                <h3 id="studios-heading" className="text-body font-semibold">
-                  Studios
-                </h3>
-                <Grid items={list.builtIn} value={value} onChange={onChange} />
-              </section>
-            ) : null}
-            <BackgroundMine
-              items={list.mine}
-              value={value}
-              onChange={onChange}
-              group={GROUP}
-              actions={mineActions}
-            />
-          </fieldset>
+          <BackgroundGrid
+            group={GROUP}
+            list={list}
+            value={value}
+            onChange={onChange}
+            mine={mineActions}
+          />
         </DialogBody>
         <DialogFooter>
           <DialogClose asChild>

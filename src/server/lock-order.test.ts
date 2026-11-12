@@ -5,8 +5,18 @@ import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/t
 import type { Db } from "@/db/types";
 import { pgErrorCode } from "@/db/types";
 import { reanalyse } from "@/db/data/cuts";
-import { finish, markRunning, startJob, startTranscribeJob, whileJobActive } from "@/db/data/jobs";
+import {
+  finish,
+  markRunning,
+  startBackgroundJob,
+  startJob,
+  startTranscribeJob,
+  whileJobActive,
+} from "@/db/data/jobs";
 import { saveTranscriptAndFinish } from "@/db/data/transcripts";
+import { deleteBackground } from "@/db/data/backgrounds";
+import { background, user } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 /**
  * The lock order rule (src/db/AGENTS.md): creator, then take, then job, then the rows under
@@ -124,4 +134,50 @@ describe("lock order with the transcript save", () => {
     },
     60_000,
   );
+});
+
+describe("lock order: creator, then background (HRF-T01)", () => {
+  /** A Ready take and an own ready background that is also the creator's default (the foreign key then updates the creator row when it is deleted). */
+  async function changeAndDelete() {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, { status: "ready", durationMs: 10_000 });
+    const id = crypto.randomUUID();
+    await db.insert(background).values({
+      id,
+      creatorId: creator.id,
+      name: "Mine",
+      imageKey: `backgrounds/${creator.id}/${id}.jpg`,
+      thumbKey: `backgrounds/${creator.id}/${id}.webp`,
+      width: 1920,
+      height: 1080,
+      status: "ready",
+    });
+    await db.update(user).set({ defaultBackgroundId: id }).where(eq(user.id, creator.id));
+    return { creator, take: t, backgroundId: id };
+  }
+
+  it("a background change and deleting that background (the creator's default) at the same time", async () => {
+    let found = 0;
+    const unexpected: string[] = [];
+    for (let i = 0; i < ROUNDS; i++) {
+      const c = await changeAndDelete();
+      const settled = await Promise.allSettled([
+        startBackgroundJob(db, {
+          creatorId: c.creator.id,
+          takeId: c.take.id,
+          backgroundId: c.backgroundId,
+        }),
+        deleteBackground(db, c.creator.id, c.backgroundId),
+      ]);
+      for (const r of settled) {
+        if (r.status === "fulfilled") continue;
+        if (pgErrorCode(r.reason).code === "40P01") found += 1;
+        else unexpected.push(String(r.reason));
+      }
+    }
+    // Both functions return a Result for a refusal, so nothing may be rejected at all: a
+    // different error would otherwise let this pass with both operations failing every round.
+    expect(unexpected).toEqual([]);
+    expect(found).toBe(0);
+  }, 60_000);
 });

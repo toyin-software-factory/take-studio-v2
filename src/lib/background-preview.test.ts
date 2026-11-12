@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  PREVIEW_LIMITS,
+  PREVIEW_QUEUE_MARGIN_MS,
+  PREVIEW_RUN_MS,
   PREVIEW_STALE_MS,
   PREVIEW_WIDTH,
   cutVersion,
@@ -35,11 +38,25 @@ describe("preview rules (spec 0008, AC-4)", () => {
     expect(none).not.toBe(a);
   });
 
-  it("calls a making preview stale only after two minutes", () => {
+  it("derives the stale threshold from the job's limits: every attempt plus a queue margin", () => {
+    expect(PREVIEW_LIMITS).toEqual({ maxDurationSeconds: 180, maxAttempts: 2 });
+    expect(PREVIEW_RUN_MS).toBe(
+      PREVIEW_LIMITS.maxDurationSeconds * PREVIEW_LIMITS.maxAttempts * 1000,
+    );
+    expect(PREVIEW_STALE_MS).toBe(PREVIEW_RUN_MS + PREVIEW_QUEUE_MARGIN_MS);
+    // 2 x 180 s + 2 min = 8 minutes; it can never be shorter than one full run of the job.
+    expect(PREVIEW_STALE_MS).toBe(480_000);
+    expect(PREVIEW_STALE_MS).toBeGreaterThan(PREVIEW_RUN_MS);
+  });
+
+  it("calls a making preview stale only after the derived threshold", () => {
     const now = new Date("2026-11-12T10:00:00Z");
-    expect(PREVIEW_STALE_MS).toBe(120_000);
-    expect(isStalePreview(new Date(now.getTime() - 119_000), now)).toBe(false);
-    expect(isStalePreview(new Date(now.getTime() - 121_000), now)).toBe(true);
+    const ago = (ms: number) => new Date(now.getTime() - ms);
+    // A run on its second attempt, 5 minutes in, is still running: not stale.
+    expect(isStalePreview(ago(5 * 60_000), now)).toBe(false);
+    expect(isStalePreview(ago(PREVIEW_RUN_MS), now)).toBe(false);
+    expect(isStalePreview(ago(PREVIEW_STALE_MS), now)).toBe(false);
+    expect(isStalePreview(ago(PREVIEW_STALE_MS + 1_000), now)).toBe(true);
   });
 
   it("sizes the still at 1280 wide, with an even height for the take's own shape", () => {

@@ -1,29 +1,46 @@
 name: Deploy
 
-# Ordered deploy on every push to main (spec 0001): build and check the Worker first (nothing
+# Ordered deploy of a main commit that passed CI (spec 0001): it starts only when the CI workflow
+# finished on a push to main with success, and it deploys that exact commit (`head_sha`), never the
+# newest main. CI runs on every push to main (ci.yml), so a merge that never passed CI cannot reach
+# production. Build and check the Worker first (nothing
 # ships), then migrate, then the jobs, and only then ship the Worker that was already built. So
 # a failing build, map upload or bundle check stops the deploy before production changes.
 # Migrations must be backward compatible: old and new code run side by side during a deploy.
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
-concurrency:
-  group: deploy-production
-  cancel-in-progress: false
+# The one-at-a-time rule is on the deploy job below, not on the workflow: a run that is not
+# eligible (a failed or cancelled CI run) must never join the `deploy-production` group, because a
+# waiting run there is replaced by the next one that arrives, even when it will only be skipped.
 
 permissions:
   contents: read
 
+env:
+  # The commit CI tested. A manual run (workflow_dispatch) deploys the commit it was started on.
+  DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+
 jobs:
   preflight:
     name: Check deploy secrets
+    # A pull request, a failed or a cancelled CI run never deploys.
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-24.04
     outputs:
       ready: ${{ steps.check.outputs.ready }}
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
 
       - id: check
         # Skips the deploy (instead of failing main) until every secret and ID exists. Names only.
@@ -53,11 +70,19 @@ jobs:
           if ! listed=$(npx --yes wrangler@4.160.0 secret list --name take-studio --format json 2>/dev/null); then
             skip "Worker take-studio does not exist yet or its secrets can't be listed. Create it with its secrets first (wrangler secret put <NAME> --name take-studio)."
           fi
+          # Every name the site needs (the web, usage and email env schemas in src/lib/env.ts; a test
+          # keeps this list equal to them). A missing one stops the deploy. Optional names only warn.
+          required="BETTER_AUTH_SECRET BETTER_AUTH_URL GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET TRIGGER_SECRET_KEY USAGE_HASH_SECRET EMAIL_LINK_SECRET RESEND_API_KEY EMAIL_FROM"
+          optional="SENTRY_DSN"
+          has() { echo "$listed" | jq -e --arg n "$1" 'any(.[]; .name == $n)' > /dev/null; }
           missing=""
-          for name in BETTER_AUTH_SECRET BETTER_AUTH_URL GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET TRIGGER_SECRET_KEY; do
-            echo "$listed" | jq -e --arg n "$name" 'any(.[]; .name == $n)' > /dev/null || missing="$missing $name"
+          for name in $required; do
+            has "$name" || missing="$missing $name"
           done
           [ -z "$missing" ] || skip "Missing Worker secrets on take-studio:$missing"
+          for name in $optional; do
+            has "$name" || echo "::warning::Optional Worker secret $name is not set on take-studio; the site runs without it."
+          done
 
           echo "ready=true" >> "$GITHUB_OUTPUT"
 
@@ -68,21 +93,49 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: production
+    # Only a run that passed the gate gets here, so only an eligible run can wait in this group or
+    # replace a waiting one. A running deploy is never cancelled.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     env:
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - id: order
+        # Serialized by the concurrency group and before any production write: an automated run
+        # (workflow_run) deploys only while its commit is still the tip of main, so a rerun of CI
+        # for an older commit can never put old code over newer. Otherwise it stops here with a
+        # notice, without failing main (the newer commit has its own CI run and deploy). A manual
+        # run (workflow_dispatch) is exempt, so an intentional rollback stays possible.
+        run: |
+          stale=false
+          if [ "$GITHUB_EVENT_NAME" = "workflow_run" ]; then
+            tip=$(git ls-remote origin refs/heads/main | cut -f1)
+            if [ "$tip" != "$DEPLOY_SHA" ]; then
+              stale=true
+              echo "::notice::Deploy skipped. $DEPLOY_SHA is no longer the tip of main (${tip:-unknown}); the tip deploys after its own CI run."
+            fi
+          fi
+          echo "stale=$stale" >> "$GITHUB_OUTPUT"
 
       - uses: pnpm/action-setup@v4
+        if: steps.order.outputs.stale != 'true'
 
       - uses: actions/setup-node@v5
+        if: steps.order.outputs.stale != 'true'
         with:
           node-version-file: .nvmrc
           cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      - if: steps.order.outputs.stale != 'true'
+        run: pnpm install --frozen-lockfile
 
       - name: 1. Build and check the Worker (nothing ships yet)
+        if: steps.order.outputs.stale != 'true'
         run: pnpm run deploy:build
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -93,13 +146,14 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ vars.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
-          SENTRY_RELEASE: ${{ github.sha }}
+          SENTRY_RELEASE: ${{ env.DEPLOY_SHA }}
           # The same DSN as the server; the GitHub secret is SENTRY_DSN.
           NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           NEXT_PUBLIC_SENTRY_ENVIRONMENT: production
-          NEXT_PUBLIC_SENTRY_RELEASE: ${{ github.sha }}
+          NEXT_PUBLIC_SENTRY_RELEASE: ${{ env.DEPLOY_SHA }}
 
       - name: 2. Migrate Neon (direct URL)
+        if: steps.order.outputs.stale != 'true'
         run: pnpm db:migrate
         env:
           DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
@@ -107,6 +161,7 @@ jobs:
           MIGRATE_TARGET: prod
 
       - name: 3. Deploy Trigger.dev tasks (prod)
+        if: steps.order.outputs.stale != 'true'
         run: pnpm deploy:trigger --env prod
         env:
           TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
@@ -115,11 +170,12 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ vars.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
-          SENTRY_RELEASE: ${{ github.sha }}
+          SENTRY_RELEASE: ${{ env.DEPLOY_SHA }}
 
       - name: 4. Ship the Worker (the bundle built and checked in step 1)
+        if: steps.order.outputs.stale != 'true'
         run: pnpm run deploy:ship
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          SENTRY_RELEASE: ${{ github.sha }}
+          SENTRY_RELEASE: ${{ env.DEPLOY_SHA }}

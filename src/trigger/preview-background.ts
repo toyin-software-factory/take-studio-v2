@@ -6,7 +6,12 @@ import { withJobDb } from "@/db/client/job";
 import { queueDeletions } from "@/db/data/jobs";
 import { completePreview, failPreview, loadPreviewWork } from "@/db/data/previews";
 import type { Executor } from "@/db/types";
-import { keyedPreviewGraph, plainPreviewFilter, previewKey } from "@/lib/background-preview";
+import {
+  PREVIEW_LIMITS,
+  keyedPreviewGraph,
+  plainPreviewFilter,
+  previewKey,
+} from "@/lib/background-preview";
 import { deadlineMs, runWithDeadline } from "@/lib/deadline";
 import { parseJobEnv } from "@/lib/env";
 import {
@@ -31,8 +36,8 @@ import { MediaToolError, probeUrl, runFfmpeg, runFfmpegBytes } from "./media";
  * frame, a key or a link.
  */
 
-/** Limits: 2 attempts; 3 minutes, so the shared 90 s deadline margin still leaves 90 s of work. */
-export const PREVIEW_LIMITS = { maxDurationSeconds: 180, maxAttempts: 2 } as const;
+// Limits (2 attempts of 3 minutes, so the shared 90 s deadline margin still leaves 90 s of work)
+// live in `PREVIEW_LIMITS` (src/lib/background-preview.ts): the web app's stale rule is derived from them.
 
 /** Input options for reading a presigned URL with range requests and reconnects. */
 const HTTP_INPUT = ["-rw_timeout", "30000000", "-reconnect", "1", "-reconnect_streamed", "1"];

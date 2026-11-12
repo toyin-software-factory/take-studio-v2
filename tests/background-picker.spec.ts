@@ -229,11 +229,17 @@ type Item = {
   thumbUrl: string | null;
 };
 
-async function stubLibrary(page: Page, state: { mine: Item[]; calls: string[] }) {
+async function stubLibrary(
+  page: Page,
+  state: { mine: Item[]; calls: string[]; defaultId?: string | null; listStatus?: number },
+) {
   await page.route("**/api/backgrounds", async (route) => {
     const method = route.request().method();
     if (method === "GET") {
-      return route.fulfill({ json: { builtIn: [], mine: state.mine, defaultId: null } });
+      if (state.listStatus) return route.fulfill({ status: state.listStatus, json: {} });
+      return route.fulfill({
+        json: { builtIn: [], mine: state.mine, defaultId: state.defaultId ?? null },
+      });
     }
     state.calls.push(`POST ${JSON.stringify(route.request().postDataJSON())}`);
     return route.fulfill({
@@ -433,4 +439,40 @@ test("a pick made while a delete is pending is kept when the delete finishes", a
   release();
   await expect(page.getByRole("radio", { name: /Office wall/ })).toHaveCount(0);
   await expect(page.getByRole("radio", { name: /Second wall/ })).toBeChecked();
+});
+
+test("deleting the saved default leaves the list at once, even if the refresh fails (the next upload sends original)", async ({
+  page,
+  baseURL,
+}) => {
+  await signedInWithStudios(page, baseURL!);
+  const state: { mine: Item[]; calls: string[]; defaultId: string | null; listStatus?: number } = {
+    mine: [readyItem("Office wall")],
+    calls: [],
+    defaultId: NEW_ID,
+  };
+  await stubLibrary(page, state);
+  const bodies: Record<string, unknown>[] = [];
+  await page.route("**/api/uploads", (route) => {
+    bodies.push(route.request().postDataJSON());
+    return route.fulfill({ status: 503, json: { error: "storage_error", message: "x" } });
+  });
+  await page.route("**/api/backgrounds/*", (route) => {
+    if (route.request().method() !== "DELETE") return route.fallback();
+    state.mine = [];
+    state.listStatus = 500; // the refresh after the delete fails
+    return route.fulfill({ status: 204 });
+  });
+  await page.goto("/");
+  await expect(select(page)).toContainText("Office wall"); // the saved default
+  await select(page).click();
+  await page.getByRole("button", { name: "Delete Office wall" }).click();
+  await expect(page.getByRole("radio", { name: /Office wall/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(select(page)).toContainText("Keep original");
+  await page
+    .locator("#upload-video-input")
+    .setInputFiles({ name: "take.mp4", mimeType: "video/mp4", buffer: Buffer.from("x") });
+  await expect.poll(() => bodies.length).toBe(1);
+  expect(bodies[0]?.backgroundId).toBe("original");
 });

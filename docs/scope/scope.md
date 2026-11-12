@@ -218,6 +218,8 @@ Out of scope for this build pass, kept so the plan stays honest.
 - **More languages**: transcripts for languages other than English · needs a decision
 - **Teams & agencies**: shared workspaces with several people · needs a decision
 - **Longer or 4K takes**: raise the 10 minute, 2 GB, 1080p limits · needs a decision
+- **Own render servers (cost step 2)**: when the Trigger.dev render bill is steadily above about $150 to $300 a month, move only the ffmpeg render to one or two rented Hetzner servers; Trigger.dev cloud stays the coordinator (the render step pauses, unbilled, while our server renders), with automatic fallback to the cloud machine when our servers are full or down · needs a decision
+- **k3s render cluster (cost step 3)**: when more than about 3 render servers or automatic scaling are needed, combine Hetzner machines into a k3s cluster that runs each render as a Kubernetes job (the step 2 render service runs inside it); a dedicated infrastructure agent joins the team to set up, run and look after the servers and the cluster · needs a decision · after Own render servers
 
 ## Legend
 

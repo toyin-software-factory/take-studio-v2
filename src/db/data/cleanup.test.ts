@@ -1,5 +1,5 @@
-import { eq, inArray } from "drizzle-orm";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { and, eq, inArray, lt } from "drizzle-orm";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { CLEANUP, PROBE_LIMITS, cleanupCutoffs } from "@/lib/cleanup-rules";
 import { thumbnailKey } from "@/lib/take-rules";
 import { cut, processingJob, render, storageDeletion, take } from "../schema";
@@ -62,36 +62,129 @@ async function queuedKeys(): Promise<string[]> {
 }
 
 describe("cleanup: abandoned uploads (AC-18)", () => {
-  it("fails uploads past the link lifetime plus margin, returning what to abort", async () => {
+  const idleMin = CLEANUP.uploadIdleMs / 60_000; // the link lifetime plus a margin
+  const backstopMin = CLEANUP.uploadBackstopMs / 60_000; // 6 hours
+  const uploading = async (creatorId: string, over: Record<string, unknown>) =>
+    seedTake(db, creatorId, { status: "uploading", durationMs: null, ...over });
+  const statusOf = async (id: string) =>
+    (await db.select().from(take).where(eq(take.id, id)))[0]?.status;
+
+  it("fails an upload idle past the link lifetime plus margin, returning what to abort", async () => {
     const creator = await createCreator(db);
-    const limit = CLEANUP.uploadLinkLifetimeMs / 60_000 + CLEANUP.uploadAbandonMarginMs / 60_000;
-    const old = await seedTake(db, creator.id, {
-      status: "uploading",
-      durationMs: null,
-      uploadId: "mpu-old",
-      createdAt: minutes(limit + 1),
+    const idle = await uploading(creator.id, {
+      uploadId: "mpu-idle",
+      createdAt: minutes(idleMin + 30),
+      updatedAt: minutes(idleMin + 1),
     });
-    const fresh = await seedTake(db, creator.id, {
-      status: "uploading",
-      durationMs: null,
-      uploadId: "mpu-new",
-      createdAt: minutes(limit - 1),
+    const active = await uploading(creator.id, {
+      uploadId: "mpu-active",
+      createdAt: minutes(idleMin + 30),
+      updatedAt: minutes(idleMin - 1),
     });
 
     const abandoned = await failAbandonedUploads(db, NOW, notStored);
 
     expect(abandoned).toEqual([
-      { takeId: old.id, originalKey: old.originalKey, uploadId: "mpu-old" },
+      { takeId: idle.id, originalKey: idle.originalKey, uploadId: "mpu-idle" },
     ]);
-    const [oldRow] = await db.select().from(take).where(eq(take.id, old.id));
-    expect(oldRow).toMatchObject({
+    const [idleRow] = await db.select().from(take).where(eq(take.id, idle.id));
+    expect(idleRow).toMatchObject({
       status: "failed",
       failureCode: "upload_abandoned",
       uploadId: null,
     });
-    const [freshRow] = await db.select().from(take).where(eq(take.id, fresh.id));
-    expect(freshRow?.status).toBe("uploading");
-    expect(await queuedKeys()).toEqual([old.originalKey]);
+    expect(await statusOf(active.id)).toBe("uploading");
+    expect(await queuedKeys()).toEqual([idle.originalKey]);
+  });
+
+  it("does not fail a slow upload older than 90 minutes that asked for part links recently", async () => {
+    const creator = await createCreator(db);
+    const slow = await uploading(creator.id, {
+      uploadId: "mpu-slow",
+      createdAt: minutes(100), // past the old 75 minute limit
+      updatedAt: minutes(2), // part links were issued two minutes ago
+    });
+    expect(await failAbandonedUploads(db, NOW, notStored)).toEqual([]);
+    expect(await statusOf(slow.id)).toBe("uploading");
+    expect(await queuedKeys()).toEqual([]);
+  });
+
+  it("fails an upload past the 6 hour backstop even when it is still active", async () => {
+    const creator = await createCreator(db);
+    const forever = await uploading(creator.id, {
+      uploadId: "mpu-forever",
+      createdAt: minutes(backstopMin + 1),
+      updatedAt: minutes(1),
+    });
+    const justInside = await uploading(creator.id, {
+      uploadId: "mpu-inside",
+      createdAt: minutes(backstopMin - 1),
+      updatedAt: minutes(1),
+    });
+    const abandoned = await failAbandonedUploads(db, NOW, notStored);
+    expect(abandoned.map((a) => a.takeId)).toEqual([forever.id]);
+    expect(abandoned[0]?.uploadId).toBe("mpu-forever");
+    expect(await statusOf(justInside.id)).toBe("uploading");
+  });
+
+  it("still never fails an upload whose original is stored at the stated size (recovery's)", async () => {
+    const creator = await createCreator(db);
+    const done = await uploading(creator.id, {
+      uploadId: "mpu-done",
+      createdAt: minutes(backstopMin + 60),
+      updatedAt: minutes(idleMin + 60),
+    });
+    const stored = async () => ({ size: Number(done.originalBytes) });
+    expect(await failAbandonedUploads(db, NOW, stored)).toEqual([]);
+    expect(await statusOf(done.id)).toBe("uploading");
+  });
+});
+
+describe("cleanup: stuck upload recovery next to the idle rule (S1C-T09, AC-18)", () => {
+  const ports = (stored: Set<string>, dispatched: string[]) => ({
+    headObject: async (key: string) => (stored.has(key) ? { size: 1000 } : null),
+    dispatchProbe: async (takeId: string) => void dispatched.push(takeId),
+  });
+
+  it("leaves an idle upload that never finished alone (nothing is stored), for the idle rule", async () => {
+    const creator = await createCreator(db);
+    const idle = await seedTake(db, creator.id, {
+      status: "uploading",
+      durationMs: null,
+      originalBytes: 1000,
+      updatedAt: minutes(CLEANUP.uploadIdleMs / 60_000 + 5),
+    });
+    const dispatched: string[] = [];
+    const result = await recoverStuckUploads(db, NOW, ports(new Set(), dispatched));
+    expect(result.redispatched).not.toContain(idle.id);
+    expect(dispatched).not.toContain(idle.id);
+    // Not touched either: the idle rule still sees it as idle.
+    const [row] = await db.select().from(take).where(eq(take.id, idle.id));
+    expect(row?.updatedAt.getTime()).toBe(minutes(CLEANUP.uploadIdleMs / 60_000 + 5).getTime());
+    expect(await failAbandonedUploads(db, NOW, notStored)).toEqual(
+      expect.arrayContaining([expect.objectContaining({ takeId: idle.id })]),
+    );
+  });
+
+  it("still re-dispatches a completed upload that was never probed, whatever its age", async () => {
+    const creator = await createCreator(db);
+    const done = await seedTake(db, creator.id, {
+      status: "uploading",
+      durationMs: null,
+      originalBytes: 1000,
+      createdAt: minutes(CLEANUP.uploadBackstopMs / 60_000 + 120),
+      updatedAt: minutes(10),
+    });
+    const dispatched: string[] = [];
+    const result = await recoverStuckUploads(
+      db,
+      NOW,
+      ports(new Set([done.originalKey]), dispatched),
+    );
+    expect(result.redispatched).toContain(done.id);
+    expect(await failAbandonedUploads(db, NOW, async () => ({ size: 1000 }))).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ takeId: done.id })]),
+    );
   });
 });
 
@@ -135,6 +228,101 @@ describe("cleanup: stale jobs (AC-18)", () => {
     expect(rows.find((r) => r.id === live.id)?.status).toBe("running");
     const [takeRow] = await db.select().from(take).where(eq(take.id, t1.id));
     expect(takeRow?.status).toBe("failed");
+  });
+});
+
+describe("cleanup: queued jobs behind a creator's limit (HRF-T01)", () => {
+  const { queuedJobBefore, queuedBackstopBefore, runningJobBefore } = cleanupCutoffs(NOW);
+  const minus = (d: Date, ms: number) => new Date(d.getTime() - ms);
+  // Other tests leave stale queued rows behind; this block counts lookups, so start clean.
+  const clean = () =>
+    db
+      .delete(processingJob)
+      .where(and(eq(processingJob.status, "queued"), lt(processingJob.createdAt, queuedJobBefore)));
+  beforeEach(clean);
+  afterEach(clean);
+
+  const queuedJob = async (over: Partial<typeof processingJob.$inferInsert>) => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, { status: "processing" });
+    return seedJob(t.id, { status: "queued", createdAt: minus(queuedJobBefore, 1000), ...over });
+  };
+
+  it("does not fail a queued job whose run is still waiting, but fails ended runs, no run and the backstop", async () => {
+    const waitingRun = await queuedJob({ triggerRunId: "run_waiting" });
+    const endedRun = await queuedJob({ triggerRunId: "run_ended" });
+    const noRun = await queuedJob({ triggerRunId: null });
+    const past = await queuedJob({
+      createdAt: minus(queuedBackstopBefore, 1000),
+      triggerRunId: "run_waiting",
+    });
+    const asked: string[] = [];
+    const failed = await failStaleJobs(db, NOW, async (runId) => {
+      asked.push(runId);
+      return runId === "run_waiting";
+    });
+    const ids = new Set(failed.map((j) => j.jobId));
+    expect(ids.has(waitingRun.id)).toBe(false);
+    expect(ids.has(endedRun.id)).toBe(true);
+    expect(ids.has(noRun.id)).toBe(true);
+    // Past the 6 hour backstop it is failed without asking, even though its run looks alive.
+    expect(ids.has(past.id)).toBe(true);
+    expect(asked.sort()).toEqual(["run_ended", "run_waiting"]);
+    const [row] = await db.select().from(processingJob).where(eq(processingJob.id, waitingRun.id));
+    expect(row).toMatchObject({ status: "queued", failureCode: null });
+  });
+
+  it("without the check a queued job past 15 minutes is stale, as before", async () => {
+    const job = await queuedJob({ triggerRunId: "run_waiting" });
+    const failed = await failStaleJobs(db, NOW);
+    expect(failed.map((j) => j.jobId)).toEqual([job.id]);
+  });
+
+  it("retained waiting jobs cannot crowd out a stale running job, the lookups per sweep are bounded, and every job is reached in turn", async () => {
+    const limit = CLEANUP.queuedRunChecksPerSweep;
+    // More waiting jobs than one batch (100), the oldest of all, and the ended one is the last
+    // in line (most recently checked).
+    const waiting: string[] = [];
+    for (let i = 0; i < 105; i += 1) {
+      const runId = i === 104 ? "run_ended" : `run_wait_${i}`;
+      await queuedJob({
+        triggerRunId: runId,
+        createdAt: minus(queuedJobBefore, 60_000 + (200 - i) * 1000),
+        updatedAt: minus(NOW, (200 - i) * 1000),
+      });
+      waiting.push(runId);
+    }
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, { status: "processing" });
+    const running = await seedJob(t.id, {
+      status: "running",
+      startedAt: minus(runningJobBefore, 1000),
+      triggerRunId: "run_old_running",
+    });
+
+    const sweeps: string[][] = [];
+    let ended: readonly { jobId: string }[] = [];
+    for (let sweep = 0; sweep < 5; sweep += 1) {
+      const asked: string[] = [];
+      const failed = await failStaleJobs(db, NOW, async (runId) => {
+        asked.push(runId);
+        return runId !== "run_ended";
+      });
+      sweeps.push(asked);
+      if (sweep === 0) {
+        // The stale running job is failed in the first sweep, whatever waits ahead of it.
+        expect(failed.map((j) => j.jobId)).toEqual([running.id]);
+      }
+      if (failed.some((j) => j.jobId !== running.id)) ended = failed;
+    }
+    for (const asked of sweeps) expect(asked.length).toBeLessThanOrEqual(limit);
+    // The first four sweeps ask about different jobs each (least recently checked first).
+    const firstFour = sweeps.slice(0, 4).flat();
+    expect(new Set(firstFour).size).toBe(firstFour.length);
+    expect(sweeps[0]).toEqual(waiting.slice(0, limit));
+    // The ended run is the last in line and is reached by the fifth sweep.
+    expect(ended).toHaveLength(1);
+    expect(sweeps[4]).toContain("run_ended");
   });
 });
 
@@ -415,6 +603,26 @@ describe("dispatchJob", () => {
     expect(row?.triggerRunId).toBe("run_ok");
   });
 
+  it("hands the job's creator to the trigger, so two creators get two queues (HRF-T01)", async () => {
+    const seen: Array<[string, string | undefined]> = [];
+    const trigger = async (jobId: string, creatorId?: string) => {
+      seen.push([jobId, creatorId]);
+      return { id: `run_${jobId}` };
+    };
+    const a = await createCreator(db);
+    const b = await createCreator(db);
+    const jobs = [];
+    for (const c of [a, b]) {
+      const t = await seedTake(db, c.id, { status: "processing" });
+      jobs.push(await seedJob(t.id, {}));
+    }
+    for (const job of jobs) await dispatchJob(db, { jobId: job.id, trigger });
+    expect(seen).toEqual([
+      [jobs[0]!.id, a.id],
+      [jobs[1]!.id, b.id],
+    ]);
+  });
+
   it("finishes the job with trigger_failed and refunds when triggering fails", async () => {
     const creator = await createCreator(db);
     const t = await seedTake(db, creator.id, { status: "processing" });
@@ -490,7 +698,7 @@ describe("cleanup: takes stuck in uploading after a failed probe dispatch (S1C-T
 
   it("is picked up within one cleanup run even when older than the abandoned cut off", async () => {
     const creator = await createCreator(db);
-    const old = await seedStuck(creator.id, {}, 200); // way past link lifetime + margin
+    const old = await seedStuck(creator.id, {}, 200, 100); // old and idle, but stored
     const p = ports();
     const recovery = await recoverStuckUploads(db, NOW, p);
     const abandoned = await failAbandonedUploads(db, NOW, p.headObject);
@@ -544,10 +752,10 @@ describe("cleanup: takes stuck in uploading after a failed probe dispatch (S1C-T
     expect(await recoverStuckUploads(db, NOW, p)).toEqual({ redispatched: [], failed: [] });
     expect(p.dispatched).toEqual([]);
     expect((await probeAttemptsOf(fresh.id)).probeAttempts).toBe(0);
-    // The abandoned rule still handles the one that never completed (once old enough).
+    // The abandoned rule still handles the one that never completed (once idle long enough).
     await db
       .update(take)
-      .set({ createdAt: minutes(200) })
+      .set({ createdAt: minutes(200), updatedAt: minutes(200) })
       .where(eq(take.id, incomplete.id));
     const abandoned = await failAbandonedUploads(db, NOW, p.headObject);
     expect(abandoned.map((a) => a.takeId)).toEqual([incomplete.id]);
@@ -573,7 +781,7 @@ describe("cleanup: takes stuck in uploading after a failed probe dispatch (S1C-T
 
   it("skips a take it cannot check, and the abandoned rule leaves it too", async () => {
     const creator = await createCreator(db);
-    const unknown = await seedStuck(creator.id, {}, 200);
+    const unknown = await seedStuck(creator.id, {}, 200, 100);
     const recovery = await recoverStuckUploads(db, NOW, ports({ headFails: true }));
     expect(recovery).toEqual({ redispatched: [], failed: [] });
     // The abandoned rule checks storage itself and cannot tell either: it leaves the take.
@@ -646,7 +854,7 @@ describe("cleanup: takes stuck in uploading after a failed probe dispatch (S1C-T
 
   it("still fails a stored original of the wrong size as abandoned", async () => {
     const creator = await createCreator(db);
-    const bad = await seedStuck(creator.id, { originalBytes: 5 }, 200);
+    const bad = await seedStuck(creator.id, { originalBytes: 5 }, 200, 100);
     const abandoned = await failAbandonedUploads(db, NOW, ports().headObject);
     expect(abandoned.map((a) => a.takeId)).toEqual([bad.id]);
   });

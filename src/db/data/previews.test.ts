@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { previewKey } from "@/lib/background-preview";
+import { PREVIEW_RUN_MS, PREVIEW_STALE_MS, previewKey } from "@/lib/background-preview";
 import { background, backgroundPreview, cut, render, storageDeletion, take } from "../schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "../testing/test-db";
 import type { Db } from "../types";
@@ -146,19 +146,31 @@ describe("requestPreview (AC-4)", () => {
     expect(second.ok && second.data.preview.id).toBe(first.data.preview.id);
   });
 
-  it("replaces a making preview older than two minutes, on the same row", async () => {
+  it("leaves a making row younger than the derived threshold alone: no reset, no second run", async () => {
     const bg = await seedBackground();
     const { creator, take: t } = await readyTake();
     const first = await request(creator.id, t.id, bg.id);
     if (!first.ok) throw new Error(first.error);
-    const later = new Date(first.data.preview.updatedAt.getTime() + 121_000);
-    const fresh = await request(
-      creator.id,
-      t.id,
-      bg.id,
-      new Date(first.data.preview.updatedAt.getTime() + 60_000),
-    );
-    expect(fresh.ok && fresh.data.dispatch).toBe(false);
+    const startedAt = first.data.preview.updatedAt.getTime();
+    // Past the old 2 minute limit, inside a run that is retrying (and the queue margin): the
+    // job may still be running, so the ask is answered from the row and nothing is triggered.
+    for (const after of [121_000, 5 * 60_000, PREVIEW_RUN_MS, PREVIEW_STALE_MS]) {
+      const again = await request(creator.id, t.id, bg.id, new Date(startedAt + after));
+      if (!again.ok) throw new Error(again.error);
+      expect(again.data.dispatch, `after ${after} ms`).toBe(false);
+      expect(again.data.preview.id).toBe(first.data.preview.id);
+      // The row is untouched: updatedAt is what the run's idempotency key is made of.
+      expect(again.data.preview.updatedAt.getTime()).toBe(startedAt);
+    }
+    expect((await rowOf(first.data.preview.id)).updatedAt.getTime()).toBe(startedAt);
+  });
+
+  it("replaces a making preview older than the threshold, on the same row", async () => {
+    const bg = await seedBackground();
+    const { creator, take: t } = await readyTake();
+    const first = await request(creator.id, t.id, bg.id);
+    if (!first.ok) throw new Error(first.error);
+    const later = new Date(first.data.preview.updatedAt.getTime() + PREVIEW_STALE_MS + 1_000);
     const stale = await request(creator.id, t.id, bg.id, later);
     if (!stale.ok) throw new Error(stale.error);
     expect(stale.data).toMatchObject({ dispatch: true });

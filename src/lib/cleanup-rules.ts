@@ -4,6 +4,8 @@
  * maxDuration, and changes them here.
  */
 
+import { UPLOAD } from "./uploads";
+
 const MINUTE = 60 * 1000;
 
 /**
@@ -16,6 +18,12 @@ export const PROCESS_TAKE_LIMITS = {
   maxDurationSeconds: 40 * 60,
   /** `retry.maxAttempts`. */
   maxAttempts: 2,
+  /**
+   * Runs of `process-take` one creator can have at the same time (the queue's concurrency limit;
+   * with a per creator `concurrencyKey` each creator gets a queue of this size). More jobs of the
+   * same creator wait in the queue, and the others' jobs are not held up behind them.
+   */
+  perCreatorConcurrency: 2,
 } as const;
 
 /**
@@ -47,12 +55,35 @@ export const PROBE_LIMITS = {
 } as const;
 
 export const CLEANUP = {
-  /** How long a whole upload may take (part links are issued for 15 minutes each, per part). */
-  uploadLinkLifetimeMs: 60 * MINUTE,
-  /** Extra time after the link expires before an `uploading` take counts as abandoned. */
-  uploadAbandonMarginMs: 15 * MINUTE,
-  /** A job still `queued` after this was never picked up. */
+  /**
+   * An `uploading` take is abandoned once nothing has touched it for this long: the part link
+   * lifetime plus a margin. A browser that is still sending asks for fresh part links at least
+   * that often (each link lasts `UPLOAD.partLinkSeconds`), and every request touches
+   * `take.updated_at`, so a slow upload that keeps progressing is never failed.
+   */
+  uploadIdleMs: UPLOAD.partLinkSeconds * 1000 + 15 * MINUTE,
+  /** The hard stop: an upload still `uploading` this long after it was created is failed. */
+  uploadBackstopMs: 6 * 60 * MINUTE,
+  /** Part link requests touch `take.updated_at` at most this often. */
+  uploadTouchEveryMs: MINUTE,
+  /**
+   * A job still `queued` after this may never have been picked up, so the cleanup asks Trigger.dev
+   * about its run (a run that is still waiting, for instance behind its creator's concurrency
+   * limit, is left alone). Without a run to ask about, it is stale at once.
+   */
   queuedStaleMs: 15 * MINUTE,
+  /**
+   * The hard stop for a `queued` job whose run still looks alive: behind the per creator limit a
+   * wait is at most a few full runs, so this is far past anything real (6 hours).
+   */
+  queuedBackstopMs: 6 * 60 * MINUTE,
+  /**
+   * Trigger.dev run lookups per sweep for queued jobs, and the time one may take (a lookup that
+   * is slower counts as "still waiting"): together at most about two minutes of the 10 minute
+   * cleanup task, so the expiry and deletion steps after it always get their time.
+   */
+  queuedRunChecksPerSweep: 25,
+  runCheckTimeoutMs: 5_000,
   /**
    * How long a `running` job may legitimately last: every attempt can use the full
    * maxDuration, and a retry keeps the first attempt's `started_at`.
@@ -102,12 +133,14 @@ export const STORAGE_DELETION = {
 export function cleanupCutoffs(now: Date) {
   const at = now.getTime();
   return {
-    /** `uploading` takes created before this are abandoned. */
-    abandonedUploadBefore: new Date(
-      at - CLEANUP.uploadLinkLifetimeMs - CLEANUP.uploadAbandonMarginMs,
-    ),
+    /** `uploading` takes last touched before this are abandoned (idle). */
+    idleUploadBefore: new Date(at - CLEANUP.uploadIdleMs),
+    /** `uploading` takes created before this are abandoned whatever their activity. */
+    uploadBackstopBefore: new Date(at - CLEANUP.uploadBackstopMs),
     /** `queued` jobs created before this are stale. */
     queuedJobBefore: new Date(at - CLEANUP.queuedStaleMs),
+    /** `queued` jobs created before this are failed even when their run still looks alive. */
+    queuedBackstopBefore: new Date(at - CLEANUP.queuedBackstopMs),
     /** `running` jobs of the video kinds started before this are stale. */
     runningJobBefore: new Date(at - CLEANUP.jobMaxDurationMs - CLEANUP.runningStaleMarginMs),
     /** `running` `transcribe` jobs started before this are stale (spec 0007). */

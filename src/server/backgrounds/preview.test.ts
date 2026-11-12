@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { PREVIEW_STALE_MS } from "@/lib/background-preview";
 import { completePreview } from "@/db/data/previews";
 import { background, backgroundPreview, cut, take } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
@@ -204,12 +205,24 @@ describe("POST /api/takes/[id]/background/preview (AC-4)", () => {
     expect(triggered).toHaveLength(1);
   });
 
-  it("starts a stale making preview again", async () => {
+  it("triggers no second run while the first may still be running (past the old 2 minutes)", async () => {
     const bg = await seedBackground();
     const { creator, take: t } = await readyTake();
     const triggered: BackgroundPreview[] = [];
     await ask(deps(creator.id, triggered), t.id, { backgroundId: bg.id });
-    const later = new Date(Date.now() + 3 * 60_000);
+    // 5 minutes in: the job may be on its second attempt. The ask is answered, nothing starts.
+    const soon = { ...deps(creator.id, triggered), now: () => new Date(Date.now() + 5 * 60_000) };
+    const res = await ask(soon, t.id, { backgroundId: bg.id });
+    expect(res.status).toBe(202);
+    expect(triggered).toHaveLength(1);
+  });
+
+  it("starts a stale making preview again, on the same row", async () => {
+    const bg = await seedBackground();
+    const { creator, take: t } = await readyTake();
+    const triggered: BackgroundPreview[] = [];
+    await ask(deps(creator.id, triggered), t.id, { backgroundId: bg.id });
+    const later = new Date(Date.now() + PREVIEW_STALE_MS + 60_000);
     const stale = { ...deps(creator.id, triggered), now: () => later };
     const res = await ask(stale, t.id, { backgroundId: bg.id });
     expect(res.status).toBe(202);
