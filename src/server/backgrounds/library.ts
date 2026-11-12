@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull, ne, or } from "drizzle-orm";
 import { background, user } from "@/db/schema";
 import type { Executor } from "@/db/types";
 
@@ -55,7 +55,13 @@ export async function listBackgrounds(
   const mine = await db
     .select()
     .from(background)
-    .where(eq(background.creatorId, creatorId))
+    // Not the hidden tombstones of deleted uploads (`removed`).
+    .where(
+      and(
+        eq(background.creatorId, creatorId),
+        or(isNull(background.failureCode), ne(background.failureCode, "removed")),
+      ),
+    )
     .orderBy(desc(background.createdAt), desc(background.id))
     .limit(MINE_LIMIT);
   const [profile] = await db

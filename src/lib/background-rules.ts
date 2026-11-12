@@ -18,6 +18,12 @@ export const BACKGROUND_UPLOAD = {
   linkSeconds: 15 * 60,
   /** A row still `uploading` or `processing` after this long is failed by cleanup. */
   stuckAfterMs: 60 * 60 * 1000,
+  /**
+   * How long a deleted, still `uploading` background is kept hidden (the link's lifetime plus a
+   * margin): a PUT sent before the link expired could still write the source file, so its keys
+   * are queued again when this has passed.
+   */
+  removedKeepMs: 15 * 60 * 1000 + 5 * 60 * 1000,
 } as const;
 
 export const BACKGROUND_IMAGE = {
@@ -53,6 +59,8 @@ export const BACKGROUND_FAILURE_MESSAGES = {
   image_too_large:
     "That image is too large. Use one under 10 MB and under 40 megapixels (for example 8000 by 5000).",
   upload_incomplete: "The upload didn't finish. Please try again.",
+  /** Hidden from the library: deleted while the upload link was still valid (see `removedKeepMs`). */
+  removed: "This image was removed.",
   ingest_error: "We couldn't process that image. Please try again.",
 } as const;
 

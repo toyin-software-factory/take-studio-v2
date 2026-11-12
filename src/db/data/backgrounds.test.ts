@@ -10,6 +10,7 @@ import {
   deleteCreatorBackgrounds,
   failIngest,
   failStuckBackgrounds,
+  purgeRemovedBackgrounds,
   saveIngest,
 } from "./backgrounds";
 import { backgroundKeys } from "@/lib/background-rules";
@@ -296,5 +297,68 @@ describe("deleteCreatorBackgrounds (account deletion)", () => {
       await db.select().from(background).where(eq(background.creatorId, creator.id)),
     ).toHaveLength(0);
     expect(await db.select().from(background).where(eq(background.id, theirs.id))).toHaveLength(1);
+  });
+});
+
+describe("deleting an upload whose link may still be live", () => {
+  const keysOf = (creatorId: string, id: string) => Object.values(backgroundKeys(creatorId, id));
+  const count = async (key: string) => (await queued()).filter((k) => k === key).length;
+
+  it("keeps a hidden tombstone for a young uploading row, then purges it and queues the keys again", async () => {
+    const creator = await createCreator(db);
+    const { id } = await start(creator.id);
+    const now = new Date();
+    expect(await deleteBackground(db, creator.id, id, now)).toEqual({ ok: true, data: undefined });
+    // Hidden, not gone: failed with `removed`, and the keys are queued once already.
+    const [tomb] = await db.select().from(background).where(eq(background.id, id));
+    expect(tomb).toMatchObject({ status: "failed", failureCode: "removed" });
+    const source = backgroundKeys(creator.id, id).sourceKey;
+    expect(await count(source)).toBe(1);
+    // Too early to purge: a PUT sent with the link could still land.
+    expect(await purgeRemovedBackgrounds(db, new Date(now.getTime() + 10 * 60_000))).toBe(0);
+    expect(await db.select().from(background).where(eq(background.id, id))).toHaveLength(1);
+    // After the link has expired (15 minutes and a margin): queued again, row deleted.
+    const later = new Date(now.getTime() + 21 * 60_000);
+    await db.update(background).set({ updatedAt: now }).where(eq(background.id, id));
+    expect(await purgeRemovedBackgrounds(db, later)).toBeGreaterThanOrEqual(1);
+    expect(await db.select().from(background).where(eq(background.id, id))).toHaveLength(0);
+    expect(await count(source)).toBe(2);
+    for (const key of keysOf(creator.id, id)) expect(await queued()).toContain(key);
+  });
+
+  it("deletes at once when the link cannot be live: an old upload, a processing row, a ready one", async () => {
+    const creator = await createCreator(db);
+    const old = await start(creator.id);
+    const processing = await start(creator.id);
+    await beginProcessing(db, creator.id, processing.id);
+    const done = await ready(creator.id);
+    await db
+      .update(background)
+      .set({ createdAt: new Date(Date.now() - 3_600_000) })
+      .where(eq(background.id, old.id));
+    for (const id of [old.id, processing.id, done.id]) {
+      expect(await deleteBackground(db, creator.id, id)).toEqual({ ok: true, data: undefined });
+      expect(await db.select().from(background).where(eq(background.id, id))).toHaveLength(0);
+    }
+  });
+
+  it("refuses to complete or process a removed tombstone", async () => {
+    const creator = await createCreator(db);
+    const { id } = await start(creator.id);
+    await deleteBackground(db, creator.id, id);
+    expect(await beginProcessing(db, creator.id, id)).toEqual({ ok: false, error: "not_uploaded" });
+  });
+
+  it("leaves other failed rows alone when purging", async () => {
+    const creator = await createCreator(db);
+    const { id } = await start(creator.id);
+    await beginProcessing(db, creator.id, id);
+    await failIngest(db, id, "image_invalid");
+    await db
+      .update(background)
+      .set({ updatedAt: new Date(Date.now() - 5 * 3_600_000) })
+      .where(eq(background.id, id));
+    await purgeRemovedBackgrounds(db, new Date());
+    expect(await db.select().from(background).where(eq(background.id, id))).toHaveLength(1);
   });
 });

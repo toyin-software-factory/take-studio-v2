@@ -155,4 +155,23 @@ describe("GET /api/backgrounds", () => {
     await db.delete(background).where(eq(background.id, studio.id));
     expect((await (await list(creator.id)).res.json()).defaultId).toBeNull();
   });
+
+  it("does not list the hidden tombstone of a deleted upload", async () => {
+    const creator = await createCreator(db);
+    const kept = await seed({ creatorId: creator.id, name: "Kept" });
+    const gone = await seed({
+      creatorId: creator.id,
+      name: "Deleted",
+      status: "failed",
+      failureCode: "removed",
+      imageKey: null,
+      thumbKey: null,
+      width: null,
+      height: null,
+    });
+    const { res } = await list(creator.id);
+    const ids = (await res.json()).mine.map((b: { id: string }) => b.id);
+    expect(ids).toContain(kept.id);
+    expect(ids).not.toContain(gone.id);
+  });
 });

@@ -110,6 +110,7 @@ export async function deleteBackground(
   db: Executor,
   creatorId: string,
   id: string,
+  now: Date = new Date(),
 ): Promise<Result<void, "not_found" | "in_use">> {
   return runTx(db, async (tx) => {
     const [row] = await tx
@@ -129,9 +130,63 @@ export async function deleteBackground(
       );
     if ((active?.n ?? 0) > 0) return err("in_use" as const);
     await queueDeletions(tx, await fileKeys(tx, row));
-    await tx.delete(background).where(eq(background.id, id));
+    // An upload link lives 15 minutes: a PUT sent before it expired can still write the source
+    // file after the queue drained it. While that is possible the row stays as a hidden
+    // `removed` tombstone, and `purgeRemovedBackgrounds` queues the keys once more and then
+    // deletes it. Anything else is deleted at once.
+    const linkMayBeLive =
+      row.status === "uploading" &&
+      now.getTime() - row.createdAt.getTime() < BACKGROUND_UPLOAD.removedKeepMs;
+    if (linkMayBeLive) {
+      await tx
+        .update(background)
+        .set({ status: "failed", failureCode: "removed", updatedAt: now })
+        .where(eq(background.id, id));
+    } else {
+      await tx.delete(background).where(eq(background.id, id));
+    }
     return ok(undefined);
   });
+}
+
+/**
+ * The second half of deleting an upload whose link may still have been live: once the link has
+ * expired, queues the keys again (catching a late write) and deletes the hidden row. One row at
+ * a time; rows another run holds are skipped. Returns how many were purged.
+ */
+export async function purgeRemovedBackgrounds(
+  db: Executor,
+  now: Date,
+  limit = 50,
+): Promise<number> {
+  const cutoff = new Date(now.getTime() - BACKGROUND_UPLOAD.removedKeepMs);
+  const due = await db
+    .select({ id: background.id })
+    .from(background)
+    .where(
+      and(
+        eq(background.status, "failed"),
+        eq(background.failureCode, "removed"),
+        lt(background.updatedAt, cutoff),
+      ),
+    )
+    .limit(limit);
+  let purged = 0;
+  for (const { id } of due) {
+    const done = await runTx(db, async (tx) => {
+      const [row] = await tx
+        .select()
+        .from(background)
+        .where(eq(background.id, id))
+        .for("update", { skipLocked: true });
+      if (!row || row.failureCode !== "removed" || row.updatedAt >= cutoff) return ok(false);
+      await queueDeletions(tx, await fileKeys(tx, row));
+      await tx.delete(background).where(eq(background.id, id));
+      return ok(true);
+    });
+    if (done.ok && done.data) purged += 1;
+  }
+  return purged;
 }
 
 /**
