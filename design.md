@@ -6,6 +6,8 @@ Reference drafts (open them in a browser): `docs/design/home-v2.html` (homepage,
 
 ## 0. Take Studio decisions (read first; they override anything below)
 
+- **Moving content can be stopped.** The hero fan loop and any other motion that runs longer than 5 seconds next to content has a visible pause and play toggle (WCAG 2.2.2), as well as honouring reduced motion.
+- **The HTML drafts in `docs/design/` are visual references, not code to copy.** Their scripts have known accessibility gaps (CodeRabbit on PR #121: icon buttons without names, `aria-hidden` over buttons, the drawer focus trap). Build to the rules in this file and the specs.
 - **One look, two levels of motion.** The tokens, type, buttons, links, focus rings and form rules in §2, §3 and §5 apply to the whole app (signed in screens included). The spectacle (fan loop, reel expansion, particle field, giant words, cursor follower, edge blur, Lenis smooth scroll, GSAP) is for the homepage only. Signed in screens use plain CSS transitions from the §6 tokens and never load `gsap`, `lenis` or `three`.
 - **Stack.** Keep Next.js, Tailwind CSS v4 and shadcn/ui (spec 0001, spec 0003's toolkit). The §2 tokens become CSS variables mapped into the Tailwind `@theme` and shadcn's names; no screen uses a raw hex value. Fonts load with `next/font` (Inter Tight 300, 400, 500, self hosted at build time), not hand placed woff2 files. Add `gsap`, `lenis` and `three` as pinned dependencies, imported only from homepage client components (`three` dynamically).
 - **Homepage sections** follow `docs/design/home-v2.html`, not the generic page map in the original draft: see the reconciled table in §4.

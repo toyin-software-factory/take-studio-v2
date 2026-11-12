@@ -25,7 +25,7 @@ Toyin decided (Slack, 2026-11-12): keep "Made for solo creators" and "The limits
 - **AC-2**: All copy is true today: no line claims the cut review timeline, undoing single cuts, AI agents choosing cuts or a monthly limit before those ship; "coming soon" appears only for the public API and MCP server. Calls to action go to sign in ("Upload a take", "Upload your first take"); "Questions?" is a `mailto:hello@takestudio.app` link. There is no form.
 - **AC-3**: The page HTML is server rendered with all text present before any script runs. It has a title, meta description, canonical URL, Open Graph and Twitter card tags with a 1200×630 share image, `SoftwareApplication` JSON-LD, and `robots.txt` plus `sitemap.xml` that list `/` and keep `/takes`, `/design` and API routes out.
 - **AC-4**: Nav: fixed, turns into the floating glass pill after 202px of scroll, switches to its dark variant over dark sections, and under 810px shows logo, short call to action and a menu button that opens a full screen dialog (focus trapped, Esc closes).
-- **AC-5**: Hero fan loop (7.2) pauses off screen; the reel expands from the corner thumbnail at 810px and up and is an inline 16:9 video below; the four capability tiles play on hover (pointer) or when in view (touch), muted, never with sound.
+- **AC-5**: Hero fan loop (7.2) pauses when it is out of view and has a visible pause and play toggle (keyboard operable, labelled, at least 44px) so anyone can stop it (WCAG 2.2.2); the choice holds for the visit; the reel expands from the corner thumbnail at 810px and up and is an inline 16:9 video below; the four capability tiles play on hover (pointer) or when in view (touch), muted, never with sound.
 - **AC-6**: The studio floor: convex arc entry, sticky particle field with the giant word sequence and glass bento, scroll fill lines. `three` is imported dynamically only when the section is within one viewport, rendering is skipped (CSS glow fallback) when `saveData` is set, WebGL is missing or `deviceMemory < 4`, and geometry, material and renderer are disposed when leaving the page.
 - **AC-7**: The limits show 10 min, 2 GB, 1080p and 30 days with flip counters; the FAQ is an accordion of `<button aria-expanded>` triggers with closed panels `inert`, answers true today; the footer has Product, Account, For agents and Legal columns (Privacy and Terms appear once feature 16 ships; until then Legal holds the email link) and the blurred wordmark.
 - **AC-8**: With `prefers-reduced-motion`, nothing loops, nothing scrubs, Lenis is off, WebGL draws at most one static frame and every piece of content is visible.
@@ -60,7 +60,7 @@ Toyin decided (Slack, 2026-11-12): keep "Made for solo creators" and "The limits
 - Signed out `/` shows all sections and the CTAs reach sign in; signed in `/` goes to takes, verifies **AC-1**, **AC-2**.
 - Page source contains the copy, metadata and JSON-LD with JS disabled, verifies **AC-3**.
 - Reduced motion emulated in Playwright: no running animations, all text visible, verifies **AC-8**.
-- axe and keyboard run (skip link, menu dialog, FAQ), verifies **AC-9**, **AC-4**, **AC-7**.
+- axe and keyboard run (skip link, menu dialog, FAQ, fan pause toggle), verifies **AC-9**, **AC-4**, **AC-5**, **AC-7**.
 - Lighthouse mobile in CI or as PR proof, verifies **AC-10**.
 
 ## Build plan
