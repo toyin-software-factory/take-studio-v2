@@ -133,8 +133,8 @@ export async function getForCreator(
         .orderBy(asc(jobStep.position))
     : [];
 
-  // The latest background change: the latest job of kind `background` (LEGACY, HRF-T08 deploy
-  // window: or a `rerender` with no `trim` step that an old Worker started).
+  // The latest background change: the latest job of kind `background` (LEGACY, HRF-T08: or a
+  // `rerender`, which is what background changes were before the kind existed).
   const [backgroundJob] = await db
     .select({
       status: processingJob.status,

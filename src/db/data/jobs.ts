@@ -256,12 +256,15 @@ type FinishInput = {
  * A `transcribe` job only does step 1: it never moves the take, touches renders or refunds.
  */
 /**
- * LEGACY (HRF-T08 deploy window): a `rerender` job with no `trim` step is how background changes
- * were recognised before the `background` kind existed, and an old Worker may still start one for
- * a few minutes. The hourly count and the latest change lookup treat it as a background change.
- * A later cleanup task removes this with the `rerender` branch of `isBackgroundChange`.
+ * LEGACY (HRF-T08): before the `background` kind existed every background change was a
+ * `rerender` (a `rerender` never has a `trim` step, so the old "no trim step" rule matched all of
+ * them), and those rows were not converted: they cannot be told from a `startJob` re render
+ * afterwards. An old Worker may also start one during the deploy. The hourly count and the latest
+ * change lookup therefore still treat a `rerender` as a possible background change, as they did
+ * before. A later cleanup task converts the rows and removes this with the `rerender` branch of
+ * `isBackgroundChange`.
  */
-export const legacyBackgroundRerender = sql`(${processingJob.kind} = 'rerender' and not exists (select 1 from ${jobStep} where ${jobStep.jobId} = ${processingJob.id} and ${jobStep.name} = 'trim'))`;
+export const legacyBackgroundRerender = sql`${processingJob.kind} = 'rerender'`;
 
 export function finish(
   db: Executor,
@@ -810,8 +813,8 @@ export async function startBackgroundJob(
         return err("no_green_screen");
       }
 
-      // Background changes are the jobs of kind `background`, plus (LEGACY, HRF-T08 deploy window)
-      // a `rerender` with no `trim` step that an old Worker may have started. Failed ones and
+      // Background changes are the jobs of kind `background`, plus (LEGACY, HRF-T08) the
+      // `rerender` rows that were background changes before the kind existed. Failed ones and
       // retries count.
       const [recent] = await tx
         .select({ n: count() })

@@ -398,30 +398,7 @@ describe("GET /api/takes/[id] background fields (spec 0008)", () => {
     expect((await get(creator.id, t.id)).noGreenScreen).toBe(false);
   });
 
-  it("ignores a re render that trims (kind `rerender`, a retry of a failed take) as a background change", async () => {
-    const creator = await createCreator(db);
-    const t = await seedTake(db, creator.id, { status: "ready", durationMs: 5_000 });
-    const jobId = crypto.randomUUID();
-    await db.insert(processingJob).values({
-      id: jobId,
-      takeId: t.id,
-      kind: "rerender",
-      status: "failed",
-      failureCode: "ffmpeg_error",
-      secondsCharged: 0,
-    });
-    await db.insert(jobStep).values({
-      id: crypto.randomUUID(),
-      jobId,
-      name: "trim",
-      position: 0,
-      status: "failed",
-      progress: 0,
-    });
-    expect((await get(creator.id, t.id)).backgroundJob).toBeNull();
-  });
-
-  it("LEGACY: a `rerender` with no trim step (an old Worker's change) is still the latest change", async () => {
+  it("LEGACY: a `rerender` (what background changes were before the kind) is still the latest change", async () => {
     const creator = await createCreator(db);
     const t = await seedTake(db, creator.id, { status: "ready", durationMs: 5_000 });
     await db.insert(processingJob).values({

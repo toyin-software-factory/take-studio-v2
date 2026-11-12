@@ -508,30 +508,24 @@ describe("lock order with a background (spec 0008)", () => {
 });
 
 /**
- * A finished job started `startedAt`, on the take: a background change, a `rerender` (startJob's,
- * which has a `trim` step once it runs), or a LEGACY `rerender` with no `trim` step (a background
- * change an old Worker started).
+ * A finished job started `startedAt`, on the take: a background change (kind `background`), or a
+ * LEGACY `rerender` (what background changes were before the kind existed; a `rerender` never has
+ * a `trim` step).
  */
 async function seedChange(
   takeId: string,
   startedAt: Date,
-  kind: "background" | "rerender" | "legacy" = "background",
+  kind: "background" | "rerender" = "background",
 ) {
-  const id = crypto.randomUUID();
   await db.insert(processingJob).values({
-    id,
+    id: crypto.randomUUID(),
     takeId,
-    kind: kind === "background" ? "background" : "rerender",
+    kind,
     status: "failed",
     failureCode: "internal_error",
     secondsCharged: 0,
     createdAt: startedAt,
   });
-  if (kind === "rerender") {
-    await db
-      .insert(jobStep)
-      .values({ id: crypto.randomUUID(), jobId: id, name: "trim", position: 0, status: "failed" });
-  }
 }
 
 describe("background change limit (HRF-T01)", () => {
@@ -598,11 +592,21 @@ describe("background change limit (HRF-T01)", () => {
     ).toEqual({ ok: false, error: "background_change_limit" });
   });
 
-  it("does not count a re render (kind `rerender`, startJob's), and one creator never blocks another", async () => {
+  it("one creator never blocks another, and other kinds do not count", async () => {
     const bg = await seedBackground();
     const { creator, take: t } = await readyTake();
     const now = new Date();
-    for (let i = 0; i < 10; i += 1) await seedChange(t.id, now, "rerender");
+    // The same take's initial and transcribe jobs are not background changes.
+    for (let i = 0; i < 10; i += 1) {
+      await db.insert(processingJob).values({
+        id: crypto.randomUUID(),
+        takeId: t.id,
+        kind: i % 2 === 0 ? "initial" : "transcribe",
+        status: "succeeded",
+        secondsCharged: 0,
+        createdAt: now,
+      });
+    }
     expect(
       (
         await startBackgroundJob(db, {
@@ -637,11 +641,11 @@ describe("background change limit (HRF-T01)", () => {
     ).toBe(true);
   });
 
-  it("LEGACY: a `rerender` with no trim step (an old Worker's change) still counts toward the limit", async () => {
+  it("LEGACY: a `rerender` (what background changes were before the kind) still counts toward the limit", async () => {
     const bg = await seedBackground();
     const { creator, take: t } = await readyTake();
     const now = new Date();
-    for (let i = 0; i < 10; i += 1) await seedChange(t.id, now, "legacy");
+    for (let i = 0; i < 10; i += 1) await seedChange(t.id, now, "rerender");
     expect(
       await startBackgroundJob(db, {
         creatorId: creator.id,
