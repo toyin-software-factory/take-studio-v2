@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { ORIGINAL_BACKGROUND, findBackground } from "@/lib/background-api";
 import { BackgroundPicker } from "./background-picker";
+import { useBackgroundUpload } from "./use-background-upload";
 import type { useBackgrounds } from "./use-backgrounds";
 
 /**
@@ -25,6 +26,7 @@ export function BackgroundSelect({
   readonly disabled?: boolean;
 }) {
   const { state, reload } = backgrounds;
+  const upload = useBackgroundUpload(reload, onPick);
   const list = state.kind === "ready" ? state.list : null;
   const value = picked ?? list?.defaultId ?? ORIGINAL_BACKGROUND;
   const current = findBackground(list, value);
@@ -56,7 +58,17 @@ export function BackgroundSelect({
   return (
     <div className="flex flex-col items-center gap-1">
       {list ? (
-        <BackgroundPicker trigger={trigger} list={list} value={value} onChange={onPick} />
+        <BackgroundPicker
+          trigger={trigger}
+          list={list}
+          value={value}
+          onChange={onPick}
+          mine={{
+            state: upload.state,
+            onFile: (f) => void upload.start(f),
+            onDelete: (id) => void upload.remove(id),
+          }}
+        />
       ) : (
         trigger
       )}

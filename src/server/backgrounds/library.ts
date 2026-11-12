@@ -15,6 +15,8 @@ export type BackgroundItem = {
   readonly name: string;
   readonly alt: string;
   readonly status: string;
+  /** Why ingest refused an upload (`image_too_small` ...), for the friendly message; null otherwise. */
+  readonly failureCode: string | null;
   /** A presigned link for the 480 by 270 thumbnail; null until the image has been processed. */
   readonly thumbUrl: string | null;
 };
@@ -41,6 +43,7 @@ export async function listBackgrounds(
     name: row.name,
     alt: row.alt ?? row.name,
     status: row.status,
+    failureCode: row.failureCode,
     thumbUrl: row.status === "ready" && row.thumbKey ? await presign(row.thumbKey) : null,
   });
 

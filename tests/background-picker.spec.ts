@@ -52,7 +52,8 @@ test("the select starts on Keep original and the picker lists the studios (AC-1)
   await expect(dialog.getByRole("heading", { name: "Studios" })).toBeVisible();
   await expect(dialog.getByRole("radio", { name: /Calm studio/ })).toBeVisible();
   await expect(dialog.getByRole("radio", { name: /Warm studio/ })).toBeVisible();
-  await expect(dialog.getByRole("heading", { name: "Your backgrounds" })).toHaveCount(0);
+  await expect(dialog.getByRole("heading", { name: "Your backgrounds" })).toBeVisible();
+  await expect(dialog.getByText("Upload image")).toBeVisible();
 });
 
 test("preselects the last pick from the database, and shows it on the select (AC-1)", async ({
@@ -214,4 +215,138 @@ test.describe("touch targets on a phone", () => {
       expect(box?.width).toBeGreaterThanOrEqual(44);
     }
   });
+});
+
+// Uploading and deleting a background from the picker (spec 0008, AC-8, AC-10). The network is
+// stubbed so each step and each message is exact; the real routes have their own tests.
+type Item = {
+  id: string;
+  name: string;
+  alt: string;
+  status: string;
+  failureCode: string | null;
+  thumbUrl: string | null;
+};
+
+async function stubLibrary(page: Page, state: { mine: Item[]; calls: string[] }) {
+  await page.route("**/api/backgrounds", async (route) => {
+    const method = route.request().method();
+    if (method === "GET") {
+      return route.fulfill({ json: { builtIn: [], mine: state.mine, defaultId: null } });
+    }
+    state.calls.push(`POST ${JSON.stringify(route.request().postDataJSON())}`);
+    return route.fulfill({
+      status: 201,
+      json: { id: "11111111-1111-4111-8111-111111111111", uploadUrl: "https://r2.test/put-here" },
+    });
+  });
+  await page.route("https://r2.test/put-here", (route) => {
+    state.calls.push(`PUT ${route.request().headers()["content-type"]}`);
+    return route.fulfill({ status: 200 });
+  });
+  await page.route("**/api/backgrounds/*/complete", (route) => {
+    state.calls.push("COMPLETE");
+    return route.fulfill({ json: { status: "processing" } });
+  });
+}
+
+const png = { name: "Office wall.png", mimeType: "image/png", buffer: Buffer.from("png bytes") };
+const NEW_ID = "11111111-1111-4111-8111-111111111111";
+const readyItem = (name: string): Item => ({
+  id: NEW_ID,
+  name,
+  alt: name,
+  status: "ready",
+  failureCode: null,
+  thumbUrl: null,
+});
+
+test("uploads an image: the link, the PUT, complete, then it is ready and selected (AC-8)", async ({
+  page,
+  baseURL,
+}) => {
+  await signedInWithStudios(page, baseURL!);
+  const state = { mine: [] as Item[], calls: [] as string[] };
+  await stubLibrary(page, state);
+  await page.goto("/");
+  await expect(select(page)).toBeEnabled();
+  await select(page).click();
+  await page.getByLabel("Upload image").setInputFiles(png);
+  await expect.poll(() => state.calls.includes("COMPLETE")).toBe(true);
+  state.mine = [readyItem("Office wall")]; // ingest finished
+  await expect(page.getByRole("radio", { name: /Office wall/ })).toBeChecked({ timeout: 30_000 });
+  expect(state.calls[0]).toContain('"name":"Office wall"');
+  expect(state.calls[0]).toContain('"contentType":"image/png"');
+  expect(state.calls[1]).toBe("PUT image/png");
+  await page.getByRole("button", { name: "Done" }).click();
+  await expect(select(page)).toContainText("Office wall");
+});
+
+test("checks the type and size in the browser before asking for a link", async ({
+  page,
+  baseURL,
+}) => {
+  await signedInWithStudios(page, baseURL!);
+  const state = { mine: [] as Item[], calls: [] as string[] };
+  await stubLibrary(page, state);
+  await page.goto("/");
+  await expect(select(page)).toBeEnabled();
+  await select(page).click();
+  const input = page.getByLabel("Upload image");
+  await input.setInputFiles({ name: "x.gif", mimeType: "image/gif", buffer: Buffer.from("gif") });
+  await expect(page.getByRole("alert")).toContainText("Choose a JPEG, PNG or WebP image.");
+  // A 10 MB file made inside the page, so nothing large crosses the test protocol.
+  await input.evaluate((element: HTMLInputElement) => {
+    const transfer = new DataTransfer();
+    transfer.items.add(
+      new File([new Uint8Array(10 * 1024 * 1024 + 1)], "big.jpg", { type: "image/jpeg" }),
+    );
+    element.files = transfer.files;
+    element.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await expect(page.getByRole("alert")).toContainText("over 10 MB");
+  expect(state.calls).toHaveLength(0);
+});
+
+test("shows the friendly message when processing refuses the image", async ({ page, baseURL }) => {
+  await signedInWithStudios(page, baseURL!);
+  const state = { mine: [] as Item[], calls: [] as string[] };
+  await stubLibrary(page, state);
+  await page.goto("/");
+  await expect(select(page)).toBeEnabled();
+  await select(page).click();
+  await page.getByLabel("Upload image").setInputFiles(png);
+  await expect.poll(() => state.calls.includes("COMPLETE")).toBe(true);
+  state.mine = [{ ...readyItem("Office wall"), status: "failed", failureCode: "image_too_small" }];
+  await expect(page.getByRole("alert")).toContainText("too small", { timeout: 30_000 });
+  await expect(page.getByRole("alert")).toContainText("1280 by 720");
+});
+
+test("deletes a background, and says In use when a job renders with it (AC-10)", async ({
+  page,
+  baseURL,
+}) => {
+  await signedInWithStudios(page, baseURL!);
+  const state = { mine: [readyItem("Office wall")], calls: [] as string[] };
+  await stubLibrary(page, state);
+  let attempts = 0;
+  await page.route("**/api/backgrounds/*", (route) => {
+    if (route.request().method() !== "DELETE") return route.fallback();
+    attempts += 1;
+    if (attempts === 1) {
+      return route.fulfill({
+        status: 409,
+        json: { error: "in_use", message: "In use, try again in a minute." },
+      });
+    }
+    state.mine = [];
+    return route.fulfill({ status: 204 });
+  });
+  await page.goto("/");
+  await expect(select(page)).toBeEnabled();
+  await select(page).click();
+  await page.getByRole("button", { name: "Delete Office wall" }).click();
+  await expect(page.getByRole("alert")).toContainText("In use, try again in a minute.");
+  await page.getByRole("button", { name: "Delete Office wall" }).click();
+  await expect(page.getByRole("radio", { name: /Office wall/ })).toHaveCount(0);
 });

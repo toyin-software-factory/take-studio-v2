@@ -86,6 +86,7 @@ describe("GET /api/backgrounds", () => {
       name: "Studio one",
       alt: "A calm studio",
       status: "ready",
+      failureCode: null,
       thumbUrl: `https://r2.test/${studio.thumbKey}?X-Amz-Expires=3600`,
     });
     // An upload uses its name as its alt text.

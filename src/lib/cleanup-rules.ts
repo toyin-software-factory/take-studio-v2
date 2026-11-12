@@ -30,6 +30,14 @@ export const TRANSCRIBE_TAKE_LIMITS = {
   maxAttempts: 3,
 } as const;
 
+/** `ingest-background`'s limits (spec 0008): one image, a few seconds of ffmpeg. */
+export const INGEST_BACKGROUND_LIMITS = {
+  /** `maxDuration` of one attempt, in seconds. */
+  maxDurationSeconds: 5 * 60,
+  /** `retry.maxAttempts`. */
+  maxAttempts: 3,
+} as const;
+
 /** The probe task's limits, shared by the task and the stuck upload recovery's grace period. */
 export const PROBE_LIMITS = {
   /** `maxDuration` of one attempt, in seconds. */

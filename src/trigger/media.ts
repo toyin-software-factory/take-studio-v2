@@ -2,6 +2,8 @@ import { execFile, spawn } from "node:child_process";
 import { readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { z } from "zod";
+import type { ImageFacts } from "@/lib/background-rules";
 import { type ProbeFacts, parseFfprobe, thumbnailSeconds } from "@/lib/probe";
 import { progressOutTimeMs, toneMapFilter } from "@/lib/trim";
 
@@ -223,4 +225,97 @@ export function runFfmpegBytes(
     const onAbort = () => child.kill("SIGKILL");
     signal?.addEventListener("abort", onAbort, { once: true });
   });
+}
+
+const imageStreams = z.object({
+  streams: z
+    .array(
+      z.object({
+        codec_name: z.string().optional(),
+        width: z.number().optional(),
+        height: z.number().optional(),
+        nb_read_packets: z.string().optional(),
+      }),
+    )
+    .default([]),
+});
+const imageFrames = z.object({
+  frames: z
+    .array(
+      z.object({
+        side_data_list: z.array(z.object({ rotation: z.number().optional() }).loose()).optional(),
+      }),
+    )
+    .default([]),
+});
+
+/**
+ * Facts about a local image (spec 0008, Pipeline step 5): codec, size, packet count (more than
+ * one means animated) and the rotation of the first frame (EXIF orientation as a display
+ * matrix). The frame is decoded only when the pixel count is within `maxPixels`, so a
+ * decompression bomb is never decoded here. Null when ffprobe finds no video stream.
+ */
+export async function probeImageFile(
+  path: string,
+  maxPixels: number,
+  signal?: AbortSignal,
+): Promise<ImageFacts | null> {
+  const streams = imageStreams.safeParse(
+    JSON.parse(
+      await runTool(
+        "ffprobe",
+        [
+          "-v",
+          "error",
+          "-select_streams",
+          "v:0",
+          "-count_packets",
+          "-show_entries",
+          "stream=codec_name,width,height,nb_read_packets",
+          "-of",
+          "json",
+          path,
+        ],
+        60_000,
+        signal,
+      ),
+    ),
+  );
+  const stream = streams.success ? streams.data.streams[0] : undefined;
+  if (!stream?.codec_name) return null;
+  const width = stream.width ?? 0;
+  const height = stream.height ?? 0;
+  const base = {
+    codec: stream.codec_name,
+    width,
+    height,
+    frames: Number(stream.nb_read_packets ?? "1") || 1,
+    rotation: 0,
+  };
+  if (width * height > maxPixels || width <= 0 || height <= 0) return base;
+  const frames = imageFrames.safeParse(
+    JSON.parse(
+      await runTool(
+        "ffprobe",
+        [
+          "-v",
+          "error",
+          "-select_streams",
+          "v:0",
+          "-read_intervals",
+          "%+#1",
+          "-show_frames",
+          "-of",
+          "json",
+          path,
+        ],
+        60_000,
+        signal,
+      ),
+    ),
+  );
+  const rotation = frames.success
+    ? (frames.data.frames[0]?.side_data_list?.find((d) => d.rotation !== undefined)?.rotation ?? 0)
+    : 0;
+  return { ...base, rotation };
 }

@@ -1,5 +1,6 @@
 import { logger, schedules } from "@trigger.dev/sdk";
 import { withJobDb } from "@/db/client/job";
+import { failStuckBackgrounds } from "@/db/data/backgrounds";
 import {
   expireDueTakes,
   failAbandonedUploads,
@@ -58,6 +59,8 @@ export const cleanupTask = schedules.task({
       const cancelled = await cancelRuns(stale.flatMap(({ runId }) => (runId ? [runId] : [])));
 
       const expiry = await expireDueTakes(db, now);
+      // Spec 0008: uploaded backgrounds that never finished (an hour) are failed, files queued.
+      const stuckBackgrounds = await failStuckBackgrounds(db, now);
       return {
         probesRedispatched: recovery.redispatched.length,
         stuckUploadsFailed: recovery.failed.length,
@@ -68,6 +71,7 @@ export const cleanupTask = schedules.task({
         refundedSeconds: stale.reduce((sum, job) => sum + job.refundedSeconds, 0),
         expiredTakes: expiry.expired,
         queuedKeys: expiry.queuedKeys,
+        stuckBackgrounds,
       };
     });
 

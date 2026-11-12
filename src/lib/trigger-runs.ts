@@ -69,3 +69,16 @@ export function triggerForTranscribe() {
     return { id: handle.id };
   };
 }
+
+/**
+ * Triggers `ingest-background` for an uploaded background with the global idempotency key
+ * `ingest-{backgroundId}` (spec 0008), so repeated completions never ingest twice. Payload: the
+ * background ID only.
+ */
+export async function triggerIngest(backgroundId: string): Promise<{ readonly id: string }> {
+  const idempotencyKey = await idempotencyKeys.create(`ingest-${backgroundId}`, {
+    scope: "global",
+  });
+  const handle = await tasks.trigger("ingest-background", { backgroundId }, { idempotencyKey });
+  return { id: handle.id };
+}

@@ -9,6 +9,7 @@ export const backgroundItemSchema = z.object({
   name: z.string(),
   alt: z.string(),
   status: z.string(),
+  failureCode: z.string().nullable().default(null),
   thumbUrl: z.string().nullable(),
 });
 export type BackgroundItem = z.infer<typeof backgroundItemSchema>;
