@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   type BackgroundItem,
@@ -36,6 +37,7 @@ export function BackgroundChange({
   bridge,
   onStarted,
   onUncertain,
+  onStale,
 }: {
   readonly detail: TakeDetail;
   readonly bridge: PlayerBridge;
@@ -43,12 +45,15 @@ export function BackgroundChange({
   readonly onStarted: (target: string | null) => void;
   /** The PUT's outcome is unknown (the response was lost): look at the take again. */
   readonly onUncertain: () => Promise<PollResult>;
+  /** A refusal showed the page is out of date: read the take again. */
+  readonly onStale: () => void;
 }) {
   const backgrounds = useBackgrounds();
   const [picked, setPicked] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const upload = useBackgroundUpload(backgrounds.reload, setPicked);
-  const original = usePoster(detail.take.id);
+  const poster = usePoster(detail.take.id);
+  const original = poster.url;
 
   const { take, background, backgroundJob } = detail;
   const failed = backgroundJob?.status === "failed";
@@ -57,7 +62,7 @@ export function BackgroundChange({
   const choice = picked ?? retryTarget ?? (current === DELETED ? ORIGINAL_BACKGROUND : current);
   // "Try again" only while the choice is the failed target; another pick is a new change.
   const retrying = failed && choice === (retryTarget ?? ORIGINAL_BACKGROUND);
-  const start = useBackgroundStart(take.id, choice, onStarted, onUncertain);
+  const start = useBackgroundStart(take.id, choice, onStarted, onUncertain, onStale);
   // The last render found no green screen: a real background would show nowhere (the server
   // refuses it too), so only "Keep original" can be used. The note above says why.
   const noGreen = detail.noGreenScreen && choice !== ORIGINAL_BACKGROUND;
@@ -109,6 +114,7 @@ export function BackgroundChange({
         group="take-background"
         list={list}
         extras={extras}
+        original={{ thumbUrl: original, onThumbError: poster.refresh }}
         value={choice}
         onChange={setPicked}
         mine={{
@@ -166,7 +172,11 @@ export function BackgroundChange({
       {start.checking ? (
         <p role="status">We couldn&rsquo;t confirm the change started. Checking now.</p>
       ) : null}
-      {start.error ? <p role="alert">{start.error}</p> : null}
+      {start.error ? (
+        <Alert variant="danger" title="The change didn't start">
+          {start.error}
+        </Alert>
+      ) : null}
       <CleanEdgesTip />
     </section>
   );

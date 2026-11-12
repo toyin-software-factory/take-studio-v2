@@ -84,7 +84,7 @@ export function TakeStage({
           <p className="text-stage-text-muted">Videos are kept for 30 days.</p>
         </StageMessage>
       ) : take.status === "ready" ? (
-        <TakePlayer takeId={take.id} bridge={bridge} />
+        <TakePlayer takeId={take.id} renderId={detail.latestRender?.id ?? null} bridge={bridge} />
       ) : take.status === "failed" ? (
         <Failed detail={detail} onRetried={onRetried} />
       ) : (

@@ -27,7 +27,7 @@ const STATUS: Readonly<Record<ChangeBackgroundError | "invalid", number>> = {
 export const BACKGROUND_MESSAGES: Readonly<Record<ChangeBackgroundError | "invalid", string>> = {
   not_found: "We couldn't find that take or background.",
   invalid: "Choose a background, or keep the original.",
-  job_active: "Your video is still being made. Try again in a moment.",
+  job_active: "A background change is already running. It'll show here when it's done.",
   original_gone: "This take's video has expired, so its background can't be changed.",
   not_ready: "This take isn't ready yet. Try again when it is.",
   same_background: "This take already has that background.",

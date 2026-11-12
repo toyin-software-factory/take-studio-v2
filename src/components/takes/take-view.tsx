@@ -6,7 +6,13 @@ import { ArrowLeft } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Icon } from "@/components/ui/icon";
 import { type TakeDetail, takeDetailSchema } from "@/lib/take-api";
-import { POLL, backgroundChangeActive, isInFlight, tabTitle } from "@/lib/take-display";
+import {
+  POLL,
+  backgroundChangeActive,
+  isInFlight,
+  keepPolling,
+  tabTitle,
+} from "@/lib/take-display";
 import { callApi } from "./browser-io";
 import { createPlayerBridge } from "./player-bridge";
 import { EmailSwitch } from "./email-switch";
@@ -56,17 +62,18 @@ export function TakeView({
     }
     setFailures(0);
     setDetail(parsed.data);
-    // A background change leaves the take Ready, so keep checking while it runs (spec 0008).
-    return isInFlight(parsed.data.take.status) || backgroundChangeActive(parsed.data.backgroundJob)
-      ? "continue"
-      : "stop";
+    // A background change leaves the take Ready, so keep checking while it runs (spec 0008). A
+    // ready take is also checked now and then (`POLL.idleMs`) so a page left open, or a second
+    // tab, picks up a change finished somewhere else (S3S-T13).
+    return keepPolling(parsed.data) ? "continue" : "stop";
   }, [takeId]);
 
   const status = detail?.take.status ?? initialStatus;
   const title = detail?.take.title ?? initialTitle;
-  const polling =
-    detail === null || isInFlight(status) || backgroundChangeActive(detail.backgroundJob);
-  usePoll(load, POLL.takeMs, stop === null && polling, {
+  const polling = detail === null || keepPolling(detail);
+  const idle =
+    detail !== null && !isInFlight(status) && !backgroundChangeActive(detail.backgroundJob);
+  usePoll(load, idle ? POLL.idleMs : POLL.takeMs, stop === null && polling, {
     immediate: true,
   });
 
@@ -141,6 +148,7 @@ export function TakeView({
                   )
                 }
                 onUncertain={() => load()}
+                onStale={() => void load()}
               />
             </div>
             {detail.take.status === "ready" || detail.take.status === "expired" ? (
