@@ -6,7 +6,7 @@
  * Called from run.ts with its helpers, so the services and the creators are shared.
  */
 import { spawnSync } from "node:child_process";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { expireDueTakes } from "../../src/db/data/cleanup";
 import { finish, startTranscribeJob } from "../../src/db/data/jobs";
 import * as schema from "../../src/db/schema";
@@ -157,12 +157,38 @@ export async function transcriptScenarios(ctx: Ctx): Promise<void> {
       kept: flat.length,
       stored: words.length,
     });
-    if (k > 0 && flat.length === words.length) {
+    check(S, "English: a render was made", t.latestRender !== null, t.latestRender);
+    // The render's own record of what was cut: there must be a cut, and the word measured
+    // below must come after it, or the alignment checks would prove nothing.
+    const [latest] = await db
+      .select()
+      .from(schema.render)
+      .where(and(eq(schema.render.takeId, english), eq(schema.render.isLatest, true)));
+    const cutsMade = latest?.removedRanges ?? [];
+    check(S, "English: the render removed something", cutsMade.length > 0, cutsMade);
+    check(
+      S,
+      "English: the measured word comes after a cut",
+      k > 0 && cutsMade.some((r) => r.endMs <= words[k]!.startMs),
+      { wordMs: words[k]?.startMs, cuts: cutsMade },
+    );
+    if (k > 0 && flat.length === words.length && t.latestRender) {
       const render = await ctx.downloadRender(a, english);
       const orig = onsets(ctx.media("speech-en.mp4"));
       const trimmed = onsets(render);
       const origOnset = orig[orig.length - 1]! * 1000;
       const renderOnset = trimmed[trimmed.length - 1]! * 1000;
+      // Without a real trim both timelines are the same and the checks below would pass by
+      // themselves: the 2.5 s pause must be visibly shorter in the render.
+      check(
+        S,
+        "English: the pause was shortened in the render (by at least 1.5 s)",
+        origOnset - renderOnset >= 1_500,
+        {
+          originalOnsetMs: Math.round(origOnset),
+          renderOnsetMs: Math.round(renderOnset),
+        },
+      );
       // Deepgram's own lead or lag of the word against the sound is the same before and after
       // the trim, so what is left is the mapping onto the trimmed video.
       const jitter = words[k]!.startMs - origOnset;
