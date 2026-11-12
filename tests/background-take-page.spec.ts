@@ -674,16 +674,16 @@ test("when the new video's link fails, the current video keeps playing and Try a
   state.detail = { latestRender: { id: "render-2", status: "succeeded", durationMs: 3000 } };
   await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
   // A few quiet tries, then a message; the working video is never taken away.
-  await expect(page.getByText("didn't load.")).toBeVisible({ timeout: 45_000 });
+  await expect(page.getByText(/didn.t load\./)).toBeVisible({ timeout: 45_000 });
   await expect(page.locator("video[data-mark=same]")).toHaveAttribute("src", `${R2}/clip.mp4`);
 
   broken = false;
   fresh = true;
   await page
     .getByRole("status")
-    .filter({ hasText: "didn't load." })
+    .filter({ hasText: /didn.t load\./ })
     .getByRole("button", { name: "Try again" })
     .click();
   await expect(page.locator("video[data-mark=same]")).toHaveAttribute("src", `${R2}/clip2.mp4`);
-  await expect(page.getByText("didn't load.")).toHaveCount(0);
+  await expect(page.getByText(/didn.t load\./)).toHaveCount(0);
 });
