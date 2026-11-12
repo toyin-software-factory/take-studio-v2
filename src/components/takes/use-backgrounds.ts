@@ -40,5 +40,21 @@ export function useBackgrounds() {
       setState((prev) => (next.kind === "failed" && prev.kind === "ready" ? prev : next)),
     );
   }, []);
-  return { state, reload };
+  // A deleted background leaves the cached list at once, so its tile cannot be picked and an
+  // upload falls back to Keep original even before (or without) a successful refresh.
+  const forget = useCallback((id: string) => {
+    setState((prev) =>
+      prev.kind === "ready"
+        ? {
+            kind: "ready",
+            list: {
+              ...prev.list,
+              mine: prev.list.mine.filter((item) => item.id !== id),
+              defaultId: prev.list.defaultId === id ? null : prev.list.defaultId,
+            },
+          }
+        : prev,
+    );
+  }, []);
+  return { state, reload, forget };
 }

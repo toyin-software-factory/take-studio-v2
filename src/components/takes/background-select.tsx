@@ -31,7 +31,7 @@ export function BackgroundSelect({
   readonly onForget: (id: string) => void;
   readonly disabled?: boolean;
 }) {
-  const { state, reload } = backgrounds;
+  const { state, reload, forget } = backgrounds;
   const upload = useBackgroundUpload(reload, onPick);
   const list = state.kind === "ready" ? state.list : null;
   const value = picked ?? list?.defaultId ?? ORIGINAL_BACKGROUND;
@@ -39,7 +39,10 @@ export function BackgroundSelect({
   // Deleting the background that is picked on this page puts the pick back to Keep original (see
   // `onForget`), so the next upload never sends an ID that no longer exists.
   const removeBackground = async (id: string) => {
-    if (await upload.remove(id)) onForget(id);
+    if (await upload.remove(id)) {
+      forget(id);
+      onForget(id);
+    }
   };
 
   const trigger = (

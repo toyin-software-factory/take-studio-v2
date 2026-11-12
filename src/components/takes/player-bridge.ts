@@ -15,12 +15,20 @@ export type PlayerBridge = {
   /** The caption track's `?v=`, or null while there is no transcript to show. */
   readonly setCaptions: (version: string | null) => void;
   readonly getCaptions: () => string | null;
+  /** A still shown over the video while a background is being tried (spec 0008, AC-4). */
+  readonly setPreview: (preview: PreviewOverlay | null) => void;
+  readonly getPreview: () => PreviewOverlay | null;
   readonly subscribe: (listener: () => void) => () => void;
 };
+
+export type PreviewOverlay =
+  | { readonly kind: "making"; readonly label: string }
+  | { readonly kind: "image"; readonly label: string; readonly url: string };
 
 export function createPlayerBridge(): PlayerBridge {
   let time = 0;
   let captions: string | null = null;
+  let preview: PreviewOverlay | null = null;
   let seekFn: ((ms: number) => void) | null = null;
   const listeners = new Set<() => void>();
   const emit = () => listeners.forEach((listener) => listener());
@@ -40,6 +48,19 @@ export function createPlayerBridge(): PlayerBridge {
       emit();
     },
     getCaptions: () => captions,
+    setPreview: (next) => {
+      const same =
+        next === preview ||
+        (next !== null &&
+          preview !== null &&
+          next.kind === preview.kind &&
+          next.label === preview.label &&
+          (next.kind === "making" || (preview.kind === "image" && next.url === preview.url)));
+      if (same) return;
+      preview = next;
+      emit();
+    },
+    getPreview: () => preview,
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
@@ -67,4 +88,9 @@ export function useCurrentParagraph(
     },
     () => null,
   );
+}
+
+/** The still shown over the video, or null. */
+export function usePreviewOverlay(bridge: PlayerBridge): PreviewOverlay | null {
+  return useSyncExternalStore(bridge.subscribe, bridge.getPreview, () => null);
 }
