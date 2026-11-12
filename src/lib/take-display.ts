@@ -1,4 +1,5 @@
 import { isMediaFailure } from "./failure-codes";
+import { isVideoExpired } from "./video-expiry";
 import { uploadFailureMessage } from "./take-messages";
 
 /**
@@ -75,7 +76,7 @@ export function effectiveStatus(
   expired: boolean,
   now: Date,
 ): string {
-  const past = videoExpiresAt !== null && new Date(videoExpiresAt).getTime() <= now.getTime();
+  const past = isVideoExpired(videoExpiresAt, now);
   return status === "ready" && (expired || past) ? "expired" : status;
 }
 
@@ -112,7 +113,8 @@ export function expiryNote(
 ): string | null {
   if (!videoExpiresAt) return null;
   const left = new Date(videoExpiresAt).getTime() - now.getTime();
-  if (expired || left <= 0) return `Video expired on ${shortDate(videoExpiresAt)}`;
+  if (expired || isVideoExpired(videoExpiresAt, now))
+    return `Video expired on ${shortDate(videoExpiresAt)}`;
   const days = Math.floor(left / DAY_MS);
   if (days === 0) return "Video expires in less than a day";
   return `Video expires in ${days} ${days === 1 ? "day" : "days"}`;

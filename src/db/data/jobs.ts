@@ -18,6 +18,8 @@ import {
   type TakeStatus,
 } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
+import { isExpired } from "@/lib/take-media";
+import { isVideoExpired } from "@/lib/video-expiry";
 import { usageAccountHash } from "@/lib/usage-hash";
 import {
   background,
@@ -471,11 +473,7 @@ export async function startJob(
       }
       // A failed take whose video has expired has nothing left to process (matches the
       // page's and the retry route's retryable check).
-      if (
-        current.status === "failed" &&
-        current.videoExpiresAt !== null &&
-        current.videoExpiresAt.getTime() <= now.getTime()
-      ) {
+      if (current.status === "failed" && isVideoExpired(current.videoExpiresAt, now)) {
         return err("invalid_transition");
       }
 
@@ -575,10 +573,7 @@ export async function startTranscribeJob(
       const [current] = await tx.select().from(take).where(eq(take.id, input.takeId)).for("update");
       if (!current) return err("not_found");
 
-      const expired =
-        current.status === "expired" ||
-        (current.videoExpiresAt !== null && current.videoExpiresAt.getTime() <= now.getTime());
-      if (expired) return err("original_gone");
+      if (isExpired(current, now)) return err("original_gone");
       if (current.status !== "ready") return err("invalid_transition");
 
       const [done] = await tx
@@ -758,10 +753,7 @@ export async function startBackgroundJob(
         .for("update");
       if (!current) return err("not_found");
 
-      const expired =
-        current.status === "expired" ||
-        (current.videoExpiresAt !== null && current.videoExpiresAt.getTime() <= now.getTime());
-      if (expired) return err("original_gone");
+      if (isExpired(current, now)) return err("original_gone");
       if (current.status !== "ready") return err("invalid_transition");
 
       const [active] = await tx

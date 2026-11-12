@@ -1,3 +1,6 @@
+import { isMediaFailure } from "./failure-codes";
+import { isVideoExpired } from "./video-expiry";
+
 /**
  * Pure rules behind the take routes (spec 0004 API surface, AC-7, AC-9, AC-10, AC-12):
  * download file names, expiry, "Removed m:ss", the AC-7 note, retryability and which stored
@@ -52,10 +55,7 @@ export function isExpired(
   take: { readonly status: string; readonly videoExpiresAt: Date | null },
   now: Date,
 ): boolean {
-  return (
-    take.status === "expired" ||
-    (take.videoExpiresAt !== null && take.videoExpiresAt.getTime() <= now.getTime())
-  );
+  return take.status === "expired" || isVideoExpired(take.videoExpiresAt, now);
 }
 
 type Range = { readonly startMs: number; readonly endMs: number };
@@ -81,20 +81,6 @@ export function takeNote(job: JobFacts | null, hasRender: boolean): "no_audio" |
 }
 
 /**
- * Failures caused by the uploaded media itself: the creator must upload another video.
- * Same set as `isMediaFailure` in #32 (src/lib/failure-codes.ts); switch to that import once
- * it lands, so there is one definition.
- */
-const MEDIA_FAILURE_CODES: ReadonlySet<string> = new Set([
-  "invalid_media",
-  "too_long",
-  "too_large",
-  "resolution_exceeded",
-  "corrupt_upload",
-  "upload_abandoned",
-]);
-
-/**
  * Retry (AC-10, spec 0002 `failed → processing`): any failure that isn't a media failure, on a
  * take that was probed (it has a length) and whose video hasn't expired. So a take cancelled
  * while running can be tried again; media problems mean "Upload another video" instead.
@@ -113,7 +99,7 @@ export function isRetryable(
     // The original is gone or about to go (the sweep may lag 15 minutes): nothing to retry.
     !isExpired(take, now) &&
     take.durationMs !== null &&
-    !(take.failureCode !== null && MEDIA_FAILURE_CODES.has(take.failureCode))
+    !isMediaFailure(take.failureCode)
   );
 }
 

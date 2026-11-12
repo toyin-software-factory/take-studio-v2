@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { cutVersion, isStalePreview, previewKey } from "@/lib/background-preview";
+import { isExpired } from "@/lib/take-media";
 import { removedRanges } from "@/lib/cut-rules";
 import { type Result, err, ok } from "@/lib/result";
 import { background, backgroundPreview, cut, render, take } from "../schema";
@@ -13,17 +14,6 @@ import type { Background, BackgroundPreview, Executor, Render, Take } from "../t
  * `previews/{takeId}/{previewId}.jpg`, deleted by exact key (a take's rows are read on take
  * deletion, see `takeFileKeys`).
  */
-
-/** True when the take's original is gone or past its expiry (previews of it are not served). */
-function takeExpired(
-  t: { readonly status: string; readonly videoExpiresAt: Date | null },
-  now: Date,
-): boolean {
-  return (
-    t.status === "expired" ||
-    (t.videoExpiresAt !== null && t.videoExpiresAt.getTime() <= now.getTime())
-  );
-}
 
 export type RequestPreviewError =
   "not_found" | "original_gone" | "not_ready" | "background_not_ready";
@@ -71,7 +61,7 @@ export async function requestPreview(
       .where(and(eq(take.id, input.takeId), eq(take.creatorId, input.creatorId)))
       .for("update");
     if (!current) return err("not_found");
-    if (takeExpired(current, now)) return err("original_gone");
+    if (isExpired(current, now)) return err("original_gone");
     if (current.status !== "ready") return err("not_ready");
 
     const cuts = await tx.select().from(cut).where(eq(cut.takeId, current.id));
@@ -137,7 +127,7 @@ export async function getPreview(
     .where(and(eq(take.id, input.takeId), eq(take.creatorId, input.creatorId)));
   if (!owned) return err("not_found");
   // Expiry queues the previews' files for deletion, so a still of an expired take is not served.
-  if (takeExpired(owned, input.now ?? new Date())) return err("original_gone");
+  if (isExpired(owned, input.now ?? new Date())) return err("original_gone");
   const [chosen] = await db.select().from(background).where(eq(background.id, input.backgroundId));
   if (!chosen || (chosen.creatorId !== null && chosen.creatorId !== input.creatorId)) {
     return err("not_found");
@@ -185,7 +175,7 @@ export async function loadPreviewWork(
   const [bg] = await db.select().from(background).where(eq(background.id, preview.backgroundId));
   if (!t || !bg || bg.status !== "ready" || !bg.imageKey) return null;
   // An expired take has no original to read, and its files are being deleted.
-  if (takeExpired(t, now)) return null;
+  if (isExpired(t, now)) return null;
   const [latestRender] = await db
     .select()
     .from(render)
@@ -221,7 +211,7 @@ export async function completePreview(
       .from(take)
       .where(eq(take.id, row.takeId))
       .for("share");
-    if (!owner || takeExpired(owner, input.now ?? new Date())) return err("gone");
+    if (!owner || isExpired(owner, input.now ?? new Date())) return err("gone");
     const [updated] = await tx
       .update(backgroundPreview)
       .set({
