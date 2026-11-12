@@ -148,9 +148,9 @@ Replace the green screen with a studio background: pick one of a few built in st
 - [x] Design it (spec): `/architect studio background swap`
 - [ ] Build it: `/develop studio background swap`
    - [x] First thread: keying in the video job, detection, always render with a background (AC-2, AC-3)
-   - [ ] Choose at upload and change later: upload choice and default, background re-renders that keep the take Ready (AC-1, AC-5, AC-6) (re render and its route done in S3S-T03; upload choice in S3S-T02)
-   - [ ] Previews and uploaded backgrounds: preview stills, upload, ingest, library, delete (AC-4, AC-8, AC-9, AC-10)
-   - [ ] Picker, tips and the six studios, then end to end tests (AC-4, AC-7, AC-11, AC-12, AC-2, AC-5)
+   - [x] Choose at upload and change later: upload choice and default, background re-renders that keep the take Ready (AC-1, AC-5, AC-6) (re render and its route done in S3S-T03; upload choice in S3S-T02)
+   - [x] Previews and uploaded backgrounds: preview stills, upload, ingest, library, delete (AC-4, AC-8, AC-9, AC-10)
+   - [x] Picker, tips and the six studios, then end to end tests (AC-4, AC-7, AC-11, AC-12, AC-2, AC-5)
 - [ ] Verify it: `/check verify studio background swap` (`docs/reviews/0008-studio-background-verify.md`: not closed, AC-2 and AC-4 fail on real footage, S3S-T10; the other ten criteria pass)
 - [ ] Test it: `/test studio background swap`
 Spec [0008](../specs/0008-studio-background.md) · code in `src/lib/keying.ts`, `src/trigger/process-take.ts`, `src/trigger/preview-background.ts`, `src/trigger/ingest-background.ts`, `src/db/data/jobs/`, `src/app/api/backgrounds/`, `src/components/takes/`
