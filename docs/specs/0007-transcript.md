@@ -1,7 +1,7 @@
 # 0007. Transcript for every take
 
 **Date**: 2026-11-11
-**Status**: In Progress
+**Status**: Accepted
 
 ## Summary
 
