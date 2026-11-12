@@ -236,3 +236,4 @@ Tracer Bullet: a thin thread from one built in background to a keyed video first
 - [ ] Later: AI background removal as an optional upgrade for takes without a green screen.
 - [ ] Privacy page (scope feature 16): mention uploaded background images as stored personal data.
 - [ ] Slice 6 usage ledger: count background changes per creator independent of takes. Today `processing_job` rows cascade with their take, so deleting a take lowers the hourly background change count. A creator can only exploit this by deleting their own takes, so the extra changes are bounded by the takes they own and give up (new takes still need an upload, at most 10 per hour). Lead decision on #103, 2026-11-12.
+- [ ] Before launch: time a keyed render on real green screen footage (10 minute 1080p). Synthetic footage took 913 s against 130 s plain; check it stays inside `PROCESS_TAKE_LIMITS` (S3S-T09 owed item).
