@@ -38,6 +38,7 @@ export function homeLimits(): readonly {
 
 const minutes = Math.round(MEDIA_LIMITS.maxDurationMs / 60_000);
 const gigabytes = Math.round(MEDIA_LIMITS.maxBytes / GB);
+const resolution = `${MEDIA_LIMITS.maxShortSide}p`;
 
 export const NAV_LINKS = [
   { href: "#reel", label: "how it works" },
@@ -84,7 +85,7 @@ export const PROOF = {
     "Course videos",
     "Podcasts",
   ],
-  formats: ["MP4", "MOV", "1080p", `${minutes} min`, `${gigabytes} GB`, "SRT", "TXT"],
+  formats: ["MP4", "MOV", resolution, `${minutes} min`, `${gigabytes} GB`, "SRT", "TXT"],
 } as const;
 
 export const STUDIO = {
@@ -188,7 +189,7 @@ export const FAQ = {
     },
     {
       q: "Which files can I upload?",
-      a: `MP4 or MOV, up to ${minutes} minutes long, about ${gigabytes} GB, and up to 1080p. If a file is over a limit, we tell you which one before anything uploads.`,
+      a: `MP4 or MOV, up to ${minutes} minutes long, about ${gigabytes} GB, and up to ${resolution}. We check the file type and size before upload. We check the length and resolution after upload, and a file over either limit fails with a message that names it.`,
     },
     {
       q: "Can I get the untrimmed video?",

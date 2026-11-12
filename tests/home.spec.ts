@@ -69,6 +69,8 @@ test("page text and metadata are in the HTML with JavaScript off (AC-3)", async 
   await expect(page.getByRole("heading", { name: /Before you upload/ })).toBeVisible();
   // Every FAQ answer is shown without scripts.
   for (const item of FAQ.items) await expect(page.getByText(item.a)).toBeVisible();
+  // Not inert without scripts, so a screen reader can read them too.
+  await expect(page.locator("#faq-1")).not.toHaveAttribute("inert");
 
   const html = await response!.text();
   expect(html).toContain("<title>Film one take. Get it back ready to post. · Take Studio</title>");

@@ -101,9 +101,11 @@
 .h-muted {
   color: var(--color-text-muted);
 }
-[data-theme="dark"] .h-muted,
-[data-theme="dark"] .h-eyebrow {
+[data-theme="dark"] .h-muted {
   color: var(--color-on-dark-60);
+}
+[data-theme="dark"] .h-eyebrow {
+  color: var(--color-on-dark-75);
 }
 .h-section {
   padding-block: var(--section-y);
@@ -214,6 +216,10 @@
   align-items: center;
   padding-inline: var(--container-pad);
   color: var(--color-ink);
+  /* A light glass surface, so the links stay readable over the dark studio section as it scrolls
+     behind the bar; the floating pill version comes with the motion work (AC-4). */
+  background: var(--color-nav-glass-light);
+  backdrop-filter: var(--blur-nav);
 }
 .h-logo {
   display: inline-flex;

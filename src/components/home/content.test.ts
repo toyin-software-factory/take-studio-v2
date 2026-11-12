@@ -72,6 +72,17 @@ describe("the limits come from the rules (spec 0010, value sourcing)", () => {
       "30days",
     ]);
   });
+  it("never type 1080p by hand: the chips and the FAQ read MEDIA_LIMITS", () => {
+    const text = `${MEDIA_LIMITS.maxShortSide}p`;
+    expect(content.PROOF.formats).toContain(text);
+    expect(content.FAQ.items[1]!.a).toContain(`up to ${text}`);
+  });
+  it("say when each upload check happens (type and size before, length and resolution after)", () => {
+    const a = content.FAQ.items[1]!.a;
+    expect(a).toContain("before upload");
+    expect(a).toContain("after upload");
+    expect(a).not.toMatch(/before anything uploads/);
+  });
   it("show up in the FAQ and the format chips", () => {
     expect(content.FAQ.items[1]!.a).toContain("10 minutes");
     expect(content.FAQ.items[1]!.a).toContain("2 GB");
