@@ -11,13 +11,10 @@ import type { Db } from "@/db/types";
 import { backgroundKeys } from "@/lib/background-rules";
 import type { R2 } from "@/lib/r2";
 import { type IngestIo, ingestBackground, realIo } from "./ingest-background";
+import { describeWithFfmpeg } from "@/test/ffmpeg";
 
 // Spec 0008, Pipeline step 5 (AC-8 to AC-10): the ingest of an uploaded background, with the
 // real ffprobe and ffmpeg on tiny generated images and a stand in for R2 (files in a folder).
-const ffmpegOk = (() => {
-  const run = spawnSync("ffmpeg", ["-hide_banner", "-encoders"], { encoding: "utf8" });
-  return run.status === 0 && run.stdout.includes("libwebp");
-})();
 
 let testDb: TestDb;
 let db: Db;
@@ -129,7 +126,7 @@ async function withOrientation(source: string, name: string, orientation: number
   return path;
 }
 
-describe.skipIf(!ffmpegOk)("ingest with the real image tools", () => {
+describeWithFfmpeg("ingest with the real image tools", () => {
   it("makes a JPEG ready: image.jpg and a 480 by 270 thumb.webp, with the stored size", async () => {
     const file = await image("ok.jpg", [
       "-f",

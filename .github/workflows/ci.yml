@@ -37,6 +37,9 @@ jobs:
       DATABASE_URL_DIRECT: postgres://postgres:postgres@localhost:5432/take_studio
       CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: postgres://postgres:postgres@localhost:5432/take_studio
       NEXT_TELEMETRY_DISABLED: "1"
+      # The pinned ffmpeg (the same build as trigger.config.ts).
+      FFMPEG_URL: https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-2025-09-30-13-19/ffmpeg-n7.1.2-5-g8f77695e65-linux64-gpl-7.1.tar.xz
+      FFMPEG_SHA256: 49df247d3908323bf1d99c00480fed8603506cc0cb2a10ad8f905a961c3ceab8
     steps:
       - uses: actions/checkout@v5
 
@@ -49,6 +52,32 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # The same pinned BtbN ffmpeg and ffprobe build the jobs use (trigger.config.ts: change the
+      # URL and the hash together, a test keeps the two files equal). The ingest suites run the real
+      # tools and fail, never skip, when CI is set and they are missing. Downloaded once per hash
+      # (cached), checked against its SHA-256 and put on the PATH; no apt.
+      - name: Cache the pinned ffmpeg
+        id: ffmpeg-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/ffmpeg-pinned
+          key: ffmpeg-${{ env.FFMPEG_SHA256 }}
+
+      - name: Install the pinned ffmpeg
+        if: steps.ffmpeg-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$HOME/ffmpeg-pinned"
+          curl -fsSL -o /tmp/ffmpeg.tar.xz "$FFMPEG_URL"
+          echo "$FFMPEG_SHA256  /tmp/ffmpeg.tar.xz" | sha256sum -c -
+          tar -xJf /tmp/ffmpeg.tar.xz -C "$HOME/ffmpeg-pinned" --strip-components=2 --wildcards '*/bin/ffmpeg' '*/bin/ffprobe'
+          rm /tmp/ffmpeg.tar.xz
+
+      - name: Put the pinned ffmpeg on the PATH
+        run: |
+          echo "$HOME/ffmpeg-pinned" >> "$GITHUB_PATH"
+          "$HOME/ffmpeg-pinned/ffmpeg" -hide_banner -version | head -1
+          "$HOME/ffmpeg-pinned/ffprobe" -hide_banner -version | head -1
+
       - name: Lint
         run: pnpm lint
 
@@ -60,6 +89,20 @@ jobs:
 
       - name: Unit tests
         run: pnpm test
+
+      # Only these two suites, again, so their test counts show in the log by themselves. A skipped
+      # test fails the step (with CI set the guard fails them instead, so none should be skipped).
+      - name: The ffmpeg suites ran
+        shell: bash
+        run: |
+          set -o pipefail
+          pnpm exec vitest run --no-color src/trigger/ingest-background.test.ts src/background-upload.e2e.test.ts 2>&1 | tee /tmp/ffmpeg-suites.log
+          # Colour is off, and codes are stripped anyway: with CI set Vitest would otherwise dim the
+          # "Tests" label and an anchored match would miss it.
+          if sed 's/\x1b\[[0-9;]*m//g' /tmp/ffmpeg-suites.log | grep -E "^\s*Tests .*skipped"; then
+            echo "::error::An ffmpeg suite was skipped in CI."
+            exit 1
+          fi
 
       - name: No uncommitted migration
         run: |
