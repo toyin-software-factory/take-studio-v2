@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import type { TakeStatus } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
 import { type Probe, canTransition, checkUpload, videoExpiresAt } from "@/lib/take-rules";
@@ -99,4 +99,30 @@ export async function markUploaded(
     uploadId: null,
     videoExpiresAt: videoExpiresAt(now),
   });
+}
+
+/**
+ * Marks an upload as still active: sets `updated_at` to `now` while the take is `uploading` and
+ * has not been touched in the last `everyMs` (so a browser asking for part links every few
+ * seconds writes at most once a minute). The cleanup judges an upload idle by `updated_at`.
+ * Returns whether a row was written.
+ */
+export async function touchUploading(
+  db: Executor,
+  takeId: string,
+  now: Date,
+  everyMs: number,
+): Promise<boolean> {
+  const [row] = await db
+    .update(take)
+    .set({ updatedAt: now })
+    .where(
+      and(
+        eq(take.id, takeId),
+        eq(take.status, "uploading"),
+        lt(take.updatedAt, new Date(now.getTime() - everyMs)),
+      ),
+    )
+    .returning({ id: take.id });
+  return row !== undefined;
 }

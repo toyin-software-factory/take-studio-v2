@@ -4,6 +4,8 @@
  * maxDuration, and changes them here.
  */
 
+import { UPLOAD } from "./uploads";
+
 const MINUTE = 60 * 1000;
 
 /**
@@ -47,10 +49,17 @@ export const PROBE_LIMITS = {
 } as const;
 
 export const CLEANUP = {
-  /** How long a whole upload may take (part links are issued for 15 minutes each, per part). */
-  uploadLinkLifetimeMs: 60 * MINUTE,
-  /** Extra time after the link expires before an `uploading` take counts as abandoned. */
-  uploadAbandonMarginMs: 15 * MINUTE,
+  /**
+   * An `uploading` take is abandoned once nothing has touched it for this long: the part link
+   * lifetime plus a margin. A browser that is still sending asks for fresh part links at least
+   * that often (each link lasts `UPLOAD.partLinkSeconds`), and every request touches
+   * `take.updated_at`, so a slow upload that keeps progressing is never failed.
+   */
+  uploadIdleMs: UPLOAD.partLinkSeconds * 1000 + 15 * MINUTE,
+  /** The hard stop: an upload still `uploading` this long after it was created is failed. */
+  uploadBackstopMs: 6 * 60 * MINUTE,
+  /** Part link requests touch `take.updated_at` at most this often. */
+  uploadTouchEveryMs: MINUTE,
   /** A job still `queued` after this was never picked up. */
   queuedStaleMs: 15 * MINUTE,
   /**
@@ -102,10 +111,10 @@ export const STORAGE_DELETION = {
 export function cleanupCutoffs(now: Date) {
   const at = now.getTime();
   return {
-    /** `uploading` takes created before this are abandoned. */
-    abandonedUploadBefore: new Date(
-      at - CLEANUP.uploadLinkLifetimeMs - CLEANUP.uploadAbandonMarginMs,
-    ),
+    /** `uploading` takes last touched before this are abandoned (idle). */
+    idleUploadBefore: new Date(at - CLEANUP.uploadIdleMs),
+    /** `uploading` takes created before this are abandoned whatever their activity. */
+    uploadBackstopBefore: new Date(at - CLEANUP.uploadBackstopMs),
     /** `queued` jobs created before this are stale. */
     queuedJobBefore: new Date(at - CLEANUP.queuedStaleMs),
     /** `running` jobs of the video kinds started before this are stale. */

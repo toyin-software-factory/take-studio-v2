@@ -22,8 +22,9 @@ export type AbandonedUpload = {
 };
 
 /**
- * Fails `uploading` takes older than the upload link lifetime plus a margin with
- * `upload_abandoned`, clears their upload ID and queues the original key. Before each one it
+ * Fails `uploading` takes with `upload_abandoned` when they are idle (no part links were issued
+ * for longer than the link lifetime plus a margin; issuing links touches `updated_at`) or older
+ * than the 6 hour backstop, clears their upload ID and queues the original key. Before each one it
  * checks storage itself (`headObject`): a take whose original is stored at the stated size
  * belongs to the stuck upload recovery and is never failed here, and a take whose storage
  * cannot be checked is left for the next run. No run local list stands in for that check, so
@@ -38,7 +39,7 @@ export async function failAbandonedUploads(
 ): Promise<readonly AbandonedUpload[]> {
   const clock = scan.clock ?? Date.now;
   const stopAt = clock() + (scan.budgetMs ?? DEFAULT_SCAN_BUDGET_MS);
-  const { abandonedUploadBefore } = cleanupCutoffs(now);
+  const { idleUploadBefore, uploadBackstopBefore } = cleanupCutoffs(now);
   const candidates = await db
     .select({
       id: take.id,
@@ -47,7 +48,13 @@ export async function failAbandonedUploads(
       uploadId: take.uploadId,
     })
     .from(take)
-    .where(and(eq(take.status, "uploading"), lt(take.createdAt, abandonedUploadBefore)))
+    .where(
+      and(
+        eq(take.status, "uploading"),
+        // Idle (no part links asked for lately), or past the hard stop whatever it is doing.
+        or(lt(take.updatedAt, idleUploadBefore), lt(take.createdAt, uploadBackstopBefore)),
+      ),
+    )
     .orderBy(asc(take.updatedAt))
     .limit(CLEANUP.batchSize);
 
