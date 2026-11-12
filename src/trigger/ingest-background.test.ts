@@ -495,10 +495,13 @@ describe("ingest writes after a deletion or a deadline", () => {
   });
 
   it("queues nothing when the row still exists, because a retry overwrites the files", async () => {
-    const before = (await db.select().from(storageDeletion)).length;
-    const { outcome } = await failingPut(false);
+    const { outcome, keys } = await failingPut(false);
     expect(outcome).toBe("storage down");
-    expect((await db.select().from(storageDeletion)).length).toBe(before);
+    // Only this background's keys count: other test files share the table and run at the same time.
+    const mine = (await db.select().from(storageDeletion))
+      .map((r) => r.objectKey)
+      .filter((key) => [keys.sourceKey, keys.imageKey, keys.thumbKey].includes(key));
+    expect(mine).toEqual([]);
   });
 
   it("hands the job's own signal to every output write", async () => {
