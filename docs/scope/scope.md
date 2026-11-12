@@ -25,7 +25,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 1 | Stack & architecture | Foundation | done |
 | 2 | Coding standards & tooling | Foundation | done |
 | 3 | Data model | Foundation | done |
-| 4 | Design system & UI foundation | Foundation | done |
+| 4 | Design system & UI foundation | Foundation | in-progress |
 | 5 | Core take loop | Slice 1 | done |
 | 6 | Error monitoring | Slice 1 | done |
 | 7 | Transcript | Slice 2 | done |
@@ -36,7 +36,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 12 | Monthly usage limit | Slice 6 | planned |
 | 13 | Public API | Slice 7 | planned |
 | 14 | MCP server for AI agents | Slice 7 | planned |
-| 15 | Landing page & SEO | Launch | planned |
+| 15 | Landing page & SEO | Launch | ready to build |
 | 16 | Privacy & terms pages | Launch | planned |
 | 17 | Product analytics | Launch | planned |
 | 18 | Email sign in and take ready email | Slice 1 | done |
@@ -71,7 +71,7 @@ Core entities every slice builds on: creators, takes, processing jobs and their 
 - [x] Test it: `/test data model`
 Spec [0002](../specs/0002-data-model/index.md) · code in `src/db/`, `src/lib/`, `src/server/{takes,jobs,cuts,renders,account}/`, `src/trigger/`
 
-### 4. Design system & UI foundation · done
+### 4. Design system & UI foundation · in-progress
 Visual language, layout and base components (upload, progress, video player, timeline, download), with Mobbin references in `design.md`.
 **Done when:** `design.md` covers type, color, spacing and components with Mobbin references, and base components meet WCAG AA (keyboard, focus, contrast).
 - [x] Design it (spec): `/architect design system & UI foundation`
@@ -82,7 +82,12 @@ Visual language, layout and base components (upload, progress, video player, tim
    - [x] `/design` gallery with axe checks (AC-5, AC-7) (FDS-T01, FDS-T02)
 - [x] Verify it: `/check verify design system & UI foundation`
 - [x] Test it: `/test design system & UI foundation`
-Spec [0003](../specs/0003-design-system.md) · rules in [design.md](../../design.md) · code in `src/app/globals.css`, `src/components/ui/`, `src/components/shell/`, `src/components/stage.tsx`, `src/app/design/`
+- [ ] Redesign v2 (Toyin, 2026-11-12): `/develop design system v2`
+   - [ ] Tokens, Inter Tight, base components and `/design` gallery (AC-1, AC-2, AC-3, AC-8, AC-10)
+   - [ ] App shell: sidebar, sheet menu, glass top bar (AC-4, AC-7)
+   - [ ] Take page restyle, built features only (AC-5, AC-7, AC-9)
+   - [ ] Library, upload, sign in and error pages, axe and bundle checks (AC-6, AC-8, AC-9, AC-10)
+Spec [0009](../specs/0009-design-system-v2/index.md) (supersedes [0003](../specs/0003-design-system.md)) · rules in [design.md](../../design.md) · code in `src/app/globals.css`, `src/components/ui/`, `src/components/shell/`, `src/components/stage.tsx`, `src/app/design/`
 
 ## Slice 1: Core take loop
 
@@ -195,10 +200,17 @@ An MCP server so AI assistants (Claude, ChatGPT and agent tools) can use Take St
 
 ## Launch
 
-### 15. Landing page & SEO · needs a decision
-A simple public page that explains Take Studio and leads to sign up.
-**Done when:** the landing page shows what the product does and a sign up call to action, has title, description and social share preview metadata, and meets WCAG AA.
-- [ ] Design it (spec): `/architect landing page & SEO`
+### 15. Landing page & SEO · ready to build
+A public page that explains Take Studio and leads to sign up, built from Toyin's v2 homepage design (2026-11-12).
+**Done when:** the landing page shows what the product does with copy true today and a sign up call to action, has title, description and social share preview metadata, and meets WCAG AA.
+- [x] Design it (spec): `/architect landing page & SEO`
+- [ ] Build it: `/develop landing page & SEO`
+   - [ ] Static page, true copy, media, metadata, robots and sitemap (AC-1, AC-2, AC-3, AC-7, AC-9, AC-11)
+   - [ ] Motion core, nav, hero fan and reel (AC-4, AC-5, AC-8)
+   - [ ] The studio floor with lazy Three.js (AC-6, AC-8, AC-10)
+   - [ ] Details, then reduced motion, responsive, a11y and performance passes (AC-5, AC-7, AC-8, AC-9, AC-10)
+- [ ] Verify it: `/check verify landing page & SEO`
+Spec [0010](../specs/0010-landing-page.md) · rules in [design.md](../../design.md) · code in `src/app/page.tsx`, `src/components/home/`
 
 ### 16. Privacy & terms pages
 Public privacy policy and terms, needed because we store people's videos.
