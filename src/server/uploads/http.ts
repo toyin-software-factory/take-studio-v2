@@ -34,6 +34,8 @@ const STATUS: Readonly<Record<UploadError, number>> = {
   size_mismatch: 422,
   storage_error: 503,
   dispatch_failed: 503,
+  background_not_found: 404,
+  background_not_ready: 409,
 };
 
 const MESSAGES: Readonly<Record<UploadError, string>> = {
@@ -46,6 +48,9 @@ const MESSAGES: Readonly<Record<UploadError, string>> = {
   size_mismatch: "The uploaded file doesn't match the file you chose. Please upload it again.",
   storage_error: "Storage is having a problem right now. Please try again.",
   dispatch_failed: "Your upload is safe, but processing didn't start. Please try again.",
+  background_not_found: "We couldn't find that background. Choose another or keep the original.",
+  background_not_ready:
+    "That background isn't ready yet. Choose another, or keep the original and change it later.",
 };
 
 function json(body: unknown, status: number): Response {

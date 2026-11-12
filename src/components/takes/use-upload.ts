@@ -39,7 +39,7 @@ export function useUpload() {
   useEffect(() => () => controller.current?.abort(), []);
 
   const start = useCallback(
-    async (file: File) => {
+    async (file: File, backgroundId?: string) => {
       if (controller.current) return;
       const check = checkFile({ name: file.name, size: file.size, type: file.type });
       if (!check.ok) {
@@ -49,12 +49,20 @@ export function useUpload() {
       const abort = new AbortController();
       controller.current = abort;
       setState({ kind: "uploading", fileName: file.name, percent: 0 });
-      const outcome = await uploadFile(file, check.container, browserUploadIo, abort.signal, {
-        onProgress: (percent) => setState((s) => (s.kind === "uploading" ? { ...s, percent } : s)),
-        onPhase: (phase) => {
-          if (phase === "completing") setState({ kind: "completing", fileName: file.name });
+      const outcome = await uploadFile(
+        file,
+        check.container,
+        browserUploadIo,
+        abort.signal,
+        {
+          onProgress: (percent) =>
+            setState((s) => (s.kind === "uploading" ? { ...s, percent } : s)),
+          onPhase: (phase) => {
+            if (phase === "completing") setState({ kind: "completing", fileName: file.name });
+          },
         },
-      });
+        backgroundId,
+      );
       controller.current = null;
       if (outcome.ok) {
         // Leave the state busy until the take page replaces this one.

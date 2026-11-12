@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { z } from "zod";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ORIGINAL_BACKGROUND, backgroundListSchema } from "@/lib/background-api";
 import { type TakeDetail, apiMessage } from "@/lib/take-api";
 import {
   NO_GREEN_SCREEN_NOTE,
@@ -12,15 +12,7 @@ import {
 } from "@/lib/take-display";
 import { callApi } from "./browser-io";
 
-const ORIGINAL = "original";
-
-/** The built in studios, as `GET /api/backgrounds` lists them (only what this select needs). */
-const itemSchema = z.object({ id: z.string(), name: z.string(), status: z.string() });
-const listSchema = z.object({
-  builtIn: z.array(itemSchema),
-  /** The creator's own uploads; only the ready ones can be used. */
-  mine: z.array(itemSchema).default([]),
-});
+const ORIGINAL = ORIGINAL_BACKGROUND;
 
 /**
  * A plain way to change a ready take's background (spec 0008, AC-5, AC-6): a select and a
@@ -51,7 +43,7 @@ export function BackgroundChange({
     let cancelled = false;
     void callApi("/api/backgrounds", "GET")
       .then((reply) => {
-        const parsed = listSchema.safeParse(reply.data);
+        const parsed = backgroundListSchema.safeParse(reply.data);
         if (!cancelled && reply.status === 200 && parsed.success) {
           setOptions(
             [...parsed.data.builtIn, ...parsed.data.mine].filter((b) => b.status === "ready"),
