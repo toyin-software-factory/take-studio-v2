@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PREVIEW_CHECKS, previewViewSchema } from "@/lib/background-preview-api";
+import {
+  PREVIEW_MAX_FAILURES,
+  PREVIEW_WAIT_MS,
+  previewViewSchema,
+} from "@/lib/background-preview-api";
 import { ORIGINAL_BACKGROUND } from "@/lib/background-api";
 import { apiMessage } from "@/lib/take-api";
 import { callApi } from "./browser-io";
@@ -14,8 +18,23 @@ export type PreviewState =
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Asks for the preview, then checks every 2 s until it is ready or failed. */
-async function fetchPreview(
+/** Waits while the tab is hidden (a hidden tab asks for nothing); returns how long it waited. */
+async function untilVisible(stopped: () => boolean): Promise<number> {
+  let waited = 0;
+  while (typeof document !== "undefined" && document.visibilityState === "hidden" && !stopped()) {
+    await sleep(1000);
+    waited += 1000;
+  }
+  return waited;
+}
+
+/**
+ * Asks for the preview, then checks every 2 s until it is ready or failed. Each answer is
+ * looked at before the clock is, so the last one counts; time spent in a hidden tab does not
+ * count against the wait; and the checks stop after `PREVIEW_WAIT_MS` of visible time or
+ * `PREVIEW_MAX_FAILURES` failed requests in a row, however long each request took to time out.
+ */
+export async function fetchPreview(
   takeId: string,
   backgroundId: string,
   stopped: () => boolean,
@@ -28,7 +47,10 @@ async function fetchPreview(
   if (asked.status !== 200 && asked.status !== 202) {
     return failed(apiMessage(asked.data, "The preview didn't start. Please try again."));
   }
-  for (let i = 0; i < PREVIEW_CHECKS; i += 1) {
+  const started = Date.now();
+  let hiddenMs = 0;
+  let failures = 0;
+  for (;;) {
     if (stopped()) return { kind: "idle" };
     if (view.success && view.data.state === "ready" && view.data.url) {
       return { kind: "ready", url: view.data.url, noGreenScreen: view.data.noGreenScreen };
@@ -36,14 +58,27 @@ async function fetchPreview(
     if (view.success && view.data.state === "failed") {
       return failed("The preview didn't work out. Choose it again to try once more.");
     }
+    if (Date.now() - started - hiddenMs > PREVIEW_WAIT_MS) {
+      return failed(
+        "The preview is taking longer than expected. Choose it again to try once more.",
+      );
+    }
+    hiddenMs += await untilVisible(stopped);
     await sleep(2000);
     const next = await callApi(`${base}?backgroundId=${backgroundId}`, "GET").catch(() => null);
-    if (next && next.status !== 200) {
+    if (!next) {
+      failures += 1;
+      if (failures >= PREVIEW_MAX_FAILURES) {
+        return failed("The preview isn't available. Check your connection and try again.");
+      }
+      continue;
+    }
+    failures = 0;
+    if (next.status !== 200) {
       return failed(apiMessage(next.data, "The preview isn't available. Please try again."));
     }
-    if (next) view = previewViewSchema.safeParse(next.data);
+    view = previewViewSchema.safeParse(next.data);
   }
-  return failed("The preview is taking longer than expected. Choose it again to try once more.");
 }
 
 /**

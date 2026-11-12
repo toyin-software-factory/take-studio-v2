@@ -8,5 +8,7 @@ export const previewViewSchema = z.object({
 });
 export type PreviewView = z.infer<typeof previewViewSchema>;
 
-/** About 90 s of 2 s checks (the server stops a preview after 2 minutes). */
-export const PREVIEW_CHECKS = 45;
+/** How long the page waits for a preview while the tab is visible (the server gives up at 2 minutes). */
+export const PREVIEW_WAIT_MS = 90_000;
+/** Requests that fail in a row before the page stops asking. */
+export const PREVIEW_MAX_FAILURES = 3;

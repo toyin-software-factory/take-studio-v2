@@ -55,6 +55,8 @@ export function BackgroundChange({
   const current = background ? (background.id ?? DELETED) : ORIGINAL_BACKGROUND;
   const retryTarget = failed ? (backgroundJob.targetBackgroundId ?? ORIGINAL_BACKGROUND) : null;
   const choice = picked ?? retryTarget ?? (current === DELETED ? ORIGINAL_BACKGROUND : current);
+  // "Try again" only while the choice is the failed target; another pick is a new change.
+  const retrying = failed && choice === (retryTarget ?? ORIGINAL_BACKGROUND);
   const start = useBackgroundStart(take.id, choice, onStarted, onUncertain);
   const busy = start.starting || backgroundChangeActive(backgroundJob);
   const list = backgrounds.state.kind === "ready" ? backgrounds.state.list : NO_LIST;
@@ -113,7 +115,10 @@ export function BackgroundChange({
             void upload.remove(id).then((deleted) => {
               if (!deleted) return;
               backgrounds.forget(id);
-              setPicked((now) => (now === id ? ORIGINAL_BACKGROUND : now));
+              // The pick, or the failed target the section falls back to when nothing was picked.
+              setPicked((now) =>
+                now === id || (now === null && retryTarget === id) ? ORIGINAL_BACKGROUND : now,
+              );
             }),
         }}
       />
@@ -146,9 +151,9 @@ export function BackgroundChange({
           type="button"
           onClick={start.change}
           loading={start.starting}
-          disabled={busy || (choice === current && !failed)}
+          disabled={busy || (choice === current && !retrying)}
         >
-          {failed
+          {retrying
             ? "Try again"
             : choice === ORIGINAL_BACKGROUND
               ? "Keep original"

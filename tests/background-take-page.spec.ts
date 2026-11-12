@@ -45,6 +45,8 @@ const LIST = {
 
 type Stub = {
   list: unknown | number;
+  /** Holds the next list request until released (to test a late answer). */
+  gate?: Promise<void>;
   detail: Record<string, unknown>;
   detailStatus?: number;
   preview: { post: { status: number; json: unknown }; get?: { status: number; json: unknown }[] };
@@ -95,11 +97,15 @@ async function setup(page: Page, baseURL: string, stub: Partial<Stub> = {}) {
       headers: { "access-control-allow-origin": "*" },
     }),
   );
-  await page.route("**/api/backgrounds", (r) =>
-    typeof state.list === "number"
-      ? r.fulfill({ status: state.list, json: {} })
-      : r.fulfill({ json: state.list }),
-  );
+  await page.route("**/api/backgrounds", async (r) => {
+    // An answer built before the gate, delivered after it: the list as it was.
+    const answer =
+      typeof state.list === "number" ? { status: state.list, json: {} } : { json: state.list };
+    const gate = state.gate;
+    state.gate = undefined;
+    if (gate) await gate;
+    return r.fulfill(answer);
+  });
   const [id] = await seedTakes(user.id, [
     {
       title: "Interview",
@@ -405,4 +411,98 @@ test.describe("touch targets on a phone", () => {
       .boundingBox();
     expect(action?.height).toBeGreaterThanOrEqual(44);
   });
+});
+
+test("'Try again' is only for the failed target: another pick is a new change", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!, {
+    detail: {
+      backgroundJob: { status: "failed", failureCode: "internal_error", targetBackgroundId: WARM },
+    },
+  });
+  await open(page, id);
+  await expect(section(page).getByRole("button", { name: "Try again" })).toBeVisible();
+  await section(page)
+    .getByRole("radio", { name: /Calm studio/ })
+    .check({ force: true });
+  await expect(section(page).getByRole("button", { name: "Use this background" })).toBeVisible();
+  await expect(section(page).getByRole("button", { name: "Try again" })).toHaveCount(0);
+  await section(page)
+    .getByRole("radio", { name: /Warm studio/ })
+    .check({ force: true });
+  await expect(section(page).getByRole("button", { name: "Try again" })).toBeVisible();
+});
+
+test("deleting the failed target falls back to Keep original, not the deleted ID", async ({
+  page,
+  baseURL,
+}) => {
+  const { id, state } = await setup(page, baseURL!, {
+    list: { ...LIST, mine: [item(MINE, "Office wall")] },
+    detail: {
+      backgroundJob: { status: "failed", failureCode: "internal_error", targetBackgroundId: MINE },
+    },
+  });
+  await page.route("**/api/backgrounds/*", (route) => {
+    if (route.request().method() !== "DELETE") return route.fallback();
+    state.list = 500;
+    return route.fulfill({ status: 204 });
+  });
+  await open(page, id);
+  await expect(section(page).getByRole("radio", { name: /Office wall/ })).toBeChecked();
+  await section(page).getByRole("button", { name: "Delete Office wall" }).click();
+  await expect(section(page).getByRole("radio", { name: "Keep original" })).toBeChecked();
+  // Nothing is left to retry: the button is the plain, disabled "Keep original" (already current).
+  await expect(section(page).getByRole("button", { name: "Keep original" })).toBeDisabled();
+  await expect(section(page).getByRole("button", { name: "Try again" })).toHaveCount(0);
+});
+
+test("a refresh that was fetched before a delete cannot bring the deleted background back", async ({
+  page,
+  baseURL,
+}) => {
+  const { id, state } = await setup(page, baseURL!);
+  let release: () => void = () => undefined;
+  await page.route("**/api/backgrounds/*", (route) => {
+    if (route.request().method() !== "DELETE") return route.fallback();
+    // The refresh after the delete is answered from the list as it was, and late.
+    state.gate = new Promise<void>((resolve) => (release = resolve));
+    return route.fulfill({ status: 204 });
+  });
+  await open(page, id);
+  await section(page).getByRole("button", { name: "Delete Office wall" }).click();
+  await expect(section(page).getByRole("radio", { name: /Office wall/ })).toHaveCount(0);
+  release();
+  await page.waitForTimeout(800);
+  await expect(section(page).getByRole("radio", { name: /Office wall/ })).toHaveCount(0);
+});
+
+test("a click on the preview reaches the video (play and pause still work)", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!, {
+    preview: {
+      post: {
+        status: 200,
+        json: { state: "ready", url: `${R2}/preview.png`, noGreenScreen: false },
+      },
+    },
+  });
+  await open(page, id);
+  await section(page)
+    .getByRole("radio", { name: /Calm studio/ })
+    .check({ force: true });
+  await expect(page.getByAltText("Preview of your take on Calm studio")).toBeVisible();
+  // The still is only to look at: the point under it is the video, so a click plays and pauses it.
+  const still = page.getByAltText("Preview of your take on Calm studio");
+  await still.scrollIntoViewIfNeeded();
+  const box = await still.boundingBox();
+  const topmost = await page.evaluate(
+    ({ x, y }) => document.elementFromPoint(x, y)?.tagName ?? "",
+    { x: (box?.x ?? 0) + (box?.width ?? 0) / 2, y: (box?.y ?? 0) + (box?.height ?? 0) / 2 },
+  );
+  expect(topmost).toBe("VIDEO");
 });
