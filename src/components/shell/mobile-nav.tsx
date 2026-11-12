@@ -12,11 +12,21 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { NavLinks } from "./nav-links";
-import { UserMenu, type ShellUser } from "./user-menu";
+import type { RecentTake } from "@/server/takes/views";
+import { SidebarBody } from "./sidebar-body";
+import type { ShellUser } from "./user-menu";
 
-/** Phones (below md): the menu button in the top bar opens the nav in a left sheet. */
-export function MobileNav({ user }: { readonly user: ShellUser }) {
+/**
+ * Below 1024 px: the menu button in the top bar opens the sidebar's content in a left sheet
+ * (a dialog: focus is trapped inside, Esc closes it and focus returns to the button).
+ */
+export function MobileNav({
+  user,
+  recent,
+}: {
+  readonly user: ShellUser;
+  readonly recent: readonly RecentTake[];
+}) {
   const [open, setOpen] = useState(false);
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -25,16 +35,13 @@ export function MobileNav({ user }: { readonly user: ShellUser }) {
           <Icon icon={Menu} />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-72 gap-0 p-0">
-        <SheetHeader className="border-b">
+      <SheetContent side="left" className="w-[min(88vw,20rem)] gap-0 p-0">
+        <SheetHeader className="sr-only">
           <SheetTitle>Take Studio</SheetTitle>
-          <SheetDescription className="sr-only">Main menu</SheetDescription>
+          <SheetDescription>Main menu</SheetDescription>
         </SheetHeader>
-        <nav aria-label="Main" className="flex-1 overflow-y-auto overscroll-contain p-3">
-          <NavLinks onNavigate={() => setOpen(false)} />
-        </nav>
-        <div className="border-t p-3">
-          <UserMenu user={user} />
+        <div className="min-h-0 flex-1 px-4 py-5">
+          <SidebarBody user={user} recent={recent} onNavigate={() => setOpen(false)} />
         </div>
       </SheetContent>
     </Sheet>

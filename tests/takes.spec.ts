@@ -117,13 +117,22 @@ test.describe("library", () => {
       "Render crashed",
       "Oldest ready take",
     ]);
-    const ready = page.getByRole("listitem").filter({ hasText: "Oldest ready take" });
+    const ready = page
+      .getByRole("main")
+      .getByRole("listitem")
+      .filter({ hasText: "Oldest ready take" });
     await expect(ready.getByText("Ready", { exact: true })).toBeVisible();
     await expect(ready.getByText("1:20")).toHaveClass(/mono/);
     await expect(ready.getByText("Video expires in 11 days")).toBeVisible();
-    const crashed = page.getByRole("listitem").filter({ hasText: "Render crashed" });
+    const crashed = page
+      .getByRole("main")
+      .getByRole("listitem")
+      .filter({ hasText: "Render crashed" });
     await expect(crashed.getByRole("button", { name: "Try again" })).toBeVisible();
-    const tooLong = page.getByRole("listitem").filter({ hasText: "Too long take" });
+    const tooLong = page
+      .getByRole("main")
+      .getByRole("listitem")
+      .filter({ hasText: "Too long take" });
     await expect(
       tooLong.getByText("This video is 14 minutes long. The limit is 10 minutes."),
     ).toBeVisible();
@@ -156,12 +165,16 @@ test.describe("library", () => {
       route.fulfill({ body: png, contentType: "image/png" }),
     );
     await page.goto("/");
-    const card = page.getByRole("listitem").filter({ hasText: "With thumbnail" });
+    const card = page.getByRole("main").getByRole("listitem").filter({ hasText: "With thumbnail" });
     await expect(card.locator("img")).toBeVisible();
     // No link is requested for the take that is still uploading.
     expect(asked).toHaveLength(1);
     await expect(
-      page.getByRole("listitem").filter({ hasText: "Still uploading" }).locator("img"),
+      page
+        .getByRole("main")
+        .getByRole("listitem")
+        .filter({ hasText: "Still uploading" })
+        .locator("img"),
     ).toHaveCount(0);
   });
 

@@ -38,7 +38,10 @@ export default async function TakePage({ params }: Props) {
   const takeEmails = (await getTakeEmails(await getDb(), session.user.id)) ?? true;
 
   return (
-    <AppShell user={{ name: session.user.name, email: session.user.email }}>
+    <AppShell
+      user={{ id: session.user.id, name: session.user.name, email: session.user.email }}
+      current={{ title: take.title, status: take.status }}
+    >
       <TakeView
         takeId={take.id}
         initialTitle={take.title}

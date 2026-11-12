@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { initialsOf } from "./initials";
 import { isActive } from "./nav-items";
+import { recentMeta } from "./recent-takes";
 
 describe("isActive", () => {
   it("matches home only on /", () => {
@@ -22,5 +23,15 @@ describe("initialsOf", () => {
     expect(initialsOf("🎬 Studio", "x@x.io")).toBe("🎬S");
     expect(initialsOf("𝒜da", "x@x.io")).toBe("𝒜D");
     expect(initialsOf("", "😀@x.io")).toBe("😀@");
+  });
+});
+
+describe("recentMeta", () => {
+  it("writes the status out, then the length", () => {
+    expect(recentMeta({ status: "ready", durationMs: 12_000 })).toBe("Ready · 0:12");
+    expect(recentMeta({ status: "processing", durationMs: 75_000 })).toBe("Processing · 1:15");
+  });
+  it("leaves the length off when it is not known yet", () => {
+    expect(recentMeta({ status: "uploading", durationMs: null })).toBe("Uploading");
   });
 });
