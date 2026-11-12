@@ -258,12 +258,17 @@ test("shows a failed change and Try again repeats the failed target (AC-5)", asy
     detail: {
       backgroundJob: { status: "failed", failureCode: "internal_error", targetBackgroundId: WARM },
     },
+    preview: READY_PREVIEW,
   });
   await open(page, id);
   await expect(section(page)).toContainText(
     "The new background didn't finish. Your video is unchanged. Try again.",
   );
   await expect(section(page).getByRole("radio", { name: /Warm studio/ })).toBeChecked();
+  // The stage line names the button that is really there.
+  await expect(
+    page.getByRole("status").filter({ hasText: "Still preview, not a video" }),
+  ).toContainText("\u201cTry again\u201d");
   await section(page).getByRole("button", { name: "Try again" }).click();
   await expect.poll(() => state.calls.some((c) => c.startsWith("PUT"))).toBe(true);
   expect(state.calls.find((c) => c.startsWith("PUT"))).toContain(`"backgroundId":"${WARM}"`);
