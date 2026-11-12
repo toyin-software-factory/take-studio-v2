@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ORIGINAL_BACKGROUND, backgroundListSchema } from "@/lib/background-api";
+import { selectOptions } from "@/lib/background-options";
 import { type TakeDetail, apiMessage } from "@/lib/take-api";
 import {
   NO_GREEN_SCREEN_NOTE,
@@ -121,7 +122,7 @@ export function BackgroundChange({
           className="min-h-11 rounded-md border border-border bg-background px-3 text-small"
         >
           <option value={ORIGINAL}>Keep original</option>
-          {options.map((o) => (
+          {selectOptions(options, background, choice).map((o) => (
             <option key={o.id} value={o.id}>
               {o.name}
             </option>
