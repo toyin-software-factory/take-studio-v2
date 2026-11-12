@@ -42,6 +42,7 @@ import {
 } from "@/lib/trim";
 import { triggerForTranscribe } from "@/lib/trigger-runs";
 import { deadlineMs, isDeadlineExceeded, runWithDeadline } from "@/lib/deadline";
+import { JOB_ERROR_NAMES, hasJobErrorName } from "@/lib/job-errors";
 import { PROCESS_TAKE_LIMITS } from "@/lib/cleanup-rules";
 import { RENDER_UPLOAD } from "@/lib/uploads";
 import { queueTakeEmail } from "./email/queue";
@@ -437,13 +438,13 @@ export function failureCodeFor(error: unknown): FailureCode {
   // The attempt stopped itself before maxDuration (src/lib/deadline.ts).
   if (isDeadlineExceeded(error)) return "timeout";
   // The background image vanished or was not ready while the job ran (spec 0008).
-  if ((error as { name?: string } | null)?.name === "BackgroundMissingError") {
+  if (
+    error instanceof BackgroundMissingError ||
+    hasJobErrorName(error, JOB_ERROR_NAMES.backgroundMissing)
+  ) {
     return "background_missing";
   }
-  if (
-    error instanceof MediaToolError ||
-    (error as { name?: string } | null)?.name === "MediaToolError"
-  ) {
+  if (error instanceof MediaToolError || hasJobErrorName(error, JOB_ERROR_NAMES.mediaTool)) {
     return "ffmpeg_error";
   }
   const text = `${(error as { name?: string } | null)?.name ?? ""} ${String((error as { message?: string } | null)?.message ?? "")}`;
