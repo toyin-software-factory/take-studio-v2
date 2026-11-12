@@ -101,6 +101,8 @@ export async function uploadFile(
   io: UploadIo,
   signal: AbortSignal,
   events: UploadEvents = {},
+  /** Spec 0008, AC-1: a background ID or `original`; left out means no choice was made. */
+  backgroundId?: string,
 ): Promise<UploadOutcome> {
   let takeId: string | null = null;
   try {
@@ -108,6 +110,7 @@ export async function uploadFile(
       fileName: file.name,
       sizeBytes: file.size,
       container,
+      ...(backgroundId === undefined ? {} : { backgroundId }),
     });
     if (created.status !== 201) throw new UploadFailure(messageOf(created));
     const plan = createdBody.safeParse(created.data);
