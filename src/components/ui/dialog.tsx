@@ -66,8 +66,8 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed inset-x-0 bottom-0 z-(--z-dialog) flex max-h-[90dvh] w-full flex-col gap-4 rounded-t-md bg-surface p-6 text-foreground shadow-overlay outline-hidden data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom",
-          "md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:max-h-[85dvh] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-md md:data-[state=closed]:slide-out-to-bottom-0 md:data-[state=closed]:fade-out-0 md:data-[state=open]:slide-in-from-bottom-0 md:data-[state=open]:fade-in-0",
+          "fixed inset-x-0 bottom-0 z-(--z-dialog) flex max-h-[90dvh] w-full flex-col gap-4 rounded-t-lg bg-card p-6 text-foreground shadow-overlay outline-hidden data-[state=closed]:animate-out data-[state=closed]:slide-out-to-bottom data-[state=open]:animate-in data-[state=open]:slide-in-from-bottom",
+          "md:inset-x-auto md:top-1/2 md:bottom-auto md:left-1/2 md:max-h-[85dvh] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-lg md:data-[state=closed]:slide-out-to-bottom-0 md:data-[state=closed]:fade-out-0 md:data-[state=open]:slide-in-from-bottom-0 md:data-[state=open]:fade-in-0",
           dialogSizes[size],
           className,
         )}
@@ -140,7 +140,7 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-h3 font-semibold", className)}
+      className={cn("text-h4 font-medium", className)}
       {...props}
     />
   );

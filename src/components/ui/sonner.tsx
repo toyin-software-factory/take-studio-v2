@@ -73,12 +73,12 @@ function ToastCard({
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setFocused(false);
       }}
-      className="flex w-full items-start gap-3 rounded-md bg-surface p-4 text-foreground shadow-overlay md:w-(--width)"
+      className="flex w-full items-start gap-3 rounded-lg bg-card p-4 text-foreground shadow-overlay md:w-(--width)"
     >
       <Icon icon={toastIcons[variant]} className={cn("mt-0.5", iconColours[variant])} />
       <div className="min-w-0 flex-1 space-y-1">
-        <p className="text-small font-semibold">{title}</p>
-        {description ? <p className="text-small text-text-muted">{description}</p> : null}
+        <p className="text-small font-medium">{title}</p>
+        {description ? <p className="text-small text-muted-foreground">{description}</p> : null}
         {action ? (
           <Button
             variant="secondary"

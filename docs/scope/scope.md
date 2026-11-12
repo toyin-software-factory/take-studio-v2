@@ -83,7 +83,7 @@ Visual language, layout and base components (upload, progress, video player, tim
 - [x] Verify it: `/check verify design system & UI foundation`
 - [x] Test it: `/test design system & UI foundation`
 - [ ] Redesign v2 (Toyin, 2026-11-12): `/develop design system v2`
-   - [ ] Tokens, Inter Tight, base components and `/design` gallery (AC-1, AC-2, AC-3, AC-8, AC-10)
+   - [x] Tokens, Inter Tight, base components and `/design` gallery (AC-1, AC-2, AC-3, AC-8, AC-10)
    - [ ] App shell: sidebar, sheet menu, glass top bar (AC-4, AC-7)
    - [ ] Take page restyle, built features only (AC-5, AC-7, AC-9)
    - [ ] Library, upload, sign in and error pages, axe and bundle checks (AC-6, AC-8, AC-9, AC-10)

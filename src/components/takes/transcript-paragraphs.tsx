@@ -37,7 +37,7 @@ export function TranscriptParagraphs({
               type="button"
               onClick={() => onSeek(p.startMs)}
               aria-label={`Play from ${formatClock(p.startMs)}`}
-              className="mono h-fit min-h-6 shrink-0 pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-sm px-1 text-small text-text-muted underline-offset-2 outline-hidden hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid"
+              className="mono h-fit min-h-6 shrink-0 pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-sm px-1 text-small text-muted-foreground underline-offset-2 outline-hidden hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid"
             >
               {formatClock(p.startMs)}
             </button>

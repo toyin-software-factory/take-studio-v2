@@ -9,7 +9,7 @@ import { TranscriptDownloads } from "./transcript-downloads";
 import { TranscriptParagraphs } from "./transcript-paragraphs";
 import { useTranscript } from "./use-transcript";
 
-const PANEL = "flex flex-col gap-3 rounded-lg border border-border bg-surface p-4";
+const PANEL = "flex flex-col gap-3 rounded-lg border border-border bg-card p-4";
 
 const SKIPPED: Readonly<Record<string, string>> = {
   not_english: "Transcripts are English only for now",
@@ -54,7 +54,7 @@ export function TranscriptPanel({
     // A 401 or 404 ends the checking for good, so say so and offer no retry.
     return (
       <section aria-labelledby="transcript-heading" className={PANEL}>
-        <h2 id="transcript-heading" className="text-h3 font-semibold">
+        <h2 id="transcript-heading" className="text-h3 font-medium">
           Transcript
         </h2>
         <p role="alert">
@@ -68,12 +68,12 @@ export function TranscriptPanel({
   const retryable = (view.state === "none" || view.state === "failed") && view.canMake;
   return (
     <section aria-labelledby="transcript-heading" className={PANEL}>
-      <h2 id="transcript-heading" className="text-h3 font-semibold">
+      <h2 id="transcript-heading" className="text-h3 font-medium">
         Transcript
       </h2>
       {problem}
       {view.state === "making" ? (
-        <p role="status" className="flex items-center gap-2 text-text-muted">
+        <p role="status" className="flex items-center gap-2 text-muted-foreground">
           <Icon icon={Loader2} size="badge" className="animate-spin motion-reduce:animate-none" />
           Making your transcript
         </p>

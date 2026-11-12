@@ -7,7 +7,7 @@ import { Icon } from "@/components/ui/icon";
 export function StageDemo() {
   return (
     <section aria-labelledby="stage-container" className="space-y-4">
-      <h2 id="stage-container" className="text-h2 font-semibold">
+      <h2 id="stage-container" className="text-h2 font-medium">
         Stage container
       </h2>
       <Stage label="Stage example" className="space-y-4">
@@ -21,7 +21,7 @@ export function StageDemo() {
           <Button variant="ghost" size="icon" aria-label="Play">
             <Icon icon={Play} size="stage" />
           </Button>
-          <Button variant="ghost" size="icon" aria-label="Pause" className="bg-accent">
+          <Button variant="ghost" size="icon" aria-label="Pause" className="bg-hover-surface">
             <Icon icon={Pause} size="stage" />
           </Button>
           <Button variant="ghost" size="icon" aria-label="Undo">
@@ -33,9 +33,9 @@ export function StageDemo() {
             Render
           </Button>
         </StagePanel>
-        <p className="text-small text-text-muted">
-          The toolbar is a raised panel with a Steel Blue edge. The second button shows the stage
-          hover; tab through to see the cream focus ring.
+        <p className="text-small text-muted-foreground">
+          The toolbar is a raised panel with a hairline edge. The second button shows the stage
+          hover; tab through to see the lime focus ring.
         </p>
       </Stage>
     </section>

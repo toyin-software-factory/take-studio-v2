@@ -12,7 +12,7 @@ function Brand() {
   return (
     <Link
       href="/"
-      className="flex items-center gap-2 rounded-md px-2 py-1 text-body font-semibold outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid focus-visible:outline-ring"
+      className="flex items-center gap-2 rounded-md px-2 py-1 text-body font-medium outline-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid focus-visible:outline-ring"
     >
       <Icon icon={Clapperboard} className="text-primary" />
       Take Studio
@@ -38,7 +38,7 @@ export function AppShell({
     <TooltipProvider>
       <div className="min-h-dvh md:grid md:grid-cols-[var(--sidebar-width)_1fr]">
         <SkipLink />
-        <header className="sticky top-0 z-(--z-sticky) flex h-14 items-center gap-2 border-b bg-surface px-2 md:h-dvh md:flex-col md:items-stretch md:gap-6 md:border-r md:border-b-0 md:px-3 md:py-4">
+        <header className="sticky top-0 z-(--z-sticky) flex h-14 items-center gap-2 border-b bg-card px-2 md:h-dvh md:flex-col md:items-stretch md:gap-6 md:border-r md:border-b-0 md:px-3 md:py-4">
           <div className="md:hidden">
             <MobileNav user={user} />
           </div>

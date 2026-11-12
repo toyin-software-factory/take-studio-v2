@@ -20,9 +20,9 @@ export default function NotFound() {
         tabIndex={-1}
         className="mx-auto flex min-h-dvh max-w-content flex-col items-start justify-center gap-4 px-4 outline-hidden md:px-6"
       >
-        <Icon icon={SearchX} size="empty" className="text-text-muted" />
-        <h1 className="text-h1 font-semibold">We couldn&rsquo;t find that page</h1>
-        <p className="text-text-muted">
+        <Icon icon={SearchX} size="empty" className="text-muted-foreground" />
+        <h1 className="text-h1 font-medium">We couldn&rsquo;t find that page</h1>
+        <p className="text-muted-foreground">
           The take may have been deleted, or the link is wrong. Your takes are in your library.
         </p>
         <Button asChild>

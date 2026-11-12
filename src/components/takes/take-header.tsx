@@ -36,7 +36,7 @@ export function TakeHeader({
         />
       ) : (
         <div className="flex items-start gap-2">
-          <h1 className="min-w-0 text-h1 font-semibold break-words">{take.title}</h1>
+          <h1 className="min-w-0 text-h1 font-medium break-words">{take.title}</h1>
           <Button
             id="rename-button"
             variant="ghost"
@@ -49,7 +49,7 @@ export function TakeHeader({
           </Button>
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-text-muted">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-small text-muted-foreground">
         <StatusBadge status={take.status} />
         {take.durationMs !== null ? (
           <span className="mono">

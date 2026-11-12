@@ -35,7 +35,7 @@ export function BackgroundMine({
   const working = actions.state.kind === "working";
   return (
     <section aria-labelledby="mine-heading" className="flex flex-col gap-3">
-      <h3 id="mine-heading" className="text-body font-semibold">
+      <h3 id="mine-heading" className="text-body font-medium">
         Your backgrounds
       </h3>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
@@ -62,7 +62,7 @@ export function BackgroundMine({
               </Button>
             </div>
           ))}
-        <label className="relative flex aspect-video cursor-pointer flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-border-strong bg-surface text-small has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-4 has-[:focus-visible]:outline-ring has-[:focus-visible]:outline-solid pointer-coarse:min-h-11">
+        <label className="relative flex aspect-video cursor-pointer flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-border-strong bg-card text-small has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-4 has-[:focus-visible]:outline-ring has-[:focus-visible]:outline-solid pointer-coarse:min-h-11">
           <input
             type="file"
             accept="image/jpeg,image/png,image/webp"
@@ -97,7 +97,7 @@ export function BackgroundMine({
         {items
           .filter((item) => item.status !== "ready")
           .map((item) => (
-            <p key={item.id} className="flex flex-wrap items-center gap-2 text-text-muted">
+            <p key={item.id} className="flex flex-wrap items-center gap-2 text-muted-foreground">
               <span className="font-medium text-text">{item.name}</span>
               {item.status === "processing" ? (
                 <span>Processing</span>

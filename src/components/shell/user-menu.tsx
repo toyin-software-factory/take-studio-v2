@@ -48,9 +48,9 @@ export function UserMenu({ user }: { readonly user: ShellUser }) {
         </Avatar>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-small font-medium">{user.name}</span>
-          <span className="block truncate text-caption text-text-muted">{user.email}</span>
+          <span className="block truncate text-caption text-muted-foreground">{user.email}</span>
         </span>
-        <Icon icon={ChevronsUpDown} size="badge" className="text-text-muted" />
+        <Icon icon={ChevronsUpDown} size="badge" className="text-muted-foreground" />
         <span className="sr-only">Account menu</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent
@@ -59,7 +59,9 @@ export function UserMenu({ user }: { readonly user: ShellUser }) {
         // Above the phone menu sheet (dialog layer), which this menu can open from.
         className="z-(--z-toast) w-(--radix-dropdown-menu-trigger-width)"
       >
-        <DropdownMenuLabel className="truncate text-text-muted">{user.email}</DropdownMenuLabel>
+        <DropdownMenuLabel className="truncate text-muted-foreground">
+          {user.email}
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void signOut()}>
           <Icon icon={LogOut} size="badge" />

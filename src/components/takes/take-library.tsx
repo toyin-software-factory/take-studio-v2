@@ -105,8 +105,8 @@ export function TakeLibrary({
 
   if (takes.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-md bg-surface px-6 py-12 text-center shadow-card">
-        <Icon icon={Film} size="empty" className="text-text-muted" />
+      <div className="flex flex-col items-center gap-3 rounded-md bg-card px-6 py-12 text-center shadow-card">
+        <Icon icon={Film} size="empty" className="text-muted-foreground" />
         <p>No takes yet. Upload your first video.</p>
         <Button onClick={() => document.getElementById(UPLOAD_INPUT_ID)?.click()}>
           Choose a video

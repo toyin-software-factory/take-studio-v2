@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * One choice in the background picker (design.md Background picker): a 16:9 thumbnail, the
- * selected one with a 2 px Brick Red ring, a 2 px white gap and a check on a solid chip. A radio
+ * selected one with a 2 px ink ring, a 2 px white gap and a check on a solid chip. A radio
  * in a group: arrow keys move, Space selects (the browser's own behaviour), and the whole tile
  * is at least 44 px. `thumbUrl` null shows a plain placeholder, as "Keep original" does.
  */
@@ -46,7 +46,7 @@ export function BackgroundTile({
         className={cn(
           "relative block aspect-video overflow-hidden rounded-md bg-muted outline-hidden transition-shadow",
           "peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-ring peer-focus-visible:outline-solid",
-          checked && "ring-2 ring-primary ring-offset-2 ring-offset-surface",
+          checked && "ring-2 ring-primary ring-offset-2 ring-offset-card",
         )}
       >
         {thumbUrl && broken !== thumbUrl ? (
@@ -63,7 +63,7 @@ export function BackgroundTile({
           />
         ) : (
           <span role="img" aria-label={alt} className="flex size-full items-center justify-center">
-            <Icon icon={ImageOff} size="ui" className="text-text-muted" />
+            <Icon icon={ImageOff} size="ui" className="text-muted-foreground" />
           </span>
         )}
         {checked ? (

@@ -73,12 +73,12 @@ export function SignInForm({ notice }: { readonly notice?: "link_expired" }) {
     return (
       <div className="flex flex-col gap-4" aria-live="polite">
         <Icon icon={Mail} size="empty" className="text-primary" />
-        <h2 className="text-h2 font-semibold">Check your inbox</h2>
+        <h2 className="text-h2 font-medium">Check your inbox</h2>
         <p>
-          If <strong className="font-semibold">{state.email}</strong> can sign in, a link is on its
+          If <strong className="font-medium">{state.email}</strong> can sign in, a link is on its
           way. It works once and expires in 15 minutes.
         </p>
-        <p className="text-small text-text-muted">
+        <p className="text-small text-muted-foreground">
           Nothing there? Check your spam folder, or send it again.
         </p>
         <div className="flex flex-wrap gap-2">
@@ -111,7 +111,7 @@ export function SignInForm({ notice }: { readonly notice?: "link_expired" }) {
         Continue with Google
       </Button>
 
-      <div className="flex items-center gap-3 text-small text-text-muted" role="separator">
+      <div className="flex items-center gap-3 text-small text-muted-foreground" role="separator">
         <span className="h-px flex-1 bg-border" aria-hidden="true" />
         or
         <span className="h-px flex-1 bg-border" aria-hidden="true" />

@@ -34,8 +34,8 @@ export default function AppError({
         className="mx-auto flex min-h-dvh max-w-content flex-col items-start justify-center gap-4 px-4 outline-hidden md:px-6"
       >
         <Icon icon={CircleAlert} size="empty" className="text-danger" />
-        <h1 className="text-h1 font-semibold">Something went wrong</h1>
-        <p className="text-text-muted">
+        <h1 className="text-h1 font-medium">Something went wrong</h1>
+        <p className="text-muted-foreground">
           We couldn&rsquo;t load this page. We&rsquo;ve been told about it. Try again in a moment.
         </p>
         <Button

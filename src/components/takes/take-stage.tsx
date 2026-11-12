@@ -25,7 +25,7 @@ function StageMessage({
   return (
     <StageLetterbox className="flex-col gap-3 px-4 text-center">
       <Icon icon={icon} size="empty" className="text-stage-text-muted" />
-      <h2 className="text-h3 font-semibold">{title}</h2>
+      <h2 className="text-h3 font-medium">{title}</h2>
       {children}
     </StageLetterbox>
   );
@@ -59,7 +59,7 @@ function Failed({
 }
 
 /**
- * The dark stage of the take page (AC-8 to AC-10; design.md Light app, dark stage): step
+ * The dark stage of the take page (AC-8 to AC-10; design.md light shell, dark stage): step
  * progress while uploading or processing, the player when ready, the failure with its action,
  * or the expiry note once the video is gone.
  */

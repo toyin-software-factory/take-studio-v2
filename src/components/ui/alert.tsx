@@ -52,7 +52,7 @@ function Alert({
       {...props}
     >
       <Icon icon={icons[kind]} size="ui" className="row-span-2" />
-      <p className="font-semibold">{title}</p>
+      <p className="font-medium">{title}</p>
       {children ? <div className="col-start-2">{children}</div> : null}
     </div>
   );

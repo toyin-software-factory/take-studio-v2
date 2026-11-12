@@ -54,14 +54,14 @@ test("toasts use status or alert and errors stay", async ({ page }) => {
   await expect(page.getByRole("alert").filter({ hasText: "Upload failed" })).toBeVisible();
 });
 
-test("every control shows a solid 2 px ring: Brick Red on light, cream on the stage", async ({
+test("every control shows a solid 2 px ring with a 3 px offset: ink on light, lime on the stage", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/design");
   for (const [section, colour] of [
-    ["components-light", "rgb(193, 18, 31)"],
-    ["components-stage", "rgb(253, 240, 213)"],
+    ["components-light", "rgb(3, 3, 3)"],
+    ["components-stage", "rgb(205, 255, 89)"],
   ] as const) {
     // Start just before the section, then tab through its first controls.
     await page.locator(`#${section}`).evaluate((el) => {
@@ -150,7 +150,7 @@ test.describe("touch targets on a phone (AC-5)", () => {
   });
 });
 
-test("Stage container gives its controls the cream focus ring", async ({ page }) => {
+test("Stage container gives its controls the lime focus ring", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/design");
   const play = page
@@ -161,7 +161,7 @@ test("Stage container gives its controls the cream focus ring", async ({ page })
   await page.keyboard.press("Tab");
   await expect(play).toBeFocused();
   await expect(play).toHaveCSS("outline-style", "solid");
-  await expect(play).toHaveCSS("outline-color", "rgb(253, 240, 213)");
+  await expect(play).toHaveCSS("outline-color", "rgb(205, 255, 89)");
 });
 
 test("link buttons size to their text on light and stage", async ({ page }) => {

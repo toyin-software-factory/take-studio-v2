@@ -18,7 +18,7 @@ export default async function EmailsOffDonePage({ searchParams }: Props) {
         tabIndex={-1}
         className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-4 px-4 outline-hidden"
       >
-        <h1 className="text-h1 font-semibold">
+        <h1 className="text-h1 font-medium">
           {off ? "Take emails are off" : "That link didn't work"}
         </h1>
         <p>

@@ -37,7 +37,7 @@ export function BackgroundNotes({
         />
       ) : null}
       {backgroundChangeActive(backgroundJob) ? (
-        <p role="status" className="flex items-center gap-2 text-text-muted">
+        <p role="status" className="flex items-center gap-2 text-muted-foreground">
           <Icon icon={Loader2} size="badge" className="animate-spin motion-reduce:animate-none" />
           Making your video with the new background. You can keep watching this one.
         </p>
@@ -57,7 +57,7 @@ export function BackgroundNotes({
 /** The short tip near the picker (AC-11). */
 export function CleanEdgesTip() {
   return (
-    <p className="text-small text-text-muted">
+    <p className="text-small text-muted-foreground">
       Getting clean edges: use even light with no shadows on the green, and stand a step away from
       it.
     </p>

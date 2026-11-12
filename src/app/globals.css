@@ -1,70 +1,244 @@
 /*
- * Take Studio design tokens (design.md, spec 0003).
- * The tokens below are the only place raw colour values live. Components use the Tailwind
- * utilities generated from them (bg-surface, text-text-muted, border-input, ring-ring ...),
- * or shadcn/ui's names (background, foreground, primary ...), which map onto the same tokens.
- * Tokens with a translucent value (hover, selected, tints, backdrop) sit on top of whatever
- * surface is underneath, as design.md describes.
+ * Take Studio design tokens (design.md §2, spec 0009).
+ * This file is the only place raw colour values live. Components use the Tailwind utilities
+ * generated from it (bg-bg, text-ink, bg-dark, border-line, bg-accent, ring-ring ...) or
+ * shadcn/ui's names (background, foreground, primary ...), which map onto the same tokens.
+ *
+ * Three layers:
+ *  1. `@theme static`: the design.md §2 tokens, by their §2 names (always emitted as variables).
+ *  2. `:root`: the non colour §2 tokens, then the semantic names components use (--bg, --text,
+ *     --primary, --stage-bg, shadcn's --background ...). The semantic names are what `.stage`
+ *     rebinds, so one component works on the white shell and on the dark stage.
+ *  3. `@theme inline`: Tailwind utilities that read the semantic names per element.
+ *
+ * TEMPORARY aliases (kept so the pages not yet rebuilt keep working; parts 2 to 4 of design
+ * v2 remove them as they go): --hover-surface, --selected-surface, --border, --border-strong,
+ * --primary-fg, --primary-hover, --primary-active, --danger-*, --success-bg, --warning-bg,
+ * --info*, --disabled-*, --stage-* and the v1 type names (text-display, text-caption,
+ * text-body, text-small). See src/components/AGENTS.md.
  */
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* ---------- Light app ---------- */
+/* ---------- 1. design.md §2 colour, type family, radius, shadow, motion tokens ---------- */
+@theme static {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  /* Light shell */
+  --color-bg: #ffffff;
+  --color-surface: #f6f6f6;
+  --color-ink: #030303;
+  --color-ink-soft: #252528;
+  --color-text-muted: #4f4f4f;
+  --color-line: #d2cdd8;
+  --color-line-strong: #767676;
+  --color-hairline: rgb(0 0 0 / 8%);
+
+  /* Dark stage */
+  --color-dark: #010101;
+  --color-dark-2: #0f0f0f;
+  --color-on-dark: #ffffff;
+  --color-on-dark-75: rgb(255 255 255 / 75%);
+  --color-on-dark-60: rgb(255 255 255 / 60%);
+  --color-on-dark-20: rgb(255 255 255 / 20%);
+  --color-line-dark: rgb(255 255 255 / 10%);
+  --color-ring-dark: rgb(255 255 255 / 15%);
+  --color-glass: rgb(0 0 0 / 30%);
+  --color-nav-glass-light: rgb(255 255 255 / 72%);
+  --color-nav-glass-dark: rgb(0 0 0 / 60%);
+
+  /* Accent: UI only, never text on white */
+  --color-accent: #cdff59;
+
+  /* WebGL light only, never used in UI (homepage) */
+  --color-field-1: #47a7ca;
+  --color-field-2: #074868;
+  --color-field-3: #011836;
+
+  /* Status colours (design.md §0), small labels and icons only, always with an icon and label */
+  --color-success: #2e6b3f;
+  --color-warning: #8a5a00;
+  --color-error: #9b0d18;
+
+  /* Type family and weights */
+  --font-sans:
+    var(--font-inter-tight), "Inter Tight", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+
+  /* Radius */
+  --radius-xs: 5px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 42px;
+
+  /* Elevation and effects */
+  --shadow-fan: -28px 8px 40px 0 rgb(0 0 0 / 35%);
+  --shadow-lift: 0 16px 36px -10px rgb(0 0 0 / 45%), 0 2px 6px 0 rgb(0 0 0 / 20%);
+
+  /* Easing */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-enter: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-reveal: cubic-bezier(0.33, 1, 0.68, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-ui: cubic-bezier(0.44, 0, 0.56, 1);
+  --ease-loop: cubic-bezier(0.37, 0, 0.63, 1);
+  --ease-snap: cubic-bezier(0.35, 0, 0, 1);
+  --ease-settle: cubic-bezier(0.215, 0.61, 0.355, 1);
+
+  /* Breakpoints and 4 px spacing base (p-1 = 4, p-2 = 8, p-4 = 16, p-6 = 24) */
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+  --spacing: 0.25rem;
+}
+
+/* ---------- 2. design.md §2 non colour tokens, then the semantic names ---------- */
 :root {
-  --bg: #fdf0d5;
-  --surface: #ffffff;
-  --hover-surface: rgb(0 48 73 / 6%);
-  --selected-surface: rgb(193 18 31 / 8%);
-  --text: #003049;
-  --text-muted: #4c6a73;
-  --border: #b1b6ab;
-  --border-strong: #728688;
-  --primary: #c1121f;
-  --primary-fg: #ffffff;
-  --primary-hover: #780000;
-  --primary-active: #5a0000;
-  --danger: #9b0d18;
-  --danger-hover: #780000;
-  --danger-active: #5a0000;
-  --danger-bg: rgb(155 13 24 / 8%);
-  --success: #2e6b3f;
-  --success-bg: rgb(46 107 63 / 8%);
-  --warning: #8a5a00;
-  --warning-bg: rgb(138 90 0 / 8%);
-  --info: #2f6690;
-  --info-bg: rgb(47 102 144 / 8%);
-  --disabled-bg: rgb(0 48 73 / 6%);
-  --disabled-fg: rgb(0 48 73 / 45%);
-  --focus: #c1121f;
-  --backdrop: rgb(0 48 73 / 60%);
+  /* Content card palette (homepage fan cards) */
+  --card-red: #e5392c;
+  --card-green: #1d9a4a;
+  --card-orange: #ff9a1f;
+  --card-paper: #efefef;
+  --card-blue: #2f6bff;
+  --card-black: #111111;
 
-  /* ---------- Dark stage (player, timeline, processing preview) ---------- */
-  --stage-bg: #003049;
-  --stage-raised: #1f495f;
-  --stage-border: #669bbc;
-  --stage-text: #fdf0d5;
-  --stage-text-muted: #b1b6ab;
-  --stage-accent: #669bbc;
-  --stage-focus: #fdf0d5;
-  --stage-hover: rgb(253 240 213 / 10%);
+  --fw-light: 300;
+  --fw-regular: 400;
+  --fw-medium: 500;
 
-  /* ---------- Shape, elevation, layers, motion ---------- */
-  --radius: 10px;
-  --radius-chip: 6px;
+  --fs-display-xl: clamp(4.125rem, -4.8224rem + 18.6404vw, 14.5rem);
+  --fs-display: clamp(3.5rem, 2.571rem + 3.81vw, 6rem);
+  --fs-h1: clamp(2.75rem, 2.471rem + 1.143vw, 3.5rem);
+  --fs-h2: clamp(2.25rem, 1.786rem + 1.905vw, 3.5rem);
+  --fs-h3: clamp(1.5rem, 1.314rem + 0.762vw, 2rem);
+  --fs-h4: clamp(1.25rem, 1.111rem + 0.571vw, 1.625rem);
+  --fs-lead: clamp(1.125rem, 1.079rem + 0.19vw, 1.25rem);
+  --fs-nav: 1.25rem;
+  --fs-body: 1rem;
+  --fs-small: 0.875rem;
+  --fs-micro: 0.75rem;
+
+  --lh-display: 0.9;
+  --lh-h1: 1.1;
+  --lh-heading: 1.2;
+  --lh-body: 1.5;
+  --lh-tight: 1;
+
+  --ls-display: -0.04em;
+  --ls-heading: -0.01em;
+  --ls-body: 0.01em;
+  --ls-eyebrow: 0.05em;
+
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 16px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+  --space-9: 64px;
+  --space-10: 96px;
+  --space-11: 160px;
+  --section-y: clamp(5rem, 3.143rem + 7.619vw, 10rem);
+  --container-max: 1400px;
+  --container-pad: clamp(1.25rem, 5vw, 4.5rem);
+  --gutter: 24px;
+  --nav-h: 80px;
+  --nav-h-float: 56px;
+
+  --radius-0: 0;
+  --radius-pill: 999px;
+  --radius-round: 50%;
+
+  --ring-light: 0 0 0 1px rgb(0 0 0 / 8%);
+  --ring-dark: 0 0 0 1px rgb(255 255 255 / 15%);
+  --blur-nav: blur(16px) saturate(1.6);
+  --blur-glass: blur(10px);
+
+  --z-field: 0;
+  --z-base: 1;
+  --z-raised: 10;
+  --z-edge-blur: 50;
+  --z-nav: 100;
+  --z-menu: 200;
+  --z-cursor: 900;
+  --z-modal: 1000;
+
+  --dur-instant: 100ms;
+  --dur-fast: 150ms;
+  --dur-ui: 200ms;
+  --dur-hover: 300ms;
+  --dur-color: 400ms;
+  --dur-fade: 460ms;
+  --dur-swap: 500ms;
+  --dur-media: 600ms;
+  --dur-enter: 700ms;
+  --dur-spread: 800ms;
+  --dur-reveal: 1500ms;
+  --dur-loop: 4000ms;
+  --stagger: 70ms;
+  --stagger-word: 40ms;
+
+  /* ---------- Semantic names on the white shell ---------- */
+  --bg: var(--color-bg);
+  --surface: var(--color-bg);
+  --panel: var(--color-surface);
+  --hover-surface: color-mix(in srgb, var(--color-ink) 6%, transparent);
+  --selected-surface: color-mix(in srgb, var(--color-ink) 8%, transparent);
+  --text: var(--color-ink);
+  --text-muted: var(--color-text-muted);
+  --border: var(--color-line);
+  --border-strong: var(--color-line-strong);
+  --primary: var(--color-ink);
+  --primary-fg: var(--color-on-dark);
+  --primary-hover: var(--color-ink-soft);
+  --primary-active: var(--color-ink-soft);
+  --danger: var(--color-error);
+  --danger-hover: color-mix(in srgb, var(--color-error) 85%, var(--color-ink));
+  --danger-active: color-mix(in srgb, var(--color-error) 70%, var(--color-ink));
+  --danger-bg: color-mix(in srgb, var(--color-error) 8%, transparent);
+  --success: var(--color-success);
+  --success-bg: color-mix(in srgb, var(--color-success) 8%, transparent);
+  --warning: var(--color-warning);
+  --warning-bg: color-mix(in srgb, var(--color-warning) 8%, transparent);
+  --info: var(--color-ink-soft);
+  --info-bg: color-mix(in srgb, var(--color-ink) 6%, transparent);
+  --disabled-bg: color-mix(in srgb, var(--color-ink) 6%, transparent);
+  --disabled-fg: color-mix(in srgb, var(--color-ink) 45%, transparent);
+  --focus: var(--color-ink);
+  --backdrop: color-mix(in srgb, var(--color-dark) 60%, transparent);
+
+  /* ---------- Dark stage (player panel, processing preview) ---------- */
+  --stage-bg: var(--color-dark);
+  --stage-raised: var(--color-dark-2);
+  --stage-border: var(--color-line-dark);
+  --stage-border-strong: var(--color-on-dark-60);
+  --stage-text: var(--color-on-dark);
+  --stage-text-muted: var(--color-on-dark-75);
+  --stage-accent: var(--color-accent);
+  --stage-focus: var(--color-accent);
+  --stage-hover: color-mix(in srgb, var(--color-on-dark) 10%, transparent);
+
+  /* ---------- Layout and layers used by the existing components ---------- */
+  --radius: var(--radius-md);
   --sidebar-width: 15rem;
-  --elevation-card: 0 1px 2px rgb(0 48 73 / 6%), 0 2px 8px rgb(0 48 73 / 6%);
-  --elevation-overlay: 0 2px 6px rgb(0 48 73 / 8%), 0 12px 32px rgb(0 48 73 / 16%);
-  --z-base: 0;
-  --z-sticky: 10;
+  --elevation-card: var(--ring-light);
+  --elevation-overlay: var(--shadow-lift);
+  --z-sticky: var(--z-raised);
   --z-stage-overlay: 20;
   --z-dropdown: 30;
   --z-backdrop: 40;
-  --z-dialog: 50;
-  --z-toast: 60;
-  --z-tooltip: 70;
-  --duration-fast: 150ms;
-  --duration-base: 200ms;
-  --ease-out-soft: cubic-bezier(0, 0, 0.2, 1);
+  --z-dialog: var(--z-modal);
+  --z-toast: 1100;
+  --z-tooltip: 1200;
   --scrollbar: var(--border-strong);
 
   /* ---------- shadcn/ui names, mapped to the tokens above ---------- */
@@ -79,8 +253,6 @@
   --secondary-foreground: var(--text);
   --muted: var(--disabled-bg);
   --muted-foreground: var(--text-muted);
-  --accent: var(--hover-surface);
-  --accent-foreground: var(--text);
   --destructive: var(--danger);
   --destructive-foreground: var(--primary-fg);
   --input: var(--border-strong);
@@ -88,27 +260,31 @@
 }
 
 /*
- * The stage: everything inside `.stage` resolves the same names to the stage set, so copied
- * components work unchanged and inherit the cream focus ring. Brick Red is never used here.
- * The Stage container component (spec 0003, build plan step 3) applies this class.
+ * The stage: everything inside `.stage` resolves the same names to the dark set, so shared
+ * components work unchanged. Primary becomes the white pill on dark (design.md §5) and the
+ * focus ring turns lime. The lime accent is a fill or a ring there, never text on white.
  */
 .stage {
   --bg: var(--stage-bg);
   --surface: var(--stage-raised);
   --hover-surface: var(--stage-hover);
+  --selected-surface: var(--stage-hover);
   --text: var(--stage-text);
   --text-muted: var(--stage-text-muted);
   --border: var(--stage-border);
-  --border-strong: var(--stage-border);
+  --border-strong: var(--stage-border-strong);
   --focus: var(--stage-focus);
-  --scrollbar: rgb(177 182 171 / 40%);
-  /* Derived for controls on the stage (design.md only names the light versions): primary is
-     Steel Blue here, so hover and pressed lighten it towards cream, which only raises the
-     contrast of its Deep Space Blue label; disabled uses cream tints instead of blue ones. */
-  --primary-hover: color-mix(in srgb, var(--stage-accent) 85%, var(--stage-text));
-  --primary-active: color-mix(in srgb, var(--stage-accent) 70%, var(--stage-text));
+  --scrollbar: var(--color-on-dark-20);
+  --primary: var(--color-on-dark);
+  --primary-fg: var(--color-ink);
+  --primary-hover: color-mix(in srgb, var(--color-on-dark) 91%, var(--color-ink));
+  --primary-active: color-mix(in srgb, var(--color-on-dark) 91%, var(--color-ink));
   --disabled-bg: var(--stage-hover);
-  --disabled-fg: rgb(253 240 213 / 45%);
+  --disabled-fg: var(--color-on-dark-60);
+  --danger: var(--color-on-dark);
+  --danger-hover: var(--primary-hover);
+  --danger-active: var(--primary-active);
+  --danger-bg: var(--stage-hover);
 
   --background: var(--stage-bg);
   --foreground: var(--stage-text);
@@ -116,27 +292,22 @@
   --card-foreground: var(--stage-text);
   --popover: var(--stage-raised);
   --popover-foreground: var(--stage-text);
-  --primary: var(--stage-accent);
-  --primary-foreground: var(--stage-bg);
+  --primary-foreground: var(--color-ink);
   --secondary: var(--stage-raised);
   --secondary-foreground: var(--stage-text);
   --muted: var(--stage-raised);
   --muted-foreground: var(--stage-text-muted);
-  --accent: var(--stage-hover);
-  --accent-foreground: var(--stage-text);
-  --input: var(--stage-border);
+  --destructive: var(--color-on-dark);
+  --destructive-foreground: var(--color-ink);
+  --input: var(--stage-border-strong);
   --ring: var(--stage-focus);
 
   background-color: var(--stage-bg);
   color: var(--stage-text);
 }
 
-/* Tailwind theme: `inline` so utilities read the variables per element (needed for `.stage`). */
+/* ---------- 3. Tailwind utilities that read the semantic names per element ---------- */
 @theme inline {
-  --color-*: initial;
-  --color-transparent: transparent;
-  --color-current: currentColor;
-
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -149,20 +320,16 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
+  --color-panel: var(--panel);
   --color-hover-surface: var(--hover-surface);
   --color-selected-surface: var(--selected-surface);
   --color-text: var(--text);
-  --color-text-muted: var(--text-muted);
   --color-border-strong: var(--border-strong);
   --color-primary-fg: var(--primary-fg);
   --color-primary-hover: var(--primary-hover);
@@ -171,9 +338,7 @@
   --color-danger-hover: var(--danger-hover);
   --color-danger-active: var(--danger-active);
   --color-danger-bg: var(--danger-bg);
-  --color-success: var(--success);
   --color-success-bg: var(--success-bg);
-  --color-warning: var(--warning);
   --color-warning-bg: var(--warning-bg);
   --color-info: var(--info);
   --color-info-bg: var(--info-bg);
@@ -191,58 +356,65 @@
   --color-stage-focus: var(--stage-focus);
   --color-stage-hover: var(--stage-hover);
 
-  /* Type: Inter for UI, JetBrains Mono for numbers (design.md, Type). */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
-
-  --text-display: 2.5rem;
-  --text-display--line-height: 1.1;
-  --text-h1: 2rem;
-  --text-h1--line-height: 1.2;
-  --text-h2: 1.5rem;
-  --text-h2--line-height: 1.25;
-  --text-h3: 1.25rem;
-  --text-h3--line-height: 1.3;
-  --text-body: 1rem;
-  --text-body--line-height: 1.5;
-  --text-small: 0.875rem;
-  --text-small--line-height: 1.45;
-  --text-caption: 0.75rem;
-  --text-caption--line-height: 1.4;
+  /* Type (design.md §3). Weight 300 is for 16 px and up, so the small sizes carry 400. */
+  --text-display-xl: var(--fs-display-xl);
+  --text-display-xl--line-height: var(--lh-display);
+  --text-display-xl--letter-spacing: var(--ls-display);
+  --text-display: var(--fs-display);
+  --text-display--line-height: var(--lh-tight);
+  --text-display--letter-spacing: -0.02em;
+  --text-h1: var(--fs-h1);
+  --text-h1--line-height: var(--lh-h1);
+  --text-h1--letter-spacing: var(--ls-heading);
+  --text-h1--font-weight: var(--fw-regular);
+  --text-h2: var(--fs-h2);
+  --text-h2--line-height: var(--lh-heading);
+  --text-h2--letter-spacing: var(--ls-heading);
+  --text-h2--font-weight: var(--fw-regular);
+  --text-h3: var(--fs-h3);
+  --text-h3--line-height: var(--lh-heading);
+  --text-h3--letter-spacing: var(--ls-heading);
+  --text-h3--font-weight: var(--fw-regular);
+  --text-h4: var(--fs-h4);
+  --text-h4--line-height: 1.25;
+  --text-h4--letter-spacing: var(--ls-heading);
+  --text-h4--font-weight: var(--fw-regular);
+  --text-lead: var(--fs-lead);
+  --text-lead--line-height: var(--lh-body);
+  --text-lead--letter-spacing: var(--ls-body);
+  --text-body: var(--fs-body);
+  --text-body--line-height: var(--lh-body);
+  --text-body--letter-spacing: var(--ls-body);
+  --text-small: var(--fs-small);
+  --text-small--line-height: 1.43;
+  --text-small--letter-spacing: var(--ls-body);
+  --text-small--font-weight: var(--fw-regular);
+  --text-caption: var(--fs-micro);
+  --text-caption--line-height: 1.33;
+  --text-caption--letter-spacing: var(--ls-eyebrow);
+  --text-caption--font-weight: var(--fw-regular);
   /* shadcn components use xs, sm, base, lg: aligned to the scale above. */
-  --text-xs: 0.75rem;
-  --text-xs--line-height: 1.4;
-  --text-sm: 0.875rem;
-  --text-sm--line-height: 1.45;
-  --text-base: 1rem;
-  --text-base--line-height: 1.5;
-  --text-lg: 1.25rem;
-  --text-lg--line-height: 1.3;
+  --text-xs: var(--fs-micro);
+  --text-xs--line-height: 1.33;
+  --text-xs--font-weight: var(--fw-regular);
+  --text-sm: var(--fs-small);
+  --text-sm--line-height: 1.43;
+  --text-sm--font-weight: var(--fw-regular);
+  --text-base: var(--fs-body);
+  --text-base--line-height: var(--lh-body);
+  --text-lg: var(--fs-lead);
+  --text-lg--line-height: var(--lh-body);
 
-  /* 4 px base: p-1 = 4, p-2 = 8, p-3 = 12, p-4 = 16, p-6 = 24, p-8 = 32, p-12 = 48, p-16 = 64. */
-  --spacing: 0.25rem;
   --container-content: 75rem;
   --container-transcript: 72ch;
   --container-dialog-sm: 25rem;
   --container-dialog-md: 35rem;
   --container-dialog-lg: 45rem;
 
-  --breakpoint-sm: 40rem;
-  --breakpoint-md: 48rem;
-  --breakpoint-lg: 64rem;
-  --breakpoint-xl: 80rem;
-
-  /* 10 px on cards, buttons, inputs, dialogs; 6 px on chips and timeline segments. */
-  --radius-sm: var(--radius-chip);
-  --radius-md: var(--radius);
-  --radius-lg: var(--radius);
-  --radius-xl: var(--radius);
-
   --shadow-card: var(--elevation-card);
   --shadow-overlay: var(--elevation-overlay);
 
-  --ease-out: var(--ease-out-soft);
-  --animate-indeterminate: indeterminate 1.2s var(--ease-out-soft) infinite;
+  --animate-indeterminate: indeterminate 1.2s var(--ease-ui) infinite;
 
   @keyframes indeterminate {
     from {
@@ -252,8 +424,8 @@
       transform: translateX(300%);
     }
   }
-  --default-transition-duration: var(--duration-fast);
-  --default-transition-timing-function: var(--ease-out-soft);
+  --default-transition-duration: var(--dur-fast);
+  --default-transition-timing-function: var(--ease-ui);
 }
 
 @layer base {
@@ -265,8 +437,12 @@
 
   body {
     margin: 0;
-    line-height: 1.5;
+    font-size: var(--fs-body);
+    font-weight: var(--fw-light);
+    line-height: var(--lh-body);
+    letter-spacing: var(--ls-body);
     background-color: var(--bg);
+    -webkit-font-smoothing: antialiased;
   }
 
   * {
@@ -275,34 +451,50 @@
     scrollbar-color: var(--scrollbar) transparent;
   }
 
+  /* design.md §10: 2 px ring, 3 px offset. Ink on light, lime on dark (--focus). */
   :focus-visible {
     outline: 2px solid var(--focus);
-    outline-offset: 2px;
+    outline-offset: 3px;
   }
 
-  /* Links in running text are underlined: red alone isn't distinguishable from blue text. */
-  /* Not nav lists: those are menus, not running text. */
+  /*
+   * Text links (design.md §5): the colour is inherited, the underline is transparent at rest
+   * and shows on hover with a smaller offset. Running text keeps a visible underline, because
+   * ink on ink body text is only recognisable as a link by it.
+   */
   :where(p, main li) a {
-    color: var(--primary);
-    text-decoration: underline;
+    color: inherit;
+    text-decoration: underline 1px currentColor;
+    text-underline-offset: 3px;
+    transition:
+      color var(--dur-color) var(--ease-ui),
+      text-decoration-color var(--dur-color) var(--ease-ui),
+      text-underline-offset var(--dur-color) var(--ease-ui);
+  }
+
+  :where(p, main li) a:hover {
     text-underline-offset: 2px;
+  }
+
+  /* Weight 300 only at 16 px and up; small and bold text stays at 400 or 500. */
+  :where(small, label, button, th, caption) {
+    font-weight: var(--fw-regular);
   }
 }
 
-/* Timestamps, durations and file sizes. */
+/* Times, durations and sizes: tabular numbers in the same family (design.md §3). */
 @utility mono {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
-/* Reduced motion: no slide ins, skeleton shimmer stops (design.md, Motion). */
+/* Reduced motion (design.md §10): no slide ins, skeleton shimmer stops. */
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,
   ::after {
-    animation-duration: 0.01ms !important;
+    animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    transition-duration: 1ms !important;
     scroll-behavior: auto !important;
   }
 }

@@ -8,7 +8,7 @@ export function LibrarySkeleton() {
         Loading your takes…
       </p>
       {Array.from({ length: 6 }, (_, i) => (
-        <div key={i} className="flex flex-col rounded-md bg-surface shadow-card">
+        <div key={i} className="flex flex-col rounded-md bg-card shadow-card">
           <Skeleton className="aspect-video w-full rounded-b-none" />
           <div className="flex flex-col gap-2 p-4">
             <Skeleton className="h-5 w-3/4" />

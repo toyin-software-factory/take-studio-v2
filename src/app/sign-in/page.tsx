@@ -21,8 +21,8 @@ export default async function SignInPage() {
         className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 px-4 outline-hidden"
       >
         <div className="flex flex-col gap-1">
-          <h1 className="text-h1 font-semibold">Sign in to Take Studio</h1>
-          <p className="text-text-muted">Use Google, or get a one time link by email.</p>
+          <h1 className="text-h1 font-medium">Sign in to Take Studio</h1>
+          <p className="text-muted-foreground">Use Google, or get a one time link by email.</p>
         </div>
         <SignInForm />
       </main>

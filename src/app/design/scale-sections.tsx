@@ -12,29 +12,31 @@ function Section({
 }) {
   return (
     <section aria-labelledby={id} className="space-y-4">
-      <h2 id={id} className="text-h2 font-semibold">
+      <h2 id={id} className="text-h2 font-medium">
         {title}
       </h2>
-      <div className="rounded-md bg-surface p-6 shadow-card">{children}</div>
+      <div className="rounded-md bg-card p-6 shadow-card">{children}</div>
     </section>
   );
 }
 
-/** Inter scale from display to caption, plus the tabular mono sample. */
+/** Inter Tight scale from display to caption, plus the tabular mono sample. */
 export function TypeSection() {
   return (
     <Section id="type" title="Type">
       <ul className="space-y-4">
         {typeScale.map((step) => (
           <li key={step.name} className="grid gap-1 sm:grid-cols-[10rem_1fr] sm:gap-4">
-            <span className="mono text-caption text-text-muted">
+            <span className="mono text-caption text-muted-foreground">
               {step.name} · {step.size}
             </span>
-            <span className={step.className}>Your take, trimmed and ready ({step.note})</span>
+            <span className={`${step.className} min-w-0 overflow-hidden`}>
+              {"sample" in step ? step.sample : `Your take, trimmed and ready (${step.note})`}
+            </span>
           </li>
         ))}
         <li className="grid gap-1 sm:grid-cols-[10rem_1fr] sm:gap-4">
-          <span className="mono text-caption text-text-muted">.mono · tabular</span>
+          <span className="mono text-caption text-muted-foreground">.mono · tabular</span>
           <span className="mono">01:23 · 12:05 · 1:02:41 · 1.2 GB · 980 MB</span>
         </li>
       </ul>
@@ -49,7 +51,7 @@ export function SpacingSection() {
       <ul className="space-y-2">
         {spacingScale.map((step) => (
           <li key={step.px} className="flex items-center gap-4">
-            <span className="mono w-12 text-small text-text-muted">{step.px} px</span>
+            <span className="mono w-12 text-small text-muted-foreground">{step.px} px</span>
             <span className={`${step.className} h-4 rounded-sm bg-text`} aria-hidden="true" />
           </li>
         ))}
@@ -65,16 +67,18 @@ export function ShapeSection() {
       <ul className="flex flex-wrap gap-6">
         {radii.map((radius) => (
           <li key={radius.className} className="w-40 space-y-2">
-            <div className={`${radius.className} h-16 w-16 border-2 border-border-strong bg-bg`} />
-            <p className="text-small font-semibold">{radius.value}</p>
-            <p className="text-caption text-text-muted">{radius.name}</p>
+            <div
+              className={`${radius.className} h-16 w-16 border-2 border-border-strong bg-background`}
+            />
+            <p className="text-small font-medium">{radius.value}</p>
+            <p className="text-caption text-muted-foreground">{radius.name}</p>
           </li>
         ))}
         {shadows.map((shadow) => (
           <li key={shadow.className} className="w-40 space-y-2">
-            <div className={`${shadow.className} h-16 w-16 rounded-md bg-surface`} />
-            <p className="text-small font-semibold">{shadow.className}</p>
-            <p className="text-caption text-text-muted">{shadow.name}</p>
+            <div className={`${shadow.className} h-16 w-16 rounded-md bg-card`} />
+            <p className="text-small font-medium">{shadow.className}</p>
+            <p className="text-caption text-muted-foreground">{shadow.name}</p>
           </li>
         ))}
       </ul>
@@ -89,7 +93,7 @@ export function LayersSection() {
       <dl className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
         {layers.map(([name, value]) => (
           <div key={name}>
-            <dt className="text-small text-text-muted">--z-{name}</dt>
+            <dt className="text-small text-muted-foreground">--z-{name}</dt>
             <dd className="mono">{value}</dd>
           </div>
         ))}

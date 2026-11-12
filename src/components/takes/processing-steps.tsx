@@ -57,7 +57,7 @@ export function ProcessingSteps({
   return (
     <div className="mx-auto flex w-full max-w-xl flex-col gap-4 py-6 sm:py-10">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-h3 font-semibold">{HEADLINES[status] ?? "Working on it…"}</h2>
+        <h2 className="text-h3 font-medium">{HEADLINES[status] ?? "Working on it…"}</h2>
         {overall !== undefined ? <span className="mono text-small">{overall}%</span> : null}
       </div>
       <Progress aria-label="Overall progress" value={overall} />

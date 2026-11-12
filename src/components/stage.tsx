@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 /**
  * The dark stage (design.md): for the video player, cut timeline and processing preview.
  * Everything inside resolves the shared token names to the stage set, so components keep
- * working and get the cream focus ring and stage hover. Brick Red is never text or a ring here.
+ * working and get the lime focus ring and stage hover. The lime accent is a ring or a fill here, never text on white.
  */
 export function Stage({
   className,

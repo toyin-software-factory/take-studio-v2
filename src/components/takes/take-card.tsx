@@ -30,10 +30,10 @@ export function TakeCard({
   const failed = status === "failed";
 
   return (
-    <li className="relative flex flex-col rounded-md bg-surface shadow-card transition-shadow focus-within:shadow-overlay hover:shadow-overlay">
+    <li className="relative flex flex-col rounded-md bg-card shadow-card transition-shadow focus-within:shadow-overlay hover:shadow-overlay">
       <TakeThumb takeId={take.id} available={status !== "uploading" && !expired} status={status} />
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 className="text-body font-semibold">
+        <h3 className="text-body font-medium">
           <Link
             href={`/takes/${take.id}`}
             className="line-clamp-2 rounded-sm outline-hidden after:absolute after:inset-0 after:rounded-md after:content-[''] focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-ring focus-visible:after:outline-solid"
@@ -44,14 +44,14 @@ export function TakeCard({
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={status} />
           {take.durationMs !== null ? (
-            <span className="mono text-small text-text-muted">
+            <span className="mono text-small text-muted-foreground">
               <span className="sr-only">Length </span>
               {formatClock(take.durationMs)}
             </span>
           ) : null}
         </div>
         {failed ? <p className="text-small">{failureMessage(take, take.retryable)}</p> : null}
-        {expiry ? <p className="text-small text-text-muted">{expiry}</p> : null}
+        {expiry ? <p className="text-small text-muted-foreground">{expiry}</p> : null}
         {failed ? (
           // Above the stretched link, so the button gets the click.
           <div className="relative mt-auto pt-1">

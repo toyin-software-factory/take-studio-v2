@@ -51,6 +51,8 @@ type Stub = {
   detailStatus?: number;
   preview: { post: { status: number; json: unknown }; get?: { status: number; json: unknown }[] };
   put: { status: number; json?: unknown } | "abort";
+  /** Runs when the change request reaches the stub (another tab's change starting meanwhile). */
+  afterPut?: () => void;
   calls: string[];
 };
 
@@ -144,6 +146,7 @@ async function setup(page: Page, baseURL: string, stub: Partial<Stub> = {}) {
   await page.route(new RegExp(`/api/takes/${id}/background$`), (route) => {
     state.calls.push(`PUT ${route.request().postData()}`);
     if (state.put === "abort") return route.abort();
+    state.afterPut?.();
     return route.fulfill({ status: state.put.status, json: state.put.json ?? {} });
   });
   return { id: id as string, state };
@@ -587,9 +590,13 @@ test("a change refused because one is already running says so, and the page catc
   await section(page)
     .getByRole("radio", { name: /Calm studio/ })
     .check({ force: true });
-  // The other tab's change is running by the time this tab asks.
-  state.detail = {
-    backgroundJob: { status: "running", failureCode: null, targetBackgroundId: WARM },
+  // The other tab's change starts as this tab's request arrives. Setting it any earlier races the
+  // page's own polling: it could disable the button before the click (CI hit that after the v2
+  // restyle changed load timing).
+  state.afterPut = () => {
+    state.detail = {
+      backgroundJob: { status: "running", failureCode: null, targetBackgroundId: WARM },
+    };
   };
   await section(page).getByRole("button", { name: "Use this background" }).click();
   await expect(
