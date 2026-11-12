@@ -487,32 +487,93 @@ test("a refresh that was fetched before a delete cannot bring the deleted backgr
   await expect(section(page).getByRole("radio", { name: /Office wall/ })).toHaveCount(0);
 });
 
-test("a click on the preview reaches the video (play and pause still work)", async ({
+const READY_PREVIEW = {
+  post: { status: 200, json: { state: "ready", url: `${R2}/preview.png`, noGreenScreen: false } },
+};
+
+// S3S-T14: a still preview must not look like a video that will not play.
+test("while a still shows, the transport is hidden and the stage says it is a still; Back restores the video", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!, { preview: READY_PREVIEW });
+  await open(page, id);
+  await expect(page.getByRole("button", { name: "Play" })).toBeVisible();
+  await page.locator("video").evaluate((v) => v.setAttribute("data-mark", "same"));
+  await section(page)
+    .getByRole("radio", { name: /Calm studio/ })
+    .check({ force: true });
+  const still = page.getByAltText("Preview of your take on Calm studio");
+  await expect(still).toBeVisible();
+
+  // The label (announced: role=status), the banner, and no playable controls.
+  const status = page.getByRole("status").filter({ hasText: "Still preview, not a video" });
+  await expect(status).toHaveText(
+    "Still preview, not a video. Press \u201cUse this background\u201d to render it.",
+  );
+  await expect(page.getByText("Preview, not your video yet")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Play" })).toBeHidden();
+  await expect(page.getByRole("slider", { name: "Seek" })).toBeHidden();
+  await expect(page.getByRole("button", { name: "Mute" })).toBeHidden();
+  // The video is paused under the still, and a click on the still does not start it.
+  expect(await page.locator("video").evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
+  await still.click({ force: true });
+  expect(await page.locator("video").evaluate((v: HTMLVideoElement) => v.paused)).toBe(true);
+
+  // Back to your video: the controls and the picture return, on the same video element.
+  await page.getByRole("button", { name: "Back to your video" }).click();
+  await expect(still).toHaveCount(0);
+  await expect(status).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Play" })).toBeVisible();
+  await expect(page.getByRole("slider", { name: "Seek" })).toBeVisible();
+  await expect(page.locator("video[data-mark=same]")).toHaveCount(1);
+  await expect(section(page).getByRole("radio", { name: /Keep original/ })).toBeChecked();
+  await expect(page.getByRole("button", { name: "Back to your video" })).toHaveCount(0);
+});
+
+test("the stage line names Keep original when the original is what is previewed", async ({
   page,
   baseURL,
 }) => {
   const { id } = await setup(page, baseURL!, {
-    preview: {
-      post: {
-        status: 200,
-        json: { state: "ready", url: `${R2}/preview.png`, noGreenScreen: false },
-      },
-    },
+    detail: { background: { id: CALM, name: "Calm studio", keyed: true } },
   });
+  await open(page, id);
+  await section(page).getByRole("radio", { name: "Keep original" }).check({ force: true });
+  await expect(
+    page.getByRole("status").filter({ hasText: "Still preview, not a video" }),
+  ).toContainText("\u201cKeep original\u201d");
+  await expect(page.getByRole("button", { name: "Play" })).toBeHidden();
+  // Returning to the current background (Calm studio) ends the preview too.
+  await page.getByRole("button", { name: "Back to your video" }).click();
+  await expect(section(page).getByRole("radio", { name: /Calm studio/ })).toBeChecked();
+  await expect(page.getByRole("button", { name: "Play" })).toBeVisible();
+});
+
+test("focus is not left on a control that gets hidden: it moves to Back to your video", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!, { preview: READY_PREVIEW });
+  await open(page, id);
+  await page.getByRole("button", { name: "Play" }).focus();
+  await expect(page.getByRole("button", { name: "Play" })).toBeFocused();
+  // Choose a studio without moving focus (a click through the DOM).
+  await section(page)
+    .getByRole("radio", { name: /Calm studio/ })
+    .evaluate((el: HTMLInputElement) => el.click());
+  await expect(page.getByAltText("Preview of your take on Calm studio")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Back to your video" })).toBeFocused();
+});
+
+test("axe finds no serious issues while a still preview shows", async ({ page, baseURL }) => {
+  const { id } = await setup(page, baseURL!, { preview: READY_PREVIEW });
   await open(page, id);
   await section(page)
     .getByRole("radio", { name: /Calm studio/ })
     .check({ force: true });
-  await expect(page.getByAltText("Preview of your take on Calm studio")).toBeVisible();
-  // The still is only to look at: the point under it is the video, so a click plays and pauses it.
-  const still = page.getByAltText("Preview of your take on Calm studio");
-  await still.scrollIntoViewIfNeeded();
-  const box = await still.boundingBox();
-  const topmost = await page.evaluate(
-    ({ x, y }) => document.elementFromPoint(x, y)?.tagName ?? "",
-    { x: (box?.x ?? 0) + (box?.width ?? 0) / 2, y: (box?.y ?? 0) + (box?.height ?? 0) / 2 },
-  );
-  expect(topmost).toBe("VIDEO");
+  await expect(page.getByRole("status").filter({ hasText: "Still preview" })).toBeVisible();
+  await expectNoSeriousAxeIssues(page);
 });
 
 // S3S-T13: the page after a background change.

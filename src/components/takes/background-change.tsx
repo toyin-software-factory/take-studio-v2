@@ -86,17 +86,26 @@ export function BackgroundChange({
   const showOriginal = previewing && choice === ORIGINAL_BACKGROUND && original !== null;
   const overlayKind = showOriginal ? "original" : preview.kind;
   const overlayUrl = showOriginal ? original : preview.kind === "ready" ? preview.url : "";
+  // The label of the main button, which the stage line names while a still covers the video.
+  const action = choice === ORIGINAL_BACKGROUND ? "Keep original" : "Use this background";
   useEffect(() => {
     if (overlayKind === "original" || overlayKind === "ready") {
       bridge.setPreview({
         kind: "image",
         url: overlayUrl ?? "",
         label: showOriginal ? "your original background" : chosenName,
+        action,
       });
-    } else if (overlayKind === "making") bridge.setPreview({ kind: "making", label: chosenName });
-    else bridge.setPreview(null);
+    } else if (overlayKind === "making") {
+      bridge.setPreview({ kind: "making", label: chosenName, action });
+    } else bridge.setPreview(null);
     return () => bridge.setPreview(null);
-  }, [bridge, overlayKind, overlayUrl, showOriginal, chosenName]);
+  }, [bridge, overlayKind, overlayUrl, showOriginal, chosenName, action]);
+  // "Back to your video" picks the current background again: no preview, the video returns.
+  useEffect(() => {
+    bridge.setBack(() => setPicked(current));
+    return () => bridge.setBack(null);
+  }, [bridge, current]);
 
   if (take.status !== "ready" || take.expired) return null;
 

@@ -242,3 +242,17 @@ export function keepPolling(detail: {
   if (isInFlight(detail.take.status) || backgroundChangeActive(detail.backgroundJob)) return true;
   return detail.take.status === "ready" && !detail.take.expired;
 }
+
+/**
+ * The line on the stage while a still preview covers the video (S3S-T14): it says the picture is
+ * a still, not a video, and which button renders it. `action` is the label of the section's
+ * main button ("Use this background" or "Keep original").
+ */
+export function previewStatusText(preview: {
+  readonly kind: "making" | "image";
+  readonly action: string;
+}): string {
+  return preview.kind === "making"
+    ? "Making a still preview. Your video is paused."
+    : `Still preview, not a video. Press \u201c${preview.action}\u201d to render it.`;
+}

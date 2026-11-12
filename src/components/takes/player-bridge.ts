@@ -18,18 +18,28 @@ export type PlayerBridge = {
   /** A still shown over the video while a background is being tried (spec 0008, AC-4). */
   readonly setPreview: (preview: PreviewOverlay | null) => void;
   readonly getPreview: () => PreviewOverlay | null;
+  /** "Back to your video": the background section registers how to leave the preview (S3S-T14). */
+  readonly setBack: (fn: (() => void) | null) => void;
+  readonly back: () => void;
   readonly subscribe: (listener: () => void) => () => void;
 };
 
+/** `action` is the label of the button that renders the previewed choice (shown in the stage line). */
 export type PreviewOverlay =
-  | { readonly kind: "making"; readonly label: string }
-  | { readonly kind: "image"; readonly label: string; readonly url: string };
+  | { readonly kind: "making"; readonly label: string; readonly action: string }
+  | {
+      readonly kind: "image";
+      readonly label: string;
+      readonly url: string;
+      readonly action: string;
+    };
 
 export function createPlayerBridge(): PlayerBridge {
   let time = 0;
   let captions: string | null = null;
   let preview: PreviewOverlay | null = null;
   let seekFn: ((ms: number) => void) | null = null;
+  let backFn: (() => void) | null = null;
   const listeners = new Set<() => void>();
   const emit = () => listeners.forEach((listener) => listener());
   return {
@@ -55,12 +65,17 @@ export function createPlayerBridge(): PlayerBridge {
           preview !== null &&
           next.kind === preview.kind &&
           next.label === preview.label &&
+          next.action === preview.action &&
           (next.kind === "making" || (preview.kind === "image" && next.url === preview.url)));
       if (same) return;
       preview = next;
       emit();
     },
     getPreview: () => preview,
+    setBack: (fn) => {
+      backFn = fn;
+    },
+    back: () => backFn?.(),
     subscribe: (listener) => {
       listeners.add(listener);
       return () => listeners.delete(listener);
