@@ -788,7 +788,8 @@
   line-height: var(--lh-display);
   letter-spacing: var(--ls-display);
   font-weight: var(--fw-regular);
-  color: var(--color-on-dark-20);
+  /* Decorative (aria-hidden) but axe still checks it: white at 60% is over 3:1 on the footer. */
+  color: var(--color-on-dark-60);
   white-space: nowrap;
   user-select: none;
 }
