@@ -54,13 +54,16 @@ export function TakePlayer({
     // playing. The video element stays mounted, so only `src` changes.
     const swapping = shownRender.current !== renderId;
     shownRender.current = renderId;
-    if (swapping && video.current) {
-      resumeAt.current = video.current.currentTime;
-      resumePlaying.current = !video.current.paused;
-      refreshed.current = false;
-    }
     void playLink(takeId).then((next) => {
-      if (live) setLink(next);
+      if (!live) return;
+      // Read the position and the state now, just before the source changes: the viewer may have
+      // played on, paused or pressed play while the link was being fetched.
+      if (swapping && video.current) {
+        resumeAt.current = video.current.currentTime;
+        resumePlaying.current = !video.current.paused;
+        refreshed.current = false;
+      }
+      setLink(next);
     });
     return () => {
       live = false;

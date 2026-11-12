@@ -208,7 +208,8 @@ export const POLL = {
 
 /** Next delay after `failures` errors in a row: the base, doubling, capped at 10 s. */
 export function pollDelay(baseMs: number, failures: number): number {
-  return Math.min(baseMs * 2 ** failures, POLL.maxBackoffMs);
+  // The cap never lowers a base that is already above it (the idle check, `POLL.idleMs`).
+  return Math.min(baseMs * 2 ** failures, Math.max(POLL.maxBackoffMs, baseMs));
 }
 
 /** True while a background change is queued or running (the take itself stays Ready). */

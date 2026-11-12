@@ -199,3 +199,15 @@ describe("keepPolling (S3S-T13)", () => {
     expect(keepPolling({ take: take("expired") })).toBe(false);
   });
 });
+
+describe("pollDelay keeps the idle interval (S3S-T13)", () => {
+  it("does not cap a base above the backoff cap", () => {
+    expect(pollDelay(POLL.idleMs, 0)).toBe(POLL.idleMs);
+    expect(pollDelay(POLL.idleMs, 3)).toBe(POLL.idleMs);
+  });
+  it("still doubles the 2 s base up to 10 s", () => {
+    expect(pollDelay(POLL.takeMs, 0)).toBe(2000);
+    expect(pollDelay(POLL.takeMs, 1)).toBe(4000);
+    expect(pollDelay(POLL.takeMs, 5)).toBe(POLL.maxBackoffMs);
+  });
+});
