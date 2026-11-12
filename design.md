@@ -1765,3 +1765,55 @@ if (matchMedia("(pointer: fine)").matches && !REDUCED) {
 | Video editor: player above a timeline              | [Canva video editor](https://mobbin.com/screens/95c87b38-b0f6-4cf0-8ac8-2be5cd7c95c0)                   | Centred player, transport under it, timeline below (slice 4)       |
 | Editor with a right side panel                     | [Jitter editor](https://mobbin.com/screens/17629e26-aaab-4170-b7c7-3374a5e0330c)                        | Canvas left, inspector right, timeline at the bottom               |
 | Right inspector with settings and a primary action | [Recraft editor](https://mobbin.com/screens/adbfa3f1-a61d-4831-8d40-39e5e8f54f8c)                       | Inspector sections and a full width primary action at the bottom   |
+
+## Appendix: v1 tokens still in the code (remove in DV0-T01)
+
+These are the v1 tokens `src/app/globals.css` uses until design v2 part 1 (DV0-T01) replaces them. `src/app/design/tokens.test.ts` checks this list against the CSS, so it stays until that task updates the test to the §2 tokens and deletes this appendix. Do not use them for new work.
+
+### v1 colour tokens (still in the code)
+
+Palette (Toyin's): Molten Lava `#780000`, Brick Red `#C1121F`, Papaya Whip `#FDF0D5`, Deep Space Blue `#003049`, Steel Blue `#669BBC`. Status colours (added for status labels and icons only, never large areas): green `#2E6B3F`, amber `#8A5A00`, error red `#9B0D18`.
+
+Light app:
+
+- `--bg`: `#FDF0D5` (Papaya Whip), page background
+- `--surface`: `#FFFFFF`, cards, dialogs, menus, inputs
+- `--hover-surface`: `#003049` at 6% over the current surface, hovered rows and ghost buttons
+- `--selected-surface`: `#C1121F` at 8% over the current surface, with a 3 px `--primary` left bar for the active nav item and selected rows
+- `--text`: `#003049` (Deep Space Blue), body and headings (12.3:1 on bg, 13.8:1 on white)
+- `--text-muted`: `#4C6A73`, secondary text and input placeholders (5.1:1 on bg, 5.8:1 on white)
+- `--border`: `#B1B6AB`, dividers only (decorative, 1.8:1); card edges rely on the shadow
+- `--border-strong`: `#728688`, input and control borders (3.4:1 on bg, 3.8:1 on white)
+- `--primary`: `#C1121F` (Brick Red), main buttons, links, selection (5.5:1 on bg, 6.2:1 on white)
+- `--primary-fg`: `#FFFFFF`, text on primary (6.2:1)
+- `--primary-hover`: `#780000` (Molten Lava), primary hover; `--primary-active`: `#5A0000`, pressed (white on it 14.6:1)
+- `--danger`: `#9B0D18`, error text, error icons and destructive buttons (7.6:1 on bg, 8.5:1 on white); `--danger-hover`: `#780000`
+- `--danger-bg`: `#9B0D18` at 8% over surface, inline error alerts
+- `--success`: `#2E6B3F` (5.7:1 on bg, 6.4:1 on white); `--success-bg`: 8% tint
+- `--warning`: `#8A5A00` (5.3:1 on bg, 5.9:1 on white); `--warning-bg`: 8% tint
+- `--info`: `#2F6690`, info text and progress fill on light (5.4:1 on bg, 6.1:1 on white); `--info-bg`: 8% tint
+- `--disabled-bg`: `#003049` at 6%; `--disabled-fg`: `#003049` at 45% (disabled controls are exempt from contrast but keep their label, use `aria-disabled`, and show a not allowed cursor)
+- `--focus`: `#C1121F`, 2 px ring with 2 px offset on light surfaces
+- `--backdrop`: `#003049` at 60%, behind dialogs and sheets
+
+Dark stage (player, timeline, processing preview):
+
+- `--stage-bg`: `#003049` (Deep Space Blue)
+- `--stage-raised`: `#1F495F`, toolbars and panels on the stage (1.4:1 against stage-bg, so edges get a `--stage-border` line)
+- `--stage-border`: `#669BBC` (3.2:1 on raised)
+- `--stage-text`: `#FDF0D5` (12.3:1 on stage-bg, 8.6:1 on raised)
+- `--stage-text-muted`: `#B1B6AB` (6.7:1 on stage-bg, 4.7:1 on raised), also stage input placeholders
+- `--stage-accent`: `#669BBC` (Steel Blue), kept segments, selection (4.6:1 on stage-bg, 3.2:1 on raised); never text on raised
+- `--stage-focus`: `#FDF0D5`, 2 px ring with 2 px offset; the `Stage` container sets it so every component inside inherits it
+- `--stage-hover`: `#FDF0D5` at 10% over the current stage surface
+- Primary buttons on the stage: Steel Blue fill with a Deep Space Blue label (4.6:1); hover and pressed mix the Steel Blue towards cream (`color-mix`, which only raises the label's contrast); disabled controls on the stage use cream tints (exempt from contrast, still labelled)
+- Playhead: 3 px `--stage-text` line with a 1 px `--stage-bg` outline and a round handle (so it shows over kept segments)
+- Removed cuts: Brick Red fill with diagonal stripes and a 1 px `--stage-text` outline, never colour alone
+- Letterbox around videos that aren't 16:9: `--stage-bg`
+
+Colour rules:
+
+- Steel Blue is never text or an icon on the light app (2.7:1, fails); stage only.
+- Brick Red is never text or a focus ring on the stage (2.2:1, fails).
+- Status is never colour alone: always an icon plus a label.
+- Links in running text are underlined (2 px offset), because red alone isn't distinguishable from blue body text.
