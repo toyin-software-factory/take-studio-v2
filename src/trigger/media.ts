@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import type { ImageFacts } from "@/lib/background-rules";
+import { JOB_ERROR_NAMES } from "@/lib/job-errors";
 import { type ProbeFacts, parseFfprobe, thumbnailSeconds } from "@/lib/probe";
 import { progressOutTimeMs, toneMapFilter } from "@/lib/trim";
 
@@ -20,7 +21,7 @@ const FFMPEG = process.env.FFMPEG_PATH ?? "ffmpeg";
 
 /** A media tool failure that carries no URL or file content. */
 export class MediaToolError extends Error {
-  override name = "MediaToolError";
+  override name = JOB_ERROR_NAMES.mediaTool;
   constructor(
     readonly tool: "ffprobe" | "ffmpeg",
     readonly exitCode: number | null,

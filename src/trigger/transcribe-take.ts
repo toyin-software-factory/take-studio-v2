@@ -13,6 +13,7 @@ import { TRANSCRIBE_TAKE_LIMITS } from "@/lib/cleanup-rules";
 import { DEEPGRAM_MODEL, deepgramUrl, parseDeepgramResponse } from "@/lib/deepgram";
 import { type TranscriptEnv, parseJobEnv, parseTranscriptEnv } from "@/lib/env";
 import type { FailureCode } from "@/lib/failure-codes";
+import { JOB_ERROR_NAMES, hasJobErrorName } from "@/lib/job-errors";
 import { isFinalJobStatus, type SkipReason } from "@/lib/processing";
 import { type R2, createR2 } from "@/lib/r2";
 import { MediaToolError, probeUrl, runFfmpeg } from "./media";
@@ -78,9 +79,19 @@ export const transcribeTakeTask = task({
  * 5xx after the retries) `provider_error`, the rest as for `process-take`.
  */
 export function transcribeFailureCode(error: unknown): FailureCode {
-  if (error instanceof DeepgramRejected) return "provider_rejected";
-  if (error instanceof DeepgramTimeout) return "timeout";
-  if (error instanceof DeepgramError) return "provider_error";
+  // By name too: a failure hook can get a plain copy of the error (src/lib/job-errors.ts).
+  if (
+    error instanceof DeepgramRejected ||
+    hasJobErrorName(error, JOB_ERROR_NAMES.deepgramRejected)
+  ) {
+    return "provider_rejected";
+  }
+  if (error instanceof DeepgramTimeout || hasJobErrorName(error, JOB_ERROR_NAMES.deepgramTimeout)) {
+    return "timeout";
+  }
+  if (error instanceof DeepgramError || hasJobErrorName(error, JOB_ERROR_NAMES.deepgramError)) {
+    return "provider_error";
+  }
   return failureCodeFor(error);
 }
 
@@ -110,7 +121,7 @@ export async function failTranscribeJob(
 
 /** Deepgram answered 5xx or 429, or the network failed: retried. Message holds no content. */
 export class DeepgramError extends Error {
-  override name = "DeepgramError";
+  override name: string = JOB_ERROR_NAMES.deepgramError;
   constructor(readonly status: number | null) {
     super(`Deepgram request failed (${status ?? "network"})`);
   }
@@ -118,7 +129,7 @@ export class DeepgramError extends Error {
 
 /** The request outlived its 5 minute limit: retried, and `timeout` if it is the last attempt. */
 export class DeepgramTimeout extends DeepgramError {
-  override name = "DeepgramTimeout";
+  override name = JOB_ERROR_NAMES.deepgramTimeout;
   constructor() {
     super(null);
   }
@@ -128,7 +139,7 @@ export class DeepgramTimeout extends DeepgramError {
 export class DeepgramRejected extends AbortTaskRunError {
   constructor(readonly status: number) {
     super(`Deepgram rejected the request (${status})`);
-    this.name = "DeepgramRejected";
+    this.name = JOB_ERROR_NAMES.deepgramRejected;
   }
 }
 

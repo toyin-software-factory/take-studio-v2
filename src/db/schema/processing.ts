@@ -16,6 +16,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { ACTIVE_JOB_STATUSES, JOB_KINDS, STEP_NAMES, STEP_STATUSES } from "@/lib/processing";
 import { background } from "./background";
+import { ONE_ACTIVE_JOB_INDEX } from "./constraint-names";
 import { inList, jobStatus, timestamps } from "./helpers";
 import { take } from "./take";
 
@@ -51,9 +52,7 @@ export const processingJob = pgTable(
   (t) => [
     index("processing_job_target_background_idx").on(t.targetBackgroundId),
     // AC-4: at most one queued or running job per take.
-    uniqueIndex("processing_job_one_active_per_take_uidx")
-      .on(t.takeId)
-      .where(inList(t.status, ACTIVE_JOB_STATUSES)),
+    uniqueIndex(ONE_ACTIVE_JOB_INDEX).on(t.takeId).where(inList(t.status, ACTIVE_JOB_STATUSES)),
     index("processing_job_take_created_idx").on(t.takeId, t.createdAt.desc()),
     index("processing_job_status_updated_idx").on(t.status, t.updatedAt),
     check("processing_job_kind_check", inList(t.kind, JOB_KINDS)),

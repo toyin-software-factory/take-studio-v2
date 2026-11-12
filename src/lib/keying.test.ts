@@ -230,7 +230,7 @@ describe("compositeFilters", () => {
     const lines = compositeFilters({ keyColor: "#00b140", width: 1920, height: 1080 });
     expect(lines.join("\n")).toBe(
       [
-        `[base]format=yuva444p,chromakey=0x00b140:${KEYING.similarity}:${KEYING.blend},despill=type=green[fg];`,
+        `[base]setpts=PTS-STARTPTS,format=yuva444p,chromakey=0x00b140:${KEYING.similarity}:${KEYING.blend},despill=type=green[fg];`,
         "[1:v]scale=1920:1080:force_original_aspect_ratio=increase:out_range=tv,crop=1920:1080,setsar=1,format=yuv420p[bg];",
         "[bg][fg]overlay=format=auto:shortest=1,format=yuv420p[vout]",
       ].join("\n"),

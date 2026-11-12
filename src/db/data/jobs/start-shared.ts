@@ -1,12 +1,10 @@
 import type { StepName } from "@/lib/processing";
 import { type Result, err } from "@/lib/result";
 import { jobStep, processingJob } from "../../schema";
+import { ONE_ACTIVE_JOB_INDEX } from "../../schema/constraint-names";
 import { runTx } from "../../tx";
 import { type Executor, type Tx, pgErrorCode } from "../../types";
 import type { StartedJob } from "./types";
-
-/** The partial unique index that allows one queued or running job per take. */
-const ONE_ACTIVE_JOB_INDEX = "processing_job_one_active_per_take_uidx";
 
 /**
  * Runs a start function in one transaction. The partial unique index is the last guard against

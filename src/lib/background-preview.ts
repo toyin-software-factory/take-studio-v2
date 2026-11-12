@@ -1,4 +1,4 @@
-import { compositeFilters } from "./keying";
+import { type RawFrame, compositeFilters } from "./keying";
 import type { Range } from "./trim";
 
 /**
@@ -46,7 +46,7 @@ export function previewKey(takeId: string, previewId: string): string {
  * next request makes it again (S3S-T10 made it 2: stills made with the old fixed keying settings
  * could show the person erased). The old rows and files go with the take, as before.
  */
-export const PREVIEW_STILL_VERSION = 2;
+export const PREVIEW_STILL_VERSION = 3;
 
 export async function cutVersion(ranges: readonly Range[]): Promise<string> {
   const text = `v${PREVIEW_STILL_VERSION}|${[...ranges]
@@ -99,4 +99,94 @@ export function plainPreviewFilter(options: {
   return [options.toneMap, `scale=${PREVIEW_WIDTH}:${height}`, "format=yuvj420p"]
     .filter(Boolean)
     .join(",");
+}
+
+/**
+ * The final gate (S3S-T12), defence in depth behind the key guard: after a keyed still is encoded,
+ * its centre third is compared with the background it was put on. The person stands in the middle
+ * and covers most of that third (a head and shoulders are 25 to 30 % of the frame, centred), so a
+ * real keyed still differs there in a large share of pixels, tens of percent. A still that equals
+ * the background (the person erased, whatever the cause) differs in 0.0 %, JPEG noise included
+ * (measured on the live take: 0.0 %, and a pixel differs only when a channel is off by more than
+ * 30 of 255, well above noise and the 16 to 235 range squash). 2 % sits far from both: even a
+ * small, distant subject fills more, and a still of an empty frame is correctly the plain frame.
+ * Such a still is not recorded as Ready: the preview falls back to the plain frame and says
+ * `no_green_screen`.
+ */
+export const PREVIEW_GATE = {
+  /** The still and the background are both read at this width (height follows the take). */
+  width: 192,
+  /** A pixel differs when any channel is off by more than this (of 255). */
+  channelDiff: 30,
+  /** The still is just the background when fewer than this share of the centre third differs. */
+  minCentreShare: 0.02,
+} as const;
+
+/** The size both images are read at for the gate: 192 wide, even height following the take. */
+export function gateSize(takeWidth: number, takeHeight: number): { width: number; height: number } {
+  const height = Math.max(2, Math.round((PREVIEW_GATE.width * takeHeight) / takeWidth / 2) * 2);
+  return { width: PREVIEW_GATE.width, height };
+}
+
+/**
+ * ffmpeg arguments that read one image as raw `rgb24` at the gate size on stdout. `cover` is for the
+ * background: it takes the same two steps the keyed still took, so detailed edges blur the same
+ * way. First the preview graph's own background chain at the preview size (cover, centre crop,
+ * limited range, 4:2:0), then the downscale to the gate size. The still is only downscaled.
+ */
+export function gateReadArgs(
+  input: string,
+  size: { readonly width: number; readonly height: number },
+  cover: { readonly width: number; readonly height: number } | null,
+  inputOptions: readonly string[] = [],
+): string[] {
+  const down = `scale=${size.width}:${size.height}`;
+  const scale = cover
+    ? `scale=${cover.width}:${cover.height}:force_original_aspect_ratio=increase:out_range=tv,crop=${cover.width}:${cover.height},setsar=1,format=yuv420p,${down}`
+    : down;
+  return [
+    "-v",
+    "error",
+    ...inputOptions,
+    "-i",
+    input,
+    "-frames:v",
+    "1",
+    "-vf",
+    `${scale},format=rgb24`,
+    "-f",
+    "rawvideo",
+    "-",
+  ];
+}
+
+/**
+ * The share (0 to 1) of the centre third (the middle third of the width, full height) where the
+ * still differs from the background by more than `PREVIEW_GATE.channelDiff` in any channel. Both
+ * frames must be the same size.
+ */
+export function centreDifferenceShare(still: RawFrame, background: RawFrame): number {
+  if (still.width !== background.width || still.height !== background.height) return 1;
+  const x0 = Math.floor(still.width / 3);
+  const x1 = Math.ceil((still.width * 2) / 3);
+  let differs = 0;
+  let total = 0;
+  for (let y = 0; y < still.height; y++) {
+    for (let x = x0; x < x1; x++) {
+      const i = (y * still.width + x) * 3;
+      total += 1;
+      const d = Math.max(
+        Math.abs(still.data[i]! - background.data[i]!),
+        Math.abs(still.data[i + 1]! - background.data[i + 1]!),
+        Math.abs(still.data[i + 2]! - background.data[i + 2]!),
+      );
+      if (d > PREVIEW_GATE.channelDiff) differs += 1;
+    }
+  }
+  return total === 0 ? 1 : differs / total;
+}
+
+/** True when a keyed still barely differs from its background in the centre third: no person in it. */
+export function isOnlyBackground(centreShare: number): boolean {
+  return centreShare < PREVIEW_GATE.minCentreShare;
 }
