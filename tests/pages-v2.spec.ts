@@ -129,21 +129,37 @@ test("only the homepage imports gsap, lenis or three", () => {
   expect(offenders).toEqual([]);
 });
 
-test("signed in pages load no gsap, lenis or three code", async ({ page, baseURL }) => {
-  const ids = await seedLibrary(page, baseURL!);
+const MARKER =
+  /GreenSock|gsap\.(?:core|registerPlugin|version)|WebGLRenderer|THREE\.REVISION|lenis-smooth|lenis-stopped/;
+
+/** The same origin scripts a page loads, by URL, with their text. */
+async function scriptsOf(page: Page, baseURL: string, paths: string[]) {
   const scripts = new Map<string, string>();
   page.on("response", async (response) => {
     const url = response.url();
-    if (response.request().resourceType() !== "script" || !url.startsWith(baseURL!)) return;
+    if (response.request().resourceType() !== "script" || !url.startsWith(baseURL)) return;
     scripts.set(url, await response.text().catch(() => ""));
   });
-  for (const path of ["/", `/takes/${ids[0]}`]) {
+  for (const path of paths) {
     await page.goto(path);
     await page.waitForLoadState("networkidle");
   }
+  return scripts;
+}
+
+test("the signed out homepage does load the libraries (so the check below can see them)", async ({
+  page,
+  baseURL,
+}) => {
+  const scripts = await scriptsOf(page, baseURL!, ["/"]);
+  const carriers = [...scripts].filter(([, code]) => MARKER.test(code));
+  expect(carriers.length, "no script on the homepage carries a library marker").toBeGreaterThan(0);
+});
+
+test("signed in pages load no gsap, lenis or three code", async ({ page, baseURL }) => {
+  const ids = await seedLibrary(page, baseURL!);
+  const scripts = await scriptsOf(page, baseURL!, ["/", `/takes/${ids[0]}`]);
   expect(scripts.size).toBeGreaterThan(0);
-  const marker =
-    /GreenSock|gsap\.(?:core|registerPlugin|version)|WebGLRenderer|THREE\.REVISION|lenis-smooth|lenis-stopped/;
-  const hits = [...scripts].filter(([, code]) => marker.test(code)).map(([url]) => url);
+  const hits = [...scripts].filter(([, code]) => MARKER.test(code)).map(([url]) => url);
   expect(hits).toEqual([]);
 });
