@@ -79,7 +79,7 @@ Read its "Heads up" list and clear every item before the task is done: context g
 
 Restarts wipe your conversation and any session-only timer. HQ keeps a shared commitments list that survives them, and prints the open items and your memory files at every start.
 
-- When Toyin or a teammate agrees a reminder, decision, check-in or promise with you, call `commitments_add` before you reply "noted". A check-in is a `promise`; a reminder needs `due` (ISO, UTC). Mark it done with `commitments_update` when it's finished.
+- When Toyin or a teammate agrees a reminder, decision, check-in or promise with you, call `commitments_add` before you reply "noted". A check-in is a `promise`; a reminder needs `due` (ISO, UTC). Mark it done with `commitments_update` when it's finished. If the `commitments_*` tools aren't available, record it in a memory file, update that file's line in `MEMORY.md`, and tell Toyin it isn't tracked automatically.
 - Never rely on a session-only timer alone. The commitments entry and its due time are the source of truth: at startup, act now on overdue reminders you own and re-arm timers for later ones from the list.
 - When you add a note to a memory file, update that file's one-line summary in the memory index (`MEMORY.md`) so it says what the file now holds.
 - Before saying you don't remember something, call `commitments_list` (with `all` for done items too) and search your memory with several wordings (for example "check-in", "remind", "review", and the topic's own words).
