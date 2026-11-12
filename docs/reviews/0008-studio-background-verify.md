@@ -49,3 +49,4 @@ All built and answering: the `background` and `background_preview` tables and th
 
 - The hourly limit counts jobs through their take, so deleting a take lowers a creator's count. That is a recorded lead decision (spec 0008 follow ups, the slice 6 usage ledger), not a gap here.
 - The place the sandbox is weakest is the player: the seeded takes have no real video file, so screenshots show "The video didn't load" in the stage. The picker and the notes are what the screenshots are for.
+- This report names the job a background change starts as a `rerender` job, as main does today. #110 and HRF-T08 move it to a separate `background` job kind; that is pending work, not a gap, and the behaviour checks above do not depend on the kind name.
