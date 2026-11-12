@@ -7,8 +7,25 @@ import type { Range } from "./trim";
  * `preview-background` job.
  */
 
-/** A preview that has been `making` this long is stale: a new request replaces it. */
-export const PREVIEW_STALE_MS = 2 * 60_000;
+/**
+ * The `preview-background` job's limits (the one place): each attempt may run 3 minutes, with 2
+ * attempts. The task reads them for `maxDuration` and `retry`, and the stale rule below for how
+ * long a `making` row can honestly still be running.
+ */
+export const PREVIEW_LIMITS = { maxDurationSeconds: 180, maxAttempts: 2 } as const;
+
+/** The longest one preview can run: every attempt to its deadline (6 minutes). */
+export const PREVIEW_RUN_MS = PREVIEW_LIMITS.maxDurationSeconds * PREVIEW_LIMITS.maxAttempts * 1000;
+
+/** Queue time before the run starts (a preview of the same take runs at a time), and clock slack. */
+export const PREVIEW_QUEUE_MARGIN_MS = 2 * 60_000;
+
+/**
+ * A preview that has been `making` this long is stale (8 minutes): a new request replaces it. A
+ * shorter limit would reset a row whose job is still running or retrying, and the reset starts a
+ * second run (the idempotency key carries `updatedAt`).
+ */
+export const PREVIEW_STALE_MS = PREVIEW_RUN_MS + PREVIEW_QUEUE_MARGIN_MS;
 
 /** The width of a preview JPEG (its height follows the take's shape). */
 export const PREVIEW_WIDTH = 1280;
