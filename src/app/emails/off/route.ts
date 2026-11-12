@@ -1,4 +1,4 @@
-import { parseEmailEnv } from "@/lib/env";
+import { emailEnvSchema } from "@/lib/env";
 import { turnOffTakeEmails } from "@/server/email/turn-off";
 import { getDb } from "@/server/request";
 
@@ -26,13 +26,32 @@ export async function GET(request: Request): Promise<Response> {
 export async function POST(request: Request): Promise<Response> {
   const params = new URL(request.url).searchParams;
   const fromPage = (await request.formData().catch(() => null))?.get("from") === "page";
-  const result = await turnOffTakeEmails(
-    await getDb(),
-    { userId: params.get("u"), signature: params.get("s") },
-    parseEmailEnv().EMAIL_LINK_SECRET,
-  ).catch(() => "invalid" as const);
+  const result = await turnOff(params);
   if (!fromPage) return new Response(null, { status: result === "off" ? 200 : 400 });
   const target = new URL("/emails/off/done", request.url);
   target.searchParams.set("status", result);
   return Response.redirect(target, 303);
+}
+
+/**
+ * Everything that can fail sits behind one guard: a missing email setting (checked with
+ * `safeParse`, so nothing throws), no database or a rejected change all answer "invalid" (400 for the
+ * one click, the invalid page for the form), never a 500. Logs name the missing variables only.
+ */
+async function turnOff(params: URLSearchParams): Promise<"off" | "invalid"> {
+  const env = emailEnvSchema.safeParse(process.env);
+  if (!env.success) {
+    const names = [...new Set(env.error.issues.map((issue) => issue.path.join(".")))].join(", ");
+    console.error(`emails/off: email env missing or invalid: ${names}`);
+    return "invalid";
+  }
+  try {
+    return await turnOffTakeEmails(
+      await getDb(),
+      { userId: params.get("u"), signature: params.get("s") },
+      env.data.EMAIL_LINK_SECRET,
+    );
+  } catch {
+    return "invalid";
+  }
 }

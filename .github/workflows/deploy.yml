@@ -70,11 +70,19 @@ jobs:
           if ! listed=$(npx --yes wrangler@4.160.0 secret list --name take-studio --format json 2>/dev/null); then
             skip "Worker take-studio does not exist yet or its secrets can't be listed. Create it with its secrets first (wrangler secret put <NAME> --name take-studio)."
           fi
+          # Every name the site needs (the web, usage and email env schemas in src/lib/env.ts; a test
+          # keeps this list equal to them). A missing one stops the deploy. Optional names only warn.
+          required="BETTER_AUTH_SECRET BETTER_AUTH_URL GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET TRIGGER_SECRET_KEY USAGE_HASH_SECRET EMAIL_LINK_SECRET RESEND_API_KEY EMAIL_FROM"
+          optional="SENTRY_DSN"
+          has() { echo "$listed" | jq -e --arg n "$1" 'any(.[]; .name == $n)' > /dev/null; }
           missing=""
-          for name in BETTER_AUTH_SECRET BETTER_AUTH_URL GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET TRIGGER_SECRET_KEY; do
-            echo "$listed" | jq -e --arg n "$name" 'any(.[]; .name == $n)' > /dev/null || missing="$missing $name"
+          for name in $required; do
+            has "$name" || missing="$missing $name"
           done
           [ -z "$missing" ] || skip "Missing Worker secrets on take-studio:$missing"
+          for name in $optional; do
+            has "$name" || echo "::warning::Optional Worker secret $name is not set on take-studio; the site runs without it."
+          done
 
           echo "ready=true" >> "$GITHUB_OUTPUT"
 
