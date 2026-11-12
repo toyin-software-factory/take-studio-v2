@@ -14,7 +14,7 @@ export function BackgroundPreviewOverlay({ bridge }: { readonly bridge: PlayerBr
   if (!preview) return null;
   return (
     <div
-      className="pointer-events-none absolute inset-0 flex items-center justify-center bg-stage-bg"
+      className="absolute inset-0 flex items-center justify-center bg-stage-bg"
       aria-live="polite"
     >
       {preview.kind === "image" ? (

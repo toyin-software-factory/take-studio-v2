@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { CircleAlert } from "lucide-react";
 import { StageLetterbox } from "@/components/stage";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BackgroundPreviewOverlay } from "./background-preview-overlay";
-import { type PlayerBridge } from "./player-bridge";
+import { previewStatusText } from "@/lib/take-display";
+import { type PlayerBridge, usePreviewOverlay } from "./player-bridge";
 import { PlayerControls } from "./player-controls";
 import { type Link, playLink } from "./play-link";
 import { useCaptions } from "./use-captions";
@@ -42,6 +43,11 @@ export function TakePlayer({
   const captions = useCaptions(bridge, video, link.kind === "ready");
   const poster = usePoster(takeId).url;
   const shownRender = useRef(renderId);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const backButton = useRef<HTMLButtonElement>(null);
+  // A still covers the video: the transport is hidden and the video paused (S3S-T14).
+  const preview = usePreviewOverlay(bridge);
+  const stillShown = preview !== null;
   const retrySwap = useRef<() => void>(() => undefined);
   const [swapFailed, setSwapFailed] = useState(false);
 
@@ -109,12 +115,22 @@ export function TakePlayer({
     (delta: number) => seekTo((video.current?.currentTime ?? 0) + delta),
     [seekTo],
   );
-  const onKeyDown = usePlayerKeys(toggle, seekBy);
+  const playerKeys = usePlayerKeys(toggle, seekBy);
+  // No shortcuts while a still covers the video: they would act on a video nobody can see.
+  const onKeyDown = stillShown ? undefined : playerKeys;
   // The transcript panel seeks through the bridge (times on the trimmed video, in ms).
   useEffect(() => {
     bridge.setSeek((ms) => seekTo(ms / 1000));
     return () => bridge.setSeek(null);
   }, [bridge, seekTo]);
+
+  // Runs before the browser paints, while focus is still where it was: a control that is about
+  // to be hidden hands focus to "Back to your video" so it is never left on a hidden button.
+  useLayoutEffect(() => {
+    if (!stillShown) return;
+    video.current?.pause();
+    if (controlsRef.current?.contains(document.activeElement)) backButton.current?.focus();
+  }, [stillShown]);
 
   if (link.kind === "loading") return <Skeleton className="aspect-video w-full" />;
   if (link.kind === "error") {
@@ -204,19 +220,32 @@ export function TakePlayer({
           </button>
         </p>
       ) : null}
-      <PlayerControls
-        playing={playing}
-        current={current}
-        duration={duration}
-        muted={muted}
-        captions={captions.version ? { on: captions.on, onToggle: captions.toggle } : null}
-        onToggle={toggle}
-        onSeek={seekTo}
-        onMute={() => {
-          if (video.current) video.current.muted = !video.current.muted;
-        }}
-        onFullscreen={() => void video.current?.requestFullscreen?.().catch(() => undefined)}
-      />
+      {/* The status region is always in the page so the line is announced when it fills. */}
+      <div className={`flex flex-wrap items-center gap-3 ${preview ? "" : "-mb-3"}`}>
+        <p role="status" className="min-w-0 flex-1 text-small">
+          {preview ? previewStatusText(preview) : null}
+        </p>
+        {preview ? (
+          <Button ref={backButton} variant="secondary" onClick={() => bridge.back()}>
+            Back to your video
+          </Button>
+        ) : null}
+      </div>
+      <div ref={controlsRef} hidden={stillShown} inert={stillShown}>
+        <PlayerControls
+          playing={playing}
+          current={current}
+          duration={duration}
+          muted={muted}
+          captions={captions.version ? { on: captions.on, onToggle: captions.toggle } : null}
+          onToggle={toggle}
+          onSeek={seekTo}
+          onMute={() => {
+            if (video.current) video.current.muted = !video.current.muted;
+          }}
+          onFullscreen={() => void video.current?.requestFullscreen?.().catch(() => undefined)}
+        />
+      </div>
     </div>
   );
 }

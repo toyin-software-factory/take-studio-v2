@@ -86,17 +86,33 @@ export function BackgroundChange({
   const showOriginal = previewing && choice === ORIGINAL_BACKGROUND && original !== null;
   const overlayKind = showOriginal ? "original" : preview.kind;
   const overlayUrl = showOriginal ? original : preview.kind === "ready" ? preview.url : "";
+  // The label of the main button, which the stage line names while a still covers the video.
+  // One label for the button and for the stage line, so the line never names a button that is not
+  // there. The button is off for a real background on a take with no green screen: no name then.
+  const label = retrying
+    ? "Try again"
+    : choice === ORIGINAL_BACKGROUND
+      ? "Keep original"
+      : "Use this background";
+  const action = noGreen ? null : label;
   useEffect(() => {
     if (overlayKind === "original" || overlayKind === "ready") {
       bridge.setPreview({
         kind: "image",
         url: overlayUrl ?? "",
         label: showOriginal ? "your original background" : chosenName,
+        action,
       });
-    } else if (overlayKind === "making") bridge.setPreview({ kind: "making", label: chosenName });
-    else bridge.setPreview(null);
+    } else if (overlayKind === "making") {
+      bridge.setPreview({ kind: "making", label: chosenName, action });
+    } else bridge.setPreview(null);
     return () => bridge.setPreview(null);
-  }, [bridge, overlayKind, overlayUrl, showOriginal, chosenName]);
+  }, [bridge, overlayKind, overlayUrl, showOriginal, chosenName, action]);
+  // "Back to your video" picks the current background again: no preview, the video returns.
+  useEffect(() => {
+    bridge.setBack(() => setPicked(current));
+    return () => bridge.setBack(null);
+  }, [bridge, current]);
 
   if (take.status !== "ready" || take.expired) return null;
 
@@ -162,11 +178,7 @@ export function BackgroundChange({
           loading={start.starting}
           disabled={busy || noGreen || (choice === current && !retrying)}
         >
-          {retrying
-            ? "Try again"
-            : choice === ORIGINAL_BACKGROUND
-              ? "Keep original"
-              : "Use this background"}
+          {label}
         </Button>
       </div>
       {start.checking ? (
