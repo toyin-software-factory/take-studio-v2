@@ -4,9 +4,11 @@ import { SectionHead } from "./head";
 import { Picture } from "./picture";
 
 /**
- * The studio floor: the dark stage (arc on top) with the three jobs. The particle field, the
- * giant word sequence and the scroll fill come with the motion work; here the three words are
- * a plain line and the glass cards carry the content.
+ * The studio floor (spec 0010, AC-6): the dark stage with its arc on top, the particle field
+ * canvas (a CSS glow until `motion/studio.ts` draws on it, or for good where the browser cannot
+ * or should not), the three giant words, the glass cards and the scroll fill statement lines.
+ * Without scripts or under reduced motion the words are one plain line and the fill lines are
+ * fully white; the motion adds the pinned word sequence, the field and the fill.
  */
 export function HomeStudio() {
   const { trim, key, caption, agents } = STUDIO;
@@ -20,11 +22,16 @@ export function HomeStudio() {
           strong={STUDIO.strong}
         />
       </div>
-      <p className="h-studio-words" aria-hidden="true">
-        {STUDIO.words.map((w) => (
-          <span key={w}>{w}</span>
-        ))}
-      </p>
+      <canvas className="h-studio-field" aria-hidden="true" />
+      <div className="h-studio-words">
+        <div className="h-studio-word-stage" aria-hidden="true">
+          {STUDIO.words.map((w) => (
+            <span key={w} className="h-studio-word">
+              {w}
+            </span>
+          ))}
+        </div>
+      </div>
       <p className="h-sr-only">{STUDIO.srOnly}</p>
       <div className="h-container">
         <div className="h-bento">
@@ -71,7 +78,14 @@ export function HomeStudio() {
       </div>
       <div className="h-container h-studio-fill">
         {STUDIO.fill.map((line) => (
-          <p key={line}>{line}</p>
+          // The real text is the grey layer; a white copy (aria-hidden) is revealed over it as
+          // the line scrolls up, so the words are always readable at full contrast, filled or not.
+          <p key={line} className="h-fill" data-fill>
+            <span>{line}</span>
+            <span className="h-fill-top" aria-hidden="true">
+              {line}
+            </span>
+          </p>
         ))}
         <Link className="h-btn-split" href="/sign-in">
           <span className="h-btn-split-label">{STUDIO.cta}</span>

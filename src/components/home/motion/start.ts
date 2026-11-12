@@ -5,6 +5,7 @@ import { setupFan } from "./fan";
 import { playIntro } from "./intro";
 import { watchNav } from "./nav";
 import { setupReel } from "./reel";
+import { setupStudio } from "./studio";
 import { startSmoothScroll, wireAnchors } from "./scroll";
 
 /**
@@ -57,6 +58,7 @@ function run(root: HTMLElement, reduced: boolean): () => void {
     teardown.push(fan.stop);
     const reel = setupReel(root);
     teardown.push(() => reel.revert());
+    teardown.push(setupStudio(root, reduced));
     if (!reduced) {
       playIntro(root);
       setupWordReveals(root);
@@ -65,7 +67,9 @@ function run(root: HTMLElement, reduced: boolean): () => void {
   }, root);
   teardown.push(() => ctx.revert());
 
-  // Layout shifts after images and fonts load: measure again.
+  // Setup changes the page's height (the studio floor's pinned word block), which moves every
+  // trigger created before it: measure them all again now, and again once images and fonts load.
+  ScrollTrigger.refresh();
   const refresh = () => ScrollTrigger.refresh();
   window.addEventListener("load", refresh);
   teardown.push(() => window.removeEventListener("load", refresh));
