@@ -38,6 +38,65 @@ describe("CI runs on main, which gates the deploy (HRF-T04)", () => {
   });
 });
 
+describe("CI installs the pinned ffmpeg (HRF-T06)", () => {
+  const config = readFileSync("trigger.config.ts", "utf8");
+  const fromConfig = (name: string) => new RegExp(`${name}: "([^"]+)"`).exec(config)?.[1] ?? "";
+
+  it("uses the same URL and SHA 256 as the jobs' build, with the hash checked", () => {
+    expect(fromConfig("url")).toMatch(/BtbN\/FFmpeg-Builds/);
+    const code = withoutComments(ci);
+    expect(code).toContain(`FFMPEG_URL: ${fromConfig("url")}`);
+    expect(code).toContain(`FFMPEG_SHA256: ${fromConfig("sha256")}`);
+    expect(code).toMatch(/sha256sum -c -/);
+    expect(code).toMatch(/GITHUB_PATH/);
+  });
+
+  it("installs it before the unit tests that need it, and checks the suites were not skipped", () => {
+    const install = ci.indexOf("- name: Install the pinned ffmpeg");
+    const onPath = ci.indexOf("- name: Put the pinned ffmpeg on the PATH");
+    const unit = ci.indexOf("- name: Unit tests");
+    expect(install).toBeGreaterThan(-1);
+    expect(install).toBeLessThan(onPath);
+    expect(onPath).toBeLessThan(unit);
+    expect(ci).toContain("- name: The ffmpeg suites ran");
+    expect(withoutComments(ci)).toMatch(/Tests \.\*skipped/);
+    // Colour is off and stripped: Vitest dims the "Tests" label when CI is set, which an
+    // anchored match on the plain text would miss.
+    expect(withoutComments(ci)).toContain("vitest run --no-color");
+    expect(withoutComments(ci)).toContain("sed 's/\\x1b\\[[0-9;]*m//g'");
+  });
+});
+
+describe("CI runs the production mode e2e check (HRF-T11)", () => {
+  const code = withoutComments(ci);
+  const start = code.indexOf("- name: E2E production mode");
+  const production = start === -1 ? "" : code.slice(start, code.indexOf("\n      - uses:", start));
+
+  it("has a step after the normal e2e that sets E2E_PRODUCTION=1 and runs only that spec", () => {
+    expect(start, "the step exists").toBeGreaterThan(-1);
+    expect(start).toBeGreaterThan(code.indexOf("- name: E2E smoke"));
+    expect(production).toContain("-e E2E_PRODUCTION=1");
+    expect(production).toContain("tests/design.spec.ts");
+    expect(production).toContain('-g "design gallery \\(production\\)"');
+    // The same Playwright image and mounts as the normal run, and no gallery switch of its own.
+    expect(production).toContain('"$PLAYWRIGHT_IMAGE"');
+    expect(production).not.toMatch(/DESIGN_GALLERY/);
+  });
+
+  it("fails on any skipped test and requires exactly 1 passed", () => {
+    expect(production).toContain("set -o pipefail");
+    expect(production).toMatch(/\^\\s\*\[0-9\]\+ skipped/);
+    expect(production).toMatch(/\^\\s\*1 passed/);
+    expect(production).toContain("exit 1");
+  });
+
+  it("matches the spec: that describe exists and is the one that needs E2E_PRODUCTION", () => {
+    const spec = readFileSync("tests/design.spec.ts", "utf8");
+    expect(spec).toContain('test.describe("design gallery (production)"');
+    expect(spec).toContain('test.skip(!production, "Run with E2E_PRODUCTION=1');
+  });
+});
+
 describe("CI workflows", () => {
   it("pin every job's runner to ubuntu-24.04, never ubuntu-latest", () => {
     const files = readdirSync(".github/workflows").filter((f) => /\.ya?ml$/.test(f));

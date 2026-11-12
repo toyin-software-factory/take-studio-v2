@@ -8,6 +8,7 @@ import type { Executor } from "@/db/types";
 import { ACTIVE_JOB_STATUSES, isSkipReason, type SkipReason } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
 import { type TrimmedParagraph, toTrimmedTranscript } from "@/lib/transcript-timeline";
+import { isVideoExpired } from "@/lib/video-expiry";
 import { getForCreator } from "../takes";
 
 /**
@@ -84,7 +85,7 @@ export async function getTranscriptView(
     .from(processingJob)
     .where(eq(processingJob.takeId, takeId));
   const anyActive = jobs.some((j) => (ACTIVE_JOB_STATUSES as readonly string[]).includes(j.status));
-  const stored = found.videoExpiresAt === null || found.videoExpiresAt.getTime() > now.getTime();
+  const stored = !isVideoExpired(found.videoExpiresAt, now);
   const mayStart = found.status === "ready" && stored && !anyActive;
 
   const row = await getTranscriptByTake(db, takeId);

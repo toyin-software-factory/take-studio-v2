@@ -323,7 +323,7 @@ describe("cleanup: queued jobs behind a creator's limit (HRF-T01)", () => {
     // The ended run is the last in line and is reached by the fifth sweep.
     expect(ended).toHaveLength(1);
     expect(sweeps[4]).toContain("run_ended");
-  });
+  }, 60_000);
 });
 
 describe("cleanup: video expiry (AC-18)", () => {

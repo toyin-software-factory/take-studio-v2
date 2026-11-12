@@ -30,5 +30,6 @@ Mostly pure modules used by the web app, the browser, the Worker and the jobs. S
 - Durations shown to people (take length, player time, "Removed m:ss of pauses", the same number in emails) all go through `formatClock` in `take-display.ts`, which floors to whole seconds (2501 ms is `0:02`). Never write a second formatter; emails import this one.
 - `env.ts` error messages name the variables and never show values.
 - `take-media.ts` keeps its own copy of the media failure codes next to the one in `failure-codes.ts`. They are the same today; change both, or remove the copy.
+- One exported function per rule, never a hand written copy: whether a take's video has expired is `isVideoExpired(videoExpiresAt, now)` (`video-expiry.ts`: null is not expired, equal to now is expired; `isExpired` in `take-media.ts` adds the `expired` status) and a media failure is `isMediaFailure` (`failure-codes.ts`). A test (`video-expiry.test.ts`) fails on a hand written expiry comparison or a second copy of the media codes. The sweep's SQL (`lte(take.videoExpiresAt, now)`) says the same thing in the database.
 
 _Drafted by /audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
