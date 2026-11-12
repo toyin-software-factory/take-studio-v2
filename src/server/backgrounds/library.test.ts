@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { background, user } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
-import { type BackgroundHttpDeps, handleListBackgrounds } from "./http";
+import { type LibraryHttpDeps, handleListBackgrounds } from "./library-http";
 
 // Spec 0008, AC-1 and AC-9: the picker's list (GET /api/backgrounds).
 const ORIGIN = "https://take-studio.example";
@@ -18,7 +18,7 @@ beforeAll(async () => {
 });
 afterAll(() => testDb?.close());
 
-function deps(creatorId: string | null): { deps: BackgroundHttpDeps; signed: string[] } {
+function deps(creatorId: string | null): { deps: LibraryHttpDeps; signed: string[] } {
   const signed: string[] = [];
   return {
     signed,
