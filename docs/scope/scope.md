@@ -85,7 +85,7 @@ Visual language, layout and base components (upload, progress, video player, tim
 - [ ] Redesign v2 (Toyin, 2026-11-12): `/develop design system v2`
    - [x] Tokens, Inter Tight, base components and `/design` gallery (AC-1, AC-2, AC-3, AC-8, AC-10)
    - [x] App shell: sidebar, sheet menu, glass top bar (AC-4, AC-7)
-   - [ ] Take page restyle, built features only (AC-5, AC-7, AC-9)
+   - [x] Take page restyle, built features only (AC-5, AC-7, AC-9)
    - [ ] Library, upload, sign in and error pages, axe and bundle checks (AC-6, AC-8, AC-9, AC-10)
 Spec [0009](../specs/0009-design-system-v2/index.md) (supersedes [0003](../specs/0003-design-system.md)) · rules in [design.md](../../design.md) · code in `src/app/globals.css`, `src/components/ui/`, `src/components/shell/`, `src/components/stage.tsx`, `src/app/design/`
 

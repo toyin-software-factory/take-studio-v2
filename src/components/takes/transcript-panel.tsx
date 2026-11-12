@@ -7,9 +7,9 @@ import { Icon } from "@/components/ui/icon";
 import { type PlayerBridge, useCurrentParagraph } from "./player-bridge";
 import { TranscriptDownloads } from "./transcript-downloads";
 import { TranscriptParagraphs } from "./transcript-paragraphs";
-import { useTranscript } from "./use-transcript";
+import type { useTranscript } from "./use-transcript";
 
-const PANEL = "flex flex-col gap-3 rounded-lg border border-border bg-card p-4";
+const PANEL = "flex flex-col gap-3";
 
 const SKIPPED: Readonly<Record<string, string>> = {
   not_english: "Transcripts are English only for now",
@@ -26,11 +26,14 @@ const SKIPPED: Readonly<Record<string, string>> = {
 export function TranscriptPanel({
   takeId,
   bridge,
+  transcript,
 }: {
   readonly takeId: string;
   readonly bridge: PlayerBridge;
+  /** The one read of the transcript, shared with the Export tab (see `TakeInspector`). */
+  readonly transcript: ReturnType<typeof useTranscript>;
 }) {
-  const { view, loadError, stopped, starting, startError, make } = useTranscript(takeId);
+  const { view, loadError, stopped, starting, startError, make } = transcript;
   const paragraphs = view?.state === "ready" ? (view.paragraphs ?? []) : [];
   const current = useCurrentParagraph(
     bridge,

@@ -18,7 +18,12 @@ export function Stage({
     <section
       data-slot="stage"
       aria-label={label}
-      className={cn("stage rounded-md bg-stage-bg p-4 text-stage-text sm:p-6", className)}
+      className={cn(
+        // Radius lg, padding clamp(12px, 1.6vw, 20px), grain at 4% (design.md §4b).
+        "stage relative isolate overflow-hidden rounded-lg bg-stage-bg p-[clamp(12px,1.6vw,20px)] text-stage-text",
+        "before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:opacity-[.04] before:content-[''] before:[background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E\")]",
+        className,
+      )}
       {...props}
     />
   );
@@ -41,7 +46,7 @@ export function StageLetterbox({ className, ...props }: React.ComponentProps<"di
     <div
       data-slot="stage-letterbox"
       className={cn(
-        "flex aspect-video w-full items-center justify-center overflow-hidden rounded-sm bg-stage-bg",
+        "flex aspect-video max-h-[62dvh] w-full items-center justify-center overflow-hidden rounded-md bg-stage-bg",
         className,
       )}
       {...props}

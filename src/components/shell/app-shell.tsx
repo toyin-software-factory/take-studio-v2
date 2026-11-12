@@ -4,7 +4,8 @@ import { getDb } from "@/server/request";
 import { recentForCreator } from "@/server/takes/recent";
 import { SidebarBody } from "./sidebar-body";
 import { SkipLink } from "./skip-link";
-import { TopBar, type ShellCurrent } from "./top-bar";
+import { CurrentTakeProvider, type ShellCurrent } from "./current-take";
+import { TopBar } from "./top-bar";
 import type { ShellUser } from "./user-menu";
 
 export type { ShellCurrent };
@@ -29,27 +30,29 @@ export async function AppShell({
 }) {
   const recent = await recentForCreator(await getDb(), user.id);
   return (
-    <TooltipProvider>
-      <div className="min-h-dvh lg:grid lg:grid-cols-[264px_1fr]">
-        <SkipLink />
-        <aside
-          aria-label="Sidebar"
-          className="sticky top-0 hidden h-dvh border-r border-hairline bg-background px-4 py-5 lg:block"
-        >
-          <SidebarBody user={user} recent={recent} />
-        </aside>
-        <div className="min-w-0">
-          <TopBar user={user} recent={recent} current={current} />
-          <main
-            id="content"
-            tabIndex={-1}
-            className="mx-auto w-full max-w-content px-[clamp(16px,2.4vw,32px)] py-6 outline-hidden lg:py-8"
+    <CurrentTakeProvider initial={current}>
+      <TooltipProvider>
+        <div className="min-h-dvh lg:grid lg:grid-cols-[264px_1fr]">
+          <SkipLink />
+          <aside
+            aria-label="Sidebar"
+            className="sticky top-0 hidden h-dvh border-r border-hairline bg-background px-4 py-5 lg:block"
           >
-            {children}
-          </main>
+            <SidebarBody user={user} recent={recent} />
+          </aside>
+          <div className="min-w-0">
+            <TopBar user={user} recent={recent} />
+            <main
+              id="content"
+              tabIndex={-1}
+              className="mx-auto w-full max-w-content px-[clamp(16px,2.4vw,32px)] py-6 outline-hidden lg:py-8"
+            >
+              {children}
+            </main>
+          </div>
         </div>
-      </div>
-      <Toaster />
-    </TooltipProvider>
+        <Toaster />
+      </TooltipProvider>
+    </CurrentTakeProvider>
   );
 }
