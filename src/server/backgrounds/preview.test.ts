@@ -246,6 +246,22 @@ describe("GET /api/takes/[id]/background/preview", () => {
     expect((await read(deps(creator.id), t.id, "not-a-uuid")).status).toBe(422);
   });
 
+  it("answers 409 original_gone for the still of an expired take (its file is being deleted)", async () => {
+    const bg = await seedBackground();
+    const { creator, take: t } = await readyTake();
+    const triggered: BackgroundPreview[] = [];
+    await ask(deps(creator.id, triggered), t.id, { backgroundId: bg.id });
+    await completePreview(db, { previewId: triggered[0]!.id, noGreenScreen: false });
+    expect((await read(deps(creator.id), t.id, bg.id)).status).toBe(200);
+    await db
+      .update(take)
+      .set({ videoExpiresAt: new Date(Date.now() - 1000) })
+      .where(eq(take.id, t.id));
+    const gone = await read(deps(creator.id), t.id, bg.id);
+    expect([gone.status, gone.json.error]).toEqual([409, "original_gone"]);
+    expect(gone.json.url).toBeUndefined();
+  });
+
   it("shows a failed preview as failed", async () => {
     const bg = await seedBackground();
     const { creator, take: t } = await readyTake();

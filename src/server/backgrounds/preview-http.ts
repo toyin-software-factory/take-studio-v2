@@ -87,7 +87,16 @@ export async function handleGetPreview(
     creatorId: creator.creatorId,
     takeId,
     backgroundId: parsed.data.backgroundId,
+    now: deps.now?.(),
   });
-  if (!found.ok) return errorResponse("not_found");
-  return json(await previewView(found.data, deps.presignGet));
+  if (!found.ok) {
+    if (found.error === "original_gone") {
+      return json(
+        { error: "original_gone", message: PREVIEW_MESSAGES.original_gone },
+        STATUS.original_gone,
+      );
+    }
+    return errorResponse("not_found");
+  }
+  return json(await previewView(found.data, deps.presignGet), 200);
 }

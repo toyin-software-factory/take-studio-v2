@@ -14,6 +14,17 @@ import type { Background, BackgroundPreview, Executor, Render, Take } from "../t
  * deletion, see `takeFileKeys`).
  */
 
+/** True when the take's original is gone or past its expiry (previews of it are not served). */
+function takeExpired(
+  t: { readonly status: string; readonly videoExpiresAt: Date | null },
+  now: Date,
+): boolean {
+  return (
+    t.status === "expired" ||
+    (t.videoExpiresAt !== null && t.videoExpiresAt.getTime() <= now.getTime())
+  );
+}
+
 export type RequestPreviewError =
   "not_found" | "original_gone" | "not_ready" | "background_not_ready";
 
@@ -60,10 +71,7 @@ export async function requestPreview(
       .where(and(eq(take.id, input.takeId), eq(take.creatorId, input.creatorId)))
       .for("update");
     if (!current) return err("not_found");
-    const expired =
-      current.status === "expired" ||
-      (current.videoExpiresAt !== null && current.videoExpiresAt.getTime() <= now.getTime());
-    if (expired) return err("original_gone");
+    if (takeExpired(current, now)) return err("original_gone");
     if (current.status !== "ready") return err("not_ready");
 
     const cuts = await tx.select().from(cut).where(eq(cut.takeId, current.id));
@@ -114,15 +122,22 @@ export async function requestPreview(
  */
 export async function getPreview(
   db: Executor,
-  input: { readonly creatorId: string; readonly takeId: string; readonly backgroundId: string },
-): Promise<Result<BackgroundPreview, "not_found">> {
+  input: {
+    readonly creatorId: string;
+    readonly takeId: string;
+    readonly backgroundId: string;
+    readonly now?: Date;
+  },
+): Promise<Result<BackgroundPreview, "not_found" | "original_gone">> {
   if (!z.uuid().safeParse(input.takeId).success) return err("not_found");
   if (!z.uuid().safeParse(input.backgroundId).success) return err("not_found");
   const [owned] = await db
-    .select({ id: take.id })
+    .select({ id: take.id, status: take.status, videoExpiresAt: take.videoExpiresAt })
     .from(take)
     .where(and(eq(take.id, input.takeId), eq(take.creatorId, input.creatorId)));
   if (!owned) return err("not_found");
+  // Expiry queues the previews' files for deletion, so a still of an expired take is not served.
+  if (takeExpired(owned, input.now ?? new Date())) return err("original_gone");
   const [chosen] = await db.select().from(background).where(eq(background.id, input.backgroundId));
   if (!chosen || (chosen.creatorId !== null && chosen.creatorId !== input.creatorId)) {
     return err("not_found");
@@ -154,11 +169,12 @@ export type PreviewWork = {
 /**
  * `loadPreviewWork`: the preview (it must still be `making`), its take and its background, and
  * the take's latest render; null when any of them is gone or the preview is no longer wanted
- * (deleted take or background, a reset, an already finished row).
+ * (deleted or expired take, deleted background, a reset, an already finished row).
  */
 export async function loadPreviewWork(
   db: Executor,
   previewId: string,
+  now: Date = new Date(),
 ): Promise<PreviewWork | null> {
   const [preview] = await db
     .select()
@@ -168,6 +184,8 @@ export async function loadPreviewWork(
   const [t] = await db.select().from(take).where(eq(take.id, preview.takeId));
   const [bg] = await db.select().from(background).where(eq(background.id, preview.backgroundId));
   if (!t || !bg || bg.status !== "ready" || !bg.imageKey) return null;
+  // An expired take has no original to read, and its files are being deleted.
+  if (takeExpired(t, now)) return null;
   const [latestRender] = await db
     .select()
     .from(render)
@@ -175,31 +193,46 @@ export async function loadPreviewWork(
   return { preview, take: t, background: bg, latestRender: latestRender ?? null };
 }
 
+export type CompletePreviewError = "gone" | "superseded";
+
 /**
  * `completePreview`: records the finished still (`ready`, its derived key, whether the take had
- * no green screen). Writes only while the preview row still exists and is `making`: a take or
- * background deleted meanwhile took the row with it, and a reset row is no longer this job's.
- * `gone` then tells the job to remove the file it just wrote.
+ * no green screen), in one transaction that holds a share lock on the take, so it waits for an
+ * expiry (`expireTake` locks the take `FOR UPDATE`, queues the preview keys and marks it
+ * expired) and sees its result. It writes only while the row exists, the take is not expired and
+ * the row is still `making`:
+ * - `gone`: the row or the take is gone, or the take expired. Nothing references the file the
+ *   job just wrote, so the job removes it.
+ * - `superseded`: the row is no longer `making` (a retry or a reset finished it). The file at
+ *   the derived key may be that run's, so the job leaves it alone.
  */
 export async function completePreview(
   db: Executor,
-  input: { readonly previewId: string; readonly noGreenScreen: boolean },
-): Promise<Result<BackgroundPreview, "gone">> {
-  const [row] = await db
-    .select({ takeId: backgroundPreview.takeId })
-    .from(backgroundPreview)
-    .where(eq(backgroundPreview.id, input.previewId));
-  if (!row) return err("gone");
-  const [updated] = await db
-    .update(backgroundPreview)
-    .set({
-      status: "ready",
-      objectKey: previewKey(row.takeId, input.previewId),
-      noGreenScreen: input.noGreenScreen,
-    })
-    .where(and(eq(backgroundPreview.id, input.previewId), eq(backgroundPreview.status, "making")))
-    .returning();
-  return updated ? ok(updated) : err("gone");
+  input: { readonly previewId: string; readonly noGreenScreen: boolean; readonly now?: Date },
+): Promise<Result<BackgroundPreview, CompletePreviewError>> {
+  return runTx<BackgroundPreview, CompletePreviewError>(db, async (tx) => {
+    const [row] = await tx
+      .select({ takeId: backgroundPreview.takeId })
+      .from(backgroundPreview)
+      .where(eq(backgroundPreview.id, input.previewId));
+    if (!row) return err("gone");
+    const [owner] = await tx
+      .select({ status: take.status, videoExpiresAt: take.videoExpiresAt })
+      .from(take)
+      .where(eq(take.id, row.takeId))
+      .for("share");
+    if (!owner || takeExpired(owner, input.now ?? new Date())) return err("gone");
+    const [updated] = await tx
+      .update(backgroundPreview)
+      .set({
+        status: "ready",
+        objectKey: previewKey(row.takeId, input.previewId),
+        noGreenScreen: input.noGreenScreen,
+      })
+      .where(and(eq(backgroundPreview.id, input.previewId), eq(backgroundPreview.status, "making")))
+      .returning();
+    return updated ? ok(updated) : err("superseded");
+  });
 }
 
 /** `failPreview`: a `making` preview ends `failed` (a new request starts it again). */

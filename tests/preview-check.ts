@@ -264,21 +264,30 @@ try {
   const handles = await Promise.all(
     requested.map(async (r) => (r.ok && r.data.dispatch ? triggerPreview(r.data.preview) : null)),
   );
+  // Both previews must reach ready: a timeout fails the check instead of passing quietly.
   for (const backgroundId of extra) {
-    for (let i = 0; i < 400; i++) {
+    let finished = false;
+    for (let i = 0; i < 400 && !finished; i++) {
       const got = await getPreview(db, { creatorId: userId, takeId: keyed, backgroundId });
-      if (got.ok && got.data.status !== "making") break;
-      await sleep(250);
+      finished = got.ok && got.data.status === "ready";
+      if (!finished) await sleep(250);
     }
+    expect(finished, `the preview on ${backgroundId.slice(0, 8)} reached ready`);
   }
   const { runs } = await import("@trigger.dev/sdk");
   const runInfo = await Promise.all(handles.flatMap((h) => (h ? [runs.retrieve(h.id)] : [])));
+  // A run without a start or finish time is a failure, never a zero.
+  const complete = runInfo.every((r) => r.startedAt && r.finishedAt);
+  expect(complete && runInfo.length === 2, "both previews have a start and a finish time");
   const spans = runInfo
-    .map((r) => ({ start: r.startedAt?.getTime() ?? 0, end: r.finishedAt?.getTime() ?? 0 }))
+    .map((r) => ({
+      start: r.startedAt?.getTime() ?? Number.NaN,
+      end: r.finishedAt?.getTime() ?? Number.NaN,
+    }))
     .sort((x, y) => x.start - y.start);
   out({ serialRuns: spans.map((s) => [s.start % 100000, s.end % 100000]) });
   expect(
-    spans.length === 2 && spans[1]!.start >= spans[0]!.end - 500,
+    complete && spans.length === 2 && spans[1]!.start >= spans[0]!.end - 500,
     "two previews of one take ran one after the other (queue limit 1 per take)",
   );
 

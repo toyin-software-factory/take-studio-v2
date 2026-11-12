@@ -152,14 +152,20 @@ export async function makePreview(
       return { outcome: "gone" };
     }
     const key = previewKey(t.id, previewId);
-    await io.r2.putObject(key, new Uint8Array(await readFile(out)), "image/jpeg");
+    await io.r2.putObject(key, new Uint8Array(await readFile(out)), "image/jpeg", { signal });
+    // A timed out attempt must not record or clean up: the key is derived from the preview, so
+    // a retry that already finished owns the same file and the row that points to it.
+    signal?.throwIfAborted();
     const done = await completePreview(db, { previewId, noGreenScreen: keyColor === null });
     if (!done.ok) {
-      // The row vanished while we uploaded: do not leave the file behind.
-      try {
-        await io.r2.deleteObject(key);
-      } catch {
-        await queueDeletions(db, [key]);
+      // Another run finished the row: its file is at this key, leave it. Otherwise the row or
+      // the take is gone (or expired) and nothing points at the file we wrote: remove it.
+      if (done.error === "gone") {
+        try {
+          await io.r2.deleteObject(key);
+        } catch {
+          await queueDeletions(db, [key]);
+        }
       }
       return { outcome: "gone" };
     }
