@@ -158,6 +158,7 @@ describe("lock order: creator, then background (HRF-T01)", () => {
 
   it("a background change and deleting that background (the creator's default) at the same time", async () => {
     let found = 0;
+    const unexpected: string[] = [];
     for (let i = 0; i < ROUNDS; i++) {
       const c = await changeAndDelete();
       const settled = await Promise.allSettled([
@@ -169,9 +170,14 @@ describe("lock order: creator, then background (HRF-T01)", () => {
         deleteBackground(db, c.creator.id, c.backgroundId),
       ]);
       for (const r of settled) {
-        if (r.status === "rejected" && pgErrorCode(r.reason).code === "40P01") found += 1;
+        if (r.status === "fulfilled") continue;
+        if (pgErrorCode(r.reason).code === "40P01") found += 1;
+        else unexpected.push(String(r.reason));
       }
     }
+    // Both functions return a Result for a refusal, so nothing may be rejected at all: a
+    // different error would otherwise let this pass with both operations failing every round.
+    expect(unexpected).toEqual([]);
     expect(found).toBe(0);
   }, 60_000);
 });
