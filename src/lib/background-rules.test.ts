@@ -10,7 +10,7 @@ import {
   rotationFilter,
 } from "./background-rules";
 
-const ok = { codec: "mjpeg", width: 1920, height: 1080, frames: 1, rotation: 0 };
+const ok = { codec: "mjpeg", width: 1920, height: 1080, frames: 1, rotation: 0, format: "image2" };
 
 describe("checkImageFacts (AC-8)", () => {
   it("accepts a still JPEG, PNG or WebP of at least 1280 by 720 and at most 40 megapixels", () => {
@@ -26,6 +26,19 @@ describe("checkImageFacts (AC-8)", () => {
     }
     expect(checkImageFacts({ ...ok, codec: "apng" })).toBe("image_animated");
     expect(checkImageFacts({ ...ok, frames: 2 })).toBe("image_animated");
+  });
+
+  it("refuses a video container even when its codec is MJPEG, PNG or WebP", () => {
+    for (const format of ["avi", "mov,mp4,m4a,3gp,3g2,mj2", "matroska,webm", "mpjpeg", ""]) {
+      expect(checkImageFacts({ ...ok, format })).toBe("image_invalid");
+    }
+    for (const [codec, format] of [
+      ["png", "png_pipe"],
+      ["webp", "webp_pipe"],
+      ["mjpeg", "jpeg_pipe"],
+    ] as const) {
+      expect(checkImageFacts({ ...ok, codec, format })).toBeNull();
+    }
   });
 
   it("refuses over 40 megapixels as image_too_large, before the size check", () => {
@@ -111,5 +124,8 @@ describe("keys, types and messages", () => {
     expect(backgroundFailureMessage("image_too_large")).toContain("10 MB");
     expect(backgroundFailureMessage("nonsense")).toBe(BACKGROUND_FAILURE_MESSAGES.ingest_error);
     expect(backgroundFailureMessage(null)).toBe(BACKGROUND_FAILURE_MESSAGES.ingest_error);
+    for (const code of ["__proto__", "constructor", "toString", "hasOwnProperty"]) {
+      expect(backgroundFailureMessage(code)).toBe(BACKGROUND_FAILURE_MESSAGES.ingest_error);
+    }
   });
 });

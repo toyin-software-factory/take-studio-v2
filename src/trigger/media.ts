@@ -228,6 +228,7 @@ export function runFfmpegBytes(
 }
 
 const imageStreams = z.object({
+  format: z.object({ format_name: z.string().optional() }).optional(),
   streams: z
     .array(
       z.object({
@@ -271,7 +272,7 @@ export async function probeImageFile(
           "v:0",
           "-count_packets",
           "-show_entries",
-          "stream=codec_name,width,height,nb_read_packets",
+          "stream=codec_name,width,height,nb_read_packets:format=format_name",
           "-of",
           "json",
           path,
@@ -291,6 +292,7 @@ export async function probeImageFile(
     height,
     frames: Number(stream.nb_read_packets ?? "1") || 1,
     rotation: 0,
+    format: streams.success ? (streams.data.format?.format_name ?? "") : "",
   };
   if (width * height > maxPixels || width <= 0 || height <= 0) return base;
   const frames = imageFrames.safeParse(

@@ -32,6 +32,11 @@ export const BACKGROUND_IMAGE = {
   thumbHeight: 270,
   /** ffprobe codec names we accept; anything else is not a still JPEG, PNG or WebP. */
   codecs: ["mjpeg", "png", "webp"],
+  /**
+   * ffprobe container names of a still image file (a JPEG is `image2`). A one frame AVI or MOV
+   * holding MJPEG has the right codec but is a video file, so the container is checked too.
+   */
+  formats: ["image2", "jpeg_pipe", "png_pipe", "webp_pipe"],
 } as const;
 
 export type BackgroundContentType = (typeof BACKGROUND_UPLOAD.contentTypes)[number];
@@ -54,7 +59,7 @@ export const BACKGROUND_FAILURE_MESSAGES = {
 export type BackgroundFailureCode = keyof typeof BACKGROUND_FAILURE_MESSAGES;
 
 export function backgroundFailureMessage(code: string | null): string {
-  return code && code in BACKGROUND_FAILURE_MESSAGES
+  return code && Object.hasOwn(BACKGROUND_FAILURE_MESSAGES, code)
     ? BACKGROUND_FAILURE_MESSAGES[code as BackgroundFailureCode]
     : BACKGROUND_FAILURE_MESSAGES.ingest_error;
 }
@@ -78,6 +83,8 @@ export type ImageFacts = {
   readonly frames: number;
   /** The EXIF or display matrix rotation in degrees (0, 90, 180, 270). */
   readonly rotation: number;
+  /** ffprobe's container name (`image2`, `png_pipe`, `webp_pipe`, `avi`, ...). */
+  readonly format: string;
 };
 
 /** The size as it displays, after the rotation is applied. */
@@ -95,6 +102,8 @@ export function displaySize(facts: Pick<ImageFacts, "width" | "height" | "rotati
 export function checkImageFacts(facts: ImageFacts): BackgroundFailureCode | null {
   if (facts.codec === "apng") return "image_animated";
   if (!(BACKGROUND_IMAGE.codecs as readonly string[]).includes(facts.codec)) return "image_invalid";
+  if (!(BACKGROUND_IMAGE.formats as readonly string[]).includes(facts.format))
+    return "image_invalid";
   if (facts.frames > 1) return "image_animated";
   if (!(facts.width > 0) || !(facts.height > 0)) return "image_invalid";
   if (facts.width * facts.height > BACKGROUND_IMAGE.maxPixels) return "image_too_large";

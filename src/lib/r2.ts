@@ -188,12 +188,15 @@ export function createR2(env: R2Env) {
       key: string,
       body: Uint8Array<ArrayBuffer>,
       contentType: string,
+      /** A job deadline: the write is abandoned when it fires. */
+      signal?: AbortSignal,
     ): Promise<void> {
+      const limit = AbortSignal.timeout(30_000);
       const res = await client.fetch(objectUrl(key), {
         method: "PUT",
         headers: { "content-type": contentType },
         body,
-        signal: AbortSignal.timeout(30_000),
+        signal: signal ? AbortSignal.any([limit, signal]) : limit,
       });
       if (!res.ok) throw new Error(`R2 put failed: HTTP ${res.status}`);
     },

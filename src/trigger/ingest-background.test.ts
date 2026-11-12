@@ -321,6 +321,22 @@ describe.skipIf(!ffmpegOk)("ingest with the real image tools", () => {
     }
   });
 
+  it("refuses a video container that holds a single MJPEG frame (image_invalid)", async () => {
+    const avi = await image("one-frame.avi", [
+      "-f",
+      "lavfi",
+      "-i",
+      "testsrc2=s=1600x900:d=1",
+      "-frames:v",
+      "1",
+      "-c:v",
+      "mjpeg",
+    ]);
+    const { row, s } = await run(avi);
+    expect(row).toMatchObject({ status: "failed", failureCode: "image_invalid" });
+    expect(s.converted()).toBe(0);
+  });
+
   it("accepts a WebP still", async () => {
     const file = await image("still.webp", [
       "-f",
@@ -402,7 +418,14 @@ describe("ingest rules that need no image tools", () => {
       presignGet: async (key) => key,
       download: async (_u, path) => (await copyFile(file, path), 1000),
       readHead: async () => new Uint8Array(0),
-      probe: async () => ({ codec: "mjpeg", width: 1920, height: 1080, frames: 1, rotation: 0 }),
+      probe: async () => ({
+        codec: "mjpeg",
+        width: 1920,
+        height: 1080,
+        frames: 1,
+        rotation: 0,
+        format: "image2",
+      }),
       convert: async (_s, dir) => {
         await mkdir(dir, { recursive: true });
         await writeFile(join(dir, "image.jpg"), "x");
@@ -420,5 +443,67 @@ describe("ingest rules that need no image tools", () => {
     expect(await db.select().from(background).where(eq(background.id, id))).toHaveLength(0);
     const queued = (await db.select().from(storageDeletion)).map((r) => r.objectKey);
     expect(queued).toEqual(expect.arrayContaining([keys.sourceKey, keys.imageKey, keys.thumbKey]));
+  });
+});
+
+describe("ingest writes after a deletion or a deadline", () => {
+  async function failingPut(deleteFirst: boolean) {
+    const creator = await createCreator(db);
+    const id = await processing(creator.id, 1000);
+    const keys = backgroundKeys(creator.id, id);
+    const file = join(work, `src-${id}.jpg`);
+    await writeFile(file, Buffer.alloc(1000));
+    const signals: AbortSignal[] = [];
+    const io: IngestIo = {
+      head: async () => ({ size: 1000 }),
+      presignGet: async (key) => key,
+      download: async (_u, path) => (await copyFile(file, path), 1000),
+      readHead: async () => new Uint8Array(0),
+      probe: async () => ({
+        codec: "mjpeg",
+        width: 1920,
+        height: 1080,
+        frames: 1,
+        rotation: 0,
+        format: "image2",
+      }),
+      convert: async (_s, dir) => {
+        await writeFile(join(dir, "image.jpg"), "x");
+        await writeFile(join(dir, "thumb.webp"), "y");
+      },
+      put: async (key, _path, _type, signal) => {
+        signals.push(signal);
+        if (key === keys.imageKey && deleteFirst)
+          await db.delete(background).where(eq(background.id, id));
+        if (key === keys.thumbKey) throw new Error("storage down");
+      },
+    };
+    const dir = await mkdtemp(join(work, "fail-"));
+    const controller = new AbortController();
+    const outcome = await ingestBackground(db, id, io, dir, controller.signal).then(
+      () => "returned",
+      (error: Error) => error.message,
+    );
+    return { outcome, keys, signals, controller };
+  }
+
+  it("queues the files when the thumbnail write fails after the background was deleted", async () => {
+    const { outcome, keys } = await failingPut(true);
+    expect(outcome).toBe("storage down");
+    const queued = (await db.select().from(storageDeletion)).map((r) => r.objectKey);
+    expect(queued).toEqual(expect.arrayContaining([keys.sourceKey, keys.imageKey, keys.thumbKey]));
+  });
+
+  it("queues nothing when the row still exists, because a retry overwrites the files", async () => {
+    const before = (await db.select().from(storageDeletion)).length;
+    const { outcome } = await failingPut(false);
+    expect(outcome).toBe("storage down");
+    expect((await db.select().from(storageDeletion)).length).toBe(before);
+  });
+
+  it("hands the job's own signal to every output write", async () => {
+    const { signals, controller } = await failingPut(false);
+    expect(signals.length).toBeGreaterThan(0);
+    for (const signal of signals) expect(signal).toBe(controller.signal);
   });
 });

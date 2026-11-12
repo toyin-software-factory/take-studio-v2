@@ -52,7 +52,12 @@ export type IngestIo = {
     facts: ImageFacts,
     signal: AbortSignal,
   ) => Promise<void>;
-  readonly put: (key: string, path: string, contentType: string) => Promise<void>;
+  readonly put: (
+    key: string,
+    path: string,
+    contentType: string,
+    signal: AbortSignal,
+  ) => Promise<void>;
 };
 
 export type IngestOutcome =
@@ -132,10 +137,22 @@ export async function ingestBackground(
   if (broken) return refuse(broken);
 
   await io.convert(source, dir, facts, signal);
-  await io.put(keys.imageKey, join(dir, "image.jpg"), "image/jpeg");
-  await io.put(keys.thumbKey, join(dir, "thumb.webp"), "image/webp");
   const size = await io.probe(join(dir, "image.jpg"), signal);
   if (!size) return refuse("ingest_error");
+  try {
+    await io.put(keys.imageKey, join(dir, "image.jpg"), "image/jpeg", signal);
+    await io.put(keys.thumbKey, join(dir, "thumb.webp"), "image/webp", signal);
+  } catch (error) {
+    // A write that fails after the creator deleted the background (the delete may already have
+    // drained its keys) would leave a file nobody owns. While the row exists a retry just
+    // overwrites the files, so only a missing row is cleaned up here.
+    const [still] = await db
+      .select({ id: background.id })
+      .from(background)
+      .where(eq(background.id, backgroundId));
+    if (!still) await queueDeletions(db, [keys.sourceKey, keys.imageKey, keys.thumbKey]);
+    throw error;
+  }
 
   const saved = await saveIngest(db, backgroundId, {
     imageKey: keys.imageKey,
@@ -178,9 +195,9 @@ export function realIo(r2: R2): IngestIo {
     convert: async (source, dir, facts, signal) => {
       await runFfmpeg(convertArgs(source, dir, facts), { timeoutMs: 120_000, signal });
     },
-    put: async (key, path, contentType) => {
+    put: async (key, path, contentType, signal) => {
       const bytes = await readFile(path);
-      await r2.putObject(key, new Uint8Array(bytes), contentType);
+      await r2.putObject(key, new Uint8Array(bytes), contentType, signal);
     },
   };
 }

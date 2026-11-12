@@ -99,15 +99,20 @@ export function BackgroundMine({
           .map((item) => (
             <p key={item.id} className="flex flex-wrap items-center gap-2 text-text-muted">
               <span className="font-medium text-text">{item.name}</span>
-              {item.status === "failed" ? (
+              {item.status === "processing" ? (
+                <span>Processing</span>
+              ) : (
                 <>
-                  <span>{backgroundFailureMessage(item.failureCode)}</span>
+                  {/* Failed, or still `uploading`: the file never arrived or the page closed. */}
+                  <span>
+                    {item.status === "failed"
+                      ? backgroundFailureMessage(item.failureCode)
+                      : "This upload didn't finish."}
+                  </span>
                   <Button variant="ghost" size="sm" onClick={() => actions.onDelete(item.id)}>
                     Remove
                   </Button>
                 </>
-              ) : (
-                <span>Processing</span>
               )}
             </p>
           ))}

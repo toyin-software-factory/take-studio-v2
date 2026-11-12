@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { deleteCreatorBackgrounds } from "@/db/data/backgrounds";
 import { type DeletedTakes, deleteTakesInTx } from "@/db/data/deletion";
-import { take } from "@/db/schema";
+import { take, user } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { cancelRuns, requestStorageDrain } from "@/lib/trigger-runs";
 import type { AfterDelete } from "../takes";
@@ -22,8 +22,10 @@ export async function deleteCreatorData(
 ): Promise<DeletedTakes> {
   let backgroundsDeleted = 0;
   const deleted = await db.transaction(async (tx) => {
-    // Lock order: the creator's backgrounds (uploaded images, previews and all their files),
-    // then the takes.
+    // Lock order (src/db/AGENTS.md): the creator row first, which also holds off a new upload
+    // (it locks the same row), then the creator's backgrounds (uploaded images, previews and all
+    // their files), then the takes.
+    await tx.select({ id: user.id }).from(user).where(eq(user.id, creatorId)).for("update");
     backgroundsDeleted = await deleteCreatorBackgrounds(tx, creatorId);
     const owned = await tx
       .select({ id: take.id })

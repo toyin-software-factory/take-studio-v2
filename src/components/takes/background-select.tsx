@@ -30,6 +30,11 @@ export function BackgroundSelect({
   const list = state.kind === "ready" ? state.list : null;
   const value = picked ?? list?.defaultId ?? ORIGINAL_BACKGROUND;
   const current = findBackground(list, value);
+  // Deleting the background that is picked on this page puts the pick back to Keep original,
+  // so the next upload never sends an ID that no longer exists.
+  const removeBackground = async (id: string) => {
+    if ((await upload.remove(id)) && value === id) onPick(ORIGINAL_BACKGROUND);
+  };
 
   const trigger = (
     <Button
@@ -66,7 +71,7 @@ export function BackgroundSelect({
           mine={{
             state: upload.state,
             onFile: (f) => void upload.start(f),
-            onDelete: (id) => void upload.remove(id),
+            onDelete: (id) => void removeBackground(id),
           }}
         />
       ) : (

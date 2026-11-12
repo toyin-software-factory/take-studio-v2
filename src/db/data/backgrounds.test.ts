@@ -18,7 +18,8 @@ import { backgroundKeys } from "@/lib/background-rules";
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  // The stuck row sweep scans every stale row, so this suite owns its database.
+  testDb = await openTestDb({ database: "take_studio_test_background_data" });
   db = testDb.db;
 });
 afterAll(() => testDb?.close());

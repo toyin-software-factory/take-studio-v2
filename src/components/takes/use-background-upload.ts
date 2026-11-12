@@ -15,6 +15,9 @@ export type BackgroundUploadState =
   | { readonly kind: "working"; readonly step: "uploading" | "processing" }
   | { readonly kind: "failed"; readonly message: string };
 
+/** A 10 MB image on a slow connection still finishes well inside this. */
+const PUT_TIMEOUT_MS = 5 * 60_000;
+
 /** About a minute of 2 s checks for the image to be processed. */
 const CHECKS = 30;
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -50,6 +53,8 @@ export function useBackgroundUpload(onChanged: () => void, onReady: (id: string)
           method: "PUT",
           headers: { "content-type": file.type },
           body: file,
+          // Bounded like every upload call: a stalled storage request ends in the failure below.
+          signal: AbortSignal.timeout(PUT_TIMEOUT_MS),
         });
         if (!put.ok) return fail("The image didn't upload. Check your connection and try again.");
         const done = await callApi(`/api/backgrounds/${body.id}/complete`, "POST");
@@ -82,14 +87,15 @@ export function useBackgroundUpload(onChanged: () => void, onReady: (id: string)
   );
 
   const remove = useCallback(
-    async (id: string) => {
+    async (id: string): Promise<boolean> => {
       const reply = await callApi(`/api/backgrounds/${id}`, "DELETE").catch(() => null);
       if (reply?.status === 204) {
         setState({ kind: "idle" });
         onChanged();
-      } else {
-        fail(apiMessage(reply?.data, "That background couldn't be deleted. Please try again."));
+        return true;
       }
+      fail(apiMessage(reply?.data, "That background couldn't be deleted. Please try again."));
+      return false;
     },
     [onChanged],
   );
