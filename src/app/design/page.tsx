@@ -56,6 +56,7 @@ export default function DesignGalleryPage() {
             title="Dark stage colours"
             colours={stageColours}
             pairs={stagePairs}
+            onDark
           />
           <p className="text-small text-muted-foreground">
             Inside the stage, focus rings are lime:{" "}
