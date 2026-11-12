@@ -19,6 +19,9 @@ export async function expectNoSeriousAxeIssues(page: Page): Promise<void> {
  * settled result counts; if it never clears, the last violations are in the failure message.
  */
 export async function expectNoSeriousAxeIssuesWhenSettled(page: Page): Promise<void> {
+  // The motion starts after hydration, from a dynamic import; it sets `html.js` as it starts and
+  // its entrance observers exist from then on. Scrolling any earlier could pass a target by.
+  await page.waitForFunction(() => document.documentElement.classList.contains("js"));
   await page.evaluate(async () => {
     const step = Math.round(window.innerHeight * 0.8);
     for (let y = 0; y < document.documentElement.scrollHeight; y += step) {
