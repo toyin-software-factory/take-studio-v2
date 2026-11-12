@@ -85,4 +85,10 @@ clip "$tmp/none2.png" "$out/nogreen-no-audio.mp4" 4 30 none 0
 frame 1280 720 "$GREEN" "$BLUE" "$tmp/narrow.png" strip
 clip "$tmp/narrow.png" "$out/nogreen-narrow.mp4" 5 30 "$(tone 5 2 3.5)" 0
 
-ls -la "$out"/keyed-*.mp4 "$out"/nogreen-*.mp4
+# Background images for the upload scenarios (spec 0008, AC-8): one that is accepted (1280x720,
+# the smallest allowed), one that is too small, and bytes that are not an image at all.
+"${ff[@]}" -f lavfi -i "gradients=s=1280x720:c0=0x6b2d1a:c1=0xd9a066:x0=0:y0=0:x1=1280:y1=720:nb_colors=2:d=1" -frames:v 1 -q:v 5 "$out/bg-ok.jpg"
+"${ff[@]}" -f lavfi -i "gradients=s=640x360:c0=0x1a6b2d:c1=0x66d9a0:x0=0:y0=0:x1=640:y1=360:nb_colors=2:d=1" -frames:v 1 -q:v 5 "$out/bg-small.jpg"
+printf 'this is not an image' > "$out/bg-fake.jpg"
+
+ls -la "$out"/keyed-*.mp4 "$out"/nogreen-*.mp4 "$out"/bg-*.jpg

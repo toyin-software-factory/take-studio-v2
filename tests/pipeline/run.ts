@@ -14,6 +14,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { asc, eq, inArray } from "drizzle-orm";
 import { drainDeletions, takeFileKeys } from "../../src/db/data/deletion";
+import { ensureBuiltInBackgrounds } from "@/trigger/built-in-backgrounds";
 import * as schema from "../../src/db/schema";
 import { deleteCreatorData } from "../../src/server/account";
 import { uploadFailureMessage } from "../../src/lib/take-messages";
@@ -29,6 +30,7 @@ import {
   work,
 } from "./harness";
 import { avSync, renderFacts } from "./inspect";
+import { backgroundScenarios } from "./background";
 import { transcriptScenarios } from "./transcript";
 
 type Check = { scenario: string; check: string; ok: boolean; detail: string };
@@ -46,12 +48,18 @@ const media = (file: string) =>
   fileURLToPath(new URL(`../fixtures/media/${file}`, import.meta.url));
 
 /** Upload a fixture the way the browser will: create, part PUTs straight to R2, complete. */
-async function upload(creator: Creator, file: string, container: "mp4" | "mov"): Promise<string> {
+async function upload(
+  creator: Creator,
+  file: string,
+  container: "mp4" | "mov",
+  backgroundId?: string,
+): Promise<string> {
   const bytes = readFileSync(media(file));
   const created = await creator.api("POST", "/api/uploads", {
     fileName: file,
     sizeBytes: bytes.length,
     container,
+    ...(backgroundId ? { backgroundId } : {}),
   });
   if (created.status !== 201)
     throw new Error(`create ${file}: ${created.status} ${JSON.stringify(created.json)}`);
@@ -312,7 +320,16 @@ async function main() {
   const a = await createCreator("a");
   const b = await createCreator("b");
   const t = await createCreator("transcripts");
+  const bg = await createCreator("backgrounds");
+  // The built in studios are in the local database and R2 (idempotent, like the deploy step).
+  await ensureBuiltInBackgrounds(db, r2, { local: true });
   const takes: Record<string, string> = {};
+
+  // PIPELINE_ONLY=background runs just the background scenarios (a lighter run for small machines).
+  if (process.env.PIPELINE_ONLY === "background") {
+    await backgroundScenarios({ c: bg, b, check, upload, waitFinal, downloadRender, media });
+    return;
+  }
 
   // AC-4, AC-6, AC-7: every fixture end to end.
   for (const [label, file, container, want] of FIXTURES) {
@@ -473,6 +490,17 @@ async function main() {
   }
 
   // Spec 0007: transcripts end to end against real Deepgram (needs DEEPGRAM_API_KEY).
+  // Spec 0008: backgrounds end to end (needs the built in studio, seeded above).
+  await backgroundScenarios({
+    c: bg,
+    b,
+    check,
+    upload,
+    waitFinal,
+    downloadRender,
+    media,
+  });
+
   await transcriptScenarios({
     a,
     t,
@@ -503,10 +531,24 @@ try {
           .from(schema.take)
           .where(inArray(schema.take.creatorId, creators))
       : [];
-    const keys = await takeFileKeys(
+    const takeKeys = await takeFileKeys(
       db,
       owned.map((t) => t.id),
     );
+    // Spec 0008, AC-10: deleting an account also deletes the backgrounds it uploaded and their
+    // files (every key of every row, accepted, refused or half uploaded).
+    const uploads = creators.length
+      ? await db
+          .select()
+          .from(schema.background)
+          .where(inArray(schema.background.creatorId, creators))
+      : [];
+    const keys = [
+      ...takeKeys,
+      ...uploads.flatMap((row) =>
+        [row.sourceKey, row.imageKey, row.thumbKey].filter((k): k is string => !!k),
+      ),
+    ];
     for (const id of creators) {
       await deleteCreatorData(db, id, {
         cancelRuns: async () => {},

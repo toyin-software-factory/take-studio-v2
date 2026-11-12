@@ -11,6 +11,11 @@ export type BuiltInBackground = {
   readonly alt: string;
   readonly width: number;
   readonly height: number;
+  /**
+   * A studio that only exists for local runs and tests. It is never installed into a database
+   * that is not on this machine, so live creators can never see a test background.
+   */
+  readonly testOnly?: boolean;
 };
 
 /** The built ins (the six approved studios arrive with spec 0008 build step 7). */
@@ -22,8 +27,14 @@ export const BUILT_IN_BACKGROUNDS: readonly BuiltInBackground[] = [
     alt: "A soft blue studio wall with a gentle diagonal light",
     width: 1920,
     height: 1080,
+    testOnly: true,
   },
 ];
+
+/** The studios to install: all of them locally, only the real ones (not `testOnly`) elsewhere. */
+export function studiosToInstall(local: boolean): readonly BuiltInBackground[] {
+  return BUILT_IN_BACKGROUNDS.filter((b) => local || b.testOnly !== true);
+}
 
 export const builtInKeys = (slug: string) => ({
   imageKey: `backgrounds/builtin/${slug}.jpg`,

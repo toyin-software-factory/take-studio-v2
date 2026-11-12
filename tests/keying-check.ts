@@ -28,7 +28,7 @@ import { createR2 } from "../src/lib/r2";
 import { renderKey } from "../src/lib/cut-rules";
 import { originalKey, thumbnailKey } from "../src/lib/take-rules";
 import { triggerForJob } from "../src/lib/trigger-runs";
-import { BUILT_IN_BACKGROUNDS } from "../scripts/built-in-backgrounds";
+import { BUILT_IN_BACKGROUNDS } from "@/lib/built-in-backgrounds";
 import { renderFacts } from "./pipeline/inspect";
 
 const env = z

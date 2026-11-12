@@ -5,6 +5,7 @@
  */
 import { execFileSync, spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { isGreen } from "../../src/lib/keying";
 
 export type RenderFacts = {
   readonly codec: string;
@@ -134,4 +135,50 @@ export function avSync(path: string) {
     return Math.round((nearest - f) * 1000);
   });
   return { flashes, onsets, offsetsMs, maxAbsOffsetMs: Math.max(0, ...offsetsMs.map(Math.abs)) };
+}
+
+/**
+ * One decoded frame of a video or image, for the background checks (spec 0008): its size, the
+ * share of green pixels (hue 80 to 160, saturation at least 0.30, value at least 0.25: the rule
+ * detection uses) and the colour of its top left corner, where a studio shows instead of a wall.
+ */
+export function frameStats(path: string, atSeconds = 1) {
+  const probe = JSON.parse(
+    execFileSync(
+      "ffprobe",
+      ["-v", "error", "-print_format", "json", "-show_streams", "-select_streams", "v:0", path],
+      { encoding: "utf8" },
+    ),
+  ) as { streams: { width: number; height: number }[] };
+  const raw = spawnSync(
+    "ffmpeg",
+    [
+      "-v",
+      "error",
+      "-ss",
+      String(atSeconds),
+      "-i",
+      path,
+      "-frames:v",
+      "1",
+      "-vf",
+      "scale=320:-2,format=rgb24",
+      "-f",
+      "rawvideo",
+      "-",
+    ],
+    { maxBuffer: 64 << 20 },
+  ).stdout;
+  // A stream without a decoded frame must fail the check, not read as a grey corner.
+  if (raw.length < 3) throw new Error(`no frame decoded from ${path}`);
+  let green = 0;
+  for (let i = 0; i + 2 < raw.length; i += 3) {
+    if (isGreen({ r: raw[i]!, g: raw[i + 1]!, b: raw[i + 2]! })) green += 1;
+  }
+  return {
+    width: probe.streams[0]!.width,
+    height: probe.streams[0]!.height,
+    greenShare: green / (raw.length / 3),
+    corner: { r: raw[0]!, g: raw[1]!, b: raw[2]! },
+  };
 }

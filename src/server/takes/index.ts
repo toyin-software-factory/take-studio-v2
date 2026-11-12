@@ -117,10 +117,6 @@ export async function getForCreator(
     .where(and(eq(take.id, takeId), eq(take.creatorId, creatorId)));
   if (!found) return err("not_found");
 
-  const [latestRender] = await db
-    .select()
-    .from(render)
-    .where(and(eq(render.takeId, takeId), eq(render.isLatest, true)));
   const [latestJob] = await db
     .select()
     .from(processingJob)
@@ -159,6 +155,14 @@ export async function getForCreator(
     )
     .orderBy(desc(processingJob.createdAt))
     .limit(1);
+
+  // Read last on purpose: a job finishes and swaps the latest render in one transaction, so a
+  // job read as `succeeded` above means this read already sees its render (the other order could
+  // show a finished change with the old video's background name until the next poll).
+  const [latestRender] = await db
+    .select()
+    .from(render)
+    .where(and(eq(render.takeId, takeId), eq(render.isLatest, true)));
 
   const keyedBackground =
     latestRender?.keyed && latestRender.backgroundName

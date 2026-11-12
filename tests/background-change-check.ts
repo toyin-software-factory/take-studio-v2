@@ -27,7 +27,7 @@ import { createR2 } from "../src/lib/r2";
 import { originalKey, thumbnailKey } from "../src/lib/take-rules";
 import { triggerForJob } from "../src/lib/trigger-runs";
 import { changeBackground } from "../src/server/backgrounds";
-import { BUILT_IN_BACKGROUNDS } from "../scripts/built-in-backgrounds";
+import { BUILT_IN_BACKGROUNDS } from "@/lib/built-in-backgrounds";
 
 const env = z
   .object({
