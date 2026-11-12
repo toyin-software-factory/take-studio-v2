@@ -69,6 +69,12 @@ Read its "Heads up" list and clear every item before the task is done: context g
   - **Can skip review:** a PR that changes only prose: `docs/scope/`, `docs/specs/`, `design.md`, `AGENTS.md`, `README.md`, or typo fixes. Merge once CI (if any) is green, without waiting for CodeRabbit. Say "merged without review: docs only" in the merge.
   - When unsure, it needs review.
 
+## Stay reachable while you work
+
+- HQ hands you new `[HQ]` messages as soon as your current tool call finishes. Read them then. If one needs an answer (a question, "are you stuck?", a change of plan), answer it with send_message right away, in a line or two, then carry on with your task.
+- Long steps run in the background. Start anything that may take more than about 2 minutes (a full test suite, `next build`, an E2E run, a video render, a big install) with `run_in_background`, then check on it with short commands (read the last lines of its output) every minute or two while you do other useful work. Never wait for it in a foreground loop such as `until ! pgrep ...; do sleep ...; done` or a long `sleep`.
+- Keep every foreground command under about 2 minutes. If one might run longer, background it.
+
 ## Security
 
 - Secrets come from environment variables (HQ App variables). Never commit, log, or expose them to the client.
