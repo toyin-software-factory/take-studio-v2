@@ -10,11 +10,58 @@ import { idempotencyKeys, runs, tasks } from "@trigger.dev/sdk";
  * repeating the call never starts a second run. Pass it to `dispatchJob`.
  */
 export function triggerForJob(taskId: string) {
-  return async (jobId: string): Promise<{ readonly id: string }> => {
+  return async (jobId: string, creatorId?: string): Promise<{ readonly id: string }> => {
     const idempotencyKey = await idempotencyKeys.create(`job-${jobId}`, { scope: "global" });
-    const handle = await tasks.trigger(taskId, { jobId }, { idempotencyKey });
+    const handle = await tasks.trigger(
+      taskId,
+      { jobId },
+      jobTriggerOptions(idempotencyKey, creatorId),
+    );
     return { id: handle.id };
   };
+}
+
+/**
+ * The trigger options of a job run. With the creator, the run gets the concurrency key
+ * `creator-{id}`: the task's queue limit then applies per creator, so one creator's many jobs
+ * wait behind each other and never take every slot. Pure, so a test can show two creators get
+ * different keys.
+ */
+export function jobTriggerOptions<K>(
+  idempotencyKey: K,
+  creatorId: string | undefined,
+): { readonly idempotencyKey: K; readonly concurrencyKey?: string } {
+  return creatorId === undefined
+    ? { idempotencyKey }
+    : { idempotencyKey, concurrencyKey: `creator-${creatorId}` };
+}
+
+/** Run statuses that mean "still on its way": waiting in a queue, or already starting. */
+const WAITING_RUN_STATUSES: ReadonlySet<string> = new Set([
+  "PENDING_VERSION",
+  "QUEUED",
+  "DELAYED",
+  "DEQUEUED",
+  "EXECUTING",
+]);
+
+/** Whether a Trigger.dev run status is one of a run that has not started or is just starting. */
+export function isWaitingRunStatus(status: string): boolean {
+  return WAITING_RUN_STATUSES.has(status);
+}
+
+/**
+ * Whether a run is still waiting its turn, for the cleanup: a queued job behind its creator's
+ * concurrency limit is not stale. If Trigger.dev cannot be asked the answer is "yes" (leave it
+ * for the next sweep; the 6 hour backstop still ends it), never a guess that fails a live job.
+ */
+export async function isRunWaiting(runId: string): Promise<boolean> {
+  try {
+    const run = await runs.retrieve(runId);
+    return isWaitingRunStatus(String(run.status));
+  } catch {
+    return true;
+  }
 }
 
 /**

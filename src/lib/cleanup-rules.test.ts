@@ -14,9 +14,17 @@ describe("cleanup cut offs (AC-18)", () => {
       idleUploadBefore: new Date("2026-11-11T11:30:00Z"), // 15 min link + 15 min margin
       uploadBackstopBefore: new Date("2026-11-11T06:00:00Z"), // 6 hours
       queuedJobBefore: new Date("2026-11-11T11:45:00Z"), // 15 min
+      queuedBackstopBefore: new Date("2026-11-11T06:00:00Z"), // 6 hours
       runningJobBefore: new Date("2026-11-11T10:35:00Z"), // 2 attempts x 40 min maxDuration + 5 min margin
       transcribeRunningJobBefore: new Date("2026-11-11T11:10:00Z"), // 3 attempts x 15 min + 5 min margin
     });
+  });
+
+  it("keeps process-take to 2 runs per creator, and the queued backstop far past any real wait (HRF-T01)", () => {
+    expect(PROCESS_TAKE_LIMITS.perCreatorConcurrency).toBe(2);
+    // One creator's queue drains at 2 full runs at a time; the backstop outlasts several of them.
+    expect(CLEANUP.queuedBackstopMs).toBeGreaterThan(CLEANUP.jobMaxDurationMs);
+    expect(CLEANUP.queuedBackstopMs).toBeGreaterThan(CLEANUP.queuedStaleMs);
   });
 
   it("derives the transcribe window from its own limits (3 attempts, 15 minutes), 50 minutes in all", () => {

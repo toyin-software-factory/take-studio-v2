@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from "drizzle-orm";
 import { ACTIVE_JOB_STATUSES } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
-import { processingJob } from "../schema";
+import { processingJob, take } from "../schema";
 import type { Executor } from "../types";
 import { finish } from "./jobs";
 
@@ -15,12 +15,19 @@ export async function dispatchJob(
   db: Executor,
   input: {
     readonly jobId: string;
-    readonly trigger: (jobId: string) => Promise<{ readonly id: string }>;
+    /** `creatorId` lets the trigger give the run a per creator concurrency key. */
+    readonly trigger: (jobId: string, creatorId?: string) => Promise<{ readonly id: string }>;
   },
 ): Promise<Result<{ readonly runId: string }, "trigger_failed" | "not_found">> {
+  // The job's creator, for the run's concurrency key (an unknown job just has none).
+  const [owner] = await db
+    .select({ creatorId: take.creatorId })
+    .from(processingJob)
+    .innerJoin(take, eq(take.id, processingJob.takeId))
+    .where(eq(processingJob.id, input.jobId));
   let runId: string;
   try {
-    ({ id: runId } = await input.trigger(input.jobId));
+    ({ id: runId } = await input.trigger(input.jobId, owner?.creatorId));
   } catch {
     const finished = await finish(db, {
       jobId: input.jobId,

@@ -240,6 +240,11 @@ test("says so when the video was kept on its own background (AC-3) and when a pr
     .getByRole("radio", { name: /Warm studio/ })
     .check({ force: true });
   await expect(section(page)).toContainText("this background wouldn't show");
+  // The server refuses a real background on a take with no green screen (409 no_green_screen), so
+  // the button is off and the note above says why. Going back to the original needs no change.
+  await expect(section(page).getByRole("button", { name: "Use this background" })).toBeDisabled();
+  await section(page).getByRole("radio", { name: "Keep original" }).check({ force: true });
+  await expect(section(page).getByRole("button", { name: "Keep original" })).toBeDisabled();
 });
 
 test("shows a failed change and Try again repeats the failed target (AC-5)", async ({

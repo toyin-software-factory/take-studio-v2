@@ -1,5 +1,6 @@
-import { and, desc, eq, inArray, ne, sql } from "drizzle-orm";
+import { and, count, desc, eq, gt, inArray, ne, notExists, sql } from "drizzle-orm";
 import { z } from "zod";
+import { BACKGROUND_CHANGE } from "@/lib/background-rules";
 import { chargeSeconds, chargedMonth, refundSeconds } from "@/lib/billing";
 import { renderKey } from "@/lib/cut-rules";
 import { type FailureCode, isFailureCode, isMediaFailure } from "@/lib/failure-codes";
@@ -695,12 +696,16 @@ export type BackgroundStartError =
   | "original_gone"
   | "job_active"
   | "same_background"
+  | "no_green_screen"
+  | "background_change_limit"
   | "background_not_ready";
 
 /**
  * `startBackgroundJob` (spec 0008, "Job seam"), one transaction. Like `startTranscribeJob` it
  * never moves the take and never charges; it starts a `rerender` job that renders the take's
  * current cuts onto `backgroundId` (null is the original):
+ * 0. lock the creator's row (lock order: creator, background, take, job), so the hourly limit
+ *    below cannot be passed by parallel requests;
  * 1. lock the background `FOR KEY SHARE`, then the take `FOR UPDATE` (lock order);
  * 2. the background must exist and be built in or the creator's (`not_found` otherwise, so
  *    another creator's ID leaks nothing) and `ready` (`background_not_ready`);
@@ -708,7 +713,11 @@ export type BackgroundStartError =
  *    (`original_gone`) and no active job (`job_active`);
  * 4. refuse `same_background` when the target equals the latest render's effective background
  *    (`keyed ? background_id : null`), unless the latest video job failed (Try again);
- * 5. insert the job (0 seconds, `target_background_id`) and its steps.
+ * 5. refuse `no_green_screen` for a real background when the latest render found no green screen
+ *    (`keyed` false with a background name); going back to the original stays allowed;
+ * 6. refuse `background_change_limit` at 10 background changes started in the last hour by the
+ *    creator (counted from `processing_job` through `take.creator_id`);
+ * 7. insert the job (0 seconds, `target_background_id`) and its steps.
  */
 export async function startBackgroundJob(
   db: Executor,
@@ -727,6 +736,7 @@ export async function startBackgroundJob(
 
   try {
     return await runTx(db, async (tx) => {
+      await tx.select({ id: user.id }).from(user).where(eq(user.id, input.creatorId)).for("update");
       let target: string | null = null;
       if (input.backgroundId !== null) {
         const [chosen] = await tx
@@ -766,7 +776,11 @@ export async function startBackgroundJob(
       if (active) return err("job_active");
 
       const [latestRender] = await tx
-        .select({ keyed: render.keyed, backgroundId: render.backgroundId })
+        .select({
+          keyed: render.keyed,
+          backgroundId: render.backgroundId,
+          backgroundName: render.backgroundName,
+        })
         .from(render)
         .where(and(eq(render.takeId, current.id), eq(render.isLatest, true)));
       // A keyed render whose background was deleted (the reference is now null) is on a
@@ -785,6 +799,33 @@ export async function startBackgroundJob(
           .limit(1);
         if (latestJob?.status !== "failed") return err("same_background");
       }
+
+      // The last render found no green screen: a real background would show nowhere, so the
+      // re render would only cost. The original stays allowed.
+      if (target !== null && latestRender?.backgroundName != null && latestRender.keyed === false) {
+        return err("no_green_screen");
+      }
+
+      // A background change is a `rerender` with no `trim` step (`startJob`'s re render of a
+      // failed take trims again and does not count). Failed ones and retries count.
+      const [recent] = await tx
+        .select({ n: count() })
+        .from(processingJob)
+        .innerJoin(take, eq(take.id, processingJob.takeId))
+        .where(
+          and(
+            eq(take.creatorId, input.creatorId),
+            eq(processingJob.kind, "rerender"),
+            gt(processingJob.createdAt, new Date(now.getTime() - 3_600_000)),
+            notExists(
+              tx
+                .select({ one: sql`1` })
+                .from(jobStep)
+                .where(and(eq(jobStep.jobId, processingJob.id), eq(jobStep.name, "trim"))),
+            ),
+          ),
+        );
+      if ((recent?.n ?? 0) >= BACKGROUND_CHANGE.perHour) return err("background_change_limit");
 
       const jobId = crypto.randomUUID();
       const [job] = await tx

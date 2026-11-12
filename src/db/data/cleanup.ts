@@ -104,10 +104,26 @@ export type StaleJob = {
  * a `transcribe` job is stale after 50 minutes, the video kinds after 85). Uses `jobs.finish`,
  * so the take moves and the refund happens exactly as for any other failure.
  */
-export async function failStaleJobs(db: Executor, now: Date): Promise<readonly StaleJob[]> {
-  const { queuedJobBefore, runningJobBefore, transcribeRunningJobBefore } = cleanupCutoffs(now);
+export async function failStaleJobs(
+  db: Executor,
+  now: Date,
+  /**
+   * Whether a run is still waiting its turn (Trigger.dev). A `queued` job whose run is waiting,
+   * for instance behind its creator's concurrency limit, is not failed as `stale_run` until the
+   * 6 hour backstop. Without it (or without a run ID) a queued job is stale after 15 minutes.
+   */
+  isRunWaiting?: (runId: string) => Promise<boolean>,
+): Promise<readonly StaleJob[]> {
+  const { queuedJobBefore, queuedBackstopBefore, runningJobBefore, transcribeRunningJobBefore } =
+    cleanupCutoffs(now);
   const candidates = await db
-    .select({ id: processingJob.id, kind: processingJob.kind })
+    .select({
+      id: processingJob.id,
+      kind: processingJob.kind,
+      status: processingJob.status,
+      createdAt: processingJob.createdAt,
+      runId: processingJob.triggerRunId,
+    })
     .from(processingJob)
     .where(
       or(
@@ -130,7 +146,17 @@ export async function failStaleJobs(db: Executor, now: Date): Promise<readonly S
     .limit(CLEANUP.batchSize);
 
   const failed: StaleJob[] = [];
-  for (const { id, kind } of candidates) {
+  for (const { id, kind, status, createdAt, runId } of candidates) {
+    // Still waiting in a queue (and not past the backstop): not stale.
+    if (
+      status === "queued" &&
+      isRunWaiting &&
+      runId !== null &&
+      createdAt > queuedBackstopBefore &&
+      (await isRunWaiting(runId))
+    ) {
+      continue;
+    }
     const result = await finish(db, { jobId: id, status: "failed", failureCode: "stale_run", now });
     // `already_final`: it finished on its own meanwhile.
     if (result.ok) {

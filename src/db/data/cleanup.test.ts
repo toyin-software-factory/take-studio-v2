@@ -231,6 +231,58 @@ describe("cleanup: stale jobs (AC-18)", () => {
   });
 });
 
+describe("cleanup: queued jobs behind a creator's limit (HRF-T01)", () => {
+  const stale = async (waiting: (runId: string) => Promise<boolean>) => {
+    const creator = await createCreator(db);
+    const { queuedJobBefore, queuedBackstopBefore } = cleanupCutoffs(NOW);
+    const minus = (d: Date, ms: number) => new Date(d.getTime() - ms);
+    const make = async (over: Partial<typeof processingJob.$inferInsert>) => {
+      const t = await seedTake(db, creator.id, { status: "processing" });
+      return seedJob(t.id, { status: "queued", ...over });
+    };
+    return {
+      waitingRun: await make({
+        createdAt: minus(queuedJobBefore, 1000),
+        triggerRunId: "run_waiting",
+      }),
+      endedRun: await make({ createdAt: minus(queuedJobBefore, 1000), triggerRunId: "run_ended" }),
+      noRun: await make({ createdAt: minus(queuedJobBefore, 1000), triggerRunId: null }),
+      past: await make({
+        createdAt: minus(queuedBackstopBefore, 1000),
+        triggerRunId: "run_waiting",
+      }),
+      result: waiting,
+    };
+  };
+
+  it("does not fail a queued job whose run is still waiting, but fails ended runs, no run and the backstop", async () => {
+    const jobs = await stale(async (runId) => runId === "run_waiting");
+    const asked: string[] = [];
+    const failed = await failStaleJobs(db, NOW, async (runId) => {
+      asked.push(runId);
+      return jobs.result(runId);
+    });
+    const ids = new Set(failed.map((j) => j.jobId));
+    expect(ids.has(jobs.waitingRun.id)).toBe(false);
+    expect(ids.has(jobs.endedRun.id)).toBe(true);
+    expect(ids.has(jobs.noRun.id)).toBe(true);
+    // Past the 6 hour backstop it is failed without asking, even though its run looks alive.
+    expect(ids.has(jobs.past.id)).toBe(true);
+    const [waiting] = await db
+      .select()
+      .from(processingJob)
+      .where(eq(processingJob.id, jobs.waitingRun.id));
+    expect(waiting?.status).toBe("queued");
+    expect(waiting?.failureCode).toBeNull();
+  });
+
+  it("without the check a queued job past 15 minutes is stale, as before", async () => {
+    const jobs = await stale(async () => true);
+    const failed = await failStaleJobs(db, NOW);
+    expect(failed.map((j) => j.jobId)).toEqual(expect.arrayContaining([jobs.waitingRun.id]));
+  });
+});
+
 describe("cleanup: video expiry (AC-18)", () => {
   it("expires due takes, queues their files, clears render keys, and keeps cuts and render settings", async () => {
     const creator = await createCreator(db);
@@ -506,6 +558,26 @@ describe("dispatchJob", () => {
     });
     const [row] = await db.select().from(processingJob).where(eq(processingJob.id, job.id));
     expect(row?.triggerRunId).toBe("run_ok");
+  });
+
+  it("hands the job's creator to the trigger, so two creators get two queues (HRF-T01)", async () => {
+    const seen: Array<[string, string | undefined]> = [];
+    const trigger = async (jobId: string, creatorId?: string) => {
+      seen.push([jobId, creatorId]);
+      return { id: `run_${jobId}` };
+    };
+    const a = await createCreator(db);
+    const b = await createCreator(db);
+    const jobs = [];
+    for (const c of [a, b]) {
+      const t = await seedTake(db, c.id, { status: "processing" });
+      jobs.push(await seedJob(t.id, {}));
+    }
+    for (const job of jobs) await dispatchJob(db, { jobId: job.id, trigger });
+    expect(seen).toEqual([
+      [jobs[0]!.id, a.id],
+      [jobs[1]!.id, b.id],
+    ]);
   });
 
   it("finishes the job with trigger_failed and refunds when triggering fails", async () => {
