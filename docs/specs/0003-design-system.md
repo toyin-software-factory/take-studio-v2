@@ -1,7 +1,7 @@
 # 0003. Design system and UI foundation
 
 **Date**: 2026-11-10
-**Status**: Accepted
+**Status**: Superseded by [0009](0009-design-system-v2/index.md)
 
 ## Summary
 
