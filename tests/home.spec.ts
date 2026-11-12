@@ -21,12 +21,16 @@ test("renders the ten sections in order, with the right calls to action (AC-1, A
   const ids = await page.locator("main > section").evaluateAll((els) => els.map((el) => el.id));
   expect(ids.map((id) => id || "proof")).toEqual(SECTIONS);
   await expect(page.locator("footer")).toHaveCount(1);
-  const order = await page.evaluate(() => {
-    const pos = (sel: string) => document.querySelector(sel)!.getBoundingClientRect().top;
-    return [pos("header#nav"), pos("main"), pos("footer")];
+  // Document order: the nav comes before main, and the footer after it.
+  const inOrder = await page.evaluate(() => {
+    const nav = document.querySelector("header#nav")!;
+    const main = document.querySelector("main")!;
+    const footer = document.querySelector("footer")!;
+    const follows = (a: Element, b: Element) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    return follows(nav, main) && follows(main, footer);
   });
-  expect(order[0]).toBeLessThan(order[1]!);
-  expect(order[1]).toBeLessThan(order[2]!);
+  expect(inOrder).toBe(true);
 
   // Sign in calls to action, and the email link; no form anywhere.
   await expect(page.getByRole("link", { name: "Upload a take" }).first()).toHaveAttribute(

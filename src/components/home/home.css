@@ -15,26 +15,26 @@
 .home *::after {
   box-sizing: border-box;
 }
-.home h1,
-.home h2,
-.home h3,
-.home p,
-.home ul,
-.home dl,
-.home dd,
-.home figure {
+:where(.home) h1,
+:where(.home) h2,
+:where(.home) h3,
+:where(.home) p,
+:where(.home) ul,
+:where(.home) dl,
+:where(.home) dd,
+:where(.home) figure {
   margin: 0;
   padding: 0;
 }
-.home ul {
+:where(.home) ul {
   list-style: none;
 }
-.home img,
-.home video {
+:where(.home) img,
+:where(.home) video {
   display: block;
   max-width: 100%;
 }
-.home a {
+:where(.home) a {
   color: inherit;
 }
 .home :focus-visible {
@@ -419,7 +419,7 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 0 0.3em;
-  padding-block: clamp(48px, 8vw, 120px);
+  padding-block: clamp(64px, 10vw, 160px);
   font-size: var(--fs-display);
   line-height: var(--lh-display);
   letter-spacing: var(--ls-display);

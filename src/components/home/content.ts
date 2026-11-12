@@ -214,7 +214,7 @@ export const FAQ = {
 } as const;
 
 export const CLOSING = {
-  eyebrow: "Your next take",
+  eyebrow: "Ready when you are",
   muted: "Your next take,",
   strong: "without the edit.",
   lead: "Take Studio is in beta and free for now. Sign in with Google or an email link and upload your first take.",
