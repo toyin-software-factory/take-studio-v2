@@ -4,7 +4,7 @@ import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, expect, it } from "vitest";
 import { background, storageDeletion } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
