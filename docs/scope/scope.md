@@ -28,7 +28,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 4 | Design system & UI foundation | Foundation | done |
 | 5 | Core take loop | Slice 1 | done |
 | 6 | Error monitoring | Slice 1 | done |
-| 7 | Transcript | Slice 2 | in-progress |
+| 7 | Transcript | Slice 2 | done |
 | 8 | Studio background swap | Slice 3 | planned |
 | 9 | Cut review timeline | Slice 4 | planned |
 | 10 | AI editing agents | Slice 5 | planned |
@@ -127,7 +127,7 @@ Spec [0006](../specs/0006-email-sign-in-and-ready-email.md)
 
 ## Slice 2: Transcript
 
-### 7. Transcript · in-progress
+### 7. Transcript · done
 Every processed take gets an English transcript, shown in the app with timestamps and timed to the trimmed video.
 **Done when:** the transcript appears beside the video with timestamps, and downloads as plain text and as SRT captions that line up with the trimmed video.
 - [x] Design it (spec): `/architect transcript`
@@ -136,8 +136,8 @@ Every processed take gets an English transcript, shown in the app with timestamp
    - [x] First thread: the `transcribe-take` task with Deepgram, started after the video, shown as plain paragraphs (AC-1, AC-6, AC-7, AC-11)
    - [x] Trimmed timeline, captions and downloads, then failures, retry and Make transcript (AC-2, AC-3, AC-4, AC-8, AC-9, AC-10, AC-11)
    - [x] Take page transcript panel and player CC, then end to end tests with real Deepgram (AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-10, AC-12)
-- [ ] Verify it: `/check verify transcript`
-- [ ] Test it: `/test transcript`
+- [x] Verify it: `/check verify transcript` (`docs/reviews/0007-transcript-verify.md`: all of AC-1 to AC-12 pass)
+- [x] Test it: `/test transcript` (`src/lib/transcript-timeline.test.ts`, `src/lib/transcript-download.test.ts`, `src/lib/deepgram.test.ts`, `src/trigger/transcribe-take.test.ts`, `src/server/transcripts/*.test.ts`, `src/db/data/transcribe-jobs.test.ts`, `tests/transcript.spec.ts`, `tests/pipeline/transcript.ts`)
 Spec [0007](../specs/0007-transcript.md) · code in `src/trigger/transcribe-take.ts`, `src/lib/transcript-timeline.ts`, `src/db/data/jobs.ts`, `src/app/api/takes/[id]/transcript/`, `src/components/takes/`
 
 ## Slice 3: Studio background
