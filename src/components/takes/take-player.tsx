@@ -6,6 +6,7 @@ import { StageLetterbox } from "@/components/stage";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BackgroundPreviewOverlay } from "./background-preview-overlay";
 import { type PlayerBridge } from "./player-bridge";
 import { PlayerControls } from "./player-controls";
 import { type Link, playLink } from "./play-link";
@@ -103,7 +104,7 @@ export function TakePlayer({
       onKeyDown={onKeyDown}
       className="flex flex-col gap-3"
     >
-      <StageLetterbox>
+      <StageLetterbox className="relative">
         <video
           ref={video}
           src={link.url}
@@ -149,6 +150,7 @@ export function TakePlayer({
             />
           ) : null}
         </video>
+        <BackgroundPreviewOverlay bridge={bridge} />
       </StageLetterbox>
       <PlayerControls
         playing={playing}

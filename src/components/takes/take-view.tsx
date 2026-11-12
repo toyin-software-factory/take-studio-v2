@@ -125,6 +125,7 @@ export function TakeView({
               <TakeResult detail={detail} />
               <BackgroundChange
                 detail={detail}
+                bridge={bridge}
                 onStarted={(target) =>
                   setDetail((d) =>
                     d

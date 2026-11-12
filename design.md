@@ -109,6 +109,7 @@ Product components (built in their slices, styled per this file):
 - **Cut timeline (stage)**: kept segments `--stage-accent`, removed cuts striped Brick Red with outline, playhead as above; each cut is a focusable button labelled like "Pause, 1.2 seconds, removed, proposed by AI: dead air"; Enter or tap toggles it with an Undo toast
 - **Transcript panel**: light panel beside the stage on desktop, below it on phones; one mono `m:ss` button per paragraph (the keyboard stop), words that seek on a click, filler words underlined dotted, the playing paragraph marked with `aria-current`; removed words are not shown until slice 4 (then struck through and muted). The player has a CC button (off by default, `aria-pressed`) and uses the take's thumbnail as its poster
 - **Background picker**: grid of 16:9 thumbnails, built ins first then the creator's uploads; selected item has a 2 px Brick Red ring with a 2 px white inner gap plus a check badge on a solid chip
+- **Background section (take page)**: under the player, "Background" with a line for what the video is on now, the notes (kept on its own background when no green screen was found; a preview that found none; progress while a new video is made, with the old one still playable; why a change failed), the same grid as the dialog (Keep original, Studios, Your backgrounds with the Upload image tile, Delete on your own), a preview of the take on the chosen background shown over the stage with a "Preview, not your video yet" chip, one action (Use this background, or Keep original when that is chosen, or Try again after a failure, repeating the failed target) and the "Getting clean edges" tip. The current and the chosen background stay visible when the list cannot load.
 - **Background select (upload area)**: a compact secondary button showing the current pick's 16:9 thumbnail, a small "Background" label and its name ("Keep original" by default); it opens the picker as a dialog (a bottom sheet on phones) with "Keep original" first, then "Studios", then "Your backgrounds"; the tiles are one radio group (arrows move, Space selects, a choice applies at once, Done closes) and focus returns to the select
 - **Phones (review screen)**: player full width at the top; Transcript and Cuts in tabs below; the timeline scrolls sideways with a zoom slider; tapping a cut opens a bottom sheet with its details and Keep or Remove
 
@@ -194,3 +195,10 @@ Background picker (spec 0008, S3S-T02):
 - Gumloop gallery, groups with headings: https://mobbin.com/screens/8bacc083-81f8-4518-a615-99c3e89da65f
 - WeTransfer "Customize background", picker beside a live preview: https://mobbin.com/screens/2bb9e7f1-d420-4500-b0e5-e3e671b6ce4b
 - Wix "Replace Background", the compact current pick: https://mobbin.com/screens/11fae0cb-4390-4d53-8182-c48ed449d733
+
+Background picker on the take page (spec 0008, S3S-T06):
+
+- Canva Background Generator, the chosen result ringed beside a large preview of the person on the new background: https://mobbin.com/screens/c10c7460-7b4d-4884-9019-eb9cf8d3ae0d
+- WeTransfer "Customize background", picker beside a preview with Apply: https://mobbin.com/screens/f0286cb9-f03a-4d26-8287-64df47ed3eec
+- SoundCloud "Saving", processing status while the track stays usable: https://mobbin.com/screens/f621f713-633a-4984-a381-0f387b072da7
+- Plus the picker references above (Fresha, Canva uploads, Base44, Meetup, Gumloop, Wix).
