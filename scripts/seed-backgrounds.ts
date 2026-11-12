@@ -5,13 +5,12 @@
  * `pnpm db:*` scripts: a database that is not on this machine is refused unless the run is in
  * CI or `MIGRATE_TARGET=prod`). Needs the R2 variables and `DATABASE_URL_DIRECT`.
  */
-import { readFileSync } from "node:fs";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { z } from "zod";
 import * as schema from "../src/db/schema";
 import { createR2 } from "../src/lib/r2";
-import { BUILT_IN_BACKGROUNDS, builtInKeys } from "./built-in-backgrounds";
+import { ensureBuiltInBackgrounds } from "../src/trigger/built-in-backgrounds";
 
 const env = z
   .object({
@@ -38,33 +37,9 @@ console.log(`seed-backgrounds → ${host}${local ? " (local)" : ""}`);
 const client = postgres(env.DATABASE_URL_DIRECT, { max: 1, onnotice: () => {} });
 const db = drizzle(client, { schema });
 const r2 = createR2(env);
-const file = (name: string) =>
-  new Uint8Array(readFileSync(new URL(`../assets/backgrounds/${name}`, import.meta.url)));
 
 try {
-  for (const b of BUILT_IN_BACKGROUNDS) {
-    const keys = builtInKeys(b.slug);
-    await r2.putObject(keys.imageKey, file(`${b.slug}.jpg`), "image/jpeg");
-    await r2.putObject(keys.thumbKey, file(`${b.slug}.webp`), "image/webp");
-    const values = {
-      creatorId: null,
-      name: b.name,
-      sourceKey: null,
-      imageKey: keys.imageKey,
-      thumbKey: keys.thumbKey,
-      width: b.width,
-      height: b.height,
-      status: "ready",
-      failureCode: null,
-      alt: b.alt,
-      updatedAt: new Date(),
-    };
-    await db
-      .insert(schema.background)
-      .values({ id: b.id, ...values })
-      .onConflictDoUpdate({ target: schema.background.id, set: values });
-    console.log(`  ${b.slug}: installed`);
-  }
+  await ensureBuiltInBackgrounds(db, r2, { local, log: console.log });
 } finally {
   await client.end();
 }

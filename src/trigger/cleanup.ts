@@ -12,6 +12,7 @@ import { createR2 } from "@/lib/r2";
 import { cancelRuns, triggerProbe } from "@/lib/trigger-runs";
 import { storageDeletionTask } from "./storage-deletion";
 import { queueTakeEmail } from "./email/queue";
+import { ensureBuiltInBackgrounds } from "./built-in-backgrounds";
 
 /**
  * Scheduled cleanup every 15 minutes (spec 0002, AC-18):
@@ -21,7 +22,9 @@ import { queueTakeEmail } from "./email/queue";
  *    checked against storage first: a stored original is never abandoned);
  * 2. fail stuck jobs with the refundable `stale_run` (and cancel their runs);
  * 3. expire takes past `video_expires_at`, queuing their video files;
- * 4. drain the file deletion queue.
+ * 4. drain the file deletion queue;
+ * 5. first of all, install the built in studio backgrounds (spec 0008, AC-7; idempotent and cheap
+ *    when they are all there; a failure is logged and never stops the sweep).
  * Each step handles a batch; the next run continues. Logs counts and IDs only.
  */
 export const cleanupTask = schedules.task({
@@ -36,6 +39,15 @@ export const cleanupTask = schedules.task({
     const now = payload.timestamp;
 
     const summary = await withJobDb(env.DATABASE_URL, async (db) => {
+      // Always the live set: the test only placeholder must never reach a live database.
+      const studiosInstalled = await ensureBuiltInBackgrounds(db, r2, { local: false }).catch(
+        (error: unknown) => {
+          logger.error("built in studios not installed", {
+            error: error instanceof Error ? error.name : "unknown",
+          });
+          return 0;
+        },
+      );
       const recovery = await recoverStuckUploads(db, now, {
         headObject: (key) => r2.headObject(key),
         dispatchProbe: triggerProbe,
@@ -64,6 +76,7 @@ export const cleanupTask = schedules.task({
       // And the deleted ones kept hidden while their upload link could still be live.
       const purgedBackgrounds = await purgeRemovedBackgrounds(db, now);
       return {
+        studiosInstalled,
         probesRedispatched: recovery.redispatched.length,
         stuckUploadsFailed: recovery.failed.length,
         abandonedUploads: abandoned.length,

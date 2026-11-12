@@ -1,6 +1,6 @@
 import { defineConfig } from "@trigger.dev/sdk";
 import { esbuildPlugin } from "@trigger.dev/build/extensions";
-import { type ffmpeg, syncEnvVars } from "@trigger.dev/build/extensions/core";
+import { additionalFiles, type ffmpeg, syncEnvVars } from "@trigger.dev/build/extensions/core";
 
 // Sentry (spec 0005): source maps are uploaded on deploy only when CI has a token
 // (deploy.yml), then deleted from the image; the deploy also tells the jobs their Sentry
@@ -88,6 +88,8 @@ export default defineConfig({
     extensions: [
       // Pinned ffmpeg 7.1 (spec 0004), not the built in moving snapshot.
       pinnedFfmpeg(),
+      // The built in studio images (spec 0008): the cleanup task installs them from here.
+      additionalFiles({ files: ["./assets/backgrounds/*"] }),
       syncEnvVars(
         ({ environment }) => [
           { name: "SENTRY_ENVIRONMENT", value: environment === "prod" ? "production" : "preview" },
