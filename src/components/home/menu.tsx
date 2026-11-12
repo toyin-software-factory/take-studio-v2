@@ -1,19 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { useRef } from "react";
+import { useRef, type KeyboardEvent } from "react";
 import { X } from "lucide-react";
 import { NAV_LINKS } from "./content";
 
 /**
  * The menu for narrow screens (spec 0010, AC-4): a burger button that opens a full screen
- * dialog with the links and the call to action. It is a native modal `<dialog>`, so focus is
- * trapped inside while it is open, the page behind is inert, Escape closes it and focus returns
- * to the burger. Choosing a link closes it. The burger shows below 810 px only (CSS).
+ * dialog with the links and the call to action. It is a native modal `<dialog>`: the page behind
+ * is inert, Escape closes it and focus returns to the burger. A native dialog lets Tab leave to
+ * the browser's own controls after the last link, so Tab wraps here to keep focus inside. Choosing a link closes it. The burger shows below 810 px only (CSS).
  */
 export function HomeMenu() {
   const dialog = useRef<HTMLDialogElement>(null);
   const close = () => dialog.current?.close();
+  const wrapTab = (event: KeyboardEvent<HTMLDialogElement>) => {
+    if (event.key !== "Tab") return;
+    const items = event.currentTarget.querySelectorAll<HTMLElement>(
+      "a[href], button:not([disabled])",
+    );
+    const first = items[0];
+    const last = items[items.length - 1];
+    if (!first || !last) return;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
   return (
     <>
       <button
@@ -25,7 +41,7 @@ export function HomeMenu() {
       >
         <span aria-hidden="true" />
       </button>
-      <dialog ref={dialog} className="h-menu" aria-label="Menu">
+      <dialog ref={dialog} className="h-menu" aria-label="Menu" onKeyDown={wrapTab}>
         <div className="h-menu-top">
           <span className="h-menu-name">Take Studio</span>
           <button type="button" className="h-menu-close" aria-label="Close menu" onClick={close}>

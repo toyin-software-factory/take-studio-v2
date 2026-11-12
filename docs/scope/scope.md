@@ -206,7 +206,7 @@ A public page that explains Take Studio and leads to sign up, built from Toyin's
 - [x] Design it (spec): `/architect landing page & SEO`
 - [ ] Build it: `/develop landing page & SEO`
    - [x] Static page, true copy, media, metadata, robots and sitemap (AC-1, AC-2, AC-3, AC-7, AC-9, AC-11)
-   - [ ] Motion core, nav, hero fan and reel (AC-4, AC-5, AC-8)
+   - [x] Motion core, nav, hero fan and reel (AC-4, AC-5, AC-8)
    - [ ] The studio floor with lazy Three.js (AC-6, AC-8, AC-10)
    - [ ] Details, then reduced motion, responsive, a11y and performance passes (AC-5, AC-7, AC-8, AC-9, AC-10)
 - [ ] Verify it: `/check verify landing page & SEO`
