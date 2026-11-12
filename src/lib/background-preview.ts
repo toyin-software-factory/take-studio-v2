@@ -40,11 +40,19 @@ export function previewKey(takeId: string, previewId: string): string {
  * until the cuts change. The ranges are sorted first, so the same cuts always give the same
  * version. Web Crypto, so it works in the Worker and in jobs.
  */
+/**
+ * Part of the cache identity: bump it when a change to keying makes the same take, background and
+ * cuts produce a different still. A preview made under an older version no longer matches, so the
+ * next request makes it again (S3S-T10 made it 2: stills made with the old fixed keying settings
+ * could show the person erased). The old rows and files go with the take, as before.
+ */
+export const PREVIEW_STILL_VERSION = 2;
+
 export async function cutVersion(ranges: readonly Range[]): Promise<string> {
-  const text = [...ranges]
+  const text = `v${PREVIEW_STILL_VERSION}|${[...ranges]
     .sort((a, b) => a.startMs - b.startMs || a.endMs - b.endMs)
     .map((r) => `${Math.round(r.startMs)}-${Math.round(r.endMs)}`)
-    .join(",");
+    .join(",")}`;
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(digest).slice(0, 8)]
     .map((b) => b.toString(16).padStart(2, "0"))

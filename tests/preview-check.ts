@@ -211,6 +211,7 @@ try {
       made.preview.status === "ready" && !made.preview.noGreenScreen,
       `${file}: the preview is ready and not flagged`,
     );
+    keys.push(made.preview.objectKey!);
     const g = await look(made.preview.objectKey!, file.replace(".mp4", "-preview"));
     expect(g.greenShare === 0, `${file}: no green left (${(g.greenShare * 100).toFixed(2)} %)`);
     expect(
