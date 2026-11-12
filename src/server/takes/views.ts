@@ -40,6 +40,19 @@ export function cardView(row: TakeListRow, now: Date) {
   };
 }
 
+/** One row of the sidebar's recent takes: just what the shell shows. */
+export function recentView(row: TakeListRow) {
+  return {
+    id: row.id,
+    title: row.title,
+    status: row.status,
+    // The trimmed length once there is a render, else the uploaded length.
+    durationMs: row.latestRenderDurationMs ?? row.durationMs,
+  };
+}
+
+export type RecentTake = ReturnType<typeof recentView>;
+
 export function jobView(job: ProcessingJob & { readonly steps: readonly JobStep[] }) {
   return {
     id: job.id,

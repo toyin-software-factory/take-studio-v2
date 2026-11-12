@@ -16,7 +16,11 @@ import { notify } from "@/components/ui/sonner";
 import { authClient } from "@/lib/auth-client";
 import { initialsOf } from "./initials";
 
-export type ShellUser = { readonly name: string; readonly email: string };
+export type ShellUser = {
+  readonly id: string;
+  readonly name: string;
+  readonly email: string;
+};
 
 /** Signs out, then refreshes so server components see the signed out state. */
 function useSignOut() {
@@ -42,7 +46,7 @@ export function UserMenu({ user }: { readonly user: ShellUser }) {
   const signOut = useSignOut();
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left outline-hidden hover:bg-hover-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-solid focus-visible:outline-ring pointer-coarse:min-h-11">
+      <DropdownMenuTrigger className="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left outline-hidden hover:bg-hover-surface focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-solid focus-visible:outline-ring pointer-coarse:min-h-11">
         <Avatar>
           <AvatarFallback>{initialsOf(user.name, user.email)}</AvatarFallback>
         </Avatar>

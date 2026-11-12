@@ -63,7 +63,7 @@ export default async function Home() {
   if (!session) return <Landing />;
 
   return (
-    <AppShell user={{ name: session.user.name, email: session.user.email }}>
+    <AppShell user={{ id: session.user.id, name: session.user.name, email: session.user.email }}>
       <div className="flex flex-col gap-8">
         <h1 className="text-h1 font-medium">Your takes</h1>
         <UploadArea />
