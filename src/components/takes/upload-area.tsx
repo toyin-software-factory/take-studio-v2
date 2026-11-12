@@ -5,8 +5,11 @@ import { Upload } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { ORIGINAL_BACKGROUND } from "@/lib/background-api";
 import { cn } from "@/lib/utils";
+import { BackgroundSelect } from "./background-select";
 import { UploadProgress } from "./upload-progress";
+import { useBackgrounds } from "./use-backgrounds";
 import { useUpload } from "./use-upload";
 
 /** ID of the hidden file input, so "Upload another video" elsewhere can open the picker. */
@@ -21,12 +24,21 @@ const LIMITS = "MP4 or MOV, up to 10 minutes, 2 GB, 1080p";
  */
 export function UploadArea() {
   const { state, start, cancel, busy } = useUpload();
+  const backgrounds = useBackgrounds();
+  // The creator's own choice on this page; until they pick, their last pick is used.
+  const [picked, setPicked] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
+  const effectiveChoice = () =>
+    // Nothing is sent until the list has loaded, so a slow or failed read changes nothing.
+    backgrounds.state.kind === "ready"
+      ? (picked ?? backgrounds.state.list.defaultId ?? ORIGINAL_BACKGROUND)
+      : undefined;
+
   const take = (files: FileList | null) => {
     const file = files?.[0];
-    if (file) void start(file);
+    if (file) void start(file, effectiveChoice());
   };
 
   return (
@@ -74,6 +86,7 @@ export function UploadArea() {
             Choose a video
           </Button>
           <p className="text-small text-text-muted">{LIMITS}</p>
+          <BackgroundSelect backgrounds={backgrounds} picked={picked} onPick={setPicked} />
           <input
             ref={input}
             id={UPLOAD_INPUT_ID}

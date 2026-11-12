@@ -1,8 +1,8 @@
-import { and, count, eq, gt } from "drizzle-orm";
+import { and, count, eq, gt, isNull, or } from "drizzle-orm";
 import { z } from "zod";
 import { queueDeletions } from "@/db/data/jobs";
 import { transitionTake } from "@/db/data/takes";
-import { take, user } from "@/db/schema";
+import { background, take, user } from "@/db/schema";
 import { runTx } from "@/db/tx";
 import type { Db, Take } from "@/db/types";
 import { CONTAINERS } from "@/lib/processing";
@@ -43,12 +43,16 @@ export type UploadError =
   | "bad_parts"
   | "size_mismatch"
   | "storage_error"
-  | "dispatch_failed";
+  | "dispatch_failed"
+  | "background_not_found"
+  | "background_not_ready";
 
 const createSchema = z.object({
   fileName: z.string().min(1).max(1000),
   sizeBytes: z.number().int().positive(),
   container: z.enum(CONTAINERS),
+  /** Spec 0008, AC-1: a background ID or `original`; left out means no choice was made. */
+  backgroundId: z.union([z.literal("original"), z.uuid()]).optional(),
 });
 
 export type CreatedUpload = {
@@ -68,13 +72,31 @@ export async function createUpload(
 ): Promise<Result<CreatedUpload, UploadError>> {
   const parsed = createSchema.safeParse(input);
   if (!parsed.success) return err("invalid");
-  const { fileName, sizeBytes, container } = parsed.data;
+  const { fileName, sizeBytes, container, backgroundId: chosen } = parsed.data;
   if (sizeBytes > MEDIA_LIMITS.maxBytes) return err("too_large");
   const now = deps.now?.() ?? new Date();
 
   // Lock the creator's row so parallel requests can't both slip under the limit.
   const created = await runTx(deps.db, async (tx) => {
     await tx.select({ id: user.id }).from(user).where(eq(user.id, creatorId)).for("update");
+    // Lock order (src/db/AGENTS.md): creator, then the background (key share, so a delete waits
+    // for this take), then the take. Built ins and the creator's own ready backgrounds only.
+    let backgroundId: string | null = null;
+    if (chosen !== undefined && chosen !== "original") {
+      const [bg] = await tx
+        .select({ id: background.id, status: background.status })
+        .from(background)
+        .where(
+          and(
+            eq(background.id, chosen),
+            or(isNull(background.creatorId), eq(background.creatorId, creatorId)),
+          ),
+        )
+        .for("key share");
+      if (!bg) return err("background_not_found" as const);
+      if (bg.status !== "ready") return err("background_not_ready" as const);
+      backgroundId = bg.id;
+    }
     const [recent] = await tx
       .select({ n: count() })
       .from(take)
@@ -83,7 +105,16 @@ export async function createUpload(
       );
     if ((recent?.n ?? 0) >= UPLOAD.perHourLimit) return err("rate_limited" as const);
     const made = await create(tx, { creatorId, fileName, container, bytes: sizeBytes });
-    return made.ok ? ok(made.data) : err("invalid" as const);
+    if (!made.ok) return err("invalid" as const);
+    if (chosen !== undefined) {
+      // The take's background and the creator's next default, in the same transaction.
+      await tx.update(take).set({ backgroundId }).where(eq(take.id, made.data.id));
+      await tx
+        .update(user)
+        .set({ defaultBackgroundId: backgroundId })
+        .where(eq(user.id, creatorId));
+    }
+    return ok(made.data);
   });
   if (!created.ok) return created;
   const t = created.data;

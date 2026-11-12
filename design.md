@@ -109,6 +109,7 @@ Product components (built in their slices, styled per this file):
 - **Cut timeline (stage)**: kept segments `--stage-accent`, removed cuts striped Brick Red with outline, playhead as above; each cut is a focusable button labelled like "Pause, 1.2 seconds, removed, proposed by AI: dead air"; Enter or tap toggles it with an Undo toast
 - **Transcript panel**: light panel beside the stage on desktop, below it on phones; one mono `m:ss` button per paragraph (the keyboard stop), words that seek on a click, filler words underlined dotted, the playing paragraph marked with `aria-current`; removed words are not shown until slice 4 (then struck through and muted). The player has a CC button (off by default, `aria-pressed`) and uses the take's thumbnail as its poster
 - **Background picker**: grid of 16:9 thumbnails, built ins first then the creator's uploads; selected item has a 2 px Brick Red ring with a 2 px white inner gap plus a check badge on a solid chip
+- **Background select (upload area)**: a compact secondary button showing the current pick's 16:9 thumbnail, a small "Background" label and its name ("Keep original" by default); it opens the picker as a dialog (a bottom sheet on phones) with "Keep original" first, then "Studios", then "Your backgrounds"; the tiles are one radio group (arrows move, Space selects, a choice applies at once, Done closes) and focus returns to the select
 - **Phones (review screen)**: player full width at the top; Transcript and Cuts in tabs below; the timeline scrolls sideways with a zoom slider; tapping a cut opens a bottom sheet with its details and Keep or Remove
 
 ## Screen states
@@ -183,3 +184,13 @@ Transcript panel beside the player (spec 0007, S2T-T05):
 - Canva course page, transcript under the player: https://mobbin.com/screens/d85366a6-602e-42ca-a84e-98a9ab23b9d8
 - Canva captions on video: https://mobbin.com/screens/c83042ea-10aa-4cdf-a671-e7c47b5258d0
 - Descript export dialog: https://mobbin.com/screens/1a19201c-754b-4a17-982b-e02c98c89998
+
+Background picker (spec 0008, S3S-T02):
+
+- Fresha "Package theme" dialog, 16:9 tiles with the selected one ringed: https://mobbin.com/screens/a66f8e0f-c48e-4db4-9a05-178bd819e4ce
+- Canva "Select an image", the creator's uploads in a grid: https://mobbin.com/screens/80abfe1e-3228-4a9a-8169-30058bcb5c3b
+- Base44 "Select an image", check badge on the selected tile: https://mobbin.com/screens/4c04aa14-c320-4db1-ba4b-18e4ad7e8436
+- Meetup "Choose from existing", a small dialog that works on phones: https://mobbin.com/screens/33a075cc-1fa8-4261-b0c1-6922c72af20a
+- Gumloop gallery, groups with headings: https://mobbin.com/screens/8bacc083-81f8-4518-a615-99c3e89da65f
+- WeTransfer "Customize background", picker beside a live preview: https://mobbin.com/screens/2bb9e7f1-d420-4500-b0e5-e3e671b6ce4b
+- Wix "Replace Background", the compact current pick: https://mobbin.com/screens/11fae0cb-4390-4d53-8182-c48ed449d733
