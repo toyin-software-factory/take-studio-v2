@@ -69,3 +69,26 @@ export function triggerForTranscribe() {
     return { id: handle.id };
   };
 }
+
+/**
+ * Triggers `preview-background` for a preview (spec 0008). One preview at a time per take: the
+ * concurrency key `preview-{takeId}` gives each take its own queue of limit 1. The idempotency
+ * key holds the row's last change, so a repeated request for the same attempt never starts a
+ * second run, while a reset (a failed or stale preview asked for again) starts a new one.
+ */
+export async function triggerPreview(preview: {
+  readonly id: string;
+  readonly takeId: string;
+  readonly updatedAt: Date;
+}): Promise<{ readonly id: string }> {
+  const idempotencyKey = await idempotencyKeys.create(
+    `preview-${preview.id}-${preview.updatedAt.getTime()}`,
+    { scope: "global" },
+  );
+  const handle = await tasks.trigger(
+    "preview-background",
+    { previewId: preview.id },
+    { idempotencyKey, concurrencyKey: `preview-${preview.takeId}` },
+  );
+  return { id: handle.id };
+}

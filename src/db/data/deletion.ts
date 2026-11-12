@@ -1,10 +1,11 @@
 import { and, asc, eq, inArray, isNotNull, lt, sql } from "drizzle-orm";
+import { previewKey } from "@/lib/background-preview";
 import { STORAGE_DELETION } from "@/lib/cleanup-rules";
 import { renderKey } from "@/lib/cut-rules";
 import { ACTIVE_JOB_STATUSES } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
 import { thumbnailKey } from "@/lib/take-rules";
-import { processingJob, render, storageDeletion, take } from "../schema";
+import { backgroundPreview, processingJob, render, storageDeletion, take } from "../schema";
 import { runTx } from "../tx";
 import type { Executor, Take, Tx } from "../types";
 import { queueDeletions } from "./jobs";
@@ -31,9 +32,16 @@ export async function takeFileKeys(tx: Executor, takeIds: readonly string[]): Pr
     .select({ id: render.id, takeId: render.takeId })
     .from(render)
     .where(inArray(render.takeId, [...takeIds]));
+  // Spec 0008: the preview stills (`previews/{takeId}/{previewId}.jpg`), derived from their
+  // rows like the render keys, so a file written before its row said `ready` is covered too.
+  const previews = await tx
+    .select({ id: backgroundPreview.id, takeId: backgroundPreview.takeId })
+    .from(backgroundPreview)
+    .where(inArray(backgroundPreview.takeId, [...takeIds]));
   return [
     ...new Set([
       ...originals.map(({ key }) => key),
+      ...previews.map((row) => previewKey(row.takeId, row.id)),
       // The probe's thumbnail (`originals/{takeId}/thumb.jpg`), derived like the render keys.
       ...takeIds.map(thumbnailKey),
       ...renders.map((row) => renderKey(row.takeId, row.id)),
