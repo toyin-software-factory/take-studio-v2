@@ -17,14 +17,14 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-const IMPORT = /from\s+["'](gsap|lenis)(\/[^"']*)?["']|import\(\s*["'](gsap|lenis)/;
+const IMPORT = /from\s+["'](gsap|lenis|three)(\/[^"']*)?["']|import\(\s*["'](gsap|lenis|three)/;
 
 describe("animation library imports", () => {
   const importers = sourceFiles(src)
     .filter((file) => IMPORT.test(readFileSync(file, "utf8")))
     .map((file) => relative(src, file));
 
-  it("only the homepage motion folder imports gsap or lenis", () => {
+  it("only the homepage motion folder imports gsap, lenis or three", () => {
     expect(importers.length).toBeGreaterThan(0);
     for (const file of importers) expect(file).toMatch(/^components\/home\/motion\//);
   });
@@ -39,5 +39,21 @@ describe("animation library imports", () => {
     expect(outside).toEqual([]);
     const loader = readFileSync(join(src, "components", "home", "motion.tsx"), "utf8");
     expect(loader).toMatch(/import\(\s*["']\.\/motion\/start["']\s*\)/);
+  });
+
+  it("only the particle field imports three, and only studio.ts loads the field, dynamically", () => {
+    const threeImporters = importers.filter((file) =>
+      /from\s+["']three["']/.test(readFileSync(join(src, file), "utf8")),
+    );
+    expect(threeImporters).toEqual(["components/home/motion/field.ts"]);
+    const fieldLoaders = sourceFiles(join(src, "components", "home")).filter((file) =>
+      /["']\.\/field["']/.test(readFileSync(file, "utf8")),
+    );
+    expect(fieldLoaders.map((file) => relative(src, file))).toEqual([
+      "components/home/motion/studio.ts",
+    ]);
+    const studio = readFileSync(join(src, "components", "home", "motion", "studio.ts"), "utf8");
+    expect(studio).toMatch(/import\(\s*["']\.\/field["']\s*\)/);
+    expect(studio).not.toMatch(/from\s+["']\.\/field["']/);
   });
 });

@@ -339,7 +339,7 @@ test.describe("signed in pages do not load the animation libraries", () => {
     await page.waitForLoadState("networkidle");
     return Promise.all(bodies);
   }
-  const MARKERS = /ScrollTrigger|GreenSock|lenis/i;
+  const MARKERS = /ScrollTrigger|GreenSock|lenis|WebGLRenderer/i;
 
   test("the signed out homepage does (so the check can see them)", async ({ page }) => {
     const scripts = await scriptsOf(page, async () => {
