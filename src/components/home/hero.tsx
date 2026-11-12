@@ -1,4 +1,5 @@
 import { FAN_CARDS, HERO } from "./content";
+import { FanToggle } from "./fan-toggle";
 import { Picture } from "./picture";
 
 /** Hero: the two tone headline, the lead and the fan of product cards (no motion yet). */
@@ -7,8 +8,11 @@ export function HomeHero() {
     <section className="h-hero" id="top" aria-labelledby="hero-title">
       <div className="h-container">
         <h1 className="h-h1" id="hero-title">
-          <span className="h-muted">{HERO.muted}</span> <br />
-          {HERO.strong}
+          <span data-line className="h-muted">
+            {HERO.muted}
+          </span>{" "}
+          <br />
+          <span data-line>{HERO.strong}</span>
         </h1>
         <p className="h-lead h-hero-lead">{HERO.lead}</p>
         <div className="h-fan" role="group" aria-label="What Take Studio does">
@@ -26,6 +30,7 @@ export function HomeHero() {
               </li>
             ))}
           </ul>
+          <FanToggle />
         </div>
       </div>
     </section>

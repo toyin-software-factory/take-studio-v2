@@ -15,9 +15,13 @@ export function SectionHead({
   readonly children?: ReactNode;
 }) {
   return (
-    <div className="h-head">
-      {eyebrow ? <p className="h-eyebrow">{eyebrow}</p> : null}
-      <h2 id={id} className="h-h2">
+    <div className="h-head" data-enter-group>
+      {eyebrow ? (
+        <p className="h-eyebrow" data-enter>
+          {eyebrow}
+        </p>
+      ) : null}
+      <h2 id={id} className="h-h2" data-reveal-words>
         <span className="h-muted">{muted}</span> {strong}
       </h2>
       {children}

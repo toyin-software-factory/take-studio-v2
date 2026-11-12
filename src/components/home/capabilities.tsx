@@ -35,9 +35,9 @@ export function HomeCapabilities() {
           muted={CAPABILITIES.muted}
           strong={CAPABILITIES.strong}
         />
-        <div className="h-caps">
+        <div className="h-caps" data-enter-group>
           {CAPABILITIES.tiles.map((tile, i) => (
-            <figure key={tile.key} className="h-cap">
+            <figure key={tile.key} className="h-cap" data-enter>
               <div className={`h-tile h-tile-${i + 1}`}>
                 {tile.media ? (
                   <TileMedia tile={tile} media={tile.media} />

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { FAQ } from "../src/components/home/content";
-import { expectNoSeriousAxeIssues } from "./support/axe";
+import { expectNoSeriousAxeIssues, expectNoSeriousAxeIssuesWhenSettled } from "./support/axe";
 import { signIn } from "./support/session";
 
 // The signed out homepage (spec 0010, build task 1: AC-1, AC-2, AC-3, AC-7, AC-9, AC-11).
@@ -189,17 +189,36 @@ test("the images load as files (AVIF where supported) and the videos are not bas
 });
 
 test.describe("axe", () => {
-  test("finds no serious issues on the page at desktop width (AC-9)", async ({ page }) => {
+  // The page moves (entrances, word reveals, the nav), so axe runs on the settled page: a frame
+  // caught mid fade has a blended colour that is not the page's real one.
+  test("finds no serious issues on the settled page at desktop width (AC-9)", async ({ page }) => {
     await page.goto("/");
-    await expectNoSeriousAxeIssues(page);
+    await expectNoSeriousAxeIssuesWhenSettled(page);
   });
-  test("finds no serious issues at phone width and has no sideways scroll", async ({ page }) => {
+  test("finds no serious issues on the settled page at phone width, with no sideways scroll", async ({
+    page,
+  }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/");
-    await expectNoSeriousAxeIssues(page);
+    await expectNoSeriousAxeIssuesWhenSettled(page);
     const overflow = await page.evaluate(
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
+  });
+  test.describe("with reduced motion", () => {
+    test.use({ reducedMotion: "reduce" });
+    // Nothing animates here, so the very first result is the final colours (no waiting).
+    for (const [name, size] of [
+      ["desktop", { width: 1280, height: 720 }],
+      ["phone", { width: 390, height: 844 }],
+    ] as const) {
+      test(`the final colours pass at ${name} width (AC-8, AC-9)`, async ({ page }) => {
+        await page.setViewportSize(size);
+        await page.goto("/");
+        await expect(page.locator(".h-fan.is-fan")).toHaveCount(1);
+        await expectNoSeriousAxeIssues(page);
+      });
+    }
   });
 });

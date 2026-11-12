@@ -12,9 +12,9 @@ export function HomeLimits() {
           muted={LIMITS.muted}
           strong={LIMITS.strong}
         />
-        <dl className="h-stats">
+        <dl className="h-stats" data-enter-group>
           {homeLimits().map((s) => (
-            <div key={s.unit} className="h-stat">
+            <div key={s.unit} className="h-stat" data-enter>
               <dt className="h-stat-label">{s.label}</dt>
               <dd className="h-stat-num">
                 <span>{s.value}</span>
