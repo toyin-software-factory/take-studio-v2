@@ -24,14 +24,14 @@ export type PlayerBridge = {
   readonly subscribe: (listener: () => void) => () => void;
 };
 
-/** `action` is the label of the button that renders the previewed choice (shown in the stage line). */
+/** `action` is the label of the button that renders the previewed choice (shown in the stage line), or null when that button is off. */
 export type PreviewOverlay =
-  | { readonly kind: "making"; readonly label: string; readonly action: string }
+  | { readonly kind: "making"; readonly label: string; readonly action: string | null }
   | {
       readonly kind: "image";
       readonly label: string;
       readonly url: string;
-      readonly action: string;
+      readonly action: string | null;
     };
 
 export function createPlayerBridge(): PlayerBridge {

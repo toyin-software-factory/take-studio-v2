@@ -222,6 +222,9 @@ describe("previewStatusText (S3S-T14)", () => {
       "“Keep original”",
     );
   });
+  it("names no button when the button is off for this choice", () => {
+    expect(previewStatusText({ kind: "image", action: null })).toBe("Still preview, not a video.");
+  });
   it("says the video is paused while the still is made", () => {
     expect(previewStatusText({ kind: "making", action: "Use this background" })).toBe(
       "Making a still preview. Your video is paused.",

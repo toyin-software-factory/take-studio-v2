@@ -87,12 +87,14 @@ export function BackgroundChange({
   const overlayKind = showOriginal ? "original" : preview.kind;
   const overlayUrl = showOriginal ? original : preview.kind === "ready" ? preview.url : "";
   // The label of the main button, which the stage line names while a still covers the video.
-  // One label for the button and for the stage line, so the line never names a button that is not there.
-  const action = retrying
+  // One label for the button and for the stage line, so the line never names a button that is not
+  // there. The button is off for a real background on a take with no green screen: no name then.
+  const label = retrying
     ? "Try again"
     : choice === ORIGINAL_BACKGROUND
       ? "Keep original"
       : "Use this background";
+  const action = noGreen ? null : label;
   useEffect(() => {
     if (overlayKind === "original" || overlayKind === "ready") {
       bridge.setPreview({
@@ -176,7 +178,7 @@ export function BackgroundChange({
           loading={start.starting}
           disabled={busy || noGreen || (choice === current && !retrying)}
         >
-          {action}
+          {label}
         </Button>
       </div>
       {start.checking ? (
