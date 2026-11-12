@@ -29,6 +29,7 @@ import {
   work,
 } from "./harness";
 import { avSync, renderFacts } from "./inspect";
+import { transcriptScenarios } from "./transcript";
 
 type Check = { scenario: string; check: string; ok: boolean; detail: string };
 const checks: Check[] = [];
@@ -310,6 +311,7 @@ async function main() {
   await startServices();
   const a = await createCreator("a");
   const b = await createCreator("b");
+  const t = await createCreator("transcripts");
   const takes: Record<string, string> = {};
 
   // AC-4, AC-6, AC-7: every fixture end to end.
@@ -418,7 +420,8 @@ async function main() {
     );
     const after = await waitFinal(a, failedId);
     check("retry", "ready after retry", after.take.status === "ready", after.take.status);
-    const jobs = await jobsOf(failedId);
+    // The transcript job that follows a Ready video charges nothing and is not part of this check.
+    const jobs = (await jobsOf(failedId)).filter((j) => j.kind !== "transcribe");
     check(
       "retry",
       "one net charge (first refunded, new charged once)",
@@ -468,6 +471,19 @@ async function main() {
       list.json.takes,
     );
   }
+
+  // Spec 0007: transcripts end to end against real Deepgram (needs DEEPGRAM_API_KEY).
+  await transcriptScenarios({
+    a,
+    t,
+    b,
+    check,
+    upload,
+    waitFinal,
+    downloadRender,
+    media,
+    noAudioTakeId: takes.silent,
+  });
 }
 
 let exitCode = 0;
