@@ -229,8 +229,9 @@ Tracer Bullet: a thin thread from one built in background to a keyed video first
 
 ## Follow-up
 
-- [ ] Toyin: generate the six studio images with the prompts sent on 2026-11-12 and approve them (needed by build step 7; the lead reminds at that step).
-- [ ] Update spec 0006: take emails go out for initial runs only.
-- [ ] Update spec 0002: the additions above (`background` fields, `background_preview`, `processing_job.target_background_id`, `render.keyed` and `key_color`, `user.default_background_id`, `rerender` started by `startBackgroundJob`).
+- [x] Toyin: generate the six studio images with the prompts sent on 2026-11-12 and approve them (all six approved 2026-11-12; the warm podcast studio keeps its lit sign by Toyin's choice).
+- [x] Update spec 0006: take emails go out for initial runs only.
+- [x] Update spec 0002: the additions above (`background` fields, `background_preview`, `processing_job.target_background_id`, `render.keyed` and `key_color`, `user.default_background_id`, `rerender` started by `startBackgroundJob`).
 - [ ] Later: AI background removal as an optional upgrade for takes without a green screen.
 - [ ] Privacy page (scope feature 16): mention uploaded background images as stored personal data.
+- [ ] Slice 6 usage ledger: count background changes per creator independent of takes. Today `processing_job` rows cascade with their take, so deleting a take lowers the hourly background change count. A creator can only exploit this by deleting their own takes, so the extra changes are bounded by the takes they own and give up (new takes still need an upload, at most 10 per hour). Lead decision on #103, 2026-11-12.
