@@ -30,10 +30,10 @@ export function TakeCard({
   const failed = status === "failed";
 
   return (
-    <li className="relative flex flex-col rounded-md bg-card shadow-card transition-shadow focus-within:shadow-overlay hover:shadow-overlay">
+    <li className="group relative flex flex-col gap-3">
       <TakeThumb takeId={take.id} available={status !== "uploading" && !expired} status={status} />
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 className="text-body font-medium">
+      <div className="flex flex-1 flex-col gap-2">
+        <h3 className="text-h4">
           <Link
             href={`/takes/${take.id}`}
             className="line-clamp-2 rounded-sm outline-hidden after:absolute after:inset-0 after:rounded-md after:content-[''] focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-ring focus-visible:after:outline-solid"

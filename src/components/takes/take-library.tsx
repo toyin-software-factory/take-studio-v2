@@ -105,7 +105,7 @@ export function TakeLibrary({
 
   if (takes.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-md bg-card px-6 py-12 text-center shadow-card">
+      <div className="flex flex-col items-center gap-3 rounded-lg bg-panel px-6 py-12 text-center">
         <Icon icon={Film} size="empty" className="text-muted-foreground" />
         <p>No takes yet. Upload your first video.</p>
         <Button onClick={() => document.getElementById(UPLOAD_INPUT_ID)?.click()}>
@@ -117,7 +117,7 @@ export function TakeLibrary({
 
   return (
     <div className="flex flex-col gap-6">
-      <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 min-[1200px]:grid-cols-3">
         {takes.map((take) => (
           <TakeCard key={take.id} take={take} now={now} onRetried={onRetried} />
         ))}

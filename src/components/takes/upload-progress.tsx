@@ -21,7 +21,7 @@ export function UploadProgress({
   if (state.kind !== "uploading" && state.kind !== "completing") return null;
   const completing = state.kind === "completing";
   return (
-    <div className="flex flex-col gap-3 rounded-md bg-card px-4 py-6 shadow-card sm:px-6">
+    <div className="flex flex-col gap-3 rounded-lg bg-panel px-4 py-6 sm:px-6">
       <div className="flex items-center gap-3">
         <Icon icon={FileVideo} className="text-muted-foreground" />
         <p className="min-w-0 flex-1 truncate font-medium" title={state.fileName}>

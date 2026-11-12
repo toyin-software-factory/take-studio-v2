@@ -73,7 +73,7 @@ export function SignInForm({ notice }: { readonly notice?: "link_expired" }) {
     return (
       <div className="flex flex-col gap-4" aria-live="polite">
         <Icon icon={Mail} size="empty" className="text-primary" />
-        <h2 className="text-h2 font-medium">Check your inbox</h2>
+        <h2 className="text-h3">Check your inbox</h2>
         <p>
           If <strong className="font-medium">{state.email}</strong> can sign in, a link is on its
           way. It works once and expires in 15 minutes.

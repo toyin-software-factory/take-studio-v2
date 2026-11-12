@@ -25,7 +25,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 1 | Stack & architecture | Foundation | done |
 | 2 | Coding standards & tooling | Foundation | done |
 | 3 | Data model | Foundation | done |
-| 4 | Design system & UI foundation | Foundation | in-progress |
+| 4 | Design system & UI foundation | Foundation | done |
 | 5 | Core take loop | Slice 1 | done |
 | 6 | Error monitoring | Slice 1 | done |
 | 7 | Transcript | Slice 2 | done |
@@ -71,7 +71,7 @@ Core entities every slice builds on: creators, takes, processing jobs and their 
 - [x] Test it: `/test data model`
 Spec [0002](../specs/0002-data-model/index.md) · code in `src/db/`, `src/lib/`, `src/server/{takes,jobs,cuts,renders,account}/`, `src/trigger/`
 
-### 4. Design system & UI foundation · in-progress
+### 4. Design system & UI foundation · done
 Visual language, layout and base components (upload, progress, video player, timeline, download), with Mobbin references in `design.md`.
 **Done when:** `design.md` covers type, color, spacing and components with Mobbin references, and base components meet WCAG AA (keyboard, focus, contrast).
 - [x] Design it (spec): `/architect design system & UI foundation`
@@ -82,11 +82,11 @@ Visual language, layout and base components (upload, progress, video player, tim
    - [x] `/design` gallery with axe checks (AC-5, AC-7) (FDS-T01, FDS-T02)
 - [x] Verify it: `/check verify design system & UI foundation`
 - [x] Test it: `/test design system & UI foundation`
-- [ ] Redesign v2 (Toyin, 2026-11-12): `/develop design system v2`
+- [x] Redesign v2 (Toyin, 2026-11-12): `/develop design system v2`
    - [x] Tokens, Inter Tight, base components and `/design` gallery (AC-1, AC-2, AC-3, AC-8, AC-10)
    - [x] App shell: sidebar, sheet menu, glass top bar (AC-4, AC-7)
    - [x] Take page restyle, built features only (AC-5, AC-7, AC-9)
-   - [ ] Library, upload, sign in and error pages, axe and bundle checks (AC-6, AC-8, AC-9, AC-10)
+   - [x] Library, upload, sign in and error pages, axe and bundle checks (AC-6, AC-8, AC-9, AC-10)
 Spec [0009](../specs/0009-design-system-v2/index.md) (supersedes [0003](../specs/0003-design-system.md)) · rules in [design.md](../../design.md) · code in `src/app/globals.css`, `src/components/ui/`, `src/components/shell/`, `src/components/stage.tsx`, `src/app/design/`
 
 ## Slice 1: Core take loop
