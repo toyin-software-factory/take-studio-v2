@@ -28,8 +28,8 @@ export function HomeStudio() {
       <p className="h-sr-only">{STUDIO.srOnly}</p>
       <div className="h-container">
         <div className="h-bento">
-          <div className="h-bento-row h-bento-a">
-            <article className="h-glass">
+          <div className="h-bento-row h-bento-a" data-enter-group>
+            <article className="h-glass" data-enter>
               <span className="h-chip">{trim.chip}</span>
               <h3 className="h-h4">{trim.title}</h3>
               <p>{trim.text}</p>
@@ -39,7 +39,7 @@ export function HomeStudio() {
                 ))}
               </div>
             </article>
-            <article className="h-glass">
+            <article className="h-glass" data-enter>
               <span className="h-chip">{key.chip}</span>
               <h3 className="h-h4">{key.title}</h3>
               <p>{key.text}</p>
@@ -50,8 +50,8 @@ export function HomeStudio() {
               </div>
             </article>
           </div>
-          <div className="h-bento-row h-bento-b">
-            <article className="h-glass">
+          <div className="h-bento-row h-bento-b" data-enter-group>
+            <article className="h-glass" data-enter>
               <span className="h-chip">{caption.chip}</span>
               <h3 className="h-h4">{caption.title}</h3>
               <p>{caption.text}</p>
@@ -61,7 +61,7 @@ export function HomeStudio() {
                 ))}
               </p>
             </article>
-            <article className="h-glass">
+            <article className="h-glass" data-enter>
               <span className="h-chip h-chip-accent">{agents.chip}</span>
               <h3 className="h-h4">{agents.title}</h3>
               <p>{agents.text}</p>
