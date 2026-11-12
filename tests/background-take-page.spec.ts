@@ -155,7 +155,12 @@ async function setup(page: Page, baseURL: string, stub: Partial<Stub> = {}) {
 const section = (page: Page) => page.getByRole("region", { name: "Background", exact: true });
 const open = async (page: Page, id: string) => {
   await page.goto(`/takes/${id}`);
-  await page.getByRole("tab", { name: "Background" }).click();
+  const tab = page.getByRole("tab", { name: "Background" });
+  // A click before the page has hydrated does nothing, so click until the tab is selected.
+  await expect(async () => {
+    await tab.click();
+    await expect(tab).toHaveAttribute("aria-selected", "true", { timeout: 1000 });
+  }).toPass();
   await expect(section(page).getByRole("radio", { name: /Keep original/ })).toBeVisible();
 };
 

@@ -12,7 +12,12 @@ const expect = baseExpect.configure({ timeout: 15_000 });
 /** Opens the take page on its Transcript tab (the inspector's default tab is Export). */
 async function openTranscript(page: Page, id: string) {
   await page.goto(`/takes/${id}`);
-  await page.getByRole("tab", { name: "Transcript" }).click();
+  const tab = page.getByRole("tab", { name: "Transcript" });
+  // A click before the page has hydrated does nothing, so click until the tab is selected.
+  await expect(async () => {
+    await tab.click();
+    await expect(tab).toHaveAttribute("aria-selected", "true", { timeout: 1000 });
+  }).toPass();
 }
 
 const clip = readFileSync("tests/fixtures/clip.mp4");
