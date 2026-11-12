@@ -8,8 +8,14 @@ import { completePreview, failPreview, loadPreviewWork } from "@/db/data/preview
 import type { Executor } from "@/db/types";
 import {
   PREVIEW_LIMITS,
+  PREVIEW_WIDTH,
+  centreDifferenceShare,
+  gateReadArgs,
+  gateSize,
+  isOnlyBackground,
   keyedPreviewGraph,
   plainPreviewFilter,
+  previewHeight,
   previewKey,
 } from "@/lib/background-preview";
 import { deadlineMs, runWithDeadline } from "@/lib/deadline";
@@ -68,6 +74,12 @@ export type PreviewIo = {
     keyColor: string,
     signal?: AbortSignal,
   ) => Promise<number>;
+  /** Reads one image through ffmpeg `args` as raw `rgb24` of the given size (the final gate). */
+  readonly readImage: (
+    args: readonly string[],
+    size: { readonly width: number; readonly height: number },
+    signal?: AbortSignal,
+  ) => Promise<RawFrame>;
   /** Runs ffmpeg with `args` (the job adds nothing); the result is the JPEG at `outPath`. */
   readonly encode: (args: readonly string[], signal?: AbortSignal) => Promise<void>;
 };
@@ -122,6 +134,24 @@ export async function makePreview(
   try {
     const out = join(work_dir, "preview.jpg");
     const seek = ["-ss", (timeMs / 1000).toFixed(3)];
+    const plain = async () =>
+      io.encode(
+        [
+          "-y",
+          ...HTTP_INPUT,
+          ...seek,
+          "-i",
+          originalUrl,
+          "-vf",
+          plainPreviewFilter({ takeWidth: facts.width, takeHeight: facts.height, toneMap }),
+          "-frames:v",
+          "1",
+          "-q:v",
+          "3",
+          out,
+        ],
+        signal,
+      );
     if (keyColor && bg.imageKey) {
       const imageUrl = await io.r2.presignGet(bg.imageKey, { expiresSeconds: 60 * 60 });
       await io.encode(
@@ -151,24 +181,36 @@ export async function makePreview(
         ],
         signal,
       );
+      // Final gate (S3S-T12): a keyed still that is only the background has no person in it,
+      // whatever the cause. Never record that as Ready: show the plain frame, no green screen.
+      const gate = gateSize(facts.width, facts.height);
+      const [still, backdrop] = await Promise.all([
+        io.readImage(gateReadArgs(out, gate, null), gate, signal),
+        io.readImage(
+          gateReadArgs(
+            imageUrl,
+            gate,
+            { width: PREVIEW_WIDTH, height: previewHeight(facts.width, facts.height) },
+            HTTP_INPUT,
+          ),
+          gate,
+          signal,
+        ),
+      ]);
+      if (isOnlyBackground(centreDifferenceShare(still, backdrop))) {
+        logger.warn(
+          "preview-background: keyed still is only the background, using the plain frame",
+          {
+            previewId,
+            takeId: t.id,
+            backgroundId: bg.id,
+          },
+        );
+        keyColor = null;
+        await plain();
+      }
     } else {
-      await io.encode(
-        [
-          "-y",
-          ...HTTP_INPUT,
-          ...seek,
-          "-i",
-          originalUrl,
-          "-vf",
-          plainPreviewFilter({ takeWidth: facts.width, takeHeight: facts.height, toneMap }),
-          "-frames:v",
-          "1",
-          "-q:v",
-          "3",
-          out,
-        ],
-        signal,
-      );
+      await plain();
     }
     signal?.throwIfAborted();
 
@@ -239,6 +281,13 @@ export const previewBackgroundTask = task({
                 throw new MediaToolError("ffmpeg", null, false);
               }
               return transparentShare(new Uint8Array(bytes));
+            },
+            readImage: async (args, size, stop) => {
+              const bytes = await runFfmpegBytes([...args], { timeoutMs: 60_000, signal: stop });
+              if (bytes.length !== size.width * size.height * 3) {
+                throw new MediaToolError("ffmpeg", null, false);
+              }
+              return { width: size.width, height: size.height, data: new Uint8Array(bytes) };
             },
             encode: async (args, stop) => {
               await runFfmpeg(args, { timeoutMs: 90_000, signal: stop });
