@@ -71,7 +71,7 @@ Reasoning and options: see `rationale.md`.
 | `storage_deletion` | `id`; `object_key`; `attempts` int default 0; `last_error` (null); `created_at` | no FK (outlives the rows); index (`created_at`) | slice 1 |
 | `transcript` | `id`; `take_id` unique; `language` default `en`; `text`; `words` jsonb `[{w,startMs,endMs,conf,filler,para}]`; `source_fps`; `model` (spec 0007) | FK `take_id` → `take` CASCADE | slice 2 |
 | `background` | `id`; `creator_id` (null = built in); `name` (≤ 80); `image_key`; `width`, `height` | FK `creator_id` → `user` CASCADE; index (`creator_id`); built ins seeded by migration | slice 3 |
-| slice 3 additions | `take.background_id`; `render.background_id`, `render.background_name` (snapshot) | FK → `background` ON DELETE SET NULL; index on each | slice 3 |
+| slice 3 additions | `take.background_id`; `render.background_id`, `render.background_name` (snapshot), `render.keyed`, `render.key_color`; `processing_job.target_background_id`; `user.default_background_id`; `background_preview` table; `background` gains `source_key`, `thumb_key`, `bytes`, `status`, `failure_code`, `alt` (spec 0008) | FK → `background` ON DELETE SET NULL (CASCADE for `background_preview`); index on each | slice 3 |
 | slice 5 additions | `transcript.edits` jsonb `[{index,old,new,reason,undone}]`; `take.suggested_background_id`, `take.suggestion_reason` | additive, nullable | slice 5 |
 | `usage_month` | `id`; `account_hash`; `month` date (first of month, UTC); `seconds_used` int ≥ 0; `hash_version` smallint default 1; timestamps | unique (`account_hash`, `month`); no FK | slice 6 |
 | `app_setting` | `key` text PK; `value` jsonb | seeded `free_monthly_seconds` = 3600 | slice 6 |
@@ -82,7 +82,7 @@ Before slice 6, `seconds_charged` and the charged month and hash are recorded on
 **Step list per kind** (rows created at job start, `position` in this order; a step whose slice is not live yet is not created):
 - `initial`: `trim` (slice 1), `background` (slice 3), `ai_edit` (slice 5), `render` (slice 1). The transcript runs as its own job (below), so a take is ready without waiting for it (spec 0007).
 - `transcribe` (slice 2, spec 0007): `transcript` only; 0 seconds charged; started by `startTranscribeJob`, never moves the take's status, sends no email.
-- `rerender`: `background` only if the take's background changed since the latest render, then `render`.
+- `rerender`: `background` (only when the target is a background), then `render`; started by `startBackgroundJob`, which keeps the take Ready, charges 0 and records `target_background_id`; it reuses the take's cuts and sends no email (spec 0008).
 - `reanalyse` (slice 5): `ai_edit`, `render`.
 Overall progress shown to creators is the average of step progress (weights can be tuned later).
 
