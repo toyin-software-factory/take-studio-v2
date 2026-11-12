@@ -60,6 +60,10 @@ describe("CI installs the pinned ffmpeg (HRF-T06)", () => {
     expect(onPath).toBeLessThan(unit);
     expect(ci).toContain("- name: The ffmpeg suites ran");
     expect(withoutComments(ci)).toMatch(/Tests \.\*skipped/);
+    // Colour is off and stripped: Vitest dims the "Tests" label when CI is set, which an
+    // anchored match on the plain text would miss.
+    expect(withoutComments(ci)).toContain("vitest run --no-color");
+    expect(withoutComments(ci)).toContain("sed 's/\\x1b\\[[0-9;]*m//g'");
   });
 });
 

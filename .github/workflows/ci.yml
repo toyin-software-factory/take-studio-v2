@@ -96,8 +96,10 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          pnpm exec vitest run src/trigger/ingest-background.test.ts src/background-upload.e2e.test.ts 2>&1 | tee /tmp/ffmpeg-suites.log
-          if grep -E "^\s*Tests .*skipped" /tmp/ffmpeg-suites.log; then
+          pnpm exec vitest run --no-color src/trigger/ingest-background.test.ts src/background-upload.e2e.test.ts 2>&1 | tee /tmp/ffmpeg-suites.log
+          # Colour is off, and codes are stripped anyway: with CI set Vitest would otherwise dim the
+          # "Tests" label and an anchored match would miss it.
+          if sed 's/\x1b\[[0-9;]*m//g' /tmp/ffmpeg-suites.log | grep -E "^\s*Tests .*skipped"; then
             echo "::error::An ffmpeg suite was skipped in CI."
             exit 1
           fi
