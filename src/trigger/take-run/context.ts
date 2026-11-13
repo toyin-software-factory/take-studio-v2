@@ -2,7 +2,8 @@ import type { JobDb } from "@/db/client/job";
 import { updateStep } from "@/db/data/jobs";
 import type { ProcessingJob, Take } from "@/db/types";
 import type { ProbeFacts } from "@/lib/probe";
-import type { StepName } from "@/lib/processing";
+import type { FailureCode } from "@/lib/failure-codes";
+import type { SkipReason, StepName } from "@/lib/processing";
 import type { R2 } from "@/lib/r2";
 
 /** What one attempt of `process-take` has after the load, download and probe. */
@@ -34,12 +35,22 @@ export type RunResult =
       readonly renderMs: number;
     };
 
-/** Writes one step's status and progress. */
+/**
+ * Writes one step's status and progress. `skipped` may carry a skip reason and `failed` a
+ * failure code (spec 0012: `failed` is for the non fatal `transcript` step, it never fails the job).
+ */
 export function setStep(
   ctx: RunContext,
   name: StepName,
-  status: "running" | "succeeded" | "skipped",
+  status: "running" | "succeeded" | "skipped" | "failed",
   progress: number,
+  reason?: FailureCode | SkipReason,
 ) {
-  return updateStep(ctx.client, { jobId: ctx.job.id, name, status, progress });
+  return updateStep(ctx.client, {
+    jobId: ctx.job.id,
+    name,
+    status,
+    progress,
+    failureCode: reason ?? null,
+  });
 }

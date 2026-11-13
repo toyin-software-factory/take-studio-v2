@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { dispatchJob } from "@/db/data/dispatch";
 import { startTranscribeJob } from "@/db/data/jobs";
@@ -101,7 +101,12 @@ export async function getTranscriptView(
       version: trimmed.data.version,
     });
   }
-  if (!latest) return ok({ state: "none", canMake: mayStart });
+  if (!latest) {
+    // No separate job: the run's own `transcript` step may have skipped it (spec 0012).
+    const inRun = await inRunSkipReason(db, takeId);
+    if (inRun) return ok({ state: "skipped", reason: inRun, canMake: false });
+    return ok({ state: "none", canMake: mayStart });
+  }
   if ((ACTIVE_JOB_STATUSES as readonly string[]).includes(latest.status)) {
     return ok({ state: "making", canMake: false });
   }
@@ -117,6 +122,28 @@ export async function getTranscriptView(
     return ok({ state: "none", canMake: mayStart });
   }
   return ok({ state: "failed", canMake: mayStart });
+}
+
+/**
+ * The skip reason of the `transcript` step of the take's latest full run (`initial` or
+ * `rerender`, spec 0012), or null when it was not skipped with a reason.
+ */
+async function inRunSkipReason(db: Executor, takeId: string): Promise<SkipReason | null> {
+  const [run] = await db
+    .select({ id: processingJob.id })
+    .from(processingJob)
+    .where(
+      and(eq(processingJob.takeId, takeId), inArray(processingJob.kind, ["initial", "rerender"])),
+    )
+    .orderBy(desc(processingJob.createdAt))
+    .limit(1);
+  if (!run) return null;
+  const [step] = await db
+    .select({ failureCode: jobStep.failureCode, status: jobStep.status })
+    .from(jobStep)
+    .where(and(eq(jobStep.jobId, run.id), eq(jobStep.name, "transcript")));
+  if (step?.status !== "skipped" || !step.failureCode) return null;
+  return isSkipReason(step.failureCode) ? step.failureCode : null;
 }
 
 export type MakeError =

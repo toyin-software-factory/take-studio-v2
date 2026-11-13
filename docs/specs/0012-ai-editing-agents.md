@@ -1,7 +1,7 @@
 # 0012. AI editing agents
 
 **Date**: 2026-11-13
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 

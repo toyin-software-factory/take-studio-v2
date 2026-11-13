@@ -75,7 +75,8 @@ describe("jobs.start (AC-6, AC-7)", () => {
     });
     expect(job.steps.map((s) => [s.name, s.position, s.status, s.progress])).toEqual([
       ["trim", 0, "pending", 0],
-      ["render", 1, "pending", 0],
+      ["transcript", 1, "pending", 0],
+      ["render", 2, "pending", 0],
     ]);
     expect((await takeRow(t.id))?.status).toBe("processing");
   });
@@ -204,7 +205,7 @@ describe("jobs.start (AC-6, AC-7)", () => {
       chargedMonth: null,
       chargedAccountHash: null,
     });
-    expect(rerender.steps.map((s) => s.name)).toEqual(["render"]);
+    expect(rerender.steps.map((s) => s.name)).toEqual(["trim", "transcript", "render"]);
   });
 
   it("does not charge a retry after a non refundable failure, but does after a refunded one", async () => {
@@ -273,9 +274,9 @@ describe("jobs.markRunning and jobs.updateStep (AC-7)", () => {
     expect(
       await updateStep(db, { jobId: job.id, name: "trim", status: "running", progress: 101 }),
     ).toEqual(invalid);
-    // A step this job doesn't have (transcript is not live in slice 1).
+    // A step this job doesn't have (ai_edit is not live until spec 0012 part 2).
     expect(
-      await updateStep(db, { jobId: job.id, name: "transcript", status: "running", progress: 1 }),
+      await updateStep(db, { jobId: job.id, name: "ai_edit", status: "running", progress: 1 }),
     ).toEqual(invalid);
 
     await finish(db, { jobId: job.id, status: "failed", failureCode: "timeout" });

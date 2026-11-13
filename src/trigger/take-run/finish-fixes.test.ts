@@ -76,14 +76,14 @@ describe("finishWithoutRender", () => {
       job,
       take: t,
     } as unknown as RunContext;
-    const result = await finishWithoutRender(ctx, "no_cuts");
+    const result = await finishWithoutRender(ctx, "no_cuts", { withTranscript: true });
     expect(result.outcome).toBe("not_finished");
     expect(mocks.queueTakeEmail).not.toHaveBeenCalled();
     expect(mocks.dispatchJob).not.toHaveBeenCalled();
     expect(await transcribeJobs(t.id)).toHaveLength(0);
   });
 
-  it("emails and starts the transcript when the job finishes", async () => {
+  it("emails and starts the separate transcribe job when the in run transcript failed", async () => {
     const { take: t, job } = await seed("running");
     mocks.dispatchJob.mockResolvedValue({ ok: true, data: { runId: "r" } });
     const ctx = {
@@ -92,10 +92,25 @@ describe("finishWithoutRender", () => {
       job,
       take: t,
     } as unknown as RunContext;
-    const result = await finishWithoutRender(ctx, "no_cuts");
+    const result = await finishWithoutRender(ctx, "no_cuts", { withTranscript: true });
     expect(result.outcome).toBe("no_cuts");
     expect(mocks.queueTakeEmail).toHaveBeenCalledTimes(1);
     expect(mocks.dispatchJob).toHaveBeenCalledTimes(1);
+  });
+
+  it("emails but starts no transcribe job when the transcript was made in the run (AC-1)", async () => {
+    const { take: t, job } = await seed("running");
+    const ctx = {
+      client: db,
+      signal: new AbortController().signal,
+      job,
+      take: t,
+    } as unknown as RunContext;
+    const result = await finishWithoutRender(ctx, "no_cuts", { withTranscript: false });
+    expect(result.outcome).toBe("no_cuts");
+    expect(mocks.queueTakeEmail).toHaveBeenCalledTimes(1);
+    expect(mocks.dispatchJob).not.toHaveBeenCalled();
+    expect(await transcribeJobs(t.id)).toHaveLength(0);
   });
 });
 
