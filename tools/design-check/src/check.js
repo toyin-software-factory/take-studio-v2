@@ -52,7 +52,11 @@ function localDependencies(file) {
   )) {
     const ref = m[1] || m[2];
     if (!ref || /^(?:[a-z]+:|\/\/|#)/i.test(ref)) continue;
-    const p = path.resolve(dir, decodeURIComponent(ref));
+    let rel = ref;
+    try {
+      rel = decodeURIComponent(ref);
+    } catch {} // e.g. "save-20%.html": use the reference as written
+    const p = path.resolve(dir, rel);
     try {
       if (fs.statSync(p).isFile()) refs.add(p);
     } catch {}

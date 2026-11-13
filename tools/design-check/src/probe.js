@@ -289,8 +289,12 @@ export function probeElements() {
     const family = cs.fontFamily.split(",")[0].replace(/["']/g, "").trim().toLowerCase();
     const ownText = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     const tag = el.tagName.toLowerCase();
+    const bgImage = (n) => /url\(/.test(getComputedStyle(n).backgroundImage);
     const media =
-      el.matches("img,video,canvas,svg,picture") || !!el.querySelector("img,video,canvas,picture");
+      el.matches("img,video,canvas,svg,picture") ||
+      !!el.querySelector("img,video,canvas,picture") ||
+      bgImage(el) ||
+      [...el.querySelectorAll("*")].slice(0, 400).some(bgImage);
     out.push({
       label,
       tag,

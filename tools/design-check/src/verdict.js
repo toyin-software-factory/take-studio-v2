@@ -78,7 +78,8 @@ export function judgeRound(cfg, result, st, { record = true } = {}) {
         answer: a,
         images: q.images,
       };
-      if (a.pass === null || a.confidence < cfg.confidence)
+      // An image question answered without the screenshots is never a pass, whatever the threshold.
+      if (a.pass === null || a.blind || a.confidence < cfg.confidence)
         flags.push({
           ...item,
           why: q.noJudge

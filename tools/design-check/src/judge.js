@@ -50,6 +50,8 @@ function normalise(questions, res) {
       pass: typeof a.pass === "boolean" ? a.pass : null,
       confidence: isFinite(c) ? c : 0,
       reason: String(a.reason || "").slice(0, 400),
+      // Only our own Jev path sets this; an image question answered without its screenshots.
+      ...(a.blind === true && q.visualOnly ? { blind: true } : {}),
     };
   });
 }
@@ -204,6 +206,7 @@ async function viaJev(j, questions) {
         id: q.id,
         pass: p >= 0.5,
         confidence: blind ? Math.min(0.5, Math.max(p, 1 - p)) : Math.max(p, 1 - p),
+        blind: blind || undefined,
         reason: `Jev: chance it matches ${Math.round(p * 100)}%${blind ? " (judged without the screenshots)" : ""}`,
       });
     });
