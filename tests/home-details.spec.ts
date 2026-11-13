@@ -82,6 +82,26 @@ test("a FAQ answer opens with the panel row growing and closes again", async ({ 
   await expect(panel.locator(".h-acc-inner")).toBeHidden();
 });
 
+test.describe("drift rows on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("each row is one line that slides with the scroll and the page does not scroll sideways", async ({
+    page,
+  }) => {
+    await ready(page);
+    const first = page.locator(".h-drift").first();
+    await expect(first).toHaveClass(/is-drift/, { timeout: 20_000 });
+    await first.scrollIntoViewIfNeeded();
+    const before = await first.evaluate((el) => getComputedStyle(el).transform);
+    await page.mouse.wheel(0, 250);
+    await expect
+      .poll(() => first.evaluate((el) => getComputedStyle(el).transform))
+      .not.toBe(before);
+    expect(await first.evaluate((el) => el.getBoundingClientRect().height)).toBeLessThan(60);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(390);
+  });
+});
+
 test.describe("reduced motion", () => {
   test.use({ reducedMotion: "reduce" });
 
