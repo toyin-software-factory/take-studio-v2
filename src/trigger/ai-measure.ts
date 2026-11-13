@@ -85,7 +85,10 @@ export const realAiMeasureIo: AiMeasureIo = {
     );
     return { path, cleanup: () => rm(dir, { recursive: true, force: true }) };
   },
-  durationMs: async (path) => (await probeFile(path))?.durationMs ?? null,
+  // The ten minute clip is audio only (`-vn`), which `probeFile` refuses (it wants a video
+  // stream), and `-t` fixes its length, so that length is the duration.
+  durationMs: async (path) =>
+    path.endsWith(".m4a") ? TEN_MIN_SECONDS * 1000 : ((await probeFile(path))?.durationMs ?? null),
   candidates: async (path, durationMs) => {
     const stderr = await runFfmpeg(
       [...ORIGINAL_INPUT, "-i", path, "-vn", "-af", silencedetectFilter(), "-f", "null", "-"],
