@@ -185,7 +185,7 @@ async function main() {
     if (seen === live.at || Date.now() - Date.parse(live.at) > 15 * 60 * 1000) return;
     fs.writeFileSync(seenFile, live.at);
     const text =
-      live.differences || live.status === "needs_setup"
+      live.status !== "approved"
         ? live.markdown
         : "design-check (live): no measured differences from the design right now.";
     console.log(

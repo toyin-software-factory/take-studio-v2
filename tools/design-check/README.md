@@ -17,7 +17,7 @@ Outputs go to `.design-check/`: `feedback.md` (for the builder), `report.html` (
 ## Setup in a project
 
 1. The project needs Playwright with Chromium (`pnpm add -D @playwright/test` and `pnpm exec playwright install chromium`). The tool uses the project's own copy.
-2. Tag the design once: `node tools/design-check/src/cli.js tag docs/design/home.html`. It writes `home.tagged.html` with `data-check` labels on the header, nav, sections, headings, lead text, buttons, media, lists and the first list item, and prints the labels. You can add or rename labels by hand in the tagged copy.
+2. Tag the design once: `node tools/design-check/src/cli.js tag docs/design/home-v2.html`. It writes `docs/design/home-v2.tagged.html` with `data-check` labels on the header, nav, sections, headings, lead text, buttons, media, lists and the first list item, and prints the labels. You can add or rename labels by hand in the tagged copy.
 3. Put the same `data-check` labels on the matching elements in the build.
 4. Add `design-check.json` at the repo root:
 
