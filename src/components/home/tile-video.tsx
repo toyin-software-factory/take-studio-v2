@@ -52,10 +52,21 @@ export function TileVideo({ title, media, width, height }: TileVideoProps) {
       cleanups.push(() => box.removeEventListener(type, fn));
     };
     if (fine.matches) {
-      listen("pointerenter", start);
-      listen("pointerleave", stop);
-      listen("focusin", start);
-      listen("focusout", stop);
+      // Hover and keyboard focus are tracked apart: it stops only when neither is left. Focus
+      // counts only when it is a keyboard focus (a mouse click on the button must not hold it).
+      let hovered = false;
+      const keyboardFocus = () => box.querySelector(":focus-visible") !== null;
+      const settle = () => (hovered || keyboardFocus() ? start() : stop());
+      listen("pointerenter", () => {
+        hovered = true;
+        settle();
+      });
+      listen("pointerleave", () => {
+        hovered = false;
+        settle();
+      });
+      listen("focusin", settle);
+      listen("focusout", () => requestAnimationFrame(settle));
     } else {
       const io = new IntersectionObserver(
         ([entry]) => (entry && entry.intersectionRatio >= IN_VIEW_RATIO ? start() : stop()),

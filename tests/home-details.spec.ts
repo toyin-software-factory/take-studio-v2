@@ -44,6 +44,22 @@ test("a tile's button plays and pauses its video and a chosen pause is kept", as
   await expect(tile).toHaveAttribute("data-playing", "false");
 });
 
+test("a tile keeps playing while it has keyboard focus after the pointer leaves", async ({
+  page,
+}) => {
+  await ready(page);
+  const tile = page.locator(".h-tile-media").nth(1);
+  await tile.scrollIntoViewIfNeeded();
+  await tile.locator(".h-tile-toggle").focus();
+  await expect(tile).toHaveAttribute("data-playing", "true");
+  await tile.hover();
+  await page.mouse.move(2, 2);
+  await expect(tile).toHaveAttribute("data-playing", "true");
+  // Moving focus away with the pointer also away ends it.
+  await page.locator("body").click({ position: { x: 2, y: 2 } });
+  await expect(tile).toHaveAttribute("data-playing", "false");
+});
+
 test("flip counters keep the real number in the page", async ({ page }) => {
   await ready(page);
   const stat = page.locator(".h-stat-num").first();
