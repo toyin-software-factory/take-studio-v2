@@ -36,7 +36,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 12 | Monthly usage limit | Slice 6 | planned |
 | 13 | Public API | Slice 7 | planned |
 | 14 | MCP server for AI agents | Slice 7 | planned |
-| 15 | Landing page & SEO | Launch | in-progress |
+| 15 | Landing page & SEO | Launch | done |
 | 16 | Privacy & terms pages | Launch | planned |
 | 17 | Product analytics | Launch | planned |
 | 18 | Email sign in and take ready email | Slice 1 | done |
@@ -207,7 +207,7 @@ An MCP server so AI assistants (Claude, ChatGPT and agent tools) can use Take St
 
 ## Launch
 
-### 15. Landing page & SEO · in-progress
+### 15. Landing page & SEO · done
 A public page that explains Take Studio and leads to sign up, built from Toyin's v2 homepage design (2026-11-12).
 **Done when:** the landing page shows what the product does with copy true today and a sign up call to action, has title, description and social share preview metadata, and meets WCAG AA.
 - [x] Design it (spec): `/architect landing page & SEO`
@@ -217,7 +217,7 @@ A public page that explains Take Studio and leads to sign up, built from Toyin's
    - [x] The studio floor with lazy Three.js (AC-6, AC-8, AC-10)
    - [x] Details, then reduced motion, responsive, a11y and performance passes (AC-5, AC-7, AC-8, AC-9, AC-10)
    - [x] Library on its own route `/library`, signed in `/` redirects there, so the library code is off the signed out homepage (AC-1, AC-10) (DV0-T09)
-   - [x] Homepage speed: no layout shift (the fan's box is reserved from the first paint) and the above the fold text in the first paint, Lighthouse CLS 0.374 to 0 (AC-10) (DV0-T13; the production 90 is checked on PageSpeed after the Deploy)
+   - [x] Homepage speed: no layout shift (the fan's box is reserved from the first paint) and the above the fold text in the first paint, Lighthouse CLS 0.374 to 0 (AC-10) (DV0-T13; PageSpeed Insights mobile on production 2026-11-13: performance 99, accessibility 100, best practices 100, SEO 92)
 - [x] Verify it: `/check verify landing page & SEO`
 Spec [0010](../specs/0010-landing-page.md) · rules in [design.md](../../design.md) · code in `src/app/page.tsx`, `src/app/library/`, `src/components/home/`
 
