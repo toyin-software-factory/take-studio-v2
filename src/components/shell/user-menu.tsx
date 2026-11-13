@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
 import { notify } from "@/components/ui/sonner";
-import { authClient } from "@/lib/auth-client";
 import { initialsOf } from "./initials";
 
 export type ShellUser = {
@@ -22,7 +21,10 @@ export type ShellUser = {
   readonly email: string;
 };
 
-/** Signs out, goes to the public homepage and refreshes so server components see the signed out state. */
+/**
+ * Signs out, goes to the public homepage and refreshes so server components see the signed out state.
+ * The Better Auth client is imported when you sign out, so it is not part of every signed in page's first load.
+ */
 function useSignOut() {
   const router = useRouter();
   return async () => {
@@ -32,6 +34,7 @@ function useSignOut() {
         description: "Check your connection, then try again.",
       });
     try {
+      const { authClient } = await import("@/lib/auth-client");
       const { error } = await authClient.signOut();
       if (error) failed();
       else {

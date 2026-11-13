@@ -1,6 +1,6 @@
 "use client";
 
-import { captureException } from "@sentry/core";
+import { reportBrowserError } from "@/lib/browser-errors";
 import { startTransition, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -23,7 +23,7 @@ export default function AppError({
 }) {
   const router = useRouter();
   useEffect(() => {
-    captureException(error);
+    reportBrowserError(error);
   }, [error]);
 
   return (

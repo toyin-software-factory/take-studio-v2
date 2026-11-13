@@ -1,6 +1,6 @@
 "use client";
 
-import { captureException } from "@sentry/core";
+import { reportBrowserError } from "@/lib/browser-errors";
 import { useEffect } from "react";
 import { CircleAlert, Clapperboard } from "lucide-react";
 import { interTight } from "@/lib/fonts";
@@ -18,8 +18,8 @@ export default function GlobalError({
   readonly reset: () => void;
 }) {
   useEffect(() => {
-    // The light core API reports through the browser client (instrumentation-client.ts).
-    captureException(error);
+    // Queued until the Sentry browser client has loaded (instrumentation-client.ts).
+    reportBrowserError(error);
   }, [error]);
 
   return (
