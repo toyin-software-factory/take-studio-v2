@@ -121,7 +121,7 @@ export function BackgroundChange({
             void upload.remove(id).then((deleted) => {
               if (!deleted) return;
               backgrounds.forget(id);
-              if (choice === id) review.pickBackground(ORIGINAL_BACKGROUND);
+              review.dropBackground(id);
             }),
         }}
       />

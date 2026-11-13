@@ -82,7 +82,8 @@ export function useCutReview(
   const edit = (fn: (e: Edits) => Edits) => {
     if (locked || readOnly) return;
     render.clearMessage();
-    setRaw(fn(normalized));
+    // Functional, so two quick picks in one tick both land.
+    setRaw((prev) => fn(normalizeEdits(prev ?? seedFor(detail), cuts, bg)));
   };
   const items = pendingItems(cuts, edits, (id) =>
     id === null ? "Original" : (names[id] ?? "this background"),
@@ -98,10 +99,18 @@ export function useCutReview(
     toggle: (cutId: string) => edit((e) => toggleCut(e, cuts, bg, cutId)),
     pickBackground: (id: string | null) =>
       edit((e) => setBackgroundEdit(e, cuts, bg, id === ORIGINAL_BACKGROUND ? null : id)),
+    /** A deleted background that is the pending pick falls back to Original (read at the time). */
+    dropBackground: (id: string) => {
+      if (locked || readOnly) return;
+      setRaw((prev) => {
+        const cur = normalizeEdits(prev ?? seedFor(detail), cuts, bg);
+        return cur.background === id ? setBackgroundEdit(cur, cuts, bg, null) : prev;
+      });
+    },
     discard: () => {
       if (locked) return;
       render.clearMessage();
-      setRaw(null);
+      setRaw(NO_EDITS);
     },
     rememberBackground: (id: string, name: string) =>
       setNames((n) => (n[id] === name ? n : { ...n, [id]: name })),

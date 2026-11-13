@@ -152,7 +152,7 @@ test("Render sends the changes with baseRenderId and locks the page (AC-6)", asy
 
 test("a 429 hides Render and keeps Discard (AC-8)", async ({ page, baseURL }) => {
   const { id } = await setup(page, baseURL!, {
-    change: { status: 429, json: { error: "rate_limited" } },
+    change: { status: 429, json: { error: "change_limit" } },
   });
   await load(page, id);
   await cutButton(page, 3).click();
@@ -192,16 +192,18 @@ test("an original that cannot be fetched says so and keeps the page usable (AC-3
   const { id } = await setup(page, baseURL!, { original: { status: 410 } });
   await load(page, id);
   await cutButton(page, 3).click();
-  await expect(bar(page)).toBeVisible();
-  await expect(cutButton(page, 3)).toBeEnabled();
+  await expect(page.getByText("The original has expired")).toBeVisible();
+  await expect(cutButton(page, 3)).toBeDisabled();
 });
 
-test.describe("phone width", () => {
-  test.use({ ...devices["Pixel 7"] });
-  test("the timeline scrolls inside itself and the page does not (AC-1, AC-10)", async ({
-    page,
-    baseURL,
-  }) => {
+// A phone context made inside the test: `test.use(devices[...])` cannot sit in a describe group.
+test("on a phone the timeline scrolls inside itself and the page does not (AC-1, AC-10)", async ({
+  browser,
+  baseURL,
+}) => {
+  const context = await browser.newContext({ ...devices["Pixel 7"], baseURL: baseURL! });
+  try {
+    const page = await context.newPage();
     const { id } = await setup(page, baseURL!);
     await load(page, id);
     expect(await noPageScroll(page)).toBe(true);
@@ -209,5 +211,7 @@ test.describe("phone width", () => {
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
     expect(box?.width ?? 0).toBeGreaterThanOrEqual(24);
     await expectNoSeriousAxeIssues(page);
-  });
+  } finally {
+    await context.close();
+  }
 });

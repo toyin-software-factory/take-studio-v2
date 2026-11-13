@@ -28,7 +28,9 @@ export function useSourceSwitch(
   review: CutReview,
   durationMs: number,
   bridge: PlayerBridge,
+  player: { readonly mounted: boolean; readonly stillPreview: boolean },
 ) {
+  const { mounted, stillPreview } = player;
   const originalUrl = review.originalState.kind === "ready" ? review.originalState.url : null;
   const desired: Source = review.cutEdits && originalUrl ? "original" : "render";
   const [active, setActive] = useState<Source>("render");
@@ -37,9 +39,9 @@ export function useSourceSwitch(
   if (originalUrl && originalUrl !== lastUrl) setLastUrl(originalUrl);
   const ranges = review.ranges;
   const renderRanges = review.renderRanges;
-  const live = useRef({ active, ranges, renderRanges, durationMs });
+  const live = useRef({ active, ranges, renderRanges, durationMs, stillPreview });
   useEffect(() => {
-    live.current = { active, ranges, renderRanges, durationMs };
+    live.current = { active, ranges, renderRanges, durationMs, stillPreview };
   });
 
   // Capture the place and state just before the source changes, then switch.
@@ -76,7 +78,8 @@ export function useSourceSwitch(
 
   // One loop per frame: publish, skip pending cuts, stop at the end of the last kept range.
   useEffect(() => {
-    const v = videoRef.current;
+    // The <video> only exists once the link is ready, so the loop starts then.
+    const v = mounted ? videoRef.current : null;
     if (!v) return;
     let stopped = false;
     let handle = 0;
@@ -107,7 +110,7 @@ export function useSourceSwitch(
       if ("cancelVideoFrameCallback" in v) v.cancelVideoFrameCallback(handle);
       else cancelAnimationFrame(handle);
     };
-  }, [videoRef, publish]);
+  }, [videoRef, publish, mounted]);
 
   /** Video seconds for a time on the render's own timeline (the transcript's clicks). */
   const videoSecondsForRender = useCallback(
@@ -123,7 +126,8 @@ export function useSourceSwitch(
       if (!v) return;
       const { active: a, renderRanges: rr } = live.current;
       v.currentTime = (a === "render" ? originalToOutput(ms, rr) : ms) / 1000;
-      void v.play().catch(() => undefined);
+      // A still preview keeps the video paused under it.
+      if (!live.current.stillPreview) void v.play().catch(() => undefined);
     });
     return () => bridge.setSeekOriginal(null);
   }, [bridge, videoRef]);

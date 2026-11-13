@@ -48,7 +48,13 @@ export function TakePlayer({
     video,
     resume,
   );
-  const source = useSourceSwitch(video, resume, review, durationMs, bridge);
+  // A still covers the video: the transport is hidden and the video paused (S3S-T14).
+  const preview = usePreviewOverlay(bridge);
+  const stillShown = preview !== null;
+  const source = useSourceSwitch(video, resume, review, durationMs, bridge, {
+    mounted: link.kind === "ready",
+    stillPreview: stillShown,
+  });
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -57,9 +63,6 @@ export function TakePlayer({
   const poster = usePoster(takeId).url;
   const controlsRef = useRef<HTMLDivElement>(null);
   const backButton = useRef<HTMLButtonElement>(null);
-  // A still covers the video: the transport is hidden and the video paused (S3S-T14).
-  const preview = usePreviewOverlay(bridge);
-  const stillShown = preview !== null;
 
   const toggle = useCallback(() => {
     const v = video.current;

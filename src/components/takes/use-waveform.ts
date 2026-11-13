@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { z } from "zod";
 import { callApi } from "./browser-io";
 
@@ -14,23 +14,25 @@ const waveformSchema = z.object({ waveform: z.array(z.number()).nullable() });
  */
 export function useWaveform(takeId: string, renderedCount: number): readonly number[] | null {
   const [values, setValues] = useState<readonly number[] | null>(null);
-  const asked = useRef<number | null>(null);
+  const [loadedAt, setLoadedAt] = useState<number | null>(null);
 
   useEffect(() => {
     // First load, or the first success after a null answer.
-    if (asked.current !== null && (values !== null || asked.current === renderedCount)) return;
-    asked.current = renderedCount;
+    if (loadedAt !== null && (values !== null || loadedAt === renderedCount)) return;
     let live = true;
     void callApi(`/api/takes/${takeId}/waveform`, "GET")
       .then((reply) => {
         const parsed = waveformSchema.safeParse(reply.data);
-        if (live && reply.status === 200 && parsed.success) setValues(parsed.data.waveform);
+        if (!live) return;
+        // Recorded only when the answer arrived, so a Strict Mode re-run still asks once.
+        setLoadedAt(renderedCount);
+        if (reply.status === 200 && parsed.success) setValues(parsed.data.waveform);
       })
       .catch(() => undefined);
     return () => {
       live = false;
     };
-  }, [takeId, renderedCount, values]);
+  }, [takeId, renderedCount, values, loadedAt]);
 
   return values;
 }

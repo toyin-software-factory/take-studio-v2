@@ -31,7 +31,8 @@ async function originalLink(takeId: string): Promise<LinkResult> {
 function probe(url: string, container: string): Promise<boolean> {
   const el = document.createElement("video");
   const mime = container === "mov" ? "video/quicktime" : "video/mp4";
-  if (el.canPlayType(mime) === "") return Promise.resolve(false);
+  // Only a MOV needs the gate: an MP4 the browser cannot name still gets the real metadata probe.
+  if (container === "mov" && el.canPlayType(mime) === "") return Promise.resolve(false);
   return new Promise((resolve) => {
     const done = (ok: boolean) => {
       clearTimeout(timer);

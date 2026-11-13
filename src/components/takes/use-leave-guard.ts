@@ -30,13 +30,18 @@ export function useLeaveGuard(active: boolean) {
     };
     // Back: park one extra history entry, and when it is popped ask before really leaving.
     history.pushState({ leaveGuard: true }, "", location.href);
+    let parked = true;
     let leaving = false;
     const onPop = () => {
       if (leaving) return;
+      parked = false;
       if (window.confirm(MESSAGE)) {
         leaving = true;
         history.back();
-      } else history.pushState({ leaveGuard: true }, "", location.href);
+      } else {
+        history.pushState({ leaveGuard: true }, "", location.href);
+        parked = true;
+      }
     };
     window.addEventListener("beforeunload", beforeUnload);
     document.addEventListener("click", onClick, true);
@@ -45,6 +50,9 @@ export function useLeaveGuard(active: boolean) {
       window.removeEventListener("beforeunload", beforeUnload);
       document.removeEventListener("click", onClick, true);
       window.removeEventListener("popstate", onPop);
+      // The guard went off (edits sent or discarded): take the parked entry away again.
+      if (parked && !leaving && (history.state as { leaveGuard?: boolean } | null)?.leaveGuard)
+        history.back();
     };
   }, [active]);
 }

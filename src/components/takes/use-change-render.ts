@@ -90,9 +90,17 @@ export function useChangeRender(
       () => null,
     );
     const job = jobSchema.safeParse(reply?.data);
+    // Signed out or the job is gone: polling again cannot help.
+    if (reply?.status === 401 || reply?.status === 404) {
+      void reload();
+      setPhase({ kind: "failed" });
+      return "stop";
+    }
     if (reply?.status !== 200 || !job.success) return "error";
     if (job.data.status === "succeeded") {
-      await reload();
+      const fresh = await reload();
+      // The edits are cleared only once the page has read the new render.
+      if (fresh === "error") return "error";
       setPhase({ kind: "done" });
       onSucceeded();
       return "stop";
