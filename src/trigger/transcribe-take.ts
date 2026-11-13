@@ -1,5 +1,4 @@
-import { ORIGINAL_INPUT } from "@/lib/ffmpeg-input";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AbortTaskRunError, logger, task } from "@trigger.dev/sdk";
@@ -11,14 +10,29 @@ import { saveTranscriptAndFinish } from "@/db/data/transcripts";
 import { jobStep, processingJob, take } from "@/db/schema";
 import { deadlineMs, runWithDeadline } from "@/lib/deadline";
 import { TRANSCRIBE_TAKE_LIMITS } from "@/lib/cleanup-rules";
-import { DEEPGRAM_MODEL, deepgramUrl, parseDeepgramResponse } from "@/lib/deepgram";
+import { DEEPGRAM_MODEL } from "@/lib/deepgram";
 import { type TranscriptEnv, parseJobEnv, parseTranscriptEnv } from "@/lib/env";
 import type { FailureCode } from "@/lib/failure-codes";
-import { JOB_ERROR_NAMES, hasJobErrorName } from "@/lib/job-errors";
 import { isFinalJobStatus, type SkipReason } from "@/lib/processing";
 import { type R2, createR2 } from "@/lib/r2";
-import { MediaToolError, probeUrl, runFfmpeg } from "./media";
+import { MediaToolError, probeUrl } from "./media";
 import { failureCodeFor } from "./process-take";
+import {
+  DeepgramError,
+  deepgramFailureCode,
+  extractAudioWithFfmpeg,
+  postAudioFile,
+  postToDeepgram,
+} from "./transcript-provider";
+
+// The Deepgram errors moved to the shared module (spec 0012 task 1); the old names still work.
+export {
+  DeepgramError,
+  DeepgramRejected,
+  DeepgramTimeout,
+  isRetryableStatus,
+  postToDeepgram,
+} from "./transcript-provider";
 
 /**
  * `transcribe-take` (spec 0007, Pipeline step 2; AC-6, AC-7, AC-8, AC-11). Dispatched by
@@ -80,20 +94,7 @@ export const transcribeTakeTask = task({
  * 5xx after the retries) `provider_error`, the rest as for `process-take`.
  */
 export function transcribeFailureCode(error: unknown): FailureCode {
-  // By name too: a failure hook can get a plain copy of the error (src/lib/job-errors.ts).
-  if (
-    error instanceof DeepgramRejected ||
-    hasJobErrorName(error, JOB_ERROR_NAMES.deepgramRejected)
-  ) {
-    return "provider_rejected";
-  }
-  if (error instanceof DeepgramTimeout || hasJobErrorName(error, JOB_ERROR_NAMES.deepgramTimeout)) {
-    return "timeout";
-  }
-  if (error instanceof DeepgramError || hasJobErrorName(error, JOB_ERROR_NAMES.deepgramError)) {
-    return "provider_error";
-  }
-  return failureCodeFor(error);
+  return deepgramFailureCode(error) ?? failureCodeFor(error);
 }
 
 /** The final failure of a transcribe job: the running step and the job get the code. The take stays Ready. */
@@ -120,71 +121,6 @@ export async function failTranscribeJob(
   return code;
 }
 
-/** Deepgram answered 5xx or 429, or the network failed: retried. Message holds no content. */
-export class DeepgramError extends Error {
-  override name: string = JOB_ERROR_NAMES.deepgramError;
-  constructor(readonly status: number | null) {
-    super(`Deepgram request failed (${status ?? "network"})`);
-  }
-}
-
-/** The request outlived its 5 minute limit: retried, and `timeout` if it is the last attempt. */
-export class DeepgramTimeout extends DeepgramError {
-  override name = JOB_ERROR_NAMES.deepgramTimeout;
-  constructor() {
-    super(null);
-  }
-}
-
-/** Deepgram refused the request (400, 402, 413, ...): not retried, one Sentry alert. */
-export class DeepgramRejected extends AbortTaskRunError {
-  constructor(readonly status: number) {
-    super(`Deepgram rejected the request (${status})`);
-    this.name = JOB_ERROR_NAMES.deepgramRejected;
-  }
-}
-
-/** True for statuses worth another attempt. */
-export function isRetryableStatus(status: number): boolean {
-  return status === 429 || status >= 500;
-}
-
-/** POSTs the audio to Deepgram; returns the parsed JSON body. Throws the two errors above. */
-export async function postToDeepgram(
-  audio: Uint8Array,
-  apiKey: string,
-  fetchImpl: typeof fetch = fetch,
-  signal?: AbortSignal,
-): Promise<unknown> {
-  let response: Response;
-  try {
-    response = await fetchImpl(deepgramUrl(), {
-      method: "POST",
-      headers: { authorization: `Token ${apiKey}`, "content-type": "audio/ogg" },
-      body: audio as BodyInit,
-      signal: signal
-        ? AbortSignal.any([AbortSignal.timeout(5 * 60_000), signal])
-        : AbortSignal.timeout(5 * 60_000),
-    });
-  } catch (error) {
-    // Stopped by the job deadline: not a Deepgram failure.
-    if (signal?.aborted) throw signal.reason;
-    if (error instanceof Error && error.name === "TimeoutError") throw new DeepgramTimeout();
-    throw new DeepgramError(null);
-  }
-  if (!response.ok) {
-    if (isRetryableStatus(response.status)) throw new DeepgramError(response.status);
-    throw new DeepgramRejected(response.status);
-  }
-  try {
-    return await response.json();
-  } catch (error) {
-    // The 5 minute signal also covers reading the body: a stalled body is a timeout, not bad JSON.
-    if (error instanceof Error && error.name === "TimeoutError") throw new DeepgramTimeout();
-    throw new DeepgramError(response.status);
-  }
-}
-
 /** The outside world of one attempt, so tests can fake it (R2, ffmpeg and Deepgram). */
 export type TranscribeIo = {
   readonly r2: Pick<R2, "headObject" | "presignGet">;
@@ -194,36 +130,8 @@ export type TranscribeIo = {
   readonly post: (audio: Uint8Array, signal?: AbortSignal) => Promise<unknown>;
 };
 
-async function extractWithFfmpeg(
-  link: string,
-  outPath: string,
-  signal?: AbortSignal,
-): Promise<void> {
-  await runFfmpeg(
-    [
-      "-y",
-      "-reconnect",
-      "1",
-      "-reconnect_streamed",
-      "1",
-      "-rw_timeout",
-      "30000000",
-      ...ORIGINAL_INPUT,
-      "-i",
-      link,
-      "-vn",
-      "-ac",
-      "1",
-      "-ar",
-      "16000",
-      "-c:a",
-      "libopus",
-      "-b:a",
-      "32k",
-      outPath,
-    ],
-    { timeoutMs: 10 * 60_000, signal },
-  );
+function extractWithFfmpeg(link: string, outPath: string, signal?: AbortSignal): Promise<void> {
+  return extractAudioWithFfmpeg(link, outPath, { remote: true, signal });
 }
 
 export async function transcribeJob(
@@ -275,9 +183,7 @@ export async function transcribeJob(
     await io.extractAudio(link, audioPath, signal);
     await updateStep(client, { jobId, name: "transcript", status: "running", progress: 40 });
 
-    const body = await io.post(new Uint8Array(await readFile(audioPath)), signal);
-    const parsed = parseDeepgramResponse(body);
-    if (parsed.kind === "invalid") throw new DeepgramError(200);
+    const parsed = await postAudioFile(audioPath, io.post, signal);
     if (parsed.kind !== "words") return skip(parsed.kind);
 
     signal?.throwIfAborted();
