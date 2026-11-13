@@ -38,3 +38,6 @@ next-env.d.ts
 # PR proof (published to the pr-assets branch, never committed here)
 /proof/
 /.wrangler-dist/
+
+# design-check output (screenshots, reports, loop state)
+/.design-check/
