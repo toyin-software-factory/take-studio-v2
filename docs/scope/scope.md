@@ -168,7 +168,7 @@ After automatic trimming, show every cut on a timeline; the creator can undo any
 - [x] Design it (spec): `/architect cut review timeline`
 - [ ] Build it: `/develop cut review timeline`
    - [x] Change job: `POST /changes` with cut plan and background in one free render, flags written on success, refusals and the shared limit (AC-6, AC-7, AC-8, AC-9)
-   - [ ] Waveform: computed in the video job, served once per page, pipeline check of a cut change render (AC-11, AC-7)
+   - [x] Waveform: computed in the video job, served once per page, pipeline check of a cut change render (AC-11, AC-7)
    - [ ] Timeline and pending bar: cut blocks, preview on the original with skips, Discard and Render, Background tab feeding the bar, keyboard and phone width (AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-10, AC-11)
 - [ ] Verify it: `/check verify cut review timeline`
 - [ ] Test it: `/test cut review timeline`

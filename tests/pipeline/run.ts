@@ -31,6 +31,7 @@ import {
 } from "./harness";
 import { avSync, renderFacts } from "./inspect";
 import { backgroundScenarios } from "./background";
+import { changeScenarios } from "./changes";
 import { transcriptScenarios } from "./transcript";
 
 type Check = { scenario: string; check: string; ok: boolean; detail: string };
@@ -331,6 +332,19 @@ async function main() {
     return;
   }
 
+  // PIPELINE_ONLY=changes runs just the waveform and cut change checks (spec 0011).
+  if (process.env.PIPELINE_ONLY === "changes") {
+    const wanted = ["pauses + A/V sync", "silent"];
+    for (const [label, file, container, want] of FIXTURES) {
+      if (!wanted.includes(label)) continue;
+      takes[label] = await fixtureScenario(a, label, file, container, want);
+    }
+    const syncTake = takes["pauses + A/V sync"];
+    if (!syncTake) throw new Error("the sync fixture did not run");
+    await changeScenarios({ a, takeId: syncTake, silentTakeId: takes["silent"], check });
+    return;
+  }
+
   // AC-4, AC-6, AC-7: every fixture end to end.
   for (const [label, file, container, want] of FIXTURES) {
     try {
@@ -487,6 +501,16 @@ async function main() {
       Array.isArray(list.json.takes) && (list.json.takes as unknown[]).length === 0,
       list.json.takes,
     );
+  }
+
+  // Spec 0011: the waveform and a cut change render (AC-7, AC-11).
+  const syncTake = takes["pauses + A/V sync"];
+  if (syncTake) {
+    try {
+      await changeScenarios({ a, takeId: syncTake, silentTakeId: takes["silent"], check });
+    } catch (error) {
+      check("changes", "ran", false, String(error));
+    }
   }
 
   // Spec 0007: transcripts end to end against real Deepgram (needs DEEPGRAM_API_KEY).
