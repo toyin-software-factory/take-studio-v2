@@ -360,25 +360,35 @@ export async function imageInputOfFile(path: string): Promise<readonly string[] 
     const head = new Uint8Array(16);
     const { bytesRead } = await handle.read(head, 0, head.length, 0);
     const input = imageInput(head.subarray(0, bytesRead));
-    if (input?.[1] === "png_pipe" && (await pngHasAnimationChunk(handle))) return ["-f", "apng"];
-    return input;
+    if (input?.[1] !== "png_pipe") return input;
+    const animated = await pngHasAnimationChunk(handle);
+    // A scan that could not reach the image data says nothing: the file is refused.
+    if (animated === null) return null;
+    return animated ? ["-f", "apng"] : input;
   } finally {
     await handle.close();
   }
 }
 
-/** Walks the PNG chunk headers up to the first image data: `acTL` there means an animation. */
-async function pngHasAnimationChunk(handle: Awaited<ReturnType<typeof open>>): Promise<boolean> {
+/** The most chunk headers read before the image data; a PNG with more before it is refused. */
+const PNG_CHUNK_SCAN_LIMIT = 1000;
+
+/**
+ * Walks the PNG chunk headers up to the first image data: true when `acTL` comes first, false at
+ * `IDAT` or `IEND`, null when the scan ends without either (limit, truncated file).
+ */
+async function pngHasAnimationChunk(
+  handle: Awaited<ReturnType<typeof open>>,
+): Promise<boolean | null> {
   const header = new Uint8Array(8);
   let offset = 8;
-  for (let chunks = 0; chunks < 64; chunks++) {
+  for (let chunks = 0; chunks < PNG_CHUNK_SCAN_LIMIT; chunks++) {
     const { bytesRead } = await handle.read(header, 0, 8, offset);
-    if (bytesRead < 8) return false;
+    if (bytesRead < 8) return null;
     const type = String.fromCharCode(...header.subarray(4, 8));
     if (type === "acTL") return true;
     if (type === "IDAT" || type === "IEND") return false;
-    const length = new DataView(header.buffer).getUint32(0);
-    offset += 12 + length;
+    offset += 12 + new DataView(header.buffer).getUint32(0);
   }
-  return false;
+  return null;
 }

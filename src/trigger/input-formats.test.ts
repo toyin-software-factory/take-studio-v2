@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, expect, it } from "vitest";
@@ -11,38 +11,38 @@ import { MediaToolError, probeFile, probeImageFile, thumbnailFromUrl } from "./m
 // of input. The attack file is an ffconcat script that points at a real video: unpinned, ffprobe
 // follows it and reads the video; pinned to mov, the text file is simply refused.
 
-let dir: string;
-let video: string;
-let script: string;
-let textAsImage: string;
-beforeAll(async () => {
-  dir = await mkdtemp(join(tmpdir(), "input-formats-"));
-  video = join(dir, "real.mp4");
-  const made = spawnSync(
-    "ffmpeg",
-    [
-      "-y",
-      "-loglevel",
-      "error",
-      "-f",
-      "lavfi",
-      "-i",
-      "testsrc=size=64x48:rate=10",
-      "-t",
-      "1",
-      video,
-    ],
-    { encoding: "utf8" },
-  );
-  if (made.status !== 0) throw new Error(`ffmpeg failed: ${made.stderr}`);
-  script = join(dir, "sneaky.mp4");
-  await writeFile(script, `ffconcat version 1.0\nfile '${video}'\n`);
-  textAsImage = join(dir, "sneaky.png");
-  await writeFile(textAsImage, `ffconcat version 1.0\nfile '${video}'\n`);
-});
-afterAll(() => rm(dir, { recursive: true, force: true }));
-
 describeWithFfmpeg("input formats (RF3-T04)", () => {
+  let dir: string;
+  let video: string;
+  let script: string;
+  let textAsImage: string;
+  beforeAll(async () => {
+    dir = await mkdtemp(join(tmpdir(), "input-formats-"));
+    video = join(dir, "real.mp4");
+    const made = spawnSync(
+      "ffmpeg",
+      [
+        "-y",
+        "-loglevel",
+        "error",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc=size=64x48:rate=10",
+        "-t",
+        "1",
+        video,
+      ],
+      { encoding: "utf8" },
+    );
+    if (made.status !== 0) throw new Error(`ffmpeg failed: ${made.stderr}`);
+    script = join(dir, "sneaky.mp4");
+    await writeFile(script, `ffconcat version 1.0\nfile '${video}'\n`);
+    textAsImage = join(dir, "sneaky.png");
+    await writeFile(textAsImage, `ffconcat version 1.0\nfile '${video}'\n`);
+  });
+  afterAll(() => rm(dir, { recursive: true, force: true }));
+
   it("control: without a pinned format ffprobe follows the script to the video", () => {
     const run = spawnSync(
       "ffprobe",
@@ -78,6 +78,21 @@ describeWithFfmpeg("input formats (RF3-T04)", () => {
     spawnSync("ffmpeg", ["-y", "-loglevel", "error", "-i", video, "-frames:v", "1", png]);
     const facts = await probeImageFile(png, 40_000_000);
     expect(facts).toMatchObject({ width: 64, height: 48, format: "png_pipe" });
+  });
+
+  it("refuses a PNG whose chunks before the image data exceed the scan limit", async () => {
+    const png = join(dir, "text-heavy.png");
+    const real = await readFile(join(dir, "real.png"));
+    const text = Buffer.alloc(12 + 1);
+    text.writeUInt32BE(1, 0);
+    text.write("tEXt", 4, "latin1");
+    // Valid enough for the scan: the chunk CRC is not read. 1100 text chunks after IHDR.
+    const ihdrEnd = 8 + 12 + 13;
+    await writeFile(
+      png,
+      Buffer.concat([real.subarray(0, ihdrEnd), ...Array(1100).fill(text), real.subarray(ihdrEnd)]),
+    );
+    expect(await probeImageFile(png, 40_000_000)).toBeNull();
   });
 });
 
