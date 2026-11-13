@@ -20,8 +20,20 @@ import {
 describe("step registry (AC-7)", () => {
   it("lists the steps per kind in the spec's order", () => {
     // Spec 0007: `transcript` left the initial job and became its own job kind.
-    expect(STEPS_BY_KIND.initial).toEqual(["trim", "background", "ai_edit", "render"]);
-    expect(STEPS_BY_KIND.rerender).toEqual(["background", "render"]);
+    expect(STEPS_BY_KIND.initial).toEqual([
+      "trim",
+      "transcript",
+      "ai_edit",
+      "background",
+      "render",
+    ]);
+    expect(STEPS_BY_KIND.rerender).toEqual([
+      "trim",
+      "transcript",
+      "ai_edit",
+      "background",
+      "render",
+    ]);
     expect(STEPS_BY_KIND.background).toEqual(["background", "render"]);
     expect(STEPS_BY_KIND.transcribe).toEqual(["transcript"]);
     expect(STEPS_BY_KIND.reanalyse).toEqual(["ai_edit", "render"]);
@@ -89,15 +101,30 @@ describe("step registry (AC-7)", () => {
   });
 
   it("creates only live steps, and the background step only for a job with a background", () => {
-    expect(stepsFor("initial")).toEqual(["trim", "render"]);
-    expect(stepsFor("initial", { hasBackground: true })).toEqual(["trim", "background", "render"]);
-    expect(stepsFor("rerender")).toEqual(["render"]);
-    expect(stepsFor("rerender", { hasBackground: true })).toEqual(["background", "render"]);
+    expect(stepsFor("initial")).toEqual(["trim", "transcript", "render"]);
+    expect(stepsFor("initial", { hasBackground: true })).toEqual([
+      "trim",
+      "transcript",
+      "background",
+      "render",
+    ]);
+    expect(stepsFor("rerender")).toEqual(["trim", "transcript", "render"]);
+    expect(stepsFor("rerender", { hasBackground: true })).toEqual([
+      "trim",
+      "transcript",
+      "background",
+      "render",
+    ]);
+    // A change render never runs the transcript (spec 0012 AC-1).
     expect(stepsFor("background")).toEqual(["render"]);
     expect(stepsFor("background", { hasBackground: true })).toEqual(["background", "render"]);
     expect(stepsFor("transcribe")).toEqual(["transcript"]);
     expect(stepsFor("transcribe", { liveSlice: 1 })).toEqual([]);
-    expect(stepsFor("initial", { liveSlice: 2, hasBackground: true })).toEqual(["trim", "render"]);
+    expect(stepsFor("initial", { liveSlice: 2, hasBackground: true })).toEqual([
+      "trim",
+      "transcript",
+      "render",
+    ]);
     expect(stepsFor("initial", { liveSlice: 5, hasBackground: true })).toEqual(
       STEPS_BY_KIND.initial,
     );

@@ -2,7 +2,6 @@
 
 import {
   CircleCheck,
-  CircleAlert,
   CircleDashed,
   CircleMinus,
   LoaderCircle,
@@ -23,7 +22,9 @@ const STEP_ICONS: Readonly<Record<string, LucideIcon>> = {
   pending: CircleDashed,
   running: LoaderCircle,
   succeeded: CircleCheck,
-  failed: CircleAlert,
+  // Shown only while the take processes: a failed step then belongs to a job that goes on (the
+  // non fatal transcript step, spec 0012), so it reads as skipped.
+  failed: CircleMinus,
   skipped: CircleMinus,
 };
 
@@ -31,7 +32,7 @@ const STATUS_WORDS: Readonly<Record<string, string>> = {
   pending: "waiting",
   running: "in progress",
   succeeded: "done",
-  failed: "failed",
+  failed: "skipped",
   skipped: "skipped",
 };
 
@@ -43,7 +44,7 @@ const HEADLINES: Readonly<Record<string, string>> = {
 
 /**
  * Processing progress on the stage (AC-8; design.md Processing progress): the overall bar on
- * top (trim 10 %, render 90 %), then one row per step with icon, label, status text and its own
+ * top (trim 10, transcript 5, AI edit 5, background 5, render 75), then one row per step with icon, label, status text and its own
  * bar. Before the job has steps, an indeterminate bar. Step changes (not percents) are announced politely.
  */
 export function ProcessingSteps({

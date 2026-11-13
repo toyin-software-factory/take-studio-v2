@@ -141,8 +141,8 @@ export const STEP_NAMES = Object.keys(STEPS) as readonly StepName[];
  * created when the job has a background to put in (`stepsFor` with `hasBackground`, spec 0008).
  */
 export const STEPS_BY_KIND = {
-  initial: ["trim", "background", "ai_edit", "render"],
-  rerender: ["background", "render"],
+  initial: ["trim", "transcript", "ai_edit", "background", "render"],
+  rerender: ["trim", "transcript", "ai_edit", "background", "render"],
   background: ["background", "render"],
   transcribe: ["transcript"],
   reanalyse: ["ai_edit", "render"],
@@ -153,6 +153,13 @@ export const STEPS_BY_KIND = {
  * in the database but not created yet. Bump it when a slice ships.
  */
 export const LIVE_SLICE = 3;
+
+/**
+ * Spec 0012 AC-6: one deadline starts with the `transcript` step of a full run and covers it and
+ * the AI edit step after it. When it runs out the step in progress is stopped and the run falls
+ * back (the transcript after Ready through the separate job, the rules cuts).
+ */
+export const EDIT_DEADLINE_MS = 120_000;
 
 type StepsForOptions = {
   readonly liveSlice?: number;

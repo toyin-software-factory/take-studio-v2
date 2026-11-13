@@ -138,14 +138,24 @@ export type StepView = {
 };
 
 /**
- * Weights of the live steps in the overall bar (AC-8): trim 10 %, background 5 % (only when the
- * job has one; the bar divides by the steps it has), render 90 % of the rest.
+ * Weights of the steps in the overall bar (spec 0012): trim 10, transcript 5, AI edit 5,
+ * background 5 (only when the job has one), render 75. The bar divides by the steps the job has.
  */
-const STEP_WEIGHTS: Readonly<Record<string, number>> = { trim: 10, background: 5, render: 85 };
+const STEP_WEIGHTS: Readonly<Record<string, number>> = {
+  trim: 10,
+  transcript: 5,
+  ai_edit: 5,
+  background: 5,
+  render: 75,
+};
 
 /** A step's own percent: done or skipped is 100, pending 0, running its reported progress. */
 export function stepPercent(step: StepView): number {
-  if (step.status === "succeeded" || step.status === "skipped") return 100;
+  // A failed step (only the non fatal transcript step can end this way on a job that goes on)
+  // is over, like a skipped one.
+  if (step.status === "succeeded" || step.status === "skipped" || step.status === "failed") {
+    return 100;
+  }
   if (step.status === "running") return Math.min(100, Math.max(0, step.progress ?? 0));
   return 0;
 }
@@ -178,8 +188,13 @@ const STEP_STATUS_TEXT: Readonly<Record<string, string>> = {
   skipped: "Skipped",
 };
 
-export function stepStatusText(step: StepView): string {
+export function stepStatusText(
+  step: StepView,
+  options: { readonly jobFailed?: boolean } = {},
+): string {
   if (step.status === "running" && step.progress !== null) return `${stepPercent(step)}%`;
+  // Spec 0012: a failed step of a job that did not fail is a quiet "Skipped".
+  if (step.status === "failed" && !options.jobFailed) return STEP_STATUS_TEXT.skipped ?? "Skipped";
   return STEP_STATUS_TEXT[step.status] ?? step.status;
 }
 

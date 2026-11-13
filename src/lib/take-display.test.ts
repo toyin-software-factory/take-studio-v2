@@ -77,7 +77,7 @@ describe("expiryNote (AC-1)", () => {
   });
 });
 
-describe("overallPercent (AC-8: trim 10, background 5, render 85, of the steps the job has)", () => {
+describe("overallPercent (spec 0012: trim 10, transcript 5, AI edit 5, background 5, render 75, of the steps the job has)", () => {
   const step = (name: string, status: string, progress: number | null = null) => ({
     name,
     status,
@@ -88,12 +88,15 @@ describe("overallPercent (AC-8: trim 10, background 5, render 85, of the steps t
     [[step("trim", "pending"), step("render", "pending")], 0],
     [[step("trim", "running", 50), step("render", "pending")], 5],
     [[step("trim", "succeeded"), step("render", "running", 50)], 55],
-    // With a background the bar has three steps: 10 + 5 + 85.
-    [[step("trim", "succeeded"), step("background", "running", 0), step("render", "pending")], 10],
+    // With a background the bar has three steps: 10 + 5 + 75.
+    [[step("trim", "succeeded"), step("background", "running", 0), step("render", "pending")], 11],
     [
       [step("trim", "succeeded"), step("background", "succeeded"), step("render", "running", 50)],
-      57,
+      58,
     ],
+    // The transcript step weighs 5; a failed one is over, like a skipped one.
+    [[step("trim", "succeeded"), step("transcript", "running", 40), step("render", "pending")], 13],
+    [[step("trim", "succeeded"), step("transcript", "failed"), step("render", "pending")], 16],
     [[step("trim", "skipped"), step("render", "skipped")], 100],
     [[step("trim", "succeeded"), step("render", "succeeded")], 100],
   ])("%j → %i", (steps, percent) => {
@@ -104,6 +107,9 @@ describe("overallPercent (AC-8: trim 10, background 5, render 85, of the steps t
     expect(stepStatusText(step("render", "running", 42))).toBe("42%");
     expect(stepStatusText(step("render", "running"))).toBe("In progress");
     expect(stepStatusText(step("trim", "skipped"))).toBe("Skipped");
+    // A failed step of a job that goes on is a quiet "Skipped" (spec 0012).
+    expect(stepStatusText(step("transcript", "failed"))).toBe("Skipped");
+    expect(stepStatusText(step("transcript", "failed"), { jobFailed: true })).toBe("Failed");
   });
 });
 

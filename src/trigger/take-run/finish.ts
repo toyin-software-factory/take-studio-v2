@@ -6,14 +6,15 @@ import { startTranscript } from "./transcript";
 
 /**
  * Ends a full run that has nothing to render (AC-7): the render step is skipped and the job
- * succeeds with no render, the original is the video. The email is queued and the transcript
- * started (a take with no sound is skipped there as `no_speech`, without calling Deepgram,
- * spec 0007 AC-7). If the finish is refused (the job was cancelled or finished meanwhile), no
+ * succeeds with no render, the original is the video. The email is queued, and the separate
+ * transcribe job is started only when `withTranscript` says the in run transcript step failed
+ * (spec 0012; a take with no sound is skipped `no_speech` in the run). If the finish is refused (the job was cancelled or finished meanwhile), no
  * email is queued and no transcript started.
  */
 export async function finishWithoutRender(
   ctx: RunContext,
   outcome: "no_audio" | "no_cuts",
+  options: { readonly withTranscript: boolean },
 ): Promise<RunResult> {
   const { client, job, signal, take } = ctx;
   await setStep(ctx, "render", "skipped", 0);
@@ -28,6 +29,6 @@ export async function finishWithoutRender(
     return { jobId: job.id, takeId: take.id, outcome: "not_finished" };
   }
   await queueTakeEmail(job.id, job.kind);
-  await startTranscript(client, take.id);
+  if (options.withTranscript) await startTranscript(client, take.id);
   return { jobId: job.id, takeId: take.id, outcome };
 }

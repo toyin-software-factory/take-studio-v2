@@ -1,6 +1,7 @@
 import { ORIGINAL_INPUT } from "@/lib/ffmpeg-input";
 import { reanalyse } from "@/db/data/cuts";
 import { whileJobActive } from "@/db/data/jobs";
+import { EDIT_DEADLINE_MS } from "@/lib/processing";
 import {
   cutsFromSilences,
   parseSilences,
@@ -14,11 +15,14 @@ import { type RunContext, type RunResult, setStep } from "./context";
 import { finishWithoutRender } from "./finish";
 import { encode } from "./render";
 import { ship } from "./ship";
+import { transcriptStep } from "./transcript-step";
 
 /**
  * The full run (an `initial` job, or a `rerender` of a failed take): waveform, trim (silencedetect
- * and the AC-5 rules into `cuts.reanalyse`), the background, then the render unless there is
- * nothing to render (AC-7), then the transcript.
+ * and the AC-5 rules into `cuts.reanalyse`), the transcript (spec 0012: inside the run, bounded
+ * by the 120 s edit deadline, never fatal), the background, then the render unless there is
+ * nothing to render (AC-7). The separate transcribe job starts after Ready only when the in run
+ * transcript step failed.
  */
 export async function fullRun(ctx: RunContext): Promise<RunResult> {
   const { client, job, take: t, signal, source, facts } = ctx;
@@ -39,8 +43,12 @@ export async function fullRun(ctx: RunContext): Promise<RunResult> {
   await setStep(ctx, "trim", "running", 0);
   if (!facts.hasAudio) {
     await setStep(ctx, "trim", "skipped", 0);
-    // The transcript job skips it as `no_speech` without calling Deepgram (spec 0007, AC-7).
-    if (!job.targetBackgroundId) return finishWithoutRender(ctx, "no_audio");
+    // Nothing to transcribe: skipped `no_speech` here, before anything else (spec 0012).
+    await transcriptStep(ctx, signal);
+    await setStep(ctx, "ai_edit", "skipped", 0, "no_speech");
+    if (!job.targetBackgroundId) {
+      return finishWithoutRender(ctx, "no_audio", { withTranscript: false });
+    }
   }
   let hasCuts = false;
   if (facts.hasAudio) {
@@ -67,11 +75,21 @@ export async function fullRun(ctx: RunContext): Promise<RunResult> {
     hasCuts = analysed.data.cuts.some((c) => c.applied);
   }
 
+  // Transcript, inside the run. One edit deadline starts here and will also cover the AI edit
+  // step (part 2); its signal bounds ffmpeg and Deepgram only, writes use the run signal.
+  let withTranscript = false;
+  if (facts.hasAudio) {
+    const editSignal = AbortSignal.any([signal, AbortSignal.timeout(EDIT_DEADLINE_MS)]);
+    withTranscript = (await transcriptStep(ctx, editSignal)) === "failed";
+  }
+
   const backgroundFacts = await prepareBackground(ctx);
 
   // Spec 0008 AC-2: a take with a chosen background is always rendered (the whole take when
   // there are no cuts), keyed or not, so the render records which background it was for.
-  if (!hasCuts && !backgroundFacts) return finishWithoutRender(ctx, "no_cuts");
+  if (!hasCuts && !backgroundFacts) {
+    return finishWithoutRender(ctx, "no_cuts", { withTranscript });
+  }
 
-  return ship(ctx, await encode(ctx, backgroundFacts), { withTranscript: true });
+  return ship(ctx, await encode(ctx, backgroundFacts), { withTranscript });
 }

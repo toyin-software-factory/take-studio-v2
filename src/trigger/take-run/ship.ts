@@ -11,8 +11,9 @@ import type { Encoded } from "./render";
 import { startTranscript } from "./transcript";
 
 /**
- * Uploads the encoded file, completes the render row and finishes the job. `withTranscript` is
- * true for a full run (a background change starts no transcript).
+ * Uploads the encoded file, completes the render row and finishes the job. `withTranscript`
+ * starts the separate transcribe job: true only when the in run transcript step failed (spec
+ * 0012); a background change never starts one.
  */
 export async function ship(
   ctx: RunContext,
