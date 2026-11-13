@@ -1,6 +1,13 @@
+import { z } from "zod";
 import { downloadBody, downloadFormatSchema, downloadHeaders } from "@/lib/transcript-download";
 import { type TakeHttpDeps, errorResponse, guard, json } from "../takes/http";
-import { type MakeError, getTranscriptView, getTrimmedForCreator, makeTranscript } from ".";
+import {
+  type MakeError,
+  getTranscriptView,
+  getTrimmedForCreator,
+  makeTranscript,
+  setEditUndone,
+} from ".";
 
 /** What the transcript routes need: the session and the app origin (reads skip the Origin check). */
 export type TranscriptHttpDeps = Pick<TakeHttpDeps, "getCreator" | "allowedOrigin" | "now"> & {
@@ -108,4 +115,40 @@ export async function handleMakeTranscript(
     return json({ error: made.error, message: MAKE_MESSAGES[made.error] }, MAKE_STATUS[made.error]);
   }
   return json({ state: "making" }, 202);
+}
+
+const undoBodySchema = z.strictObject({ undone: z.boolean() });
+const indexSchema = z.string().regex(/^(0|[1-9]\d{0,8})$/);
+
+/**
+ * PATCH /api/takes/{id}/transcript/edits/{index} (spec 0012, AC-4, AC-11): undo (`undone: true`)
+ * or redo one AI word fix. Checks run in order: Origin (403), session (401),
+ * the index and body (404 for a malformed index, 422 for a bad body), then ownership and an
+ * existing fix at that index (404, the take's own not found body). 200
+ * `{ edit, version }`. Nothing from the body or the transcript is logged.
+ */
+export async function handlePatchEdit(
+  request: Request,
+  takeId: string,
+  index: string,
+  deps: TranscriptHttpDeps,
+): Promise<Response> {
+  const creator = await guard(request, deps, { checkOrigin: true });
+  if (creator instanceof Response) return creator;
+  const position = indexSchema.safeParse(index);
+  if (!position.success) return errorResponse("not_found");
+  const body = undoBodySchema.safeParse(await request.json().catch(() => null));
+  if (!body.success) {
+    return json({ error: "invalid_body", message: "Send undone as true or false." }, 422);
+  }
+  const result = await setEditUndone(
+    creator.db,
+    creator.creatorId,
+    takeId,
+    Number(position.data),
+    body.data.undone,
+    deps.now?.() ?? new Date(),
+  );
+  if (!result.ok) return errorResponse("not_found");
+  return json(result.data);
 }

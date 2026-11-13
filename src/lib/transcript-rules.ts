@@ -24,3 +24,32 @@ export function isFillerWord(word: string): boolean {
   const plain = word.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
   return (FILLER_WORDS as readonly string[]).includes(plain);
 }
+
+/**
+ * One AI transcript fix (spec 0012, AC-4): the stored word at `index` reads `new` instead of
+ * `old` unless the creator undid it. Personal data (text and reason): never log it.
+ */
+export type TranscriptEdit = {
+  readonly index: number;
+  readonly old: string;
+  readonly new: string;
+  readonly reason: string;
+  readonly undone: boolean;
+};
+
+/**
+ * The words as shown and exported: `new` for a fix that is not undone, else the stored `w`. Only
+ * the text changes, so word count, order and timings stay. A fix whose `old` no longer matches
+ * the word at its index (a stale edit) is ignored. Pure.
+ */
+export function editedWords(
+  words: readonly TranscriptWord[],
+  edits: readonly TranscriptEdit[],
+): readonly TranscriptWord[] {
+  if (edits.length === 0) return words;
+  const live = new Map(edits.filter((e) => !e.undone).map((e) => [e.index, e] as const));
+  return words.map((word, index) => {
+    const edit = live.get(index);
+    return edit && edit.old === word.w ? { ...word, w: edit.new } : word;
+  });
+}

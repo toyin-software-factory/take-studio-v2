@@ -126,6 +126,13 @@ const stepOf = async (jobId: string) => {
   const found = rows.find((r) => r.name === "ai_edit");
   return { status: found?.status, code: found?.failureCode };
 };
+const editsOf = async (takeId: string) =>
+  (
+    await db
+      .select({ edits: transcript.edits })
+      .from(transcript)
+      .where(eq(transcript.takeId, takeId))
+  )[0]?.edits;
 const cutsOf = (takeId: string) => db.select().from(cut).where(eq(cut.takeId, takeId));
 const run = (ctx: RunContext, value: AiEditIo, transcriptOutcome = "succeeded" as const) =>
   aiEditStep(ctx, ctx.signal, { transcript: transcriptOutcome, candidates: CANDS }, value);
@@ -152,6 +159,12 @@ describe("aiEditStep", () => {
       ["pause", 3000, 5000, true],
       ["pause", 8000, 10_000, false],
     ]);
+    // Spec 0012 task 4: the fixes are stored with the cuts, none undone, and the words are untouched.
+    expect(await editsOf(take.id)).toEqual([
+      { index: 3, old: "Jon", new: "John", reason: "Name said earlier", undone: false },
+    ]);
+    const [row] = await db.select().from(transcript).where(eq(transcript.takeId, take.id));
+    expect(row?.words[3]?.w).toBe("Jon");
   });
 
   it("sends only words, candidates, length: no title, name, email, take ID or URL (AC-8)", async () => {
@@ -176,6 +189,7 @@ describe("aiEditStep", () => {
     expect(await run(ctx, value)).toEqual({ status: "skipped", hasCuts: null });
     expect(await stepOf(job.id)).toEqual({ status: "skipped", code: "ai_unavailable" });
     await expectRulesCuts(take.id);
+    expect(await editsOf(take.id)).toEqual([]);
     expect(report).toHaveBeenCalledTimes(1);
     expect(report).toHaveBeenCalledWith({ takeId: take.id, jobId: job.id, cause: "timeout" });
   });

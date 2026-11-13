@@ -11,8 +11,8 @@ const paragraphs: TrimmedParagraph[] = [
   {
     startMs: 0,
     words: [
-      { w: "Um", startMs: 0, endMs: 200, filler: true },
-      { w: "Hello.", startMs: 200, endMs: 800, filler: false },
+      { index: 0, w: "Um", startMs: 0, endMs: 200, filler: true },
+      { index: 1, w: "Hello.", startMs: 200, endMs: 800, filler: false },
     ],
   },
 ];
@@ -110,7 +110,7 @@ describe("downloadBody", () => {
   it("is null when there are no kept words that are not fillers", () => {
     expect(downloadBody("txt", [])).toBeNull();
     const fillersOnly: TrimmedParagraph[] = [
-      { startMs: 0, words: [{ w: "um", startMs: 0, endMs: 200, filler: true }] },
+      { startMs: 0, words: [{ index: 0, w: "um", startMs: 0, endMs: 200, filler: true }] },
     ];
     for (const f of ["txt", "srt", "vtt"] as const) expect(downloadBody(f, fillersOnly)).toBeNull();
   });

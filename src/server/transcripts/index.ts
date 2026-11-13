@@ -3,10 +3,12 @@ import { z } from "zod";
 import { dispatchJob } from "@/db/data/dispatch";
 import { startTranscribeJob } from "@/db/data/jobs";
 import { getTranscriptByTake } from "@/db/data/transcripts";
-import { jobStep, processingJob, take as takeTable } from "@/db/schema";
+import { runTx } from "@/db/tx";
+import { jobStep, processingJob, take as takeTable, transcript } from "@/db/schema";
 import type { Executor } from "@/db/types";
 import { ACTIVE_JOB_STATUSES, isSkipReason, type SkipReason } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
+import type { TranscriptEdit } from "@/lib/transcript-rules";
 import { type TrimmedParagraph, toTrimmedTranscript } from "@/lib/transcript-timeline";
 import { isVideoExpired } from "@/lib/video-expiry";
 import { getForCreator } from "../takes";
@@ -21,6 +23,8 @@ import { getForCreator } from "../takes";
 export type TrimmedTranscriptView = {
   readonly title: string;
   readonly paragraphs: readonly TrimmedParagraph[];
+  /** The AI word fixes (spec 0012), undone ones included; paragraphs already show the edited text. */
+  readonly edits: readonly TranscriptEdit[];
   /** Changes when the transcript or the latest render does (the track URL's `?v=`). */
   readonly version: string;
 };
@@ -43,10 +47,12 @@ export async function getTrimmedForCreator(
     removedRanges: timeline === "original" ? [] : (latestRender?.removedRanges ?? []),
     durationMs: take.durationMs ?? 0,
     sourceFps: stored.sourceFps,
+    edits: stored.edits,
   });
   return ok({
     title: take.title,
     paragraphs,
+    edits: stored.edits,
     version: `${stored.updatedAt.getTime()}.${latestRender?.id ?? "none"}`,
   });
 }
@@ -59,6 +65,8 @@ export type TranscriptView = {
   readonly canMake: boolean;
   /** Trimmed paragraphs and the track URL version (ready only). */
   readonly paragraphs?: readonly TrimmedParagraph[];
+  /** AI word fixes (ready only, spec 0012). */
+  readonly edits?: readonly TranscriptEdit[];
   readonly version?: string;
 };
 
@@ -98,6 +106,7 @@ export async function getTranscriptView(
       state: "ready",
       canMake: false,
       paragraphs: trimmed.data.paragraphs,
+      edits: trimmed.data.edits,
       version: trimmed.data.version,
     });
   }
@@ -185,4 +194,52 @@ export async function hasActiveTranscribe(db: Executor, takeId: string): Promise
     .from(processingJob)
     .where(and(eq(processingJob.takeId, takeId), eq(processingJob.kind, "transcribe")));
   return rows.some((r) => (ACTIVE_JOB_STATUSES as readonly string[]).includes(r.status));
+}
+
+/**
+ * Undo or redo one AI word fix (spec 0012, AC-4, AC-11). The creator's own take only: another
+ * creator's take, a missing transcript and an index with no fix are all `not_found`. The take row
+ * is locked, then the transcript row (take before the rows under it), the one edit is changed and
+ * `updated_at` is bumped, so the caption track version changes. Returns the edit and the new
+ * caption `version` (the same shape as the transcript GET). Never log the text or the reason.
+ */
+export async function setEditUndone(
+  db: Executor,
+  creatorId: string,
+  takeId: string,
+  index: number,
+  undone: boolean,
+  now: Date = new Date(),
+): Promise<Result<{ readonly edit: TranscriptEdit; readonly version: string }, "not_found">> {
+  if (!z.uuid().safeParse(takeId).success) return err("not_found");
+  const changed = await runTx(db, async (tx) => {
+    const [owned] = await tx
+      .select({ id: takeTable.id })
+      .from(takeTable)
+      .where(and(eq(takeTable.id, takeId), eq(takeTable.creatorId, creatorId)))
+      .for("update");
+    if (!owned) return err("not_found" as const);
+    const [row] = await tx
+      .select({ edits: transcript.edits })
+      .from(transcript)
+      .where(eq(transcript.takeId, takeId))
+      .for("update");
+    const current = row?.edits.find((e) => e.index === index);
+    if (!row || !current) return err("not_found" as const);
+    const edit = { ...current, undone };
+    const [updated] = await tx
+      .update(transcript)
+      .set({ edits: row.edits.map((e) => (e.index === index ? edit : e)), updatedAt: now })
+      .where(eq(transcript.takeId, takeId))
+      .returning({ updatedAt: transcript.updatedAt });
+    if (!updated) return err("not_found" as const);
+    return ok({ edit, updatedAt: updated.updatedAt });
+  });
+  if (!changed.ok) return err("not_found");
+  const found = await getForCreator(db, creatorId, takeId);
+  const renderId = found.ok ? (found.data.latestRender?.id ?? "none") : "none";
+  return ok({
+    edit: changed.data.edit,
+    version: `${changed.data.updatedAt.getTime()}.${renderId}`,
+  });
 }

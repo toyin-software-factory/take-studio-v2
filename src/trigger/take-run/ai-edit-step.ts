@@ -2,7 +2,7 @@ import { logger } from "@trigger.dev/sdk";
 import { and, eq } from "drizzle-orm";
 import { reanalyse } from "@/db/data/cuts";
 import { updateStep, whileJobActive } from "@/db/data/jobs";
-import { getTranscriptByTake } from "@/db/data/transcripts";
+import { getTranscriptByTake, setTranscriptEdits } from "@/db/data/transcripts";
 import { cut, jobStep } from "@/db/schema";
 import type { Tx } from "@/db/types";
 import {
@@ -159,8 +159,8 @@ async function fallback(ctx: RunContext, cause: AiCause, io: AiEditIo): Promise<
 }
 
 /**
- * Final `skipped` status in a guarded transaction. The fixes and suggestion are cleared here on
- * fallback once their columns exist (spec 0012 parts 4 and 6): this is the seam.
+ * Final `skipped` status in a guarded transaction. The fixes are cleared here on fallback; the
+ * suggestion columns will be too (spec 0012 part 6): this is the seam.
  */
 async function setFinal(
   ctx: RunContext,
@@ -170,6 +170,7 @@ async function setFinal(
     ctx.client,
     ctx.job.id,
     async (tx) => {
+      await setTranscriptEdits(tx, ctx.take.id, []);
       const step = await updateStep(tx, {
         jobId: ctx.job.id,
         name: "ai_edit",
@@ -195,8 +196,13 @@ async function writeValid(
 ): Promise<Result<boolean, "invalid">> {
   const analysed = await reanalyse(tx, { takeId: ctx.take.id, proposed: edit.cuts });
   if (!analysed.ok) return err("invalid");
-  // Seam (parts 4 and 6): `transcript.edits` and the suggestion columns are written here, from
-  // `edit.fixes` and `edit.background`, in this same transaction.
+  await setTranscriptEdits(
+    tx,
+    ctx.take.id,
+    edit.fixes.map((fix) => ({ ...fix, undone: false })),
+  );
+  // Seam (part 6): the suggestion columns are written here, from `edit.background`, in this
+  // same transaction.
   const step = await updateStep(tx, {
     jobId: ctx.job.id,
     name: "ai_edit",
