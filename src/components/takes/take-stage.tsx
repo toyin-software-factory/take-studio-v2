@@ -83,7 +83,13 @@ function ReadyStage({
         durationMs={durationMs ?? 0}
       />
       {durationMs ? (
-        <CutTimeline takeId={take.id} durationMs={durationMs} review={review} bridge={bridge} />
+        <CutTimeline
+          takeId={take.id}
+          durationMs={durationMs}
+          review={review}
+          bridge={bridge}
+          aiEdit={detail.aiEdit}
+        />
       ) : null}
       <PendingBar review={review} />
     </div>

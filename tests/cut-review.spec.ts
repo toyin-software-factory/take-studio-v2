@@ -265,3 +265,100 @@ test("on a phone the timeline scrolls inside itself and the page does not (AC-1,
     await context.close();
   }
 });
+
+// Spec 0012 part 3 (AC-3, AC-7, AC-12): the reason line and the "AI edit wasn't available" line.
+const AI_CUTS = [
+  {
+    id: "c1",
+    startMs: 1000,
+    endMs: 1800,
+    kind: "ai",
+    applied: true,
+    proposedBy: "ai",
+    reason: "You restarted the sentence.",
+  },
+  {
+    id: "c2",
+    startMs: 2500,
+    endMs: 3200,
+    kind: "pause",
+    applied: true,
+    proposedBy: "rules",
+    reason: null,
+  },
+  {
+    id: "c3",
+    startMs: 4000,
+    endMs: 4600,
+    kind: "ai",
+    applied: false,
+    proposedBy: "ai",
+    reason: "A repeated word.",
+  },
+];
+const reasonLineOf = (page: Page) => page.getByTestId("cut-reason");
+const cutAny = (page: Page, n: number) =>
+  timeline(page).getByRole("button", { name: new RegExp(`^(Pause|Cut) ${n},`) });
+
+test("an AI cut shows its reason on focus and on press, and each block is described by it (AC-3)", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!, { detail: { cuts: AI_CUTS, aiEdit: "done" } });
+  await load(page, id);
+  await expect(reasonLineOf(page)).toHaveText("");
+  await cutAny(page, 1).focus();
+  await expect(reasonLineOf(page)).toHaveText("Cut 1: You restarted the sentence.");
+  await expect(reasonLineOf(page)).toHaveAttribute("role", "status");
+  const describedBy = await cutAny(page, 1).getAttribute("aria-describedby");
+  await expect(page.locator(`[id="${describedBy}"]`)).toHaveText("You restarted the sentence.");
+  await cutAny(page, 3).click();
+  await expect(reasonLineOf(page)).toHaveText("Cut 3: A repeated word.");
+  await expect(page.getByTestId("ai-unavailable")).toHaveCount(0);
+  await expectNoSeriousAxeIssues(page);
+});
+
+test("a take that fell back to rules shows the rules cuts and the unavailable line (AC-7, AC-12)", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!, { detail: { aiEdit: "unavailable" } });
+  await load(page, id);
+  await expect(page.getByTestId("ai-unavailable")).toHaveText(
+    "AI edit wasn't available for this take.",
+  );
+  await expect(cutButton(page, 1)).not.toHaveAttribute("aria-describedby", /.+/);
+  await cutButton(page, 1).focus();
+  await expect(reasonLineOf(page)).toHaveText("");
+  await expectNoSeriousAxeIssues(page);
+});
+
+test("no unavailable line when aiEdit is null (not English or no speech)", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!, { detail: { aiEdit: null } });
+  await load(page, id);
+  await expect(cutButton(page, 1)).toBeVisible();
+  await expect(page.getByTestId("ai-unavailable")).toHaveCount(0);
+});
+
+test("on a phone the reason line wraps without sideways page scroll (AC-3)", async ({
+  browser,
+  baseURL,
+}) => {
+  const context = await browser.newContext({ ...devices["Pixel 7"], baseURL: baseURL! });
+  try {
+    const page = await context.newPage();
+    const long = "You said the same thing twice and then started again from the top of the line.";
+    const cuts = AI_CUTS.map((c) => (c.id === "c1" ? { ...c, reason: long } : c));
+    const { id } = await setup(page, baseURL!, { detail: { cuts, aiEdit: "done" } });
+    await load(page, id);
+    await cutAny(page, 1).click();
+    await expect(reasonLineOf(page)).toContainText("Cut 1:");
+    expect(await noPageScroll(page)).toBe(true);
+    await expectNoSeriousAxeIssues(page);
+  } finally {
+    await context.close();
+  }
+});

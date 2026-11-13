@@ -9,6 +9,8 @@ export type ReviewCut = Range & {
   readonly id: string;
   readonly kind: string;
   readonly applied: boolean;
+  /** Spec 0012: why the cut was made (null or absent on older cuts). */
+  readonly reason?: string | null;
 };
 
 /** Background as the page sees it: an id, null for the original, undefined for no change. */
@@ -45,6 +47,12 @@ export function secondsText(ms: number): string {
 export function cutName(cut: NumberedCut, applied: boolean): string {
   const base = `${cut.label}, ${secondsText(cut.endMs - cut.startMs)} seconds`;
   return applied ? `${base}, cut. Press to keep it.` : `${base}, kept. Press to cut it.`;
+}
+
+/** Spec 0012 AC-3: the reason line, "Cut 4: You restarted the sentence."; null with no reason. */
+export function reasonLine(cut: NumberedCut | undefined): string | null {
+  const reason = cut?.reason?.trim();
+  return cut && reason ? `${cut.label}: ${reason}` : null;
 }
 
 /** AC-1 summary line over the pending state. */
