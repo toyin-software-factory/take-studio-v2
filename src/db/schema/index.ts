@@ -11,3 +11,4 @@ export * from "./background-preview";
 export * from "./storage-deletion";
 export * from "./email";
 export * from "./transcript";
+export * from "./usage";
