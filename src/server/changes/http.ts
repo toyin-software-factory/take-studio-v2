@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CHANGE_MESSAGES, type ChangeErrorCode } from "@/lib/take-messages";
+import { CHANGE_MESSAGES, type ChangeErrorCode } from "@/lib/change-messages";
 import { type TakeHttpDeps, errorResponse, guard, json } from "../takes/http";
 import { hasActiveTranscribe } from "../transcripts";
 import { jobStatusForCreator, startChanges, waveformForCreator } from ".";
