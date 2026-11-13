@@ -28,7 +28,7 @@ async function expectNoSeriousAxeIssues(page: Page) {
 }
 
 test("desktop shell: skip link, landmarks, sidebar and active item", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/library");
   await expect(page.getByRole("heading", { level: 1, name: "Your takes" })).toBeVisible();
   await expect(page.getByRole("banner")).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Main" })).toBeVisible();
@@ -63,7 +63,7 @@ test("desktop shell: skip link, landmarks, sidebar and active item", async ({ pa
 
 test("the sidebar is a sheet below 1024 px and a sidebar from 1024 px", async ({ page }) => {
   await page.setViewportSize({ width: 1023, height: 800 });
-  await page.goto("/");
+  await page.goto("/library");
   await expect(page.getByRole("complementary", { name: "Sidebar" })).toBeHidden();
   await expect(page.getByRole("button", { name: "Open menu" })).toBeVisible();
   await page.setViewportSize({ width: 1024, height: 800 });
@@ -83,7 +83,7 @@ test("recent takes: newest first, at most five, the current one marked, breadcru
     }),
   );
   const ids = await seedTakes(userId, seeds);
-  await page.goto("/");
+  await page.goto("/library");
   const recent = page.getByRole("complementary", { name: "Sidebar" }).getByRole("region", {
     name: "Recent takes",
   });
@@ -105,7 +105,7 @@ test("recent takes: newest first, at most five, the current one marked, breadcru
 });
 
 test("keyboard: tab order runs skip link, sidebar, top bar, then the page", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/library");
   const order: string[] = [];
   for (let i = 0; i < 4; i += 1) {
     await page.keyboard.press("Tab");
@@ -127,12 +127,12 @@ test("keyboard: tab order runs skip link, sidebar, top bar, then the page", asyn
 });
 
 test("signed in home passes axe", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/library");
   await expectNoSeriousAxeIssues(page);
 });
 
 test("sign out from the user menu returns to the signed out page", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/library");
   await page.getByRole("button", { name: /Account menu/ }).click();
   await page.getByRole("menuitem", { name: "Sign out" }).click();
   // The signed out homepage: its top bar has the sign in link.
@@ -147,7 +147,7 @@ test.describe("on a phone", () => {
   test.use({ viewport, deviceScaleFactor, isMobile: true, hasTouch: true });
 
   test("top bar menu opens the nav in a sheet and traps focus", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/library");
     await expect(page.getByRole("navigation", { name: "Main" })).toBeHidden();
     const menu = page.getByRole("button", { name: "Open menu" });
     await menu.click();
@@ -169,7 +169,7 @@ test.describe("on a phone", () => {
   });
 
   test("signs out from the account menu inside the sheet", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/library");
     await page.getByRole("button", { name: "Open menu" }).click();
     const sheet = page.getByRole("dialog", { name: "Take Studio" });
     await sheet.getByRole("button", { name: /Account menu/ }).click();
@@ -185,7 +185,7 @@ test.describe("on a phone", () => {
   });
 
   test("signed in home passes axe on a phone", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/library");
     await expectNoSeriousAxeIssues(page);
   });
 });

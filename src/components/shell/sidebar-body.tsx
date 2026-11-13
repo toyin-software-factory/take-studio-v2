@@ -12,7 +12,7 @@ import { UserMenu, type ShellUser } from "./user-menu";
 function Brand({ onNavigate }: { readonly onNavigate?: () => void }) {
   return (
     <Link
-      href="/"
+      href="/library"
       onClick={onNavigate}
       className="flex items-center gap-2 rounded-md px-3 py-1 text-h4 outline-hidden pointer-coarse:min-h-11 focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-solid focus-visible:outline-ring"
     >
@@ -40,7 +40,7 @@ export function SidebarBody({
     <div className="flex h-full min-h-0 flex-col gap-6">
       <Brand onNavigate={onNavigate} />
       <Button asChild size="lg" className="w-full">
-        <Link href="/" onClick={onNavigate}>
+        <Link href="/library" onClick={onNavigate}>
           Upload a take
         </Link>
       </Button>

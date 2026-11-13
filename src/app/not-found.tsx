@@ -35,7 +35,7 @@ export default function NotFound() {
           The take may have been deleted, or the link is wrong. Your takes are in your library.
         </p>
         <Button asChild>
-          <Link href="/">Go to your takes</Link>
+          <Link href="/library">Go to your takes</Link>
         </Button>
       </main>
     </>

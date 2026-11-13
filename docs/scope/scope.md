@@ -216,8 +216,9 @@ A public page that explains Take Studio and leads to sign up, built from Toyin's
    - [x] Motion core, nav, hero fan and reel (AC-4, AC-5, AC-8)
    - [x] The studio floor with lazy Three.js (AC-6, AC-8, AC-10)
    - [x] Details, then reduced motion, responsive, a11y and performance passes (AC-5, AC-7, AC-8, AC-9, AC-10)
+   - [x] Library on its own route `/library`, signed in `/` redirects there, so the library code is off the signed out homepage (AC-1, AC-10) (DV0-T09)
 - [x] Verify it: `/check verify landing page & SEO`
-Spec [0010](../specs/0010-landing-page.md) · rules in [design.md](../../design.md) · code in `src/app/page.tsx`, `src/components/home/`
+Spec [0010](../specs/0010-landing-page.md) · rules in [design.md](../../design.md) · code in `src/app/page.tsx`, `src/app/library/`, `src/components/home/`
 
 ### 16. Privacy & terms pages
 Public privacy policy and terms, needed because we store people's videos.

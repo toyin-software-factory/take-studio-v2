@@ -4,9 +4,10 @@ import { isActive } from "./nav-items";
 import { recentMeta } from "./recent-takes";
 
 describe("isActive", () => {
-  it("matches home only on /", () => {
-    expect(isActive("/", "/")).toBe(true);
-    expect(isActive("/", "/takes")).toBe(false);
+  it("matches the library on /library and not on a take page", () => {
+    expect(isActive("/library", "/library")).toBe(true);
+    expect(isActive("/library", "/takes/abc")).toBe(false);
+    expect(isActive("/library", "/")).toBe(false);
   });
   it("matches a section and its sub pages, not look alike paths", () => {
     expect(isActive("/takes", "/takes")).toBe(true);

@@ -44,7 +44,7 @@ test("the select starts on Keep original and the picker lists the studios (AC-1)
   baseURL,
 }) => {
   await signedInWithStudios(page, baseURL!);
-  await page.goto("/");
+  await page.goto("/library");
   await expect(select(page)).toContainText("Keep original");
   await select(page).click();
   const dialog = page.getByRole("dialog", { name: "Background" });
@@ -62,7 +62,7 @@ test("preselects the last pick from the database, and shows it on the select (AC
 }) => {
   const { user, warm } = await signedInWithStudios(page, baseURL!);
   await setDefaultBackground(user.id, warm);
-  await page.goto("/");
+  await page.goto("/library");
   await expect(select(page)).toContainText("Warm studio");
   await select(page).click();
   await expect(page.getByRole("radio", { name: /Warm studio/ })).toBeChecked();
@@ -77,13 +77,13 @@ test("a last pick that is not ready falls back to Keep original (AC-1)", async (
     { name: "Still processing", creatorId: user.id, status: "processing" },
   ]);
   await setDefaultBackground(user.id, pending!);
-  await page.goto("/");
+  await page.goto("/library");
   await expect(select(page)).toContainText("Keep original");
 });
 
 test("the picker works by keyboard and returns focus to the select", async ({ page, baseURL }) => {
   await signedInWithStudios(page, baseURL!);
-  await page.goto("/");
+  await page.goto("/library");
   // Not usable until the list has loaded.
   await expect(select(page)).toBeEnabled();
   await select(page).focus();
@@ -111,7 +111,7 @@ test("the chosen background is sent with the upload (AC-1)", async ({ page, base
       json: { error: "storage_error", message: "Storage is having a problem right now." },
     });
   });
-  await page.goto("/");
+  await page.goto("/library");
   await select(page).click();
   await page.getByRole("radio", { name: /Warm studio/ }).check({ force: true });
   await page.getByRole("button", { name: "Done" }).click();
@@ -138,7 +138,7 @@ test("an upload with no choice made sends the saved pick, and Keep original send
     bodies.push(route.request().postDataJSON());
     return route.fulfill({ status: 503, json: { error: "storage_error", message: "x" } });
   });
-  await page.goto("/");
+  await page.goto("/library");
   await expect(select(page)).toContainText("Calm studio");
   const file = { name: "take.mp4", mimeType: "video/mp4", buffer: Buffer.from("x") };
   await page.locator("#upload-video-input").setInputFiles(file);
@@ -163,7 +163,7 @@ test("a failed list read still lets the creator upload, with no choice sent", as
     bodies.push(route.request().postDataJSON());
     return route.fulfill({ status: 503, json: { error: "storage_error", message: "x" } });
   });
-  await page.goto("/");
+  await page.goto("/library");
   await expect(page.getByText(/couldn.t load the backgrounds/)).toBeVisible();
   await page.locator("#upload-video-input").setInputFiles({
     name: "take.mp4",
@@ -184,7 +184,7 @@ for (const [name, viewport] of [
   }) => {
     await page.setViewportSize(viewport);
     await signedInWithStudios(page, baseURL!);
-    await page.goto("/");
+    await page.goto("/library");
     // The loading state is transient (the button is disabled while the list loads).
     await expect(select(page)).toBeEnabled();
     await expectNoSeriousAxeIssues(page);
@@ -204,7 +204,7 @@ test.describe("touch targets on a phone", () => {
 
   test("the select and each tile are at least 44 px", async ({ page, baseURL }) => {
     await signedInWithStudios(page, baseURL!);
-    await page.goto("/");
+    await page.goto("/library");
     await expect(select(page)).toBeEnabled(); // the list has loaded
     const trigger = await select(page).boundingBox();
     expect(trigger?.height).toBeGreaterThanOrEqual(44);
@@ -275,7 +275,7 @@ test("uploads an image: the link, the PUT, complete, then it is ready and select
   await signedInWithStudios(page, baseURL!);
   const state = { mine: [] as Item[], calls: [] as string[] };
   await stubLibrary(page, state);
-  await page.goto("/");
+  await page.goto("/library");
   await expect(select(page)).toBeEnabled();
   await select(page).click();
   await page.getByLabel("Upload image").setInputFiles(png);
@@ -296,7 +296,7 @@ test("checks the type and size in the browser before asking for a link", async (
   await signedInWithStudios(page, baseURL!);
   const state = { mine: [] as Item[], calls: [] as string[] };
   await stubLibrary(page, state);
-  await page.goto("/");
+  await page.goto("/library");
   await expect(select(page)).toBeEnabled();
   await select(page).click();
   const input = page.getByLabel("Upload image");
@@ -319,7 +319,7 @@ test("shows the friendly message when processing refuses the image", async ({ pa
   await signedInWithStudios(page, baseURL!);
   const state = { mine: [] as Item[], calls: [] as string[] };
   await stubLibrary(page, state);
-  await page.goto("/");
+  await page.goto("/library");
   await expect(select(page)).toBeEnabled();
   await select(page).click();
   await page.getByLabel("Upload image").setInputFiles(png);
@@ -349,7 +349,7 @@ test("deletes a background, and says In use when a job renders with it (AC-10)",
     state.mine = [];
     return route.fulfill({ status: 204 });
   });
-  await page.goto("/");
+  await page.goto("/library");
   await expect(select(page)).toBeEnabled();
   await select(page).click();
   await page.getByRole("button", { name: "Delete Office wall" }).click();
@@ -375,7 +375,7 @@ test("deleting the picked background puts the pick back to Keep original (the ne
     state.mine = [];
     return route.fulfill({ status: 204 });
   });
-  await page.goto("/");
+  await page.goto("/library");
   await expect(select(page)).toBeEnabled();
   await select(page).click();
   await page.getByRole("radio", { name: /Office wall/ }).check({ force: true });
@@ -404,7 +404,7 @@ test("an upload that never finished can be removed", async ({ page, baseURL }) =
     state.mine = [];
     return route.fulfill({ status: 204 });
   });
-  await page.goto("/");
+  await page.goto("/library");
   await expect(select(page)).toBeEnabled();
   await select(page).click();
   await expect(page.getByText("This upload didn't finish.")).toBeVisible();
@@ -429,7 +429,7 @@ test("a pick made while a delete is pending is kept when the delete finishes", a
     state.mine = [other];
     return route.fulfill({ status: 204 });
   });
-  await page.goto("/");
+  await page.goto("/library");
   await expect(select(page)).toBeEnabled();
   await select(page).click();
   await page.getByRole("radio", { name: /Office wall/ }).check({ force: true });
@@ -463,7 +463,7 @@ test("deleting the saved default leaves the list at once, even if the refresh fa
     state.listStatus = 500; // the refresh after the delete fails
     return route.fulfill({ status: 204 });
   });
-  await page.goto("/");
+  await page.goto("/library");
   await expect(select(page)).toContainText("Office wall"); // the saved default
   await select(page).click();
   await page.getByRole("button", { name: "Delete Office wall" }).click();

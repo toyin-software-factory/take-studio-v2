@@ -25,7 +25,8 @@ describe("robots and sitemap (spec 0010, AC-3)", () => {
     expect(out.robots.sitemap).toBe("https://take.example.com/sitemap.xml");
     const rules = out.robots.rules as { allow: string; disallow: string[] };
     expect(rules.allow).toBe("/");
-    for (const path of ["/takes", "/design", "/api/"]) expect(rules.disallow).toContain(path);
+    for (const path of ["/takes", "/library", "/design", "/api/"])
+      expect(rules.disallow).toContain(path);
     expect(rules.disallow).toEqual([...PRIVATE_PATHS]);
   });
 

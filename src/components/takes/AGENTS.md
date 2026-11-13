@@ -1,6 +1,6 @@
 # Take pages and upload (src/components/takes)
 
-The library at `/` and the take page at `/takes/[id]`. Specs: [0004 core take loop](../../../docs/specs/0004-core-take-loop/index.md). UI rules: `design.md`.
+The library at `/library` (`/` redirects signed in visitors there) and the take page at `/takes/[id]`. Specs: [0004 core take loop](../../../docs/specs/0004-core-take-loop/index.md). UI rules: `design.md`.
 
 ## How it is split
 
