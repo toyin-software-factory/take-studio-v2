@@ -5,6 +5,7 @@
 //   design-check loop  --builder "<command that fixes the build>" [--page name]
 //   design-check watch [--page name]       live checks while you build (code checks only)
 //   design-check hook                      Claude Code PostToolUse hook: passes new live results to the coder
+//   design-check init [--dir docs/design] [--base-url http://localhost:3000] [--retag]
 //   design-check tag <design.html> [--out tagged.html]
 //   design-check reset
 import { spawn } from "node:child_process";
@@ -16,6 +17,7 @@ import { resolvePages, runRound } from "./check.js";
 import { openBrowser, tagDesign } from "./extract.js";
 import { toHtml, toMarkdown } from "./report.js";
 import { judgeRound, loadState, resetState, saveState } from "./verdict.js";
+import { init } from "./init.js";
 
 const { values: opt, positionals } = parseArgs({
   allowPositionals: true,
@@ -28,6 +30,9 @@ const { values: opt, positionals } = parseArgs({
     viewports: { type: "string" },
     out: { type: "string", short: "o" },
     reset: { type: "boolean" },
+    retag: { type: "boolean" },
+    dir: { type: "string" },
+    "base-url": { type: "string" },
     quick: { type: "boolean" },
     "no-judge": { type: "boolean" },
     json: { type: "boolean" },
@@ -235,6 +240,18 @@ async function main() {
     return;
   }
 
+  if (cmd === "init") {
+    console.log(
+      await init({
+        dir: opt.dir,
+        baseUrl: opt["base-url"],
+        retag: !!opt.retag,
+        configFile: opt.config,
+      }),
+    );
+    return;
+  }
+
   if (cmd === "tag") {
     const file = positionals[1];
     if (!file) throw new Error("tag needs a design file: design-check tag docs/design/home.html");
@@ -263,7 +280,7 @@ async function main() {
     fs
       .readFileSync(new URL(import.meta.url), "utf8")
       .split("\n")
-      .slice(1, 10)
+      .slice(1, 11)
       .map((l) => l.replace(/^\/\/ ?/, ""))
       .join("\n"),
   );
