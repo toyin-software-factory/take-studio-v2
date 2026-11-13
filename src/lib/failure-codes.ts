@@ -19,6 +19,9 @@ export const FAILURE_CODES = {
   // Spec 0008: the background image vanished or was not ready while the job ran.
   background_missing: { refundable: true },
   cancelled_before_start: { refundable: true },
+  // Spec 0011: a change render's cut ranges did not match its cut plan; the job fails instead
+  // of shipping a wrong video. Nothing was charged.
+  render_mismatch: { refundable: false },
   // Not refundable: the media was rejected, or the creator cancelled a running job.
   invalid_media: { refundable: false },
   too_long: { refundable: false },

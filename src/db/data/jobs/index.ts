@@ -10,7 +10,8 @@ export { finish, finishInTx } from "./finish";
 export { type StartError, startJob } from "./initial";
 export { type TranscribeStartError, startTranscribeJob } from "./transcribe";
 export {
-  type BackgroundStartError,
+  type ChangeStartError,
+  type ChangeInput,
   legacyBackgroundRerender,
-  startBackgroundJob,
-} from "./background";
+  startChangeJob,
+} from "./change";

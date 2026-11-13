@@ -8,7 +8,7 @@ import { reanalyse } from "@/db/data/cuts";
 import {
   finish,
   markRunning,
-  startBackgroundJob,
+  startChangeJob,
   startJob,
   startTranscribeJob,
   whileJobActive,
@@ -162,10 +162,11 @@ describe("lock order: creator, then background (HRF-T01)", () => {
     for (let i = 0; i < ROUNDS; i++) {
       const c = await changeAndDelete();
       const settled = await Promise.allSettled([
-        startBackgroundJob(db, {
+        startChangeJob(db, {
           creatorId: c.creator.id,
           takeId: c.take.id,
-          backgroundId: c.backgroundId,
+          background: { id: c.backgroundId },
+          cuts: [],
         }),
         deleteBackground(db, c.creator.id, c.backgroundId),
       ]);
