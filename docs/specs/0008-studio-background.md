@@ -157,7 +157,7 @@ Registries and codes: `LIVE_SLICE = 3`; `STEPS_BY_KIND.initial` = `trim`, `backg
 | Picker | lists and thumbnails | `background` rows (built ins, plus `creator_id` = session); `thumb_key` presigned |
 | Picker | current background | latest render: `keyed ? { background_id, background_name } : original`; no render yet → `take.background_id` |
 | Picker, take page | "no green screen" note | latest render's `background_id` set and `keyed` false, or the latest initial or background job's `background` step skipped `no_green_screen` |
-| Take page | "Try again" | latest `background` job by `created_at` is `failed` (its `failure_code` picks the message); retry repeats its `target_background_id` |
+| Take page | "Try again" | latest `background` job by `created_at` is `failed` (its `failure_code` picks the message); retry repeats its `target_background_id`. *Superseded by spec 0011 AC-6: Try again shows only while the page holds the failed change; a reload loses it.* |
 | Job start | target background | upload: `take.background_id`; change: request `backgroundId` → `processing_job.target_background_id` |
 | Render | key colour, similarity, blend | detection on border patches (Rationale); constants in `src/lib/keying.ts` |
 | Render | background pixels | `image_key` of the job's target, cropped to the probe's display width and height |
