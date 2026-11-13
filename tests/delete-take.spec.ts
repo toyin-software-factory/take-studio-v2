@@ -80,10 +80,11 @@ test.describe("library card menu", () => {
     await page.getByRole("menuitem", { name: "Delete Beta take" }).click();
     await page.getByRole("button", { name: "Delete take" }).click();
     await expect(page.getByRole("dialog")).toBeHidden();
-    await expect(page.getByRole("link", { name: "Beta take" })).toHaveCount(0);
+    const main = page.getByRole("main");
+    await expect(main.getByRole("link", { name: "Beta take" })).toHaveCount(0);
     await expect(page.getByText("2 takes")).toBeVisible();
     await expect(page.getByRole("status").filter({ hasText: "Take deleted." })).toHaveCount(1);
-    await expect(page.getByRole("link", { name: "Gamma take" })).toBeFocused();
+    await expect(main.getByRole("link", { name: "Gamma take" })).toBeFocused();
     expect(calls).toHaveLength(1);
   });
 
@@ -117,7 +118,10 @@ test.describe("library card menu", () => {
     await expect(alert).toHaveText("We couldn't delete this take. Try again.");
     await expect(alert).toBeFocused();
     await expect(page.getByRole("dialog")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Alpha take" })).toBeVisible();
+    // The page behind the dialog is hidden from the accessibility tree, so look past that.
+    await expect(
+      page.getByRole("main").getByRole("link", { name: "Alpha take", includeHidden: true }),
+    ).toBeVisible();
     await expectNoSeriousAxeIssues(page);
     await page.getByRole("button", { name: "Delete take" }).click();
     await expect(page.getByRole("dialog")).toBeHidden();
