@@ -45,7 +45,8 @@ test("renders the ten sections in order, with the right calls to action (AC-1, A
     "href",
     "mailto:hello@takestudio.app",
   );
-  await expect(page.locator("form")).toHaveCount(0);
+  // The closing form is the one form: an email field that sends the sign in link.
+  await expect(page.locator("form")).toHaveCount(1);
 
   // The limits are the product's own.
   const limits = page.getByRole("region", { name: /Simple limits/ });
@@ -148,7 +149,8 @@ test("signed in, / is a 307 to /library, which shows the takes library (AC-1)", 
 
 test("signed out, /library goes to /sign-in", async ({ page }) => {
   await page.goto("/library");
-  await expect(page).toHaveURL(/\/sign-in$/);
+  await expect(page).toHaveURL(/\/sign-in\??$/);
+  expect(page.url()).not.toContain("creator");
 });
 
 test("the signed out homepage loads none of the signed in library code", async ({
@@ -248,5 +250,73 @@ test.describe("axe", () => {
         await expectNoSeriousAxeIssues(page);
       });
     }
+  });
+});
+
+// The closing email form (spec 0010, s8): the same magic link as the sign in page.
+test.describe("closing email form", () => {
+  const send = (page: import("@playwright/test").Page) =>
+    page.getByRole("button", { name: "Email me a sign in link" });
+
+  test("sends the link and shows the check your inbox state", async ({ page }) => {
+    let posted: unknown = null;
+    await page.route("**/api/auth/sign-in/magic-link", (route) => {
+      posted = route.request().postDataJSON();
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: true }),
+      });
+    });
+    await page.goto("/");
+    const field = page.locator("#contact").getByLabel("Email");
+    await field.fill("creator@example.com");
+    await send(page).click();
+    await expect(page.locator("#closing-status")).toContainText("Check your inbox.");
+    await expect(page.locator("#closing-status")).toContainText(
+      "If creator@example.com can sign in, a link is on its way.",
+    );
+    expect(posted).toMatchObject({ email: "creator@example.com", callbackURL: "/library" });
+  });
+
+  test("an invalid address is caught before sending", async ({ page }) => {
+    await page.goto("/");
+    await page.locator("#contact").getByLabel("Email").fill("not an email");
+    await send(page).click();
+    await expect(page.locator("#closing-status")).toHaveText(
+      "Enter an email address like you@example.com.",
+    );
+    // Editing the address clears the error.
+    await page.locator("#contact").getByLabel("Email").fill("creator@example.com");
+    await expect(page.locator("#closing-status")).toHaveText("");
+    await expect(page.locator("#contact").getByLabel("Email")).toHaveAttribute(
+      "aria-invalid",
+      "false",
+    );
+  });
+
+  test("a rate limit shows the friendly message", async ({ page }) => {
+    await page.route("**/api/auth/sign-in/magic-link", (route) =>
+      route.fulfill({
+        status: 429,
+        contentType: "application/json",
+        body: JSON.stringify({ code: "EMAIL_RATE_LIMITED", message: "x" }),
+      }),
+    );
+    await page.goto("/");
+    await page.locator("#contact").getByLabel("Email").fill("creator@example.com");
+    await send(page).click();
+    await expect(page.locator("#closing-status")).toContainText("Too many sign in links");
+  });
+
+  test("without scripts the form falls back to the sign in page", async ({ browser }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    await page.goto("/");
+    await page.locator("#contact").getByLabel("Email").fill("creator@example.com");
+    await send(page).click();
+    await expect(page).toHaveURL(/\/sign-in\??$/);
+    expect(page.url()).not.toContain("creator");
+    await context.close();
   });
 });

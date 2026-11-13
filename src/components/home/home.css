@@ -654,24 +654,47 @@
   border-color: var(--color-accent);
   color: var(--color-ink);
 }
-.h-bars {
+.h-media {
+  margin-top: auto;
+  padding-top: 20px;
+}
+.h-mini-tl {
+  background: var(--color-dark-2);
+  border: 1px solid var(--color-ring-dark);
+  border-radius: 8px;
+  padding: 10px;
+}
+.h-mini-tl-row {
   display: flex;
   gap: 3px;
   height: 36px;
-  margin-top: auto;
-  padding-top: 20px;
-  box-sizing: content-box;
 }
-.h-bars span {
-  background: var(--color-on-dark-20);
-  border-radius: var(--radius-xs);
+.h-mini-tl-seg {
+  background: var(--color-on-dark-60);
+  border-radius: 6px;
+}
+.h-mini-tl-cut {
+  min-width: 12px;
+  border-radius: 6px;
+  border: 1.5px solid var(--color-error);
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-error) 90%, transparent) 0 4px,
+    color-mix(in srgb, var(--color-error) 40%, transparent) 4px 8px
+  );
+}
+.h-mini-tl-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--color-on-dark-75);
+  font-variant-numeric: tabular-nums;
 }
 .h-swatches {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-top: auto;
-  padding-top: 20px;
 }
 .h-swatches img {
   width: 100%;
@@ -682,7 +705,6 @@
 .h-srt {
   display: flex;
   flex-direction: column;
-  margin-top: auto;
   padding: 14px 16px;
   font-size: var(--fs-small);
   line-height: 1.6;
@@ -988,11 +1010,58 @@ html.js .h-tile-media[data-playing="true"] video {
   align-items: flex-start;
   gap: 16px;
 }
-.h-closing-actions {
+.h-form {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 16px;
+  gap: 32px;
+}
+.h-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.h-field label {
+  font-size: var(--fs-small);
+  color: var(--color-text-muted);
+  font-weight: var(--fw-regular);
+}
+.h-field input {
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 16px;
+  font-weight: var(--fw-regular);
+  outline: none;
+  transition:
+    border-color var(--dur-ui) ease,
+    box-shadow var(--dur-ui) ease;
+}
+.h-field input:focus-visible {
+  border-bottom-color: var(--color-ink);
+  box-shadow: 0 1px 0 0 var(--color-ink);
+}
+.h-field input[aria-invalid="true"] {
+  border-bottom-color: var(--color-ink);
+}
+.h-form-status {
+  min-height: 1.5em;
+  font-size: var(--fs-body);
+}
+.h-closing .h-btn-split {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+.h-closing .h-btn-split:disabled {
+  opacity: 0.6;
+  cursor: progress;
 }
 .h-closing-note {
   color: var(--color-text-muted);

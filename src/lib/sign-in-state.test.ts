@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { SIGN_IN_MESSAGES, looksLikeEmail, signInFailureFrom } from "./sign-in-state";
+import {
+  SIGN_IN_MESSAGES,
+  looksLikeEmail,
+  parseSignInEmail,
+  signInFailureFrom,
+} from "./sign-in-state";
 
 describe("sign in form states (AC-4, AC-8)", () => {
   it("maps Better Auth errors to the three failure states", () => {
@@ -22,6 +27,13 @@ describe("sign in form states (AC-4, AC-8)", () => {
     }
     for (const bad of ["", "a", "a@b", "a b@c.de", "@b.co", "a@@b.co"]) {
       expect(looksLikeEmail(bad)).toBe(false);
+    }
+  });
+
+  it("parses an address with zod, trimmed, or gives null", () => {
+    expect(parseSignInEmail(" me@example.com ")).toBe("me@example.com");
+    for (const bad of ["", "a", "a@b", "a b@c.de", "@b.co"]) {
+      expect(parseSignInEmail(bad)).toBeNull();
     }
   });
 });
