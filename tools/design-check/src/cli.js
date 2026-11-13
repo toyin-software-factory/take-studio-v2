@@ -65,7 +65,11 @@ async function checkOnce(cfg, { quick = false } = {}) {
   fs.mkdirSync(cfg.outDir, { recursive: true });
   const reportPath = path.join(cfg.outDir, quick ? "live.html" : "report.html");
   fs.writeFileSync(reportPath, toHtml(v, result, quick ? { rounds: [] } : st));
-  const md = toMarkdown(v, { quick, reportPath: path.relative(process.cwd(), reportPath) });
+  const md = toMarkdown(v, {
+    quick,
+    reportPath: path.relative(process.cwd(), reportPath),
+    result,
+  });
   if (!quick) {
     saveState(cfg, st);
     fs.writeFileSync(path.join(cfg.outDir, "feedback.md"), md);
