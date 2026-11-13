@@ -28,7 +28,7 @@ Production deploys run only from CI on merge to main (build and check the Worker
 
 Deploy the Worker only through `scripts/deploy-worker.sh`, never `wrangler deploy <file>` (it drops the bindings). The Sentry source map chain and the OpenNext patch are in [scripts/AGENTS.md](scripts/AGENTS.md).
 
-The `pnpm db:*` scripts (via `drizzle.config.ts`) refuse to connect to any non localhost database outside CI unless `MIGRATE_TARGET=prod` is set (`scripts/db-guard.ts`); passing `--url` straight to drizzle-kit skips the guard, so don't; sandboxes carry the production `DATABASE_URL_DIRECT`, so for local work prefix `DATABASE_URL_DIRECT=postgres://postgres:postgres@localhost:5432/take_studio`.
+The `pnpm db:*` scripts (via `drizzle.config.ts`) refuse to connect to any non localhost database outside CI unless `MIGRATE_TARGET=prod` is set (`scripts/db-guard.ts`); passing `--url` straight to drizzle-kit skips the guard, so don't; agent sandboxes carry no database URL (production migrations run only from CI), and with `DATABASE_URL_DIRECT` unset `drizzle.config.ts` uses the local Postgres, so no prefix is needed.
 
 `pnpm test:pipeline` (the API level end to end check, needs R2 and Trigger.dev keys, see README) can leave `next dev` and `trigger dev` running after a failed run, and the local Postgres then answers "too many clients". Stop the leftovers (`pgrep -f 'next[ ]dev'` and `pgrep -f 'trigger[.]dev/dist/esm/index[.]js dev'`, then kill) and run `docker compose restart postgres` before trying again.
 

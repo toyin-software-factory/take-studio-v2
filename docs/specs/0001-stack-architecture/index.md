@@ -75,6 +75,8 @@ Reasoning and options: see `rationale.md`.
 
 `TRIGGER_PROJECT_REF` is not a secret; it lives in `trigger.config.ts`.
 
+Agent sandboxes (HQ App variables) hold no production database URL, neither `DATABASE_URL` nor `DATABASE_URL_DIRECT`. Production migrations run only from the deploy workflow (GitHub Actions secret), and local `pnpm db:*` scripts default to the local Postgres when `DATABASE_URL_DIRECT` is unset (2026-11-13 review, item 1).
+
 ## CI, deploy and local dev
 
 - **CI (every PR):** `pnpm install --frozen-lockfile`, lint, `tsc --noEmit`, Vitest, a check that `drizzle-kit generate` produces no uncommitted migration, `opennextjs-cloudflare build`, then a Playwright smoke test against the built app. Postgres runs as a service container in CI. The pnpm store and Playwright browsers are cached. Main is protected and these checks are required.
