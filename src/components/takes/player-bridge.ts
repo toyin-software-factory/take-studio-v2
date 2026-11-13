@@ -12,6 +12,12 @@ export type PlayerBridge = {
   readonly setSeek: (fn: ((ms: number) => void) | null) => void;
   readonly setTime: (ms: number) => void;
   readonly getTime: () => number;
+  /** Seeks to a time on the original recording and plays (the timeline, spec 0011, AC-2). */
+  readonly seekOriginal: (ms: number) => void;
+  readonly setSeekOriginal: (fn: ((ms: number) => void) | null) => void;
+  /** The playhead on the original's timeline, in ms; the player publishes it. */
+  readonly setHead: (ms: number) => void;
+  readonly getHead: () => number;
   /** The caption track's `?v=`, or null while there is no transcript to show. */
   readonly setCaptions: (version: string | null) => void;
   readonly getCaptions: () => string | null;
@@ -24,21 +30,17 @@ export type PlayerBridge = {
   readonly subscribe: (listener: () => void) => () => void;
 };
 
-/** `action` is the label of the button that renders the previewed choice (shown in the stage line), or null when that button is off. */
 export type PreviewOverlay =
-  | { readonly kind: "making"; readonly label: string; readonly action: string | null }
-  | {
-      readonly kind: "image";
-      readonly label: string;
-      readonly url: string;
-      readonly action: string | null;
-    };
+  | { readonly kind: "making"; readonly label: string }
+  | { readonly kind: "image"; readonly label: string; readonly url: string };
 
 export function createPlayerBridge(): PlayerBridge {
   let time = 0;
   let captions: string | null = null;
   let preview: PreviewOverlay | null = null;
   let seekFn: ((ms: number) => void) | null = null;
+  let seekOriginalFn: ((ms: number) => void) | null = null;
+  let head = 0;
   let backFn: (() => void) | null = null;
   const listeners = new Set<() => void>();
   const emit = () => listeners.forEach((listener) => listener());
@@ -47,6 +49,16 @@ export function createPlayerBridge(): PlayerBridge {
     setSeek: (fn) => {
       seekFn = fn;
     },
+    seekOriginal: (ms) => seekOriginalFn?.(ms),
+    setSeekOriginal: (fn) => {
+      seekOriginalFn = fn;
+    },
+    setHead: (ms) => {
+      if (ms === head) return;
+      head = ms;
+      emit();
+    },
+    getHead: () => head,
     setTime: (ms) => {
       time = ms;
       emit();
@@ -65,7 +77,6 @@ export function createPlayerBridge(): PlayerBridge {
           preview !== null &&
           next.kind === preview.kind &&
           next.label === preview.label &&
-          next.action === preview.action &&
           (next.kind === "making" || (preview.kind === "image" && next.url === preview.url)));
       if (same) return;
       preview = next;
@@ -103,6 +114,11 @@ export function useCurrentParagraph(
     },
     () => null,
   );
+}
+
+/** The playhead on the original's timeline in ms. */
+export function useHead(bridge: PlayerBridge): number {
+  return useSyncExternalStore(bridge.subscribe, bridge.getHead, () => 0);
 }
 
 /** The still shown over the video, or null. */

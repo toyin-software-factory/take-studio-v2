@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import {
   type BackgroundItem,
   type BackgroundListData,
@@ -10,63 +8,49 @@ import {
 } from "@/lib/background-api";
 import { selectOptions } from "@/lib/background-options";
 import type { TakeDetail } from "@/lib/take-api";
-import { backgroundChangeActive } from "@/lib/take-display";
 import { BackgroundGrid } from "./background-grid";
 import { BackgroundNotes, CleanEdgesTip } from "./background-notes";
 import type { PlayerBridge } from "./player-bridge";
-import type { PollResult } from "./use-poll";
+import { type CutReview, DELETED } from "./use-cut-review";
 import { useBackgroundPreview } from "./use-background-preview";
-import { useBackgroundStart } from "./use-background-start";
 import { useBackgroundUpload } from "./use-background-upload";
 import { useBackgrounds } from "./use-backgrounds";
 import { usePoster } from "./use-poster";
 
 const NO_LIST: BackgroundListData = { builtIn: [], mine: [], defaultId: null };
-/** Stands for "keyed on a background that was deleted": not the original, and nothing to pick. */
-const DELETED = "deleted";
 
 /**
  * The background picker on the take page (spec 0008, AC-3 to AC-6, AC-11, AC-12): the grid, a
- * preview of the take on the chosen background shown on the stage, "Use this background" (or
- * "Keep original"), progress while a new video is made (the current one keeps playing), the
- * notes, "Try again" after a failure (repeating the failed target) and the clean edges tip. The
- * current and the chosen background stay visible even when the list cannot be loaded.
+ * preview of the take on the chosen background shown on the stage, the notes and the clean
+ * edges tip. A pick does not render: it joins the pending bar's changes (spec 0011 AC-5), and
+ * Render there makes the video. The current and the chosen background stay visible even when the
+ * list cannot be loaded.
  */
 export function BackgroundChange({
   detail,
   bridge,
-  onStarted,
-  onUncertain,
-  onStale,
+  review,
 }: {
   readonly detail: TakeDetail;
   readonly bridge: PlayerBridge;
-  /** The change started: `target` is the background asked for (null is the original). */
-  readonly onStarted: (target: string | null) => void;
-  /** The PUT's outcome is unknown (the response was lost): look at the take again. */
-  readonly onUncertain: () => Promise<PollResult>;
-  /** A refusal showed the page is out of date: read the take again. */
-  readonly onStale: () => void;
+  readonly review: CutReview;
 }) {
   const backgrounds = useBackgrounds();
-  const [picked, setPicked] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const upload = useBackgroundUpload(backgrounds.reload, setPicked);
+  const upload = useBackgroundUpload(backgrounds.reload, review.pickBackground);
   const poster = usePoster(detail.take.id);
   const original = poster.url;
 
-  const { take, background, backgroundJob } = detail;
-  const failed = backgroundJob?.status === "failed";
+  const { take, background } = detail;
   const current = background ? (background.id ?? DELETED) : ORIGINAL_BACKGROUND;
-  const retryTarget = failed ? (backgroundJob.targetBackgroundId ?? ORIGINAL_BACKGROUND) : null;
-  const choice = picked ?? retryTarget ?? (current === DELETED ? ORIGINAL_BACKGROUND : current);
-  // "Try again" only while the choice is the failed target; another pick is a new change.
-  const retrying = failed && choice === (retryTarget ?? ORIGINAL_BACKGROUND);
-  const start = useBackgroundStart(take.id, choice, onStarted, onUncertain, onStale);
-  // The last render found no green screen: a real background would show nowhere (the server
-  // refuses it too), so only "Keep original" can be used. The note above says why.
-  const noGreen = detail.noGreenScreen && choice !== ORIGINAL_BACKGROUND;
-  const busy = start.starting || backgroundChangeActive(backgroundJob);
+  const pending = review.edits.background;
+  const choice =
+    pending !== undefined
+      ? (pending ?? ORIGINAL_BACKGROUND)
+      : current === DELETED
+        ? ORIGINAL_BACKGROUND
+        : current;
+  const busy = review.locked;
   const list = backgrounds.state.kind === "ready" ? backgrounds.state.list : NO_LIST;
   const listed = [...list.builtIn, ...list.mine].filter((b) => b.status === "ready");
   const extras: BackgroundItem[] = selectOptions(listed, background, choice)
@@ -86,33 +70,30 @@ export function BackgroundChange({
   const showOriginal = previewing && choice === ORIGINAL_BACKGROUND && original !== null;
   const overlayKind = showOriginal ? "original" : preview.kind;
   const overlayUrl = showOriginal ? original : preview.kind === "ready" ? preview.url : "";
-  // The label of the main button, which the stage line names while a still covers the video.
-  // One label for the button and for the stage line, so the line never names a button that is not
-  // there. The button is off for a real background on a take with no green screen: no name then.
-  const label = retrying
-    ? "Try again"
-    : choice === ORIGINAL_BACKGROUND
-      ? "Keep original"
-      : "Use this background";
-  const action = noGreen ? null : label;
+  useEffect(() => {
+    if (choice !== ORIGINAL_BACKGROUND && choice !== current) {
+      review.rememberBackground(choice, chosenName);
+    }
+  }, [review, choice, current, chosenName]);
   useEffect(() => {
     if (overlayKind === "original" || overlayKind === "ready") {
       bridge.setPreview({
         kind: "image",
         url: overlayUrl ?? "",
         label: showOriginal ? "your original background" : chosenName,
-        action,
       });
     } else if (overlayKind === "making") {
-      bridge.setPreview({ kind: "making", label: chosenName, action });
+      bridge.setPreview({ kind: "making", label: chosenName });
     } else bridge.setPreview(null);
     return () => bridge.setPreview(null);
-  }, [bridge, overlayKind, overlayUrl, showOriginal, chosenName, action]);
+  }, [bridge, overlayKind, overlayUrl, showOriginal, chosenName]);
   // "Back to your video" picks the current background again: no preview, the video returns.
   useEffect(() => {
-    bridge.setBack(() => setPicked(current));
+    bridge.setBack(() =>
+      review.pickBackground(current === DELETED ? ORIGINAL_BACKGROUND : current),
+    );
     return () => bridge.setBack(null);
-  }, [bridge, current]);
+  }, [bridge, review, current]);
 
   if (take.status !== "ready" || take.expired) return null;
 
@@ -123,7 +104,7 @@ export function BackgroundChange({
       </h2>
       <BackgroundNotes
         detail={detail}
-        uncertain={start.uncertain}
+        uncertain={false}
         previewNoGreen={preview.kind === "ready" && preview.noGreenScreen}
       />
       <BackgroundGrid
@@ -132,7 +113,7 @@ export function BackgroundChange({
         extras={extras}
         original={{ thumbUrl: original, onThumbError: poster.refresh }}
         value={choice}
-        onChange={setPicked}
+        onChange={review.pickBackground}
         mine={{
           state: upload.state,
           onFile: (file) => void upload.start(file),
@@ -140,10 +121,7 @@ export function BackgroundChange({
             void upload.remove(id).then((deleted) => {
               if (!deleted) return;
               backgrounds.forget(id);
-              // The pick, or the failed target the section falls back to when nothing was picked.
-              setPicked((now) =>
-                now === id || (now === null && retryTarget === id) ? ORIGINAL_BACKGROUND : now,
-              );
+              if (choice === id) review.pickBackground(ORIGINAL_BACKGROUND);
             }),
         }}
       />
@@ -170,24 +148,6 @@ export function BackgroundChange({
             Try the preview again
           </button>
         </p>
-      ) : null}
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          onClick={start.change}
-          loading={start.starting}
-          disabled={busy || noGreen || (choice === current && !retrying)}
-        >
-          {label}
-        </Button>
-      </div>
-      {start.checking ? (
-        <p role="status">We couldn&rsquo;t confirm the change started. Checking now.</p>
-      ) : null}
-      {start.error ? (
-        <Alert variant="danger" title="The change didn't start">
-          {start.error}
-        </Alert>
       ) : null}
       <CleanEdgesTip />
     </section>

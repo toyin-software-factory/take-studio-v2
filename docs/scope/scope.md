@@ -166,10 +166,10 @@ Spec [0008](../specs/0008-studio-background.md) · code in `src/lib/keying.ts`, 
 After automatic trimming, show every cut on a timeline; the creator can undo any cut, then render the final video.
 **Done when:** each cut is visible and playable, undoing a cut restores that part, and the final render and transcript reflect exactly the kept cuts; the timeline works by keyboard.
 - [x] Design it (spec): `/architect cut review timeline`
-- [ ] Build it: `/develop cut review timeline`
+- [x] Build it: `/develop cut review timeline`
    - [x] Change job: `POST /changes` with cut plan and background in one free render, flags written on success, refusals and the shared limit (AC-6, AC-7, AC-8, AC-9)
    - [x] Waveform: computed in the video job, served once per page, pipeline check of a cut change render (AC-11, AC-7)
-   - [ ] Timeline and pending bar: cut blocks, preview on the original with skips, Discard and Render, Background tab feeding the bar, keyboard and phone width (AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-10, AC-11)
+   - [x] Timeline and pending bar: cut blocks, preview on the original with skips, Discard and Render, Background tab feeding the bar, keyboard and phone width (AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-10, AC-11)
 - [ ] Verify it: `/check verify cut review timeline`
 - [ ] Test it: `/test cut review timeline`
 Spec [0011](../specs/0011-cut-review-timeline.md)

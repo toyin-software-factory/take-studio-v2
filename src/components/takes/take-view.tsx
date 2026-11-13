@@ -18,6 +18,8 @@ import { createPlayerBridge } from "./player-bridge";
 import { TakeHeader } from "./take-header";
 import { TakeResult } from "./take-result";
 import { TakeSkeleton } from "./take-skeleton";
+import { useCutReview } from "./use-cut-review";
+import { useLeaveGuard } from "./use-leave-guard";
 import { TakeStage } from "./take-stage";
 import { TakeInspector } from "./take-inspector";
 import { usePoll, type PollResult } from "./use-poll";
@@ -71,6 +73,8 @@ export function TakeView({
 
   const status = detail?.take.status ?? initialStatus;
   const title = detail?.take.title ?? initialTitle;
+  const review = useCutReview(detail, load, takeId);
+  useLeaveGuard(review.unsent);
   const polling = detail === null || keepPolling(detail);
   const idle =
     detail !== null && !isInFlight(status) && !backgroundChangeActive(detail.backgroundJob);
@@ -134,7 +138,7 @@ export function TakeView({
           />
           <div className="grid gap-6 min-[1200px]:grid-cols-[minmax(0,1fr)_380px] min-[1200px]:items-start">
             <div className="flex min-w-0 flex-col gap-5">
-              <TakeStage detail={detail} bridge={bridge} onRetried={onRetried} />
+              <TakeStage detail={detail} bridge={bridge} review={review} onRetried={onRetried} />
               <TakeResult detail={detail} />
             </div>
             <TakeInspector
@@ -142,22 +146,7 @@ export function TakeView({
               bridge={bridge}
               takeEmails={takeEmails}
               onEmailsSaved={setTakeEmails}
-              onStarted={(target) =>
-                setDetail((d) =>
-                  d
-                    ? {
-                        ...d,
-                        backgroundJob: {
-                          status: "queued",
-                          failureCode: null,
-                          targetBackgroundId: target,
-                        },
-                      }
-                    : d,
-                )
-              }
-              onUncertain={() => load()}
-              onStale={() => void load()}
+              review={review}
             />
           </div>
         </>

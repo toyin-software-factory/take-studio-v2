@@ -143,8 +143,11 @@ async function setup(page: Page, baseURL: string, stub: Partial<Stub> = {}) {
       json: next?.json ?? { state: "making", noGreenScreen: false },
     });
   });
-  await page.route(new RegExp(`/api/takes/${id}/background$`), (route) => {
-    state.calls.push(`PUT ${route.request().postData()}`);
+  await page.route(new RegExp(`/api/takes/${id}/jobs/`), (route) =>
+    route.fulfill({ json: { status: "running" } }),
+  );
+  await page.route(new RegExp(`/api/takes/${id}/changes$`), (route) => {
+    state.calls.push(`POST ${route.request().postData()}`);
     if (state.put === "abort") return route.abort();
     state.afterPut?.();
     return route.fulfill({ status: state.put.status, json: state.put.json ?? {} });
@@ -152,6 +155,8 @@ async function setup(page: Page, baseURL: string, stub: Partial<Stub> = {}) {
   return { id: id as string, state };
 }
 
+const bar = (page: Page) => page.getByRole("region", { name: "Unsaved changes" });
+const render = (page: Page) => bar(page).getByRole("button", { name: "Render" });
 const section = (page: Page) => page.getByRole("region", { name: "Background", exact: true });
 const open = async (page: Page, id: string) => {
   await page.goto(`/takes/${id}`);
@@ -176,10 +181,11 @@ test("shows the grid, the current background and the clean edges tip (AC-4, AC-1
   await expect(section(page).getByRole("heading", { name: "Your backgrounds" })).toBeVisible();
   await expect(section(page).getByText("Upload image")).toBeVisible();
   await expect(section(page).getByText(/Getting clean edges/)).toBeVisible();
-  await expect(section(page).getByRole("button", { name: "Keep original" })).toBeDisabled();
+  // Nothing is picked yet, so the pending bar has nothing to say.
+  await expect(bar(page)).toHaveCount(0);
 });
 
-test("picks by keyboard, previews on the stage while the video stays, then uses the background (AC-4, AC-5, AC-12)", async ({
+test("picks by keyboard, previews on the stage while the video stays, then Render in the pending bar uses the background (AC-4, AC-5, AC-12)", async ({
   page,
   baseURL,
 }) => {
@@ -202,14 +208,15 @@ test("picks by keyboard, previews on the stage while the video stays, then uses 
   await expectNoSeriousAxeIssues(page);
   // The video is the same element and still there under the preview.
   await expect(page.locator("video[data-mark=same]")).toHaveCount(1);
-  await section(page).getByRole("button", { name: "Use this background" }).click();
-  await expect.poll(() => state.calls.some((c) => c.startsWith("PUT"))).toBe(true);
-  expect(state.calls.find((c) => c.startsWith("PUT"))).toContain(`"backgroundId":"${CALM}"`);
+  // The pick is a pending change, not a render (AC-5): nothing was sent yet.
+  await expect(bar(page)).toContainText("Background: Calm studio");
+  expect(state.calls.some((c) => c.startsWith("POST"))).toBe(false);
+  await render(page).click();
+  await expect.poll(() => state.calls.some((c) => c.startsWith("POST"))).toBe(true);
+  expect(state.calls.find((c) => c.startsWith("POST"))).toContain(`"background":{"id":"${CALM}"}`);
   // Making the new video: progress shows, the choice cannot start another, the old video plays on.
-  await expect(section(page)).toContainText(
-    "Making your video with the new background. You can keep watching this one.",
-  );
-  await expect(section(page).getByRole("button", { name: "Use this background" })).toBeDisabled();
+  await expect(page.getByRole("status").filter({ hasText: "Rendering" })).toBeVisible();
+  await expect(render(page)).toBeDisabled();
   await expect(page.locator("video[data-mark=same]")).toHaveCount(1);
   await expect(page.getByText("Preview, not your video yet")).toHaveCount(0);
 });
@@ -225,7 +232,7 @@ test("choosing Keep original on a take with a background shows the original fram
   await expect(section(page)).toContainText("Now: Calm studio");
   await section(page).getByRole("radio", { name: "Keep original" }).check({ force: true });
   await expect(page.getByAltText("Preview of your take on your original background")).toBeVisible();
-  await expect(section(page).getByRole("button", { name: "Keep original" })).toBeEnabled();
+  await expect(bar(page)).toContainText("Background: Original");
 });
 
 test("says so when the video was kept on its own background (AC-3) and when a preview finds no green screen (AC-4)", async ({
@@ -249,39 +256,26 @@ test("says so when the video was kept on its own background (AC-3) and when a pr
     .getByRole("radio", { name: /Warm studio/ })
     .check({ force: true });
   await expect(section(page)).toContainText("this background wouldn't show");
-  // The stage line names no button: "Use this background" is off for this take.
-  await expect(
-    page.getByRole("status").filter({ hasText: "Still preview, not a video." }),
-  ).toHaveText("Still preview, not a video.");
-  // The server refuses a real background on a take with no green screen (409 no_green_screen), so
-  // the button is off and the note above says why. Going back to the original needs no change.
-  await expect(section(page).getByRole("button", { name: "Use this background" })).toBeDisabled();
+  // The server refuses a real background on a take with no green screen (409 no_green_screen) and
+  // the page shows that message; the note above says why. Going back to the original is no change.
   await section(page).getByRole("radio", { name: "Keep original" }).check({ force: true });
-  await expect(section(page).getByRole("button", { name: "Keep original" })).toBeDisabled();
+  await expect(bar(page)).toHaveCount(0);
 });
 
-test("shows a failed change and Try again repeats the failed target (AC-5)", async ({
+test("shows a failed change from before and keeps nothing pending (AC-5)", async ({
   page,
   baseURL,
 }) => {
-  const { id, state } = await setup(page, baseURL!, {
+  const { id } = await setup(page, baseURL!, {
     detail: {
       backgroundJob: { status: "failed", failureCode: "internal_error", targetBackgroundId: WARM },
     },
-    preview: READY_PREVIEW,
   });
   await open(page, id);
   await expect(section(page)).toContainText(
     "The new background didn't finish. Your video is unchanged. Try again.",
   );
-  await expect(section(page).getByRole("radio", { name: /Warm studio/ })).toBeChecked();
-  // The stage line names the button that is really there.
-  await expect(
-    page.getByRole("status").filter({ hasText: "Still preview, not a video" }),
-  ).toContainText("\u201cTry again\u201d");
-  await section(page).getByRole("button", { name: "Try again" }).click();
-  await expect.poll(() => state.calls.some((c) => c.startsWith("PUT"))).toBe(true);
-  expect(state.calls.find((c) => c.startsWith("PUT"))).toContain(`"backgroundId":"${WARM}"`);
+  await expect(bar(page)).toHaveCount(0);
 });
 
 test("keeps the current and the chosen background visible when the list cannot load", async ({
@@ -299,32 +293,6 @@ test("keeps the current and the chosen background visible when the list cannot l
   await expect(section(page).getByRole("radio", { name: /Calm studio/ })).toBeVisible();
 });
 
-test("keeps its message when a lost start cannot be confirmed either (AC-5)", async ({
-  page,
-  baseURL,
-}) => {
-  const { id, state } = await setup(page, baseURL!, { put: "abort" });
-  await open(page, id);
-  await section(page)
-    .getByRole("radio", { name: /Calm studio/ })
-    .check({ force: true });
-  // Looking at the take again fails too.
-  state.detailStatus = 500;
-  await section(page).getByRole("button", { name: "Use this background" }).click();
-  await expect(
-    section(page)
-      .getByRole("alert")
-      .filter({ hasText: /couldn.t confirm the change started/ }),
-  ).toBeVisible();
-  // It stays until the creator acts again.
-  await page.waitForTimeout(500);
-  await expect(
-    section(page)
-      .getByRole("alert")
-      .filter({ hasText: /couldn.t confirm the change started/ }),
-  ).toBeVisible();
-});
-
 test("shows a refusal from the server, and a failed preview with a way to try it again", async ({
   page,
   baseURL,
@@ -333,8 +301,8 @@ test("shows a refusal from the server, and a failed preview with a way to try it
     put: {
       status: 409,
       json: {
-        error: "job_active",
-        message: "Your transcript is still being made. Try again in a moment.",
+        error: "background_not_ready",
+        message: "That background isn't ready yet. Try again in a moment.",
       },
     },
     preview: {
@@ -352,13 +320,13 @@ test("shows a refusal from the server, and a failed preview with a way to try it
     .getByRole("radio", { name: /Calm studio/ })
     .check({ force: true });
   await expect(
-    section(page).getByRole("alert").filter({ hasText: "isn't ready yet" }),
+    section(page)
+      .locator('[data-slot="alert"], p[role="alert"]')
+      .filter({ hasText: "isn't ready yet" }),
   ).toBeVisible();
   await expect(section(page).getByRole("button", { name: "Try the preview again" })).toBeVisible();
-  await section(page).getByRole("button", { name: "Use this background" }).click();
-  await expect(section(page)).toContainText(
-    "Your transcript is still being made. Try again in a moment.",
-  );
+  await render(page).click();
+  await expect(page.getByRole("status").filter({ hasText: "isn't ready yet" })).toBeVisible();
 });
 
 test("deleting a background removes it from the list and resets the choice", async ({
@@ -403,7 +371,7 @@ for (const [name, viewport] of [
       },
     });
     await open(page, id);
-    await expect(section(page).getByRole("button", { name: "Try again" })).toBeVisible();
+    await expect(section(page)).toContainText("The new background didn't finish");
     await expectNoSeriousAxeIssues(page);
     await section(page)
       .getByRole("radio", { name: /Warm studio/ })
@@ -429,57 +397,9 @@ test.describe("touch targets on a phone", () => {
     await section(page)
       .getByRole("radio", { name: /Calm studio/ })
       .check({ force: true });
-    const action = await section(page)
-      .getByRole("button", { name: "Use this background" })
-      .boundingBox();
+    const action = await render(page).boundingBox();
     expect(action?.height).toBeGreaterThanOrEqual(44);
   });
-});
-
-test("'Try again' is only for the failed target: another pick is a new change", async ({
-  page,
-  baseURL,
-}) => {
-  const { id } = await setup(page, baseURL!, {
-    detail: {
-      backgroundJob: { status: "failed", failureCode: "internal_error", targetBackgroundId: WARM },
-    },
-  });
-  await open(page, id);
-  await expect(section(page).getByRole("button", { name: "Try again" })).toBeVisible();
-  await section(page)
-    .getByRole("radio", { name: /Calm studio/ })
-    .check({ force: true });
-  await expect(section(page).getByRole("button", { name: "Use this background" })).toBeVisible();
-  await expect(section(page).getByRole("button", { name: "Try again" })).toHaveCount(0);
-  await section(page)
-    .getByRole("radio", { name: /Warm studio/ })
-    .check({ force: true });
-  await expect(section(page).getByRole("button", { name: "Try again" })).toBeVisible();
-});
-
-test("deleting the failed target falls back to Keep original, not the deleted ID", async ({
-  page,
-  baseURL,
-}) => {
-  const { id, state } = await setup(page, baseURL!, {
-    list: { ...LIST, mine: [item(MINE, "Office wall")] },
-    detail: {
-      backgroundJob: { status: "failed", failureCode: "internal_error", targetBackgroundId: MINE },
-    },
-  });
-  await page.route("**/api/backgrounds/*", (route) => {
-    if (route.request().method() !== "DELETE") return route.fallback();
-    state.list = 500;
-    return route.fulfill({ status: 204 });
-  });
-  await open(page, id);
-  await expect(section(page).getByRole("radio", { name: /Office wall/ })).toBeChecked();
-  await section(page).getByRole("button", { name: "Delete Office wall" }).click();
-  await expect(section(page).getByRole("radio", { name: "Keep original" })).toBeChecked();
-  // Nothing is left to retry: the button is the plain, disabled "Keep original" (already current).
-  await expect(section(page).getByRole("button", { name: "Keep original" })).toBeDisabled();
-  await expect(section(page).getByRole("button", { name: "Try again" })).toHaveCount(0);
 });
 
 test("a refresh that was fetched before a delete cannot bring the deleted background back", async ({
@@ -524,7 +444,7 @@ test("while a still shows, the transport is hidden and the stage says it is a st
   // The label (announced: role=status), the banner, and no playable controls.
   const status = page.getByRole("status").filter({ hasText: "Still preview, not a video" });
   await expect(status).toHaveText(
-    "Still preview, not a video. Press \u201cUse this background\u201d to render it.",
+    "Still preview, not a video. Press \u201cRender\u201d to make it.",
   );
   await expect(page.getByText("Preview, not your video yet")).toBeVisible();
   await expect(page.getByRole("button", { name: "Play" })).toBeHidden();
@@ -546,7 +466,7 @@ test("while a still shows, the transport is hidden and the stage says it is a st
   await expect(page.getByRole("button", { name: "Back to your video" })).toHaveCount(0);
 });
 
-test("the stage line names Keep original when the original is what is previewed", async ({
+test("the stage line names Render when the original is what is previewed", async ({
   page,
   baseURL,
 }) => {
@@ -557,7 +477,7 @@ test("the stage line names Keep original when the original is what is previewed"
   await section(page).getByRole("radio", { name: "Keep original" }).check({ force: true });
   await expect(
     page.getByRole("status").filter({ hasText: "Still preview, not a video" }),
-  ).toContainText("\u201cKeep original\u201d");
+  ).toContainText("\u201cRender\u201d");
   await expect(page.getByRole("button", { name: "Play" })).toBeHidden();
   // Returning to the current background (Calm studio) ends the preview too.
   await page.getByRole("button", { name: "Back to your video" }).click();
@@ -654,13 +574,7 @@ test("a change refused because one is already running says so, and the page catc
   baseURL,
 }) => {
   const { id, state } = await setup(page, baseURL!, {
-    put: {
-      status: 409,
-      json: {
-        error: "job_active",
-        message: "A background change is already running. It'll show here when it's done.",
-      },
-    },
+    put: { status: 409, json: { error: "job_active" } },
   });
   await open(page, id);
   await section(page)
@@ -674,15 +588,11 @@ test("a change refused because one is already running says so, and the page catc
       backgroundJob: { status: "running", failureCode: null, targetBackgroundId: WARM },
     };
   };
-  await section(page).getByRole("button", { name: "Use this background" }).click();
-  await expect(
-    section(page).getByRole("alert").filter({
-      hasText: "A background change is already running. It'll show here when it's done.",
-    }),
-  ).toBeVisible();
-  // The refusal also read the take again: the running change now shows and blocks the button.
-  await expect(section(page)).toContainText("Making your video with the new background");
-  await expect(section(page).getByRole("button", { name: "Use this background" })).toBeDisabled();
+  await render(page).click();
+  // The refusal also read the take again: the running change now locks the bar. The pick stays.
+  await expect(page.getByRole("status").filter({ hasText: "Rendering" })).toBeVisible();
+  await expect(bar(page)).toContainText("Background: Calm studio");
+  await expect(render(page)).toBeDisabled();
 });
 
 test("a refusal with no message body still tells the creator (never silent)", async ({
@@ -694,8 +604,8 @@ test("a refusal with no message body still tells the creator (never silent)", as
   await section(page)
     .getByRole("radio", { name: /Calm studio/ })
     .check({ force: true });
-  await section(page).getByRole("button", { name: "Use this background" }).click();
-  await expect(section(page).getByRole("alert").filter({ hasText: "didn't start" })).toBeVisible();
+  await render(page).click();
+  await expect(page.getByRole("status").filter({ hasText: "didn't start" })).toBeVisible();
 });
 
 test("the Keep original tile shows the take's thumbnail, and gets a fresh link when the old one has expired", async ({
