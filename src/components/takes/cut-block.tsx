@@ -13,6 +13,8 @@ export function CutBlock({
   widthPx,
   disabled,
   onPress,
+  onFocus,
+  describedBy,
 }: {
   readonly cut: NumberedCut;
   readonly applied: boolean;
@@ -20,6 +22,9 @@ export function CutBlock({
   readonly widthPx: number;
   readonly disabled: boolean;
   readonly onPress: () => void;
+  readonly onFocus?: () => void;
+  /** Id of the element holding this cut's reason (spec 0012 AC-3). */
+  readonly describedBy?: string;
 }) {
   const r = blockRect(cut, durationMs, widthPx);
   return (
@@ -27,6 +32,8 @@ export function CutBlock({
       type="button"
       aria-pressed={!applied}
       aria-label={cutName(cut, applied)}
+      aria-describedby={describedBy}
+      onFocus={onFocus}
       disabled={disabled}
       onClick={onPress}
       style={{ left: r.hitLeft, width: r.hitWidth }}

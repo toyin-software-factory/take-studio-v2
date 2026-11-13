@@ -8,6 +8,7 @@ import {
   numberCuts,
   pendingItems,
   pendingRanges,
+  reasonLine,
   setBackgroundEdit,
   summaryLine,
   timelineWidth,
@@ -26,6 +27,24 @@ describe("cut review model", () => {
     expect(n.map((c) => c.label)).toEqual(["Pause 1", "Cut 2", "Pause 3"]);
     expect(cutName(n[0]!, true)).toBe("Pause 1, 1.4 seconds, cut. Press to keep it.");
     expect(cutName(n[1]!, false)).toBe("Cut 2, 0.4 seconds, kept. Press to cut it.");
+  });
+  it("reason line is the label and the reason, null without one (spec 0012 AC-3)", () => {
+    const n = numberCuts([
+      {
+        id: "a",
+        startMs: 1000,
+        endMs: 2000,
+        kind: "ai",
+        applied: true,
+        reason: " You restarted. ",
+      },
+      { id: "b", startMs: 3000, endMs: 3400, kind: "pause", applied: true, reason: null },
+      { id: "c", startMs: 4000, endMs: 4400, kind: "pause", applied: true },
+    ]);
+    expect(reasonLine(n[0])).toBe("Cut 1: You restarted.");
+    expect(reasonLine(n[1])).toBeNull();
+    expect(reasonLine(n[2])).toBeNull();
+    expect(reasonLine(undefined)).toBeNull();
   });
   it("summary rounds half up", () => {
     expect(summaryLine([])).toBe("No pauses cut.");

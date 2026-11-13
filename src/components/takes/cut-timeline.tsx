@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { StagePanel } from "@/components/stage";
-import { summaryLine, timelineWidth } from "@/lib/cut-review";
+import { reasonLine, summaryLine, timelineWidth } from "@/lib/cut-review";
 import { CutBlock } from "./cut-block";
 import { type PlayerBridge, useHead } from "./player-bridge";
 import type { CutReview } from "./use-cut-review";
@@ -33,12 +33,15 @@ export function CutTimeline({
   durationMs,
   review,
   bridge,
+  aiEdit = null,
 }: {
   readonly takeId: string;
   readonly durationMs: number;
   readonly review: CutReview;
   readonly bridge: PlayerBridge;
+  readonly aiEdit?: "done" | "unavailable" | null;
 }) {
+  const [focusedId, setFocusedId] = useState<string | null>(null);
   const box = useRef<HTMLDivElement>(null);
   const container = useWidth(box);
   const widthPx = timelineWidth(container, durationMs);
@@ -47,6 +50,11 @@ export function CutTimeline({
   const cutMs = review.numbered
     .filter((c) => review.applied(c.id))
     .map((c) => ({ ms: c.endMs - c.startMs }));
+  const focused = review.numbered.find((c) => c.id === focusedId);
+  const reason = reasonLine(focused);
+  // Room for the line only when some cut has a reason, so a take without any adds no height (the
+  // empty status region still exists, for the live announcement, but takes no space).
+  const hasReasons = review.numbered.some((c) => c.reason?.trim());
   const disabled = review.locked || review.readOnly;
 
   return (
@@ -68,7 +76,10 @@ export function CutTimeline({
               durationMs={durationMs}
               widthPx={widthPx}
               disabled={disabled}
+              describedBy={cut.reason?.trim() ? `${takeId}-reason-${cut.id}` : undefined}
+              onFocus={() => setFocusedId(cut.id)}
               onPress={() => {
+                setFocusedId(cut.id);
                 review.toggle(cut.id);
                 bridge.seekOriginal(Math.max(0, cut.startMs - 1000));
               }}
@@ -84,6 +95,25 @@ export function CutTimeline({
       <p role="status" className="text-small">
         {summaryLine(cutMs)}
       </p>
+      <p
+        role="status"
+        data-testid="cut-reason"
+        className={`text-small text-stage-text-muted ${hasReasons ? "min-h-5" : "empty:-mt-2"}`}
+      >
+        {reason}
+      </p>
+      {review.numbered.map((cut) =>
+        cut.reason?.trim() ? (
+          <span key={cut.id} id={`${takeId}-reason-${cut.id}`} className="sr-only">
+            {cut.reason}
+          </span>
+        ) : null,
+      )}
+      {aiEdit === "unavailable" ? (
+        <p data-testid="ai-unavailable" className="text-small text-stage-text-muted">
+          AI edit wasn&apos;t available for this take.
+        </p>
+      ) : null}
     </StagePanel>
   );
 }
