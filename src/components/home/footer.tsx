@@ -4,7 +4,7 @@ import { FOOTER } from "./content";
 /** The footer: four columns, the retention note and the wordmark (the blur comes later). */
 export function HomeFooter() {
   return (
-    <footer className="h-footer" data-theme="dark" data-check="footer">
+    <footer className="h-footer" data-theme="dark">
       <div className="h-container">
         <div className="h-footer-cols">
           {FOOTER.columns.map((col) => (

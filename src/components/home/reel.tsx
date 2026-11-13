@@ -9,15 +9,10 @@ import { ReelVideo } from "./reel-video";
  */
 export function HomeReel() {
   return (
-    <section className="h-reel" id="reel" aria-labelledby="reel-title" data-check="s2-reel">
+    <section className="h-reel" id="reel" aria-labelledby="reel-title">
       <div className="h-reel-sticky">
         <div className="h-container h-reel-head">
-          <h2
-            className="h-h2 h-reel-title"
-            id="reel-title"
-            data-reveal-words
-            data-check="s2-reel-heading"
-          >
+          <h2 className="h-h2 h-reel-title" id="reel-title" data-reveal-words>
             <span className="h-muted">{REEL.muted}</span> {REEL.strong}
           </h2>
           <div className="h-reel-slot" aria-hidden="true" />
