@@ -5,7 +5,7 @@ import { processingJob } from "./index";
 import { type TestDb, createCreator, openTestDb, seedTake } from "../testing/test-db";
 
 /**
- * HRF-T08: migration 0007 lets `processing_job.kind` be `background`. A dedicated database, since
+ * Migration 0007 lets `processing_job.kind` be `background`. A dedicated database, since
  * the test inserts jobs of every kind (the shared one is used by many suites).
  */
 let testDb: TestDb;

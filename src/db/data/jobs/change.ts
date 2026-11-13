@@ -1,4 +1,4 @@
-import { and, asc, count, eq, gt, inArray, or, sql } from "drizzle-orm";
+import { and, asc, count, eq, gt, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { BACKGROUND_CHANGE } from "@/lib/background-rules";
 import { type CutPlanEntry, effectiveRemovedRanges } from "@/lib/cut-rules";
@@ -13,17 +13,6 @@ import type { StartedJob } from "./types";
 
 /** Stands for "keyed on a background that has since been deleted" when comparing targets. */
 const DELETED_BACKGROUND = "deleted";
-
-/**
- * LEGACY (HRF-T08): before the `background` kind existed every background change was a
- * `rerender` (a `rerender` never has a `trim` step, so the old "no trim step" rule matched all of
- * them), and those rows were not converted: they cannot be told from a `startJob` re render
- * afterwards. An old Worker may also start one during the deploy. The hourly count and the latest
- * change lookup therefore still treat a `rerender` as a possible background change. A later
- * cleanup task converts the rows and removes this with the `rerender` branch of
- * `isBackgroundChange`.
- */
-export const legacyBackgroundRerender = sql`${processingJob.kind} = 'rerender'`;
 
 export type ChangeStartError =
   | "not_found"
@@ -207,7 +196,7 @@ export async function startChangeJob(
     }
 
     // One limit for every change: `background` jobs started in the last hour (failed ones and
-    // retries count), plus the LEGACY `rerender` rows (HRF-T08).
+    // retries count). A `rerender` (a re render of a failed take) never counts.
     const [recent] = await tx
       .select({ n: count() })
       .from(processingJob)
@@ -215,7 +204,7 @@ export async function startChangeJob(
       .where(
         and(
           eq(take.creatorId, input.creatorId),
-          or(eq(processingJob.kind, "background"), legacyBackgroundRerender),
+          eq(processingJob.kind, "background"),
           gt(processingJob.createdAt, new Date(now.getTime() - 3_600_000)),
         ),
       );

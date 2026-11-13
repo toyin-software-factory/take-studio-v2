@@ -76,18 +76,6 @@ export function isBackgroundKind(kind: string): boolean {
   return kind === "background";
 }
 
-/**
- * Whether a job is a background change (spec 0008): kind `background`, or, only while old Workers
- * may still be running (the deploy window of HRF-T08), a `rerender` on a take that is not
- * `processing` (the way background changes were recognised before the kind existed; a re render
- * started by `startJob` has the take in `processing`). Used where a running job is acted on:
- * `finishInTx` and `process-take`. LEGACY: a later cleanup task removes the `rerender` branch,
- * leaving `isBackgroundKind`; new changes create only `background` jobs.
- */
-export function isBackgroundChange(kind: string, takeStatus: string): boolean {
-  return isBackgroundKind(kind) || (kind === "rerender" && takeStatus !== "processing");
-}
-
 /** How a job relates to its take: owns it (`video`), changes only its look (`background`), or
  *  works beside it (`transcript`). */
 export type JobFamily = "video" | "background" | "transcript";

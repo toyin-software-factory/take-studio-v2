@@ -9,9 +9,7 @@ import type { FinishResult, FinishStatus } from "./types";
  * The finish of a background change (spec 0008, `startChangeJob`): a `background` job works
  * beside a take that stays `ready`: no take transition, no refund (it charged nothing). A re
  * render started by `startJob` is a `rerender` with the take in `processing` and takes the
- * video path instead. LEGACY (HRF-T08 deploy window): a `rerender` on a take that is not
- * `processing` is still a background change (`isBackgroundChange`), because an old Worker may
- * have started it; a later cleanup task removes that branch.
+ * video path instead.
  */
 export async function finishBackgroundJob(
   tx: Tx,

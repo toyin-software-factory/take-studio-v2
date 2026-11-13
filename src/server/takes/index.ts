@@ -1,7 +1,6 @@
 import { and, asc, desc, eq, gt, lt, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { type DeletedTakes, deleteTakesInTx } from "@/db/data/deletion";
-import { legacyBackgroundRerender } from "@/db/data/jobs";
 import { markUploaded, transition } from "@/db/data/takes";
 import { jobStep, processingJob, render, take } from "@/db/schema";
 import { runTx } from "@/db/tx";
@@ -133,8 +132,7 @@ export async function getForCreator(
         .orderBy(asc(jobStep.position))
     : [];
 
-  // The latest background change: the latest job of kind `background` (LEGACY, HRF-T08: or a
-  // `rerender`, which is what background changes were before the kind existed).
+  // The latest background change: the latest job of kind `background`.
   const [backgroundJob] = await db
     .select({
       status: processingJob.status,
@@ -142,12 +140,7 @@ export async function getForCreator(
       targetBackgroundId: processingJob.targetBackgroundId,
     })
     .from(processingJob)
-    .where(
-      and(
-        eq(processingJob.takeId, takeId),
-        or(eq(processingJob.kind, "background"), legacyBackgroundRerender),
-      ),
-    )
+    .where(and(eq(processingJob.takeId, takeId), eq(processingJob.kind, "background")))
     .orderBy(desc(processingJob.createdAt))
     .limit(1);
 

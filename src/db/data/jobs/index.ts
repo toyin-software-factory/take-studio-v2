@@ -9,9 +9,4 @@ export { whileJobActive } from "./locks";
 export { finish, finishInTx } from "./finish";
 export { type StartError, startJob } from "./initial";
 export { type TranscribeStartError, startTranscribeJob } from "./transcribe";
-export {
-  type ChangeStartError,
-  type ChangeInput,
-  legacyBackgroundRerender,
-  startChangeJob,
-} from "./change";
+export { type ChangeStartError, type ChangeInput, startChangeJob } from "./change";

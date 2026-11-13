@@ -402,7 +402,7 @@ describe("GET /api/takes/[id] background fields (spec 0008)", () => {
     expect((await get(creator.id, t.id)).noGreenScreen).toBe(false);
   });
 
-  it("LEGACY: a `rerender` (what background changes were before the kind) is still the latest change", async () => {
+  it("a `rerender` is not a background change, so it is never the latest change", async () => {
     const creator = await createCreator(db);
     const t = await seedTake(db, creator.id, { status: "ready", durationMs: 5_000 });
     await db.insert(processingJob).values({
@@ -413,10 +413,7 @@ describe("GET /api/takes/[id] background fields (spec 0008)", () => {
       failureCode: "ffmpeg_error",
       secondsCharged: 0,
     });
-    expect((await get(creator.id, t.id)).backgroundJob).toMatchObject({
-      status: "failed",
-      failureCode: "ffmpeg_error",
-    });
+    expect((await get(creator.id, t.id)).backgroundJob).toBeNull();
   });
 });
 

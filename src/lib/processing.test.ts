@@ -9,7 +9,6 @@ import {
   STEPS,
   STEPS_BY_KIND,
   STEP_NAMES,
-  isBackgroundChange,
   isBackgroundKind,
   isSkipReason,
   isTranscribeKind,
@@ -69,15 +68,6 @@ describe("step registry (AC-7)", () => {
     });
     expect(JOB_KINDS.filter(isBackgroundKind)).toEqual(["background"]);
     expect(isBackgroundKind("rerender")).toBe(false);
-  });
-
-  it("LEGACY: a `rerender` on a take that is not processing is still a background change", () => {
-    expect(isBackgroundChange("background", "ready")).toBe(true);
-    expect(isBackgroundChange("background", "processing")).toBe(true);
-    expect(isBackgroundChange("rerender", "ready")).toBe(true);
-    expect(isBackgroundChange("rerender", "processing")).toBe(false);
-    expect(isBackgroundChange("initial", "ready")).toBe(false);
-    expect(isBackgroundChange("transcribe", "ready")).toBe(false);
   });
 
   it("emails only the first run: transcribe and re render jobs never send the take email", () => {

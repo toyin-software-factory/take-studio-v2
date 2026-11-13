@@ -122,7 +122,7 @@ Page state (browser only): `current` (from the take GET: cut flags + background)
 - Inherited background (request names no background): derive it from the latest render as `same_background` does today (`keyed ? render.background_id : null`), not from `take.background_id`. If the latest render is keyed and its `background_id` is null (the background was deleted), refuse `background_missing`. Otherwise check the inherited background is still `ready` (`background_not_ready`).
 - `invalid`: the stored ranges with the plan applied would remove the whole take (no kept range of at least 1 frame; reuse the render's own "nothing to keep" rule from `src/lib/cut-rules.ts`).
 - The `no_green_screen` refusal applies only when the request names a real background different from the current one; a cut only change on a no green screen take is allowed.
-- `background_change_limit` keeps its code internally but the HTTP error is `change_limit` with the new message (AC-8); count unchanged (all `background` jobs, plus the legacy `rerender` rule).
+- `background_change_limit` keeps its code internally but the HTTP error is `change_limit` with the new message (AC-8); count unchanged (all `background` jobs; a `rerender` never counts).
 - Insert the job with `target_background_id` (requested, else the inherited one above, so an unchanged keyed take stays keyed) and `cut_plan` (null when empty), steps `background` (only for a real background) and `render`.
 
 **Job changes** (`src/trigger/process-take.ts`, `src/db/data/jobs/`):
