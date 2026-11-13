@@ -1,4 +1,5 @@
 import { fileURLToPath } from "node:url";
+import { inArray } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import postgres from "postgres";
@@ -119,4 +120,27 @@ export async function seedTake(
     .returning();
   if (!row) throw new Error("seedTake inserted nothing");
   return row;
+}
+
+/**
+ * Built in backgrounds (no creator) are shared by every test file in a database, and the AI step
+ * puts the whole ready catalog in its prompt. A file that inserts one tracks it here and calls
+ * `clean` in `afterAll`, so a reused local test database does not pile them up (B2-T08).
+ */
+export function builtInTracker(): {
+  readonly track: <T extends { readonly id: string }>(row: T) => T;
+  readonly clean: (db: Db) => Promise<void>;
+} {
+  const ids: string[] = [];
+  return {
+    track: (row) => {
+      ids.push(row.id);
+      return row;
+    },
+    clean: async (db) => {
+      if (ids.length > 0) {
+        await db.delete(schema.background).where(inArray(schema.background.id, ids));
+      }
+    },
+  };
 }

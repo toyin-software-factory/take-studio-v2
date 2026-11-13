@@ -3,7 +3,13 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { PREVIEW_STALE_MS } from "@/lib/background-preview";
 import { completePreview } from "@/db/data/previews";
 import { background, backgroundPreview, cut, take } from "@/db/schema";
-import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
+import {
+  type TestDb,
+  createCreator,
+  openTestDb,
+  seedTake,
+  builtInTracker,
+} from "@/db/testing/test-db";
 import type { BackgroundPreview, Db } from "@/db/types";
 import { type PreviewHttpDeps, handleGetPreview, handlePostPreview } from "./preview-http";
 
@@ -15,7 +21,11 @@ beforeAll(async () => {
   testDb = await openTestDb();
   db = testDb.db;
 });
-afterAll(() => testDb?.close());
+const built = builtInTracker();
+afterAll(async () => {
+  if (testDb) await built.clean(testDb.db);
+  await testDb?.close();
+});
 
 function deps(creatorId: string | null, triggered: BackgroundPreview[] = [], failTrigger = false) {
   const value: PreviewHttpDeps = {
@@ -74,7 +84,7 @@ async function seedBackground(over: Partial<typeof background.$inferInsert> = {}
       ...over,
     })
     .returning();
-  return row!;
+  return built.track(row!);
 }
 
 async function readyTake() {
