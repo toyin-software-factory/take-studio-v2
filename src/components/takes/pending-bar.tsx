@@ -42,7 +42,7 @@ export function PendingBar({ review }: { readonly review: CutReview }) {
             </p>
           </div>
           {/* On a phone the text has the full width and the buttons share the row below it. */}
-          <div className="flex gap-3 *:flex-1 sm:*:flex-none">
+          <div className="flex gap-3 *:flex-1 max-sm:*:min-h-11 sm:*:flex-none">
             <Button variant="ghost" onClick={review.discard} disabled={review.locked}>
               Discard
             </Button>
