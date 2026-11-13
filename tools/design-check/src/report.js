@@ -116,7 +116,8 @@ export function toHtml(v, result, state) {
   const allVisuals = result.pages
     .flatMap((p) => p.visuals.map((x) => ({ ...x, page: p.name })))
     .sort((a, b) => b.ratio - a.ratio);
-  const isRef = (x) => referenced.has(`${x.page}|${x.viewport}|${x.label}`);
+  // Keep a section's screenshots when it, or anything inside it, has a finding or flag.
+  const isRef = (x) => x.codeFindings > 0 || referenced.has(`${x.page}|${x.viewport}|${x.label}`);
   const visuals = [...allVisuals.filter(isRef), ...allVisuals.filter((x) => !isRef(x)).slice(0, 16)]
     .map(
       (

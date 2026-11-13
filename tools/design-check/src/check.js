@@ -157,7 +157,7 @@ export async function runRound(cfg, pages, { quick = false } = {}) {
         );
         const B = await extractPage(browser, page.build, vp, {
           outDir: dir,
-          prefix: "build",
+          prefix: quick ? "live-build" : "build", // watch never overwrites a full check's captures
           settleMs: cfg.settleMs,
           hover: !quick && cfg.hover,
           storageState: page.storageState,
