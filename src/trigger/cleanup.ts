@@ -9,7 +9,7 @@ import {
 } from "@/db/data/cleanup";
 import { parseJobEnv } from "@/lib/env";
 import { createR2 } from "@/lib/r2";
-import { cancelRuns, isRunWaiting, triggerProbe } from "@/lib/trigger-runs";
+import { cancelRuns, isRunAlive, isRunWaiting, triggerProbe } from "@/lib/trigger-runs";
 import { storageDeletionTask } from "./storage-deletion";
 import { queueTakeEmail } from "./email/queue";
 import { ensureBuiltInBackgrounds } from "./built-in-backgrounds";
@@ -67,7 +67,7 @@ export const cleanupTask = schedules.task({
       }
 
       // A queued job whose run still waits (behind its creator's limit) is left alone.
-      const stale = await failStaleJobs(db, now, isRunWaiting);
+      const stale = await failStaleJobs(db, now, isRunWaiting, isRunAlive);
       // AC-5: a job the sweep failed still owes its creator the "didn't finish" email.
       for (const job of stale) await queueTakeEmail(job.jobId, job.kind);
       const cancelled = await cancelRuns(stale.flatMap(({ runId }) => (runId ? [runId] : [])));

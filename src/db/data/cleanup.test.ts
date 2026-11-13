@@ -326,6 +326,79 @@ describe("cleanup: queued jobs behind a creator's limit (HRF-T01)", () => {
   }, 60_000);
 });
 
+describe("cleanup: running jobs past their limit (RF3-T01)", () => {
+  const { runningJobBefore, runningBackstopBefore } = cleanupCutoffs(NOW);
+  const minus = (d: Date, ms: number) => new Date(d.getTime() - ms);
+  const clean = () =>
+    db
+      .delete(processingJob)
+      .where(and(eq(processingJob.status, "running"), lt(processingJob.startedAt, NOW)));
+  beforeEach(clean);
+  afterEach(clean);
+
+  const runningJob = async (over: Partial<typeof processingJob.$inferInsert>) => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, { status: "processing" });
+    return seedJob(t.id, {
+      status: "running",
+      startedAt: minus(runningJobBefore, 1000),
+      ...over,
+    });
+  };
+
+  it("keeps a job whose run is alive, fails an ended run, and fails past the backstop without asking", async () => {
+    const alive = await runningJob({ triggerRunId: "run_alive" });
+    const ended = await runningJob({ triggerRunId: "run_ended" });
+    const past = await runningJob({
+      triggerRunId: "run_alive",
+      startedAt: minus(runningBackstopBefore, 1000),
+    });
+    const asked: string[] = [];
+    const failed = await failStaleJobs(db, NOW, undefined, async (runId) => {
+      asked.push(runId);
+      return runId === "run_alive";
+    });
+    const ids = new Set(failed.map((j) => j.jobId));
+    expect(ids.has(alive.id)).toBe(false);
+    expect(ids.has(ended.id)).toBe(true);
+    expect(ids.has(past.id)).toBe(true);
+    expect(asked.sort()).toEqual(["run_alive", "run_ended"]);
+    const [row] = await db.select().from(processingJob).where(eq(processingJob.id, alive.id));
+    expect(row).toMatchObject({ status: "running", failureCode: null });
+  });
+
+  it("without the check, or without a run ID, a running job past its limit is stale as before", async () => {
+    const withRun = await runningJob({ triggerRunId: "run_alive" });
+    const noRun = await runningJob({ triggerRunId: null });
+    const failed = await failStaleJobs(db, NOW);
+    expect(failed.map((j) => j.jobId).sort()).toEqual([withRun.id, noRun.id].sort());
+  });
+
+  it("shares the lookup cap with queued jobs", async () => {
+    const limit = CLEANUP.queuedRunChecksPerSweep;
+    const { queuedJobBefore } = cleanupCutoffs(NOW);
+    for (let i = 0; i < limit; i += 1) await runningJob({ triggerRunId: `run_r${i}` });
+    const creator = await createCreator(db);
+    for (let i = 0; i < limit; i += 1) {
+      const t = await seedTake(db, creator.id, { status: "processing" });
+      await seedJob(t.id, {
+        status: "queued",
+        triggerRunId: `run_q${i}`,
+        createdAt: minus(queuedJobBefore, 1000),
+      });
+    }
+    let asked = 0;
+    await failStaleJobs(
+      db,
+      NOW,
+      async () => ((asked += 1), true),
+      async () => ((asked += 1), true),
+    );
+    expect(asked).toBe(limit);
+    await db.delete(processingJob).where(eq(processingJob.status, "queued"));
+  });
+});
+
 describe("cleanup: video expiry (AC-18)", () => {
   it("expires due takes, queues their files, clears render keys, and keeps cuts and render settings", async () => {
     const creator = await createCreator(db);

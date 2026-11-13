@@ -129,9 +129,26 @@ export async function failStaleJobs(
    * the rest of the cleanup; the answer for the rest is "waiting".
    */
   isRunWaiting?: (runId: string) => Promise<boolean>,
+  /**
+   * Whether a run has not ended (Trigger.dev). A `running` job past its usual limit whose run is
+   * still alive is a late retry that waited in its creator's queue, not a stuck job: it is left
+   * alone until the 6 hour backstop (`CLEANUP.runningBackstopMs` from `started_at`). Shares the
+   * per sweep lookup cap with `isRunWaiting`. Without it (or without a run ID) a running job is
+   * stale at its usual limit, as before.
+   */
+  isRunAlive?: (runId: string) => Promise<boolean>,
 ): Promise<readonly StaleJob[]> {
-  const { queuedJobBefore, queuedBackstopBefore, runningJobBefore, transcribeRunningJobBefore } =
-    cleanupCutoffs(now);
+  const {
+    queuedJobBefore,
+    queuedBackstopBefore,
+    runningJobBefore,
+    runningBackstopBefore,
+    transcribeRunningJobBefore,
+  } = cleanupCutoffs(now);
+  // A running job whose run may still be alive is left out of scan 1 until the backstop.
+  const runningNeedsNoCheck = isRunAlive
+    ? or(isNull(processingJob.triggerRunId), lt(processingJob.startedAt, runningBackstopBefore))
+    : undefined;
   // Scan 1: everything that is stale without asking anyone. A queued job whose run may still be
   // waiting is left out here, so retained jobs can never crowd a stale one out of the batch.
   const needsNoCheck = isRunWaiting
@@ -152,12 +169,14 @@ export async function failStaleJobs(
           ne(processingJob.kind, "transcribe"),
           isNotNull(processingJob.startedAt),
           lt(processingJob.startedAt, runningJobBefore),
+          runningNeedsNoCheck,
         ),
         and(
           eq(processingJob.status, "running"),
           eq(processingJob.kind, "transcribe"),
           isNotNull(processingJob.startedAt),
           lt(processingJob.startedAt, transcribeRunningJobBefore),
+          runningNeedsNoCheck,
         ),
       ),
     )
@@ -182,30 +201,69 @@ export async function failStaleJobs(
   // Scan 2: queued jobs with a run, past 15 minutes. Ask Trigger.dev about a bounded number,
   // least recently checked first (a job found waiting is touched, so the next sweep asks about
   // the others): a run that has ended is failed, one that still waits is left alone.
-  if (isRunWaiting) {
-    const waiting = await db
-      .select({ id: processingJob.id, kind: processingJob.kind, runId: processingJob.triggerRunId })
-      .from(processingJob)
-      .where(
-        and(
-          eq(processingJob.status, "queued"),
-          lt(processingJob.createdAt, queuedJobBefore),
-          isNotNull(processingJob.triggerRunId),
-          gte(processingJob.createdAt, queuedBackstopBefore),
-        ),
-      )
-      .orderBy(asc(processingJob.updatedAt))
-      .limit(CLEANUP.queuedRunChecksPerSweep);
-    for (const { id, kind, runId } of waiting) {
-      if (runId === null) continue;
-      if (await isRunWaiting(runId)) {
-        await db
-          .update(processingJob)
-          .set({ updatedAt: now })
-          .where(and(eq(processingJob.id, id), eq(processingJob.status, "queued")));
-      } else {
-        await failStale(id, kind);
-      }
+  // Running jobs past their limit but before the backstop join the same queue of lookups, so the
+  // cap is shared: both lists are least recently checked first and merged by that order.
+  const select = {
+    id: processingJob.id,
+    kind: processingJob.kind,
+    runId: processingJob.triggerRunId,
+  };
+  const waiting = isRunWaiting
+    ? await db
+        .select({ ...select, updatedAt: processingJob.updatedAt })
+        .from(processingJob)
+        .where(
+          and(
+            eq(processingJob.status, "queued"),
+            lt(processingJob.createdAt, queuedJobBefore),
+            isNotNull(processingJob.triggerRunId),
+            gte(processingJob.createdAt, queuedBackstopBefore),
+          ),
+        )
+        .orderBy(asc(processingJob.updatedAt))
+        .limit(CLEANUP.queuedRunChecksPerSweep)
+    : [];
+  const running = isRunAlive
+    ? await db
+        .select({ ...select, updatedAt: processingJob.updatedAt })
+        .from(processingJob)
+        .where(
+          and(
+            eq(processingJob.status, "running"),
+            isNotNull(processingJob.triggerRunId),
+            isNotNull(processingJob.startedAt),
+            gte(processingJob.startedAt, runningBackstopBefore),
+            or(
+              and(
+                ne(processingJob.kind, "transcribe"),
+                lt(processingJob.startedAt, runningJobBefore),
+              ),
+              and(
+                eq(processingJob.kind, "transcribe"),
+                lt(processingJob.startedAt, transcribeRunningJobBefore),
+              ),
+            ),
+          ),
+        )
+        .orderBy(asc(processingJob.updatedAt))
+        .limit(CLEANUP.queuedRunChecksPerSweep)
+    : [];
+  const lookups = [
+    ...waiting.map((j) => ({ ...j, status: "queued" as const })),
+    ...running.map((j) => ({ ...j, status: "running" as const })),
+  ]
+    .sort((a, b) => a.updatedAt.getTime() - b.updatedAt.getTime())
+    .slice(0, CLEANUP.queuedRunChecksPerSweep);
+  for (const { id, kind, runId, status } of lookups) {
+    if (runId === null) continue;
+    const check = status === "queued" ? isRunWaiting : isRunAlive;
+    if (check && (await check(runId))) {
+      await db
+        .update(processingJob)
+        .set({ updatedAt: now })
+        .where(and(eq(processingJob.id, id), eq(processingJob.status, status)));
+    } else {
+      await failStale(id, kind);
     }
   }
   return failed;

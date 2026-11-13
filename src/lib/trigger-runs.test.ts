@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CLEANUP } from "./cleanup-rules";
-import { isRunWaiting, isWaitingRunStatus, jobTriggerOptions, probeKey } from "./trigger-runs";
+import {
+  isAliveRunStatus,
+  isRunAlive,
+  isRunWaiting,
+  isWaitingRunStatus,
+  jobTriggerOptions,
+  probeKey,
+} from "./trigger-runs";
 
 const retrieve = vi.fn();
 vi.mock("@trigger.dev/sdk", () => ({
@@ -77,5 +84,39 @@ describe("isRunWaiting (HRF-T01)", () => {
     const answer = isRunWaiting("run_4");
     await vi.advanceTimersByTimeAsync(CLEANUP.runCheckTimeoutMs + 1);
     expect(await answer).toBe(true);
+  });
+});
+
+describe("isRunAlive (RF3-T01)", () => {
+  afterEach(() => retrieve.mockReset());
+
+  it("is true for every run that has not ended, false once it ended", async () => {
+    for (const status of [
+      "QUEUED",
+      "DELAYED",
+      "DEQUEUED",
+      "PENDING_VERSION",
+      "EXECUTING",
+      "WAITING",
+    ]) {
+      expect(isAliveRunStatus(status), status).toBe(true);
+    }
+    for (const status of [
+      "COMPLETED",
+      "FAILED",
+      "CRASHED",
+      "CANCELED",
+      "SYSTEM_FAILURE",
+      "TIMED_OUT",
+      "EXPIRED",
+    ]) {
+      retrieve.mockResolvedValueOnce({ status });
+      expect(await isRunAlive("run_x"), status).toBe(false);
+    }
+  });
+
+  it("counts an API error as alive, never a guess that fails a live job", async () => {
+    retrieve.mockRejectedValueOnce(new Error("boom"));
+    expect(await isRunAlive("run_y")).toBe(true);
   });
 });
