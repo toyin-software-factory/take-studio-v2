@@ -118,20 +118,32 @@ export async function transcriptScenarios(ctx: Ctx): Promise<void> {
     });
     const jobs = await jobsOf(english);
     const initial = jobs.find((j) => j.kind === "initial");
-    const transcribe = jobs.filter((j) => j.kind === "transcribe");
+    // S5A-T01: the transcript is made inside the initial run (a step before the render), so
+    // there is no separate transcribe job unless that step failed.
+    const [transcriptStep] = initial
+      ? await db
+          .select()
+          .from(schema.jobStep)
+          .where(and(eq(schema.jobStep.jobId, initial.id), eq(schema.jobStep.name, "transcript")))
+      : [];
+    const saved = await rowsOf(english);
     check(
       S,
-      "AC-1: video job finished first, then one transcribe job (0 charged, no refund)",
-      transcribe.length === 1 &&
-        !!initial?.finishedAt &&
-        transcribe[0]!.createdAt >= initial.finishedAt &&
-        transcribe[0]!.secondsCharged === 0 &&
-        transcribe[0]!.status === "succeeded" &&
-        transcribe[0]!.refunded === false,
-      jobs.map((j) => ({ kind: j.kind, status: j.status, charged: j.secondsCharged })),
+      "AC-1: the initial job's transcript step succeeded, no transcribe job (charge unchanged, no refund)",
+      jobs.length === 1 &&
+        initial?.status === "succeeded" &&
+        initial.secondsCharged > 0 &&
+        initial.refunded === false &&
+        transcriptStep?.status === "succeeded" &&
+        saved.length === 1,
+      {
+        jobs: jobs.map((j) => ({ kind: j.kind, status: j.status, charged: j.secondsCharged })),
+        step: transcriptStep?.status,
+        saved: saved.length,
+      },
     );
     const [row] = await db.select().from(schema.take).where(eq(schema.take.id, english));
-    check(S, "AC-1: the transcribe job left the take Ready", row?.status === "ready", row?.status);
+    check(S, "AC-1: the take is Ready with its transcript", row?.status === "ready", row?.status);
 
     const text = (v.paragraphs ?? [])
       .flatMap((p) => p.words.map((w) => w.w))
