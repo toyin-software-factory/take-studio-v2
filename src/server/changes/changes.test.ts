@@ -183,6 +183,27 @@ describe("POST /api/takes/[id]/changes (spec 0011)", () => {
   });
 });
 
+describe("POST /changes on a take with no render", () => {
+  it("accepts baseRenderId null as the expected no render state, and refuses it as stale otherwise", async () => {
+    const ctx = await readyTake();
+    await db.delete(render).where(eq(render.takeId, ctx.take.id));
+    const plan = [{ id: ctx.cutA, applied: false }];
+    const bad = await post(deps(ctx.creator.id), ctx.take.id, {
+      baseRenderId: crypto.randomUUID(),
+      cuts: plan,
+    });
+    expect([bad.status, bad.json.error]).toEqual([409, "stale"]);
+    const ok = await post(deps(ctx.creator.id), ctx.take.id, { baseRenderId: null, cuts: plan });
+    expect(ok.status).toBe(202);
+    const withRender = await readyTake();
+    const stale = await post(deps(withRender.creator.id), withRender.take.id, {
+      baseRenderId: null,
+      cuts: [{ id: withRender.cutA, applied: false }],
+    });
+    expect([stale.status, stale.json.error]).toEqual([409, "stale"]);
+  });
+});
+
 describe("GET job status and waveform", () => {
   const get = (url: string) => new Request(url);
 

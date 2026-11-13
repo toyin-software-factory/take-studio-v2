@@ -42,7 +42,7 @@ export type ChangeInput = {
   readonly creatorId: string;
   readonly takeId: string;
   /** The latest render the page loaded; absent only for the legacy `PUT /background`. */
-  readonly baseRenderId?: string;
+  readonly baseRenderId?: string | null;
   /** Absent keeps the take's current background; `{ id: null }` is the original. */
   readonly background?: { readonly id: string | null };
   readonly cuts: readonly CutPlanEntry[];
@@ -90,7 +90,11 @@ export async function startChangeJob(
   input: ChangeInput,
 ): Promise<Result<StartedJob, ChangeStartError>> {
   if (!z.uuid().safeParse(input.takeId).success) return err("not_found");
-  if (input.baseRenderId !== undefined && !z.uuid().safeParse(input.baseRenderId).success) {
+  if (
+    input.baseRenderId !== undefined &&
+    input.baseRenderId !== null &&
+    !z.uuid().safeParse(input.baseRenderId).success
+  ) {
     return err("stale");
   }
   const named = input.background;
@@ -152,7 +156,9 @@ export async function startChangeJob(
     if (active) return err("job_active");
 
     const latest = await latestRenderOf(tx, current.id);
-    if (input.baseRenderId !== undefined && input.baseRenderId !== latest?.id) return err("stale");
+    if (input.baseRenderId !== undefined && input.baseRenderId !== (latest?.id ?? null)) {
+      return err("stale");
+    }
 
     const cuts = await tx
       .select({ id: cut.id, startMs: cut.startMs, endMs: cut.endMs, applied: cut.applied })

@@ -28,7 +28,7 @@ const STATUS: Readonly<Record<ChangeErrorCode, number>> = {
 const TRANSCRIPT_RUNNING = "Your transcript is still being made. Try again in a moment.";
 
 const body = z.object({
-  baseRenderId: z.uuid(),
+  baseRenderId: z.uuid().nullable(),
   background: z.object({ id: z.uuid().nullable() }).optional(),
   cuts: z
     .array(z.object({ id: z.uuid(), applied: z.boolean() }))

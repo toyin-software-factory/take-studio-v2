@@ -20,7 +20,7 @@ export async function startChanges(
   input: {
     readonly creatorId: string;
     readonly takeId: string;
-    readonly baseRenderId?: string;
+    readonly baseRenderId?: string | null;
     readonly background?: { readonly id: string | null };
     readonly cuts: readonly CutPlanEntry[];
     readonly now?: Date;
