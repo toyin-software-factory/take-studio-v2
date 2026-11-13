@@ -4,7 +4,7 @@ Saved so we can revisit it after the core product is built. Nothing here is a de
 
 ## Demand and competition (2026-11-13 web research; figures are directional, mostly from blogs and vendor pages)
 
-- **Demand.** Editing is the most mentioned creator struggle: 21.4% of 27,555 YouTube comments (overseeros.com). Creators spend about 9 to 15 hours a week on content (Adobe). Paid tools sell "skip editing": Gling about $10 to $20 a month, Descript about $16 to $35 a month, AutoCut $79 a year, Captions from about $10 a month.
+- **Demand.** Editing is the most mentioned creator struggle: 21.4% of the 9,677 actionable comments (out of 27,555 YouTube comments read; overseeros.com). Creators spend about 9 to 15 hours a week on content (Adobe). Paid tools sell "skip editing": Gling about $10 to $20 a month, Descript about $16 to $35 a month, AutoCut $79 a year, Captions from about $10 a month.
 - **Crowded areas.**
   - Pause and filler cutting: Gling, Descript, Wisecut, AutoCut, and Clipchamp (free).
   - Background swap without a green screen: CapCut, VEED, Descript "Green Screen", Vmake, Higgsfield. It is fine against a plain wall and wobbly with busy rooms and hair.
@@ -50,14 +50,14 @@ Five pieces:
 - **Production AI cut out:** pay per second, no monthly fee.
   - Modal: about $0.59 an hour on a T4, $0.80 on an L4, $1.10 on an A10G.
   - Replicate: about $3.51 an hour on an L40S.
-  - Robust Video Matting: about $0.05 a run on Replicate, and 100+ frames per second at 1080p on a mid range GPU.
+  - Robust Video Matting: about $0.05 a run on Replicate, and the project reports 100+ frames per second at 1080p on a mid range GPU. That is inference throughput only; the project says its video conversion script is much slower, so real end to end speed will be lower.
   - Budget about 1 minute of GPU per minute of video: a fast model about $0.01 to $0.06 per minute of video, a top quality model about $0.05 to $0.20.
   - A creator making 50 minutes a month would cost us about $0.50 to $10 a month.
 
 ## Is anyone doing it already? (not certain; web research only)
 
 - **Background swap:** CapCut, VEED, Descript, Vmake, Higgsfield. None say they match lighting to the scene.
-- **Relighting for film pros:** Beeble SwitchLight and Virtual Studio. It is desktop, aimed at VFX, and needs a green screen. Its model powers OpenArt's background changer.
+- **Relighting for film pros:** Beeble SwitchLight and Virtual Studio. It started as desktop software aimed at VFX, and it now also offers relighting in the browser that works without a green screen (vp-land.com). Its model powers OpenArt's background changer. This is closer competition than first noted.
 - **Live webcam lighting:** NVIDIA Broadcast Virtual Key Light. It evens out face light but does not match the scene.
 - **Not found:** a simple, phone first product that does cut out, matched light, shadow, framing, pause removal and transcript automatically. The idea is not a moat. Doing it really well for one audience first is.
 
@@ -75,3 +75,4 @@ Five pieces:
 - https://www.nvidia.com/en-us/geforce/broadcasting/broadcast-app/
 - https://www.magnific.com/blog/video-background-changer/
 - https://openart.ai/features/ai-video-background-changer/
+- https://www.vp-land.com/stories/beeble-ai-brings-professional-relighting-to-your-web-browser
