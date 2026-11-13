@@ -400,6 +400,7 @@
 .h-reel-slot {
   display: none;
 }
+
 .h-reel-media {
   position: relative;
   width: 100%;
@@ -414,6 +415,18 @@
   background: var(--color-dark);
   border-radius: var(--radius-md);
   object-fit: cover;
+}
+@media (max-width: 809px) {
+  /* The draft's phone reel: a square video 32 px under the heading */
+  .h-reel-title {
+    margin-bottom: 0;
+  }
+  .h-reel-media {
+    margin-top: 32px;
+  }
+  .h-reel-media video {
+    border-radius: 0;
+  }
 }
 .h-reel.is-scrub {
   height: calc(100vh + 1206px);
@@ -751,11 +764,17 @@
   height: 100%;
   object-fit: cover;
 }
-.h-tile-poster {
-  transition: scale var(--dur-media) var(--ease-out);
-}
-.h-tile-media:hover .h-tile-poster {
-  scale: 1.04;
+/* The poster grows a little while its video plays (the draft's `.is-playing img`): under the
+   pointer or keyboard focus on a mouse, as the tile enters the view on a touch screen. Not under
+   reduced motion, where nothing plays by itself. */
+@media (prefers-reduced-motion: no-preference) {
+  .h-tile-poster {
+    transition: transform var(--dur-media) var(--ease-out);
+  }
+  .h-tile-media:hover .h-tile-poster,
+  .h-tile-media[data-playing="true"] .h-tile-poster {
+    transform: scale(1.04);
+  }
 }
 /* With scripts the video waits invisible over the poster and fades in once it plays; without them it keeps its controls and stays visible. */
 html.js .h-tile-media video {
@@ -958,6 +977,7 @@ html.js .h-tile-media[data-playing="true"] video {
 .h-closing-lead {
   max-width: 44ch;
 }
+.h-closing .h-btn-split,
 .h-closing .h-btn-split-label,
 .h-closing .h-btn-split-icon {
   text-align: center; /* the design's closing button is a <button>, which centres */
@@ -1237,7 +1257,7 @@ html:has(.h-menu[open]) {
   position: absolute;
   inset: 0;
   display: block;
-  overflow: hidden;
+  overflow: visible; /* the panel clips the wheel; the list itself never cuts its cards off */
   padding: 0;
 }
 .h-fan.is-fan .h-fan-list li {
@@ -1263,7 +1283,7 @@ html:has(.h-menu[open]) {
     position: absolute;
     inset: 0;
     display: block;
-    overflow: hidden;
+    overflow: visible;
     padding: 0;
   }
   .h-fan .h-fan-list li {
@@ -1275,6 +1295,21 @@ html:has(.h-menu[open]) {
     top: clamp(40px, 4.5vw, 64px);
     translate: -50% 0;
     transform-origin: 50% 1100px;
+  }
+}
+
+/* Under 480 px the draft's wheel is a shorter panel with smaller cards (300 px tall, 160 wide) */
+@media (max-width: 479px) {
+  .h-fan-card {
+    width: 160px;
+  }
+  .h-fan.is-fan {
+    height: 300px;
+  }
+}
+@media (max-width: 479px) and (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .h-fan {
+    height: 300px;
   }
 }
 

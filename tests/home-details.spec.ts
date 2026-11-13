@@ -194,3 +194,49 @@ test.describe("first paint", () => {
     await expect(page.locator(".h-hero .h-w-mask")).toHaveCount(0);
   });
 });
+
+test.describe("phone layout like the draft (B-T11)", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("the fan is 300 px tall with 160 px cards and its list does not clip", async ({ page }) => {
+    await ready(page);
+    await expect(page.locator(".h-fan")).toHaveCSS("height", "300px");
+    await expect(page.locator(".h-fan-card").first()).toHaveCSS("width", "160px");
+    await expect(page.locator(".h-fan-list")).toHaveCSS("overflow-x", "visible");
+  });
+
+  test("the reel video has square corners 32 px under the heading", async ({ page }) => {
+    await ready(page);
+    await expect(page.locator(".h-reel-media video")).toHaveCSS("border-radius", "0px");
+    await expect(page.locator(".h-reel-title")).toHaveCSS("margin-bottom", "0px");
+    await expect(page.locator(".h-reel-media")).toHaveCSS("margin-top", "32px");
+  });
+
+  test("the closing button centres its text", async ({ page }) => {
+    await ready(page);
+    await expect(page.locator(".h-closing .h-btn-split")).toHaveCSS("text-align", "center");
+  });
+});
+
+test.describe("tile poster scale", () => {
+  test("the poster scales while its tile plays, and not under reduced motion", async ({
+    browser,
+  }) => {
+    for (const reduce of [false, true]) {
+      const context = await browser.newContext({
+        reducedMotion: reduce ? "reduce" : "no-preference",
+      });
+      const page = await context.newPage();
+      await ready(page);
+      const poster = page.locator(".h-tile-media .h-tile-poster").first();
+      const tile = page.locator(".h-tile-media").first();
+      await tile.scrollIntoViewIfNeeded();
+      await tile.hover({ position: { x: 20, y: 20 } });
+      await page.waitForTimeout(800);
+      const transform = await poster.evaluate((el) => getComputedStyle(el).transform);
+      if (reduce) expect(transform).toBe("none");
+      else expect(transform).not.toBe("none");
+      await context.close();
+    }
+  });
+});
