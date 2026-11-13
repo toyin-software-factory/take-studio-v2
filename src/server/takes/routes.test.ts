@@ -279,6 +279,7 @@ describe("GET /api/takes/{id} (AC-7, AC-8, AC-9)", () => {
     expect(body.latestJob.steps.map((s: { name: string }) => s.name)).toEqual([
       "trim",
       "transcript",
+      "ai_edit",
       "render",
     ]);
     expect(body.latestRender).toMatchObject({ status: "succeeded", durationMs: 50_000 });

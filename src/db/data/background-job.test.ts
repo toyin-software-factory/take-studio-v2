@@ -57,6 +57,7 @@ describe("startJob with a background (spec 0008)", () => {
     expect(started.data.steps.map((s) => s.name)).toEqual([
       "trim",
       "transcript",
+      "ai_edit",
       "background",
       "render",
     ]);
@@ -69,7 +70,12 @@ describe("startJob with a background (spec 0008)", () => {
     const started = await start(creator.id, t.id);
     if (!started.ok) throw new Error(started.error);
     expect(started.data.targetBackgroundId).toBeNull();
-    expect(started.data.steps.map((s) => s.name)).toEqual(["trim", "transcript", "render"]);
+    expect(started.data.steps.map((s) => s.name)).toEqual([
+      "trim",
+      "transcript",
+      "ai_edit",
+      "render",
+    ]);
   });
 
   it("deleting a background keeps takes, jobs, renders and the creator's default", async () => {
