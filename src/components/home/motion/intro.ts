@@ -5,7 +5,7 @@ import { splitWords } from "./split";
 /**
  * Set on `<html>` by the inline script in `intro-guard.tsx` before the first paint, while scripts
  * run and motion is allowed. `home.css` hides the bar, headline and lead under it; the intro
- * takes it off once every start state is set inline (or the CSS failsafe lets go after 3 s).
+ * takes it off once every start state is set inline (or the guard's 3 s timer lets go).
  */
 export const INTRO_PENDING = "h-intro-pending";
 

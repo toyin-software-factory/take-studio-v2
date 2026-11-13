@@ -1089,7 +1089,8 @@ html.js .h-tile-media[data-playing="true"] video {
 /* ---------- Motion (spec 0010 task 2): states the scripts switch on ---------- */
 
 /* Nav: transparent at the top once scripts run, a glass pill after 202 px, white over dark */
-.js .h-nav:not(.is-float) {
+.js .h-nav:not(.is-float),
+html.h-intro-pending .h-nav:not(.is-float) {
   background: transparent;
   backdrop-filter: none;
 }
@@ -1373,27 +1374,15 @@ html:has(.h-menu[open]) {
 }
 
 /* Load motion (home-v2 intro): the bar, headline and lead wait for the intro, which sets their start
-   states and removes the mark. Only while scripts run and motion is allowed; the failsafe lets go
-   after 3 s if the script never starts. */
+   states and removes the mark. Only while scripts run and motion is allowed; the inline guard
+   removes the mark after 3 s if the bundle never starts. */
 @media (prefers-reduced-motion: no-preference) {
   html.h-intro-pending .h-nav,
   html.h-intro-pending .h-hero-lead {
     opacity: 0;
-    animation: h-intro-failsafe 0s 3s forwards;
   }
   html.h-intro-pending .h-hero .h-h1 {
     visibility: hidden;
-    animation: h-intro-failsafe-visible 0s 3s forwards;
-  }
-}
-@keyframes h-intro-failsafe {
-  to {
-    opacity: 1;
-  }
-}
-@keyframes h-intro-failsafe-visible {
-  to {
-    visibility: visible;
   }
 }
 
