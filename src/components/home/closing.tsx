@@ -23,27 +23,29 @@ export function HomeClosing() {
           </p>
         </div>
         <div className="h-closing-actions" data-enter-group>
-          <Link className="h-btn-split" href="/sign-in" data-enter data-check="s8-contact-cta">
-            <span className="h-btn-split-label" data-check="s8-contact-cta-2">
-              {CLOSING.cta}
-            </span>
-            <span className="h-btn-split-icon" aria-hidden="true" data-check="s8-contact-cta-3">
-              <svg width="18" height="18" viewBox="0 0 18 18" focusable="false">
-                <path
-                  d="M3 9h12M10 4l5 5-5 5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                />
-              </svg>
-            </span>
-          </Link>
-          <p className="h-closing-note" data-enter>
-            {CLOSING.questions}{" "}
-            <a className="h-link-plain" href={`mailto:${CLOSING.email}`}>
-              {CLOSING.email}
-            </a>
-          </p>
+          <div className="h-closing-actions-inner" data-enter>
+            <Link className="h-btn-split" href="/sign-in" data-check="s8-contact-cta">
+              <span className="h-btn-split-label" data-check="s8-contact-cta-2">
+                {CLOSING.cta}
+              </span>
+              <span className="h-btn-split-icon" aria-hidden="true" data-check="s8-contact-cta-3">
+                <svg width="18" height="18" viewBox="0 0 18 18" focusable="false">
+                  <path
+                    d="M3 9h12M10 4l5 5-5 5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                </svg>
+              </span>
+            </Link>
+            <p className="h-closing-note">
+              {CLOSING.questions}{" "}
+              <a className="h-link-plain" href={`mailto:${CLOSING.email}`}>
+                {CLOSING.email}
+              </a>
+            </p>
+          </div>
         </div>
       </div>
     </section>
