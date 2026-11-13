@@ -207,7 +207,11 @@ test.describe("first paint", () => {
     expect(words.every((t) => t === "none" || t === "matrix(1, 0, 0, 1, 0, 0)")).toBe(true);
   });
 
-  test("before the intro runs the headline is hidden, with the layout kept", async ({ page }) => {
+  test("before the intro runs the headline is hidden, and the 3 s timer brings it back", async ({
+    page,
+  }) => {
+    // Browser time is held, so a slow parse cannot run the guard timer early.
+    await page.clock.install();
     // Only the inline guard runs: no bundle loads, so the intro never takes over.
     await page.route("**/*.js", (route) => route.abort());
     await page.goto("/", { waitUntil: "domcontentloaded" });
@@ -215,6 +219,12 @@ test.describe("first paint", () => {
     await expect(page.locator(".h-h1")).toBeHidden();
     const box = await page.locator(".h-h1").boundingBox();
     expect(box?.height ?? 0).toBeGreaterThan(40);
+    // Past the guard's deadline the mark is gone and nothing is left hidden.
+    await page.clock.fastForward(3500);
+    await expect(page.locator("html")).not.toHaveClass(/h-intro-pending/);
+    await expect(page.locator(".h-h1")).toBeVisible();
+    await expect(page.locator(".h-nav")).toHaveCSS("opacity", "1");
+    await expect(page.locator(".h-hero-lead")).toHaveCSS("opacity", "1");
   });
 });
 
