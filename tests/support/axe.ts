@@ -1,8 +1,28 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page } from "@playwright/test";
 
+/**
+ * Waits until no CSS transition or animation is running that will finish. A colour caught in the
+ * middle of a fade (a tab losing its selected colour, a panel fading in) is a blend that axe
+ * would count as low contrast, e.g. 4.45 for #656565 on #e1e1e1. Infinite animations are
+ * skipped: they never settle, and the page is checked as it is.
+ */
+async function waitForAnimationsToSettle(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () =>
+      document
+        .getAnimations()
+        .every(
+          (a) => a.playState !== "running" || a.effect?.getComputedTiming().iterations === Infinity,
+        ),
+    undefined,
+    { timeout: 10_000 },
+  );
+}
+
 /** axe at WCAG 2.2 AA: no serious or critical issues on the page as it is now. */
 export async function expectNoSeriousAxeIssues(page: Page): Promise<void> {
+  await waitForAnimationsToSettle(page);
   const results = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
     .analyze();
