@@ -95,6 +95,11 @@ export const CLEANUP = {
    */
   transcribeJobMaxDurationMs:
     TRANSCRIBE_TAKE_LIMITS.maxAttempts * TRANSCRIBE_TAKE_LIMITS.maxDurationSeconds * 1000,
+  /**
+   * The hard stop for a `running` job whose run still looks alive, from `started_at` (6 hours):
+   * past it the job is failed whatever Trigger.dev says.
+   */
+  runningBackstopMs: 6 * 60 * MINUTE,
   /** Extra time after that (retry back off, queue time) before a `running` job counts as stale. */
   runningStaleMarginMs: 5 * MINUTE,
   /**
@@ -141,6 +146,7 @@ export function cleanupCutoffs(now: Date) {
     queuedJobBefore: new Date(at - CLEANUP.queuedStaleMs),
     /** `queued` jobs created before this are failed even when their run still looks alive. */
     queuedBackstopBefore: new Date(at - CLEANUP.queuedBackstopMs),
+    runningBackstopBefore: new Date(at - CLEANUP.runningBackstopMs),
     /** `running` jobs of the video kinds started before this are stale. */
     runningJobBefore: new Date(at - CLEANUP.jobMaxDurationMs - CLEANUP.runningStaleMarginMs),
     /** `running` `transcribe` jobs started before this are stale (spec 0007). */
