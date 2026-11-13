@@ -10,6 +10,8 @@ type TileVideoProps = {
   readonly media: HomeImage;
   readonly width: number;
   readonly height: number;
+  /** `data-check` labels for the design check (tools/design-check), when the draft tags this tile. */
+  readonly checks?: { readonly image: string; readonly video: string };
 };
 
 /** Share of the tile that must be in view before it plays on a touch screen (recipe 7.9). */
@@ -23,7 +25,7 @@ const IN_VIEW_RATIO = 0.6;
  * visitor chooses is kept (`data-user-paused`) until they press play. Without scripts it keeps the
  * browser's controls. The sources load only when the video first plays (`preload="none"`).
  */
-export function TileVideo({ title, media, width, height }: TileVideoProps) {
+export function TileVideo({ title, media, width, height, checks }: TileVideoProps) {
   const tile = useRef<HTMLDivElement>(null);
   const video = useRef<HTMLVideoElement>(null);
   const [playing, setPlaying] = useState(false);
@@ -110,6 +112,7 @@ export function TileVideo({ title, media, width, height }: TileVideoProps) {
         alt=""
         sizes="(min-width: 1200px) 30vw, (min-width: 810px) 45vw, 92vw"
         className="h-tile-poster"
+        check={checks?.image}
       />
       <video
         ref={video}
@@ -119,6 +122,7 @@ export function TileVideo({ title, media, width, height }: TileVideoProps) {
         playsInline
         preload="none"
         aria-label={`${title}: short silent loop`}
+        data-check={checks?.video}
         width={width}
         height={height}
         onPlay={() => setPlaying(true)}
