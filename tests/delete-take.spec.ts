@@ -182,7 +182,10 @@ test.describe("take page", () => {
 });
 
 test.describe("phone width", () => {
-  test.use({ ...devices["Pixel 7"] });
+  // `defaultBrowserType` cannot be set inside a describe group, so it is left out.
+  const pixel: Record<string, unknown> = { ...devices["Pixel 7"] };
+  delete pixel.defaultBrowserType;
+  test.use(pixel);
 
   test("the card menu and dialog fit with no sideways scroll and 44 px targets", async ({
     page,
