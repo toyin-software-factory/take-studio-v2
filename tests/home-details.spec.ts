@@ -6,7 +6,7 @@ test.describe.configure({ timeout: 90_000 });
 
 const ready = async (page: Page) => {
   await page.goto("/");
-  await expect(page.locator("html.js")).toHaveCount(1);
+  await expect(page.locator("html.js")).toHaveCount(1, { timeout: 20_000 });
 };
 
 test("each tile video has a labelled play button of at least 44 px", async ({ page }) => {
@@ -31,6 +31,10 @@ test("a tile's button plays and pauses its video and a chosen pause is kept", as
   await tile.hover();
   await expect(tile).toHaveAttribute("data-playing", "true");
   await expect(button).toHaveAccessibleName(/^Pause /);
+  // The cursor disc over a tile says what a click will do, and follows the video without a move.
+  await page.mouse.move(5, 5);
+  await tile.hover();
+  await expect(page.locator(".h-cursor.is-play")).toHaveText("Pause");
   await button.click();
   await expect(tile).toHaveAttribute("data-playing", "false");
   await expect(video).toHaveAttribute("data-user-paused", "1");

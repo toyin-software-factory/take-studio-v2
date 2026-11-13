@@ -18,6 +18,14 @@ export function setupCursor(root: HTMLElement): () => void {
   const x = gsap.quickTo(dot, "x", { duration: 0.35, ease: "power3.out" });
   const y = gsap.quickTo(dot, "y", { duration: 0.35, ease: "power3.out" });
 
+  let over: HTMLElement | null = null;
+  const refresh = () => {
+    if (over) label.textContent = over.dataset.playing === "true" ? "Pause" : "Play";
+  };
+  // The tile's own `data-playing` follows the video's events, which do not bubble: listen in
+  // the capture phase, then read it on the next frame so React has updated the attribute.
+  const onMedia = () => requestAnimationFrame(refresh);
+
   const onMove = (event: PointerEvent) => {
     if (event.pointerType !== "mouse") return;
     x(event.clientX);
@@ -26,14 +34,19 @@ export function setupCursor(root: HTMLElement): () => void {
     const target = (event.target as HTMLElement | null)?.closest<HTMLElement>(
       '[data-cursor="play"]',
     );
+    over = target ?? null;
     dot.classList.toggle("is-play", Boolean(target));
-    if (target) label.textContent = target.dataset.playing === "true" ? "Pause" : "Play";
+    refresh();
   };
   const onLeave = () => gsap.to(dot, { opacity: 0, duration: 0.2 });
   root.addEventListener("pointermove", onMove);
+  document.addEventListener("play", onMedia, true);
+  document.addEventListener("pause", onMedia, true);
   document.addEventListener("pointerleave", onLeave);
   return () => {
     root.removeEventListener("pointermove", onMove);
+    document.removeEventListener("play", onMedia, true);
+    document.removeEventListener("pause", onMedia, true);
     document.removeEventListener("pointerleave", onLeave);
     dot.remove();
   };

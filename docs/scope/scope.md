@@ -204,12 +204,12 @@ An MCP server so AI assistants (Claude, ChatGPT and agent tools) can use Take St
 A public page that explains Take Studio and leads to sign up, built from Toyin's v2 homepage design (2026-11-12).
 **Done when:** the landing page shows what the product does with copy true today and a sign up call to action, has title, description and social share preview metadata, and meets WCAG AA.
 - [x] Design it (spec): `/architect landing page & SEO`
-- [ ] Build it: `/develop landing page & SEO`
+- [x] Build it: `/develop landing page & SEO`
    - [x] Static page, true copy, media, metadata, robots and sitemap (AC-1, AC-2, AC-3, AC-7, AC-9, AC-11)
    - [x] Motion core, nav, hero fan and reel (AC-4, AC-5, AC-8)
    - [x] The studio floor with lazy Three.js (AC-6, AC-8, AC-10)
-   - [ ] Details, then reduced motion, responsive, a11y and performance passes (AC-5, AC-7, AC-8, AC-9, AC-10)
-- [ ] Verify it: `/check verify landing page & SEO`
+   - [x] Details, then reduced motion, responsive, a11y and performance passes (AC-5, AC-7, AC-8, AC-9, AC-10)
+- [x] Verify it: `/check verify landing page & SEO`
 Spec [0010](../specs/0010-landing-page.md) · rules in [design.md](../../design.md) · code in `src/app/page.tsx`, `src/components/home/`
 
 ### 16. Privacy & terms pages
