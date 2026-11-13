@@ -16,6 +16,7 @@ import { finishWithoutRender } from "./finish";
 import { encode } from "./render";
 import { ship } from "./ship";
 import { transcriptStep } from "./transcript-step";
+import { aiEditAlreadyFinal, aiEditStep, storedHasCuts } from "./ai-edit-step";
 
 /**
  * The full run (an `initial` job, or a `rerender` of a failed take): waveform, trim (silencedetect
@@ -51,6 +52,10 @@ export async function fullRun(ctx: RunContext): Promise<RunResult> {
     }
   }
   let hasCuts = false;
+  let candidates: ReturnType<typeof cutsFromSilences> = [];
+  // Attempt 2 of a job whose AI edit is already stored: the trim must not write the rules cuts
+  // over the AI cuts (spec 0012, Pipeline step 2).
+  const aiStored = facts.hasAudio && (await aiEditAlreadyFinal(ctx));
   if (facts.hasAudio) {
     const trimProgress = throttledProgress((p) => setStep(ctx, "trim", "running", p));
     const stderr = await runFfmpeg(
@@ -61,18 +66,22 @@ export async function fullRun(ctx: RunContext): Promise<RunResult> {
         onOutTimeMs: (ms) => void trimProgress.report((ms / facts.durationMs) * 100),
       },
     );
-    const proposed = cutsFromSilences(parseSilences(stderr, facts.durationMs), facts.durationMs);
+    candidates = cutsFromSilences(parseSilences(stderr, facts.durationMs), facts.durationMs);
     signal.throwIfAborted();
-    const analysed = await whileJobActive(
-      client,
-      job.id,
-      (tx) => reanalyse(tx, { takeId: t.id, proposed }),
-      signal,
-    );
-    if (!analysed.ok) throw new Error(`reanalyse failed: ${analysed.error}`);
+    if (aiStored) {
+      hasCuts = await storedHasCuts(ctx);
+    } else {
+      const analysed = await whileJobActive(
+        client,
+        job.id,
+        (tx) => reanalyse(tx, { takeId: t.id, proposed: candidates }),
+        signal,
+      );
+      if (!analysed.ok) throw new Error(`reanalyse failed: ${analysed.error}`);
+      hasCuts = analysed.data.cuts.some((c) => c.applied);
+    }
     await trimProgress.flush();
     await setStep(ctx, "trim", "succeeded", 100);
-    hasCuts = analysed.data.cuts.some((c) => c.applied);
   }
 
   // Transcript, inside the run. One edit deadline starts here and will also cover the AI edit
@@ -80,7 +89,13 @@ export async function fullRun(ctx: RunContext): Promise<RunResult> {
   let withTranscript = false;
   if (facts.hasAudio) {
     const editSignal = AbortSignal.any([signal, AbortSignal.timeout(EDIT_DEADLINE_MS)]);
-    withTranscript = (await transcriptStep(ctx, editSignal)) === "failed";
+    const transcript = await transcriptStep(ctx, editSignal);
+    withTranscript = transcript === "failed";
+    // AI edit: one Claude call inside the same deadline. It never fails the run; on any problem
+    // the rules cuts stored by the trim stay. `hasCuts` is taken again from what it wrote.
+    const ai = await aiEditStep(ctx, editSignal, { transcript, candidates });
+    if (ai.hasCuts !== null) hasCuts = ai.hasCuts;
+    else if (aiStored) hasCuts = await storedHasCuts(ctx);
   }
 
   const backgroundFacts = await prepareBackground(ctx);

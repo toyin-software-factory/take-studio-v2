@@ -86,5 +86,8 @@ export function cutView(cut: Cut) {
     endMs: cut.endMs,
     kind: cut.kind,
     applied: cut.applied,
+    // Spec 0012: who proposed it and why. The reason can quote the take: never log it.
+    proposedBy: cut.proposedBy,
+    reason: cut.reason,
   };
 }

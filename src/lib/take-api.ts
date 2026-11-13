@@ -62,9 +62,14 @@ export const takeDetailSchema = z.object({
         endMs: z.number(),
         kind: z.string(),
         applied: z.boolean(),
+        /** Spec 0012: `rules`, `ai` or `creator`; and the reason line (null on older cuts). */
+        proposedBy: z.string().default("rules"),
+        reason: z.string().nullable().default(null),
       }),
     )
     .default([]),
+  /** Spec 0012: how the AI edit ended; null for older takes. */
+  aiEdit: z.enum(["done", "unavailable"]).nullable().default(null),
   /** Spec 0011: false once the original has expired (nothing can be rendered). */
   originalAvailable: z.boolean().default(true),
   removedMs: z.number(),

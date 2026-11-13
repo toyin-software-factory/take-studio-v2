@@ -94,7 +94,13 @@ describe("step registry (AC-7)", () => {
   });
 
   it("holds the skip reasons, separate from failure codes", () => {
-    expect(SKIP_REASONS).toEqual(["not_english", "no_speech", "original_gone", "no_green_screen"]);
+    expect(SKIP_REASONS).toEqual([
+      "not_english",
+      "no_speech",
+      "original_gone",
+      "no_green_screen",
+      "ai_unavailable",
+    ]);
     expect(isSkipReason("no_speech")).toBe(true);
     expect(isSkipReason("provider_error")).toBe(false);
     for (const reason of SKIP_REASONS) expect(isFailureCode(reason)).toBe(false);

@@ -111,6 +111,8 @@ export const SKIP_REASONS = [
   "original_gone",
   /** Spec 0008: the take has no usable green screen, so its background is kept. */
   "no_green_screen",
+  /** Spec 0012: the AI edit did not run or was not usable; the rules cuts stand. */
+  "ai_unavailable",
 ] as const;
 export type SkipReason = (typeof SKIP_REASONS)[number];
 
