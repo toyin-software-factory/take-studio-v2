@@ -1,8 +1,8 @@
-import { and, asc, desc, eq, gt, inArray, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { type DeletedTakes, deleteTakesInTx } from "@/db/data/deletion";
 import { markUploaded, transition } from "@/db/data/takes";
-import { jobStep, processingJob, render, take } from "@/db/schema";
+import { background, jobStep, processingJob, render, take } from "@/db/schema";
 import { runTx } from "@/db/tx";
 import type { Executor, JobStep, ProcessingJob, Render, Take } from "@/db/types";
 import { CONTAINERS, TAKE_TITLE_MAX, type TakeStatus } from "@/lib/processing";
@@ -108,6 +108,12 @@ export type TakeDetail = {
   readonly noGreenScreen: boolean;
   /** Spec 0012: how the AI edit of the latest finished full run ended; null when unknown. */
   readonly aiEdit: AiEditState | null;
+  /** Spec 0012 AC-5: the AI's background suggestion (built in only); null when none. */
+  readonly suggestion: {
+    readonly backgroundId: string;
+    readonly name: string;
+    readonly reason: string;
+  } | null;
   /** The latest background change job (a `background` job), for "Try again". */
   readonly backgroundJob: {
     readonly status: string;
@@ -173,6 +179,14 @@ export async function getForCreator(
     .orderBy(desc(processingJob.createdAt))
     .limit(1);
 
+  // The suggestion, named by a join so a deleted background (ID set null) reads as none.
+  const [suggested] = found.suggestedBackgroundId
+    ? await db
+        .select({ id: background.id, name: background.name })
+        .from(background)
+        .where(and(eq(background.id, found.suggestedBackgroundId), isNull(background.creatorId)))
+    : [];
+
   // Read last on purpose: a job finishes and swaps the latest render in one transaction, so a
   // job read as `succeeded` above means this read already sees its render (the other order could
   // show a finished change with the old video's background name until the next poll).
@@ -200,6 +214,10 @@ export async function getForCreator(
     background: keyedBackground,
     noGreenScreen,
     aiEdit: aiEditState(aiStep),
+    suggestion:
+      suggested && found.suggestionReason
+        ? { backgroundId: suggested.id, name: suggested.name, reason: found.suggestionReason }
+        : null,
     backgroundJob: backgroundJob ?? null,
   });
 }

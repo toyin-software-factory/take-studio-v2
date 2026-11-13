@@ -71,6 +71,13 @@
       "when": 1794570386306,
       "tag": "0009_transcript_edits",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794572799471,
+      "tag": "0010_take_background_suggestion",
+      "breakpoints": true
     }
   ]
 }

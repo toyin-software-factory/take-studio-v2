@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { take } from "@/db/schema";
+import { background, take } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import * as jobs from "../jobs";
@@ -304,6 +304,67 @@ describe("takes.getForCreator, listForCreator and rename", () => {
       ok: false,
       error: "invalid",
     });
+  });
+});
+
+describe("takes.getForCreator suggestion (spec 0012 AC-5)", () => {
+  async function seedBackground(over: Partial<typeof background.$inferInsert> = {}) {
+    const id = crypto.randomUUID();
+    await db.insert(background).values({
+      id,
+      name: "Sunny loft",
+      alt: "A loft",
+      status: "ready",
+      imageKey: "backgrounds/x/image.jpg",
+      thumbKey: "backgrounds/x/thumb.webp",
+      width: 1920,
+      height: 1080,
+      ...over,
+    });
+    return id;
+  }
+  const suggestion = async (creatorId: string, takeId: string) => {
+    const result = await getForCreator(db, creatorId, takeId);
+    if (!result.ok) throw new Error(result.error);
+    return result.data.suggestion;
+  };
+
+  it("is null when there is none", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id);
+    expect(await suggestion(creator.id, t.id)).toBeNull();
+  });
+
+  it("names the suggested built in background and gives the reason", async () => {
+    const creator = await createCreator(db);
+    const id = await seedBackground();
+    const t = await seedTake(db, creator.id, {
+      suggestedBackgroundId: id,
+      suggestionReason: "Warm light suits you",
+    });
+    expect(await suggestion(creator.id, t.id)).toEqual({
+      backgroundId: id,
+      name: "Sunny loft",
+      reason: "Warm light suits you",
+    });
+  });
+
+  it("is null for an upload (never a built in), and after the background is deleted", async () => {
+    const creator = await createCreator(db);
+    const upload = await seedBackground({ creatorId: creator.id });
+    const t = await seedTake(db, creator.id, {
+      suggestedBackgroundId: upload,
+      suggestionReason: "Reason",
+    });
+    expect(await suggestion(creator.id, t.id)).toBeNull();
+
+    const gone = await seedBackground();
+    const t2 = await seedTake(db, creator.id, {
+      suggestedBackgroundId: gone,
+      suggestionReason: "Reason",
+    });
+    await db.delete(background).where(eq(background.id, gone));
+    expect(await suggestion(creator.id, t2.id)).toBeNull();
   });
 });
 

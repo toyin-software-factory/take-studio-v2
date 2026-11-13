@@ -53,10 +53,21 @@ export const take = pgTable(
      * `duration_ms`; null when not computed or no audio. Never log it.
      */
     waveform: jsonb("waveform").$type<readonly number[]>(),
+    /**
+     * Spec 0012: the built in background the AI suggested (validated against the catalog in
+     * code); null when none. Nothing is applied by itself.
+     */
+    suggestedBackgroundId: uuid("suggested_background_id").references(
+      (): AnyPgColumn => background.id,
+      { onDelete: "set null" },
+    ),
+    /** The suggestion's one line reason (at most 280); ignored when the ID is null. Never log it. */
+    suggestionReason: text("suggestion_reason"),
     ...timestamps,
   },
   (t) => [
     index("take_background_idx").on(t.backgroundId),
+    index("take_suggested_background_idx").on(t.suggestedBackgroundId),
     index("take_creator_created_idx").on(t.creatorId, t.createdAt.desc(), t.id),
     index("take_status_expires_idx").on(t.status, t.videoExpiresAt),
     check(
@@ -64,5 +75,9 @@ export const take = pgTable(
       sql`char_length(${t.title}) BETWEEN ${sql.raw(String(TAKE_TITLE_MIN))} AND ${sql.raw(String(TAKE_TITLE_MAX))}`,
     ),
     check("take_container_check", inList(t.container, CONTAINERS)),
+    check(
+      "take_suggestion_reason_length_check",
+      sql`${t.suggestionReason} IS NULL OR char_length(${t.suggestionReason}) <= 280`,
+    ),
   ],
 );

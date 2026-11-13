@@ -70,6 +70,11 @@ export const takeDetailSchema = z.object({
     .default([]),
   /** Spec 0012: how the AI edit ended; null for older takes. */
   aiEdit: z.enum(["done", "unavailable"]).nullable().default(null),
+  /** Spec 0012 AC-5: the AI's suggested built in background; null when none. */
+  suggestion: z
+    .object({ backgroundId: z.string(), name: z.string(), reason: z.string() })
+    .nullable()
+    .default(null),
   /** Spec 0011: false once the original has expired (nothing can be rendered). */
   originalAvailable: z.boolean().default(true),
   removedMs: z.number(),

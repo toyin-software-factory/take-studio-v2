@@ -1,6 +1,7 @@
 import { logger } from "@trigger.dev/sdk";
 import { and, eq } from "drizzle-orm";
 import { reanalyse } from "@/db/data/cuts";
+import { listBuiltInCatalog, setTakeSuggestion } from "@/db/data/backgrounds";
 import { updateStep, whileJobActive } from "@/db/data/jobs";
 import { getTranscriptByTake, setTranscriptEdits } from "@/db/data/transcripts";
 import { cut, jobStep } from "@/db/schema";
@@ -9,6 +10,7 @@ import {
   AI_EDIT,
   type AiCandidate,
   type AiCause,
+  type CatalogEntry,
   type ValidAiEdit,
   aiEditAnswerSchema,
   buildAiRequest,
@@ -159,8 +161,8 @@ async function fallback(ctx: RunContext, cause: AiCause, io: AiEditIo): Promise<
 }
 
 /**
- * Final `skipped` status in a guarded transaction. The fixes are cleared here on fallback; the
- * suggestion columns will be too (spec 0012 part 6): this is the seam.
+ * Final `skipped` status in a guarded transaction. The fixes and the background suggestion are
+ * cleared here on fallback.
  */
 async function setFinal(
   ctx: RunContext,
@@ -171,6 +173,7 @@ async function setFinal(
     ctx.job.id,
     async (tx) => {
       await setTranscriptEdits(tx, ctx.take.id, []);
+      await setTakeSuggestion(tx, ctx.take.id, null);
       const step = await updateStep(tx, {
         jobId: ctx.job.id,
         name: "ai_edit",
@@ -201,8 +204,11 @@ async function writeValid(
     ctx.take.id,
     edit.fixes.map((fix) => ({ ...fix, undone: false })),
   );
-  // Seam (part 6): the suggestion columns are written here, from `edit.background`, in this
-  // same transaction.
+  await setTakeSuggestion(
+    tx,
+    ctx.take.id,
+    edit.background ? { backgroundId: edit.background.id, reason: edit.background.reason } : null,
+  );
   const step = await updateStep(tx, {
     jobId: ctx.job.id,
     name: "ai_edit",
@@ -228,7 +234,8 @@ async function tryAi(
   const words = stored.words;
   const durationMs = ctx.facts.durationMs;
 
-  const request = buildAiRequest({ words, candidates, durationMs });
+  const catalog: readonly CatalogEntry[] = await listBuiltInCatalog(ctx.client);
+  const request = buildAiRequest({ words, candidates, durationMs, catalog });
   if (request.estimatedInputTokens > AI_EDIT.maxInputTokens) {
     return { kind: "fallback", cause: "too_large" };
   }
@@ -252,7 +259,7 @@ async function tryAi(
   if (result.stopReason === "refusal") return { kind: "fallback", cause: "provider_rejected" };
   const parsed = parseAnswer(result.text);
   if (!parsed) return { kind: "fallback", cause: "invalid" };
-  const checked = validateAiEdit(parsed, words, candidates, durationMs);
+  const checked = validateAiEdit(parsed, words, candidates, durationMs, catalog);
   return checked.ok
     ? { kind: "valid", edit: checked.data }
     : { kind: "fallback", cause: "invalid" };
