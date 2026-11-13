@@ -126,19 +126,24 @@ async function main() {
       throw new Error('Nothing to watch. Set "watch": ["src"] in design-check.json.');
     let timer = null,
       running = false,
-      again = false;
+      again = false,
+      gen = 0; // bumped on every edit, so a check that started before an edit never publishes
+    const outDir = path.resolve(cfg.outDir);
+    const liveFile = path.join(cfg.outDir, "live.json");
     const run = async () => {
       if (running) return void (again = true);
       running = true;
+      const started = gen;
       try {
         const { v, md } = await checkOnce(cfg, { quick: true });
+        if (started !== gen) return; // the build changed while measuring: the next run reports
         const live = {
           at: new Date().toISOString(),
           status: v.status,
           differences: v.fails.length,
           markdown: md,
         };
-        fs.writeFileSync(path.join(cfg.outDir, "live.json"), JSON.stringify(live));
+        fs.writeFileSync(liveFile, JSON.stringify(live));
         log(`live check: ${v.fails.length} difference(s)`);
       } catch (err) {
         log("live check failed:", err.message);
@@ -146,7 +151,7 @@ async function main() {
         try {
           fs.mkdirSync(cfg.outDir, { recursive: true });
           fs.writeFileSync(
-            path.join(cfg.outDir, "live.json"),
+            liveFile,
             JSON.stringify({
               at: new Date().toISOString(),
               status: "error",
@@ -163,13 +168,29 @@ async function main() {
         }
       }
     };
+    // An edit makes any earlier result stale at once, so the coder never hears "no differences"
+    // about a build that has changed since it was measured.
+    const edited = () => {
+      gen++;
+      try {
+        fs.mkdirSync(cfg.outDir, { recursive: true });
+        fs.writeFileSync(
+          liveFile,
+          JSON.stringify({ at: new Date().toISOString(), status: "pending", differences: null }),
+        );
+      } catch {}
+      schedule();
+    };
     const schedule = () => {
       clearTimeout(timer);
       timer = setTimeout(run, cfg.watchDelayMs || 2500);
     };
     for (const d of dirs)
       fs.watch(d, { recursive: true }, (_e, f) => {
-        if (f && !/node_modules|\.next|\.design-check|\.git/.test(f)) schedule();
+        if (!f || /node_modules|\.next|\.design-check|\.git/.test(f)) return;
+        const abs = path.resolve(d, String(f));
+        if (abs === outDir || abs.startsWith(outDir + path.sep)) return; // our own output
+        edited();
       });
     log(
       `watching ${dirs.map((d) => path.relative(cfg.base, d) || ".").join(", ")} against ${cfg.pages.map((p) => p.name).join(", ")}`,
@@ -195,6 +216,7 @@ async function main() {
     if (!fs.existsSync(liveFile)) return;
     const live = JSON.parse(fs.readFileSync(liveFile, "utf8"));
     const seen = fs.existsSync(seenFile) ? fs.readFileSync(seenFile, "utf8") : "";
+    if (live.status === "pending") return; // a check is running; its result comes next
     if (seen === live.at || Date.now() - Date.parse(live.at) > 15 * 60 * 1000) return;
     fs.writeFileSync(seenFile, live.at);
     const text =
