@@ -145,9 +145,25 @@ export const AI_EDIT_JSON_SCHEMA = {
 export type AiRequest = {
   readonly system: string;
   readonly user: string;
-  /** A deliberately high estimate (3 characters per token) for the input guard. */
+  /** The estimate for the input guard (`estimateInputTokens`), close to the real count. */
   readonly estimatedInputTokens: number;
 };
+
+/**
+ * Estimated input tokens from the request's characters (system prompt plus user message):
+ * about 2 characters per token plus a fixed part that the characters do not show (the answer
+ * schema and the message framing). Fitted to the two real counts of the C-15 measurement
+ * (`ai-measure` in Trigger.dev cloud, claude-opus-5-5): 2670 characters counted 1972 tokens and
+ * 34 623 characters counted 17 884, which gives 2.0 characters per token and about 640 tokens
+ * over. It replaces chars / 3, which read 890 and 11 541 (35 % low), so the 60 000 guard let
+ * through about 93 000 real tokens. No count_tokens call: that would be one more network call.
+ */
+export const CHARS_PER_TOKEN = 2;
+export const FIXED_INPUT_TOKENS = 640;
+
+export function estimateInputTokens(chars: number): number {
+  return Math.ceil(chars / CHARS_PER_TOKEN) + FIXED_INPUT_TOKENS;
+}
 
 const SYSTEM_PROMPT = [
   "You edit the transcript of one short talking-head video. You never see the video.",
@@ -198,7 +214,7 @@ export function buildAiRequest(input: {
   return {
     system: SYSTEM_PROMPT,
     user,
-    estimatedInputTokens: Math.ceil((SYSTEM_PROMPT.length + user.length) / 3),
+    estimatedInputTokens: estimateInputTokens(SYSTEM_PROMPT.length + user.length),
   };
 }
 
