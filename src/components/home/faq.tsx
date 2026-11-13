@@ -5,6 +5,16 @@ import { FAQ } from "./content";
 import { SectionHead } from "./head";
 
 /**
+ * The draft tags the first five question headings (`s7-faq-heading-2` to `-6`) and the first four
+ * triggers (`s7-faq-cta`, `-cta-2` to `-cta-4`); the design check reads them.
+ */
+const faqCheck = (kind: "heading" | "cta", i: number) => {
+  if (kind === "heading") return i < 5 ? `s7-faq-heading-${i + 2}` : undefined;
+  if (i >= 4) return undefined;
+  return i === 0 ? "s7-faq-cta" : `s7-faq-cta-${i + 1}`;
+};
+
+/**
  * Questions: a numbered accordion. Each trigger is a `<button aria-expanded>`; a closed panel is
  * `inert` once scripts run. All the answers are in the server HTML and not inert there; the
  * `noscript` style in the page shows them for a visitor without scripts.
@@ -19,20 +29,37 @@ export function HomeFaq() {
     () => false,
   );
   return (
-    <section className="h-section h-section-flush" id="faq" aria-labelledby="faq-title">
+    <section
+      className="h-section h-section-flush"
+      id="faq"
+      aria-labelledby="faq-title"
+      data-check="s7-faq"
+    >
       <div className="h-container h-faq">
-        <SectionHead id="faq-title" eyebrow={FAQ.eyebrow} muted={FAQ.muted} strong={FAQ.strong} />
-        <div className="h-acc">
+        <SectionHead
+          id="faq-title"
+          check="s7-faq"
+          eyebrow={FAQ.eyebrow}
+          muted={FAQ.muted}
+          strong={FAQ.strong}
+        />
+        <div className="h-acc" data-check="s7-faq-list">
           {FAQ.items.map((item, i) => {
             const isOpen = open === i;
             return (
-              <div key={item.q} className="h-acc-item" data-open={isOpen}>
-                <h3>
+              <div
+                key={item.q}
+                className="h-acc-item"
+                data-open={isOpen}
+                data-check={i === 0 ? "s7-faq-item" : undefined}
+              >
+                <h3 data-check={faqCheck("heading", i)}>
                   <button
                     type="button"
                     className="h-acc-trigger"
                     aria-expanded={isOpen}
                     aria-controls={`faq-${i + 1}`}
+                    data-check={faqCheck("cta", i)}
                     onClick={() => setOpen(isOpen ? null : i)}
                   >
                     <span className="h-acc-num">{String(i + 1).padStart(2, "0")}.</span>
