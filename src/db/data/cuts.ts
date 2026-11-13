@@ -21,6 +21,7 @@ const proposedSchema = z.object({
   kind: z.enum(CUT_KINDS).exclude(["manual"]),
   proposedBy: z.enum(CUT_PROPOSERS).exclude(["creator"]),
   reason: z.string().nullable().optional(),
+  applied: z.boolean().optional(),
 });
 
 /**
@@ -61,6 +62,7 @@ export async function reanalyse(
           kind: proposal.kind,
           proposedBy: proposal.proposedBy,
           reason: cleanReason(proposal.reason),
+          applied: proposal.applied ?? true,
         })),
       );
     }

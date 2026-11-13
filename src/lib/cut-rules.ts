@@ -20,6 +20,8 @@ export type ProposedCut = Range & {
   readonly kind: Exclude<CutKind, "manual">;
   readonly proposedBy: Exclude<CutProposer, "creator">;
   readonly reason?: string | null;
+  /** False stores the cut unapplied (a pause the AI kept); absent means applied. */
+  readonly applied?: boolean;
 };
 
 /** True when `range` is whole milliseconds with `0 ≤ start < end ≤ durationMs`. */

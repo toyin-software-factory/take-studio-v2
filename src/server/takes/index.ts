@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, lt, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { type DeletedTakes, deleteTakesInTx } from "@/db/data/deletion";
 import { markUploaded, transition } from "@/db/data/takes";
@@ -87,6 +87,17 @@ export async function attachUpload(
   return err(owned ? "invalid_transition" : "not_found");
 }
 
+export type AiEditState = "done" | "unavailable";
+
+/** `succeeded` is `done`, `skipped ai_unavailable` is `unavailable`, anything else is unknown. */
+export function aiEditState(
+  step: { readonly status: string; readonly failureCode: string | null } | undefined,
+): AiEditState | null {
+  if (step?.status === "succeeded") return "done";
+  if (step?.status === "skipped" && step.failureCode === "ai_unavailable") return "unavailable";
+  return null;
+}
+
 export type TakeDetail = {
   readonly take: Take;
   readonly latestRender: Render | null;
@@ -95,6 +106,8 @@ export type TakeDetail = {
   readonly background: { readonly id: string | null; readonly name: string } | null;
   /** The take has no usable green screen, so its background request kept the original (AC-3). */
   readonly noGreenScreen: boolean;
+  /** Spec 0012: how the AI edit of the latest finished full run ended; null when unknown. */
+  readonly aiEdit: AiEditState | null;
   /** The latest background change job (a `background` job), for "Try again". */
   readonly backgroundJob: {
     readonly status: string;
@@ -144,6 +157,22 @@ export async function getForCreator(
     .orderBy(desc(processingJob.createdAt))
     .limit(1);
 
+  // The AI edit of the latest succeeded full run (older takes have no such step: null).
+  const [aiStep] = await db
+    .select({ status: jobStep.status, failureCode: jobStep.failureCode })
+    .from(jobStep)
+    .innerJoin(processingJob, eq(processingJob.id, jobStep.jobId))
+    .where(
+      and(
+        eq(processingJob.takeId, takeId),
+        eq(processingJob.status, "succeeded"),
+        inArray(processingJob.kind, ["initial", "rerender"]),
+        eq(jobStep.name, "ai_edit"),
+      ),
+    )
+    .orderBy(desc(processingJob.createdAt))
+    .limit(1);
+
   // Read last on purpose: a job finishes and swaps the latest render in one transaction, so a
   // job read as `succeeded` above means this read already sees its render (the other order could
   // show a finished change with the old video's background name until the next poll).
@@ -170,6 +199,7 @@ export async function getForCreator(
     latestJob: latestJob ? { ...latestJob, steps } : null,
     background: keyedBackground,
     noGreenScreen,
+    aiEdit: aiEditState(aiStep),
     backgroundJob: backgroundJob ?? null,
   });
 }

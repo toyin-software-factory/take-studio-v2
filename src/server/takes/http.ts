@@ -125,7 +125,8 @@ export async function handleGet(
   if (creator instanceof Response) return creator;
   const found = await getForCreator(creator.db, creator.creatorId, takeId);
   if (!found.ok) return errorResponse("not_found");
-  const { take, latestJob, latestRender, background, noGreenScreen, backgroundJob } = found.data;
+  const { take, latestJob, latestRender, background, noGreenScreen, aiEdit, backgroundJob } =
+    found.data;
 
   // The latest render's snapshot, or else the applied cuts (spec 0004, value sourcing).
   const cutsResult = await listForTake(creator.db, creator.creatorId, take.id);
@@ -144,6 +145,8 @@ export async function handleGet(
     background: background ? { ...background, keyed: true } : null,
     noGreenScreen,
     backgroundJob,
+    // Spec 0012: how the AI edit ended (done, unavailable, or unknown for older takes).
+    aiEdit,
     // Spec 0011: every cut in time order (`applied` is what the current video has), and whether
     // the original can still be played and rendered from.
     cuts: cuts.map(cutView),

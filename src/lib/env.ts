@@ -53,6 +53,15 @@ export const transcriptEnvSchema = z.object({
   DEEPGRAM_API_KEY: z.string().min(1),
 });
 
+/**
+ * AI edit (spec 0012): the Anthropic key lives in Trigger.dev only and is parsed only by the
+ * `ai_edit` step. A missing key means `ai_unavailable`, never an aborted run.
+ */
+export const aiEditEnvSchema = z.object({
+  ANTHROPIC_API_KEY: z.string().min(1),
+});
+
+export type AiEditEnv = z.infer<typeof aiEditEnvSchema>;
 export type TranscriptEnv = z.infer<typeof transcriptEnvSchema>;
 export type EmailEnv = z.infer<typeof emailEnvSchema>;
 export type WebEnv = z.infer<typeof webEnvSchema>;
@@ -96,4 +105,9 @@ export function parseEmailEnv(source: Source = process.env): EmailEnv {
 /** Transcript env: the Deepgram key (the `transcribe-take` job only). */
 export function parseTranscriptEnv(source: Source = process.env): TranscriptEnv {
   return parseEnv(transcriptEnvSchema, source, "transcript");
+}
+
+/** AI edit env: the Anthropic key (the `ai_edit` step only). */
+export function parseAiEditEnv(source: Source = process.env): AiEditEnv {
+  return parseEnv(aiEditEnvSchema, source, "ai edit");
 }
