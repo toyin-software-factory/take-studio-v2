@@ -1,0 +1,13 @@
+{
+  "name": "design-check",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Checks that a built page matches its reference design, measured from what the browser renders. Vendored tool: it uses the project's own Playwright.",
+  "type": "module",
+  "bin": {
+    "design-check": "src/cli.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -68,6 +68,7 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "cloudflare-env.d.ts",
     ".claude/**",
+    "tools/design-check/**",
     ".pnpm-store/**",
     "playwright-report/**",
     "test-results/**",
