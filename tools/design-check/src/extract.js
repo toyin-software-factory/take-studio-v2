@@ -4,7 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-import { autoTag, motionRecorder, probeElements, readHoverStyle } from "./probe.js";
+import { autoTag, motionRecorder, probeElements, drawnRects, readHoverStyle } from "./probe.js";
 
 const MAX_SHOT_HEIGHT = 12000;
 
@@ -58,6 +58,8 @@ async function newContext(browser, vpName, js = true, storageState) {
     ...(storageState ? { storageState } : {}),
   });
 }
+
+const MOTION_SAMPLE_MS = 250;
 
 async function scrollTour(page) {
   const vh = page.viewportSize().height;
@@ -189,7 +191,17 @@ export async function extractPage(
         } catch {}
       }
     });
+    const before = await page.evaluate(drawnRects);
     const probe = await page.evaluate(probeElements);
+    await page.waitForTimeout(MOTION_SAMPLE_MS);
+    const after = await page.evaluate(drawnRects);
+    for (const e of probe.elements) {
+      const a = before[e.label],
+        b = after[e.label];
+      // Still moving (a running GSAP loop, a scrub catching up, a cursor follower): its transform
+      // depends on when it was sampled, so the transform check would compare two random frames.
+      if (a && b && a.some((v, i) => Math.abs(v - b[i]) > 1)) e.moving = true;
+    }
     let hoverChanges = {};
     if (hover && !VIEWPORTS[vpName].hasTouch) {
       await page.evaluate(() => window.__dc && window.__dc.setPhase("hover"));

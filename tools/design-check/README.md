@@ -55,17 +55,18 @@ node tools/design-check/src/cli.js tag <design.html> [--out file]
 
 ## Options (`design-check.json`)
 
-| Key            | Default                                        | Meaning                                                                                                                                |
-| -------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `pages`        | (required)                                     | `{ name, design, build, storageState? }`. `design` is a file or URL; `build` is usually the dev server URL.                            |
-| `viewports`    | `["desktop","phone"]`                          | Also `laptop` (1280) and `tablet` (834).                                                                                               |
-| `maxRounds`    | `5`                                            | Hard cap. After it, `check` refuses to run until `reset`.                                                                              |
-| `repeatLimit`  | `2`                                            | A failure with the same numbers this many rounds in a row is stuck and goes to Toyin.                                                  |
-| `confidence`   | `0.8`                                          | Jev answers below this go to Toyin.                                                                                                    |
-| `tolerance`    | see `src/config.js`                            | `position`, `size`, `fontSize`, `lineHeight`, `letterSpacing`, `spacing`, `radius`, `color` (delta E), `motionDuration`, `pixelRatio`. |
-| `storageState` | none                                           | Playwright storage state file for signed-in pages (build side only).                                                                   |
-| `watch`        | `["src","app","components","styles","public"]` | Folders `watch` follows.                                                                                                               |
-| `hover`        | `true`                                         | Probe hover states on desktop.                                                                                                         |
+| Key            | Default                                        | Meaning                                                                                                                                                                        |
+| -------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pages`        | (required)                                     | `{ name, design, build, storageState? }`. `design` is a file or URL; `build` is usually the dev server URL.                                                                    |
+| `viewports`    | `["desktop","phone"]`                          | Also `laptop` (1280) and `tablet` (834).                                                                                                                                       |
+| `maxRounds`    | `5`                                            | Hard cap. After it, `check` refuses to run until `reset`.                                                                                                                      |
+| `repeatLimit`  | `2`                                            | A failure with the same numbers this many rounds in a row is stuck and goes to Toyin.                                                                                          |
+| `confidence`   | `0.8`                                          | Jev answers below this go to Toyin.                                                                                                                                            |
+| `tolerance`    | see `src/config.js`                            | `position`, `size`, `fontSize`, `lineHeight`, `letterSpacing`, `spacing`, `radius`, `color` (delta E), `motionDuration`, `pixelRatio`.                                         |
+| `storageState` | none                                           | Playwright storage state file for signed-in pages (build side only).                                                                                                           |
+| `watch`        | `["src","app","components","styles","public"]` | Folders `watch` follows.                                                                                                                                                       |
+| `hover`        | `true`                                         | Probe hover states on desktop.                                                                                                                                                 |
+| `motion`       | `"design"`                                     | `"design"`: flag motion the design has that the build lacks or does differently; motion only the build has is listed for Toyin. `"strict"`: send that back to the builder too. |
 
 ## Judge
 
@@ -83,6 +84,8 @@ node tools/design-check/src/cli.js tag <design.html> [--out file]
 - Elements are matched only by `data-check` labels, so an untagged element is not checked. `tag` covers the main structure; tag anything else that matters by hand.
 - Canvas and WebGL content is only seen in screenshots, so Jev judges it (if `images` is on) or Toyin does.
 - Scroll-scrubbed motion is compared by trigger and by which properties move, not frame by frame.
+- An element still moving when the page is measured (a running GSAP loop, a scrub catching up) has its transform left to the screenshots; it is listed as info, not as a failure. GSAP bundled as a module is not visible on `window`, so its tweens are only seen through the styles they change.
+- Gap is compared only on flex and grid containers, on the axis that spaces the items. The same difference at several viewports is one line in the builder feedback.
 - Sections taller than 12,000 px are compared on their top 12,000 px only, and are flagged for Toyin. A section whose screenshot fails is flagged too, never passed.
 - Judge endpoints must use HTTPS (plain HTTP is accepted only for localhost), so API keys never travel in clear text.
 - Reference drafts often hold placeholder content. Text content is not compared. Images that differ only because a placeholder was swapped can make Jev unsure; those go to Toyin rather than to the builder.

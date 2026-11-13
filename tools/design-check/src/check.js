@@ -169,7 +169,9 @@ export async function runRound(cfg, pages, { quick = false } = {}) {
           buildErrors: B.consoleErrors,
         });
         pr.findings.push(...compareElements(D, B, vp, cfg.tolerance));
-        const [motion, motionQs] = compareMotion(D, B, vp, cfg.tolerance);
+        const [motion, motionQs] = compareMotion(D, B, vp, cfg.tolerance, {
+          strictMotion: cfg.motion === "strict",
+        });
         pr.findings.push(...motion);
         if (quick) continue;
         pr.questions.push(

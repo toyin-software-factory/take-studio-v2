@@ -258,8 +258,9 @@ export function compareElements(D, B, vp, tol) {
         ),
       );
     }
-    for (const p of ["marginTop", "marginBottom", "gap", "columnGap"])
+    for (const p of ["marginTop", "marginBottom"])
       cmpNum(out, vp, label, kebab(p), s[p], t[p], tol.spacing);
+    cmpGap(out, vp, label, s, t, tol.spacing);
     cmpNum(out, vp, label, "border-radius", s.borderRadius, t.borderRadius, tol.radius);
     cmpNum(out, vp, label, "border-width", s.borderWidth, t.borderWidth, 0.5);
     if (s.borderColor && t.borderColor)
@@ -279,7 +280,19 @@ export function compareElements(D, B, vp, tol) {
       );
     cmpNum(out, vp, label, "opacity", s.opacity, t.opacity, tol.opacity, "");
     // Transforms move and resize what is drawn without changing the layout box.
-    if (s.rendered && t.rendered && "sx" in s.rendered && "sx" in t.rendered) {
+    if (d.moving || b.moving)
+      out.push(
+        finding(
+          vp,
+          label,
+          "transform",
+          s.rendered,
+          t.rendered,
+          `still moving when measured (${[d.moving && "design", b.moving && "build"].filter(Boolean).join(" and ")}), so its transform was not compared; the screenshots show it`,
+          { severity: "info" },
+        ),
+      );
+    else if (s.rendered && t.rendered && "sx" in s.rendered && "sx" in t.rendered) {
       const a = s.rendered,
         b = t.rendered;
       if (
@@ -407,6 +420,41 @@ function aboveOf(list, e, map) {
 const VIEW_W = { desktop: 1440, laptop: 1280, tablet: 834, phone: 390 };
 const kebab = (s) => s.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase());
 
+// Gap only spaces the children of flex and grid containers ("normal" there means 0). On any
+// other element it has no effect, and a list laid out differently shows up in its items'
+// positions instead. Row and column gaps are reported together, and only the axis that spaces
+// the items: a single-line row only uses column-gap, a column only uses row-gap.
+const GAP_LAYOUT = /^(inline-)?(flex|grid)$/;
+function gapAxes(st) {
+  if (!GAP_LAYOUT.test(st.display || "")) return null;
+  if (!/flex/.test(st.display)) return ["gap", "columnGap"];
+  const [dir = "row", wrap = "nowrap"] = String(st.flexFlow || "").split(" ");
+  const column = dir.startsWith("column");
+  if (wrap !== "nowrap") return ["gap", "columnGap"];
+  return column ? ["gap"] : ["columnGap"];
+}
+function cmpGap(out, vp, label, s, t, tolerance) {
+  const da = gapAxes(s),
+    ba = gapAxes(t);
+  if (!da || !ba) return;
+  const val = (st, k) => num(st[k]) ?? 0;
+  const diffs = [...new Set([...da, ...ba])].filter(
+    (k) => Math.abs(val(s, k) - val(t, k)) > tolerance,
+  );
+  if (!diffs.length) return;
+  const name = { gap: "row gap", columnGap: "column gap" };
+  out.push(
+    finding(
+      vp,
+      label,
+      "gap",
+      Object.fromEntries(diffs.map((k) => [k, val(s, k)])),
+      Object.fromEntries(diffs.map((k) => [k, val(t, k)])),
+      diffs.map((k) => `${name[k]} ${fmt(val(t, k))}, design ${fmt(val(s, k))}`).join("; "),
+    ),
+  );
+}
+
 function cmpNum(out, vp, label, prop, a, b, tolerance, unit = "px") {
   const x = num(a),
     y = num(b);
@@ -450,7 +498,7 @@ const describe = (m) =>
 
 // Returns [findings, judgeQuestions]. Easings written in different systems (a GSAP name vs a
 // CSS cubic-bezier) cannot be compared in code, so those become questions for the judge.
-export function compareMotion(D, B, vp, tol) {
+export function compareMotion(D, B, vp, tol, { strictMotion = false } = {}) {
   const out = [],
     questions = [];
   const labels = new Set(D.elements.map((e) => e.label.split("#")[0]));
@@ -596,6 +644,9 @@ export function compareMotion(D, B, vp, tol) {
       prop: "motion-extra",
       design: dTrigs.size ? [...dTrigs] : "none",
       build: trigs,
+      // Motion the design lacks is usually polish the builder added on purpose: by default it is
+      // listed for a person, not sent back to the builder. "motion": "strict" sends it back.
+      ...(strictMotion ? {} : { severity: "info" }),
       message: `has ${trigs.join(", ")} motion that the design does not have (${describe(bList.find((m) => trigs.includes(triggerGroup(m.trigger))))})`,
     });
   }

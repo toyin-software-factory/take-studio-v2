@@ -377,6 +377,7 @@ export function probeElements() {
         boxShadow: cs.boxShadow === "none" ? "none" : "shadow",
         opacity: px(cs.opacity),
         display: cs.display,
+        flexFlow: `${cs.flexDirection} ${cs.flexWrap}`,
         objectFit: media ? cs.objectFit : undefined,
         transition:
           cs.transitionDuration !== "0s"
@@ -394,6 +395,21 @@ export function probeElements() {
 }
 
 // Hover changes: computed style before and after the pointer sits on the element.
+// Where each tagged element is drawn right now, keyed like probeElements' labels. Sampled twice
+// a moment apart to find elements still moving when the page is measured.
+export function drawnRects() {
+  const counts = {};
+  const out = {};
+  for (const el of document.querySelectorAll("[data-check]")) {
+    let label = el.getAttribute("data-check");
+    counts[label] = (counts[label] || 0) + 1;
+    if (counts[label] > 1) label += "#" + counts[label];
+    const r = el.getBoundingClientRect();
+    out[label] = [r.left + scrollX, r.top + scrollY, r.width, r.height];
+  }
+  return out;
+}
+
 export function readHoverStyle(el) {
   const cs = getComputedStyle(el);
   return {
