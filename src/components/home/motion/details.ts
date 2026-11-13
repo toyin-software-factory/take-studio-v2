@@ -2,33 +2,37 @@ import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { EASE } from "./eases";
 
-const WIDE = "(min-width: 810px)";
-
 /**
  * Drift rows (recipe 7.12): the two rows in the proof section slide sideways in opposite
- * directions while the section scrolls (about 7% of their width). Wide screens only; the
- * `is-drift` class widens the rows so nothing is clipped. Runs inside a `gsap.context`.
+ * directions while the section scrolls (about 7% of their width), at every width like the draft.
+ * The `is-drift` class makes each row one nowrap line, wider than the page, and the section clips
+ * the overflow. Not run under reduced motion, so the wrapped rows stay. Runs inside a `gsap.context`.
  */
 export function setupDrift(root: HTMLElement): () => void {
   const rows = gsap.utils.toArray<HTMLElement>(".h-drift", root);
   if (!rows.length) return () => undefined;
-  const mm = gsap.matchMedia();
-  mm.add(WIDE, () => {
-    rows.forEach((row, i) => {
-      row.classList.add("is-drift");
-      gsap.fromTo(
-        row,
-        { xPercent: i % 2 ? 7.04 : -7.04 },
-        {
-          xPercent: i % 2 ? -7.04 : 7.04,
-          ease: "none",
-          scrollTrigger: { trigger: row, start: "top bottom", end: "bottom top", scrub: true },
-        },
-      );
-    });
-    return () => rows.forEach((row) => row.classList.remove("is-drift"));
+  const tweens = rows.map((row, i) => {
+    row.classList.add("is-drift");
+    return gsap.fromTo(
+      row,
+      { xPercent: i % 2 ? 7.04 : -7.04 },
+      {
+        xPercent: i % 2 ? -7.04 : 7.04,
+        ease: "none",
+        scrollTrigger: { trigger: row, start: "top bottom", end: "bottom top", scrub: true },
+      },
+    );
   });
-  return () => mm.revert();
+  return () => {
+    tweens.forEach((t) => {
+      t.scrollTrigger?.kill();
+      t.kill();
+    });
+    rows.forEach((row) => {
+      row.classList.remove("is-drift");
+      gsap.set(row, { clearProps: "transform" });
+    });
+  };
 }
 
 /**
