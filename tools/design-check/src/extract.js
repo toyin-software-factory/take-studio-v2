@@ -105,9 +105,15 @@ async function waitForStillLayout(page) {
   return new Set();
 }
 
-async function hoverProbe(page, elements) {
+const HOVER_LIMIT = 60;
+
+async function hoverProbe(page, elements, hoverSkipped) {
   const out = {};
-  const targets = elements.filter((e) => e.interactive && e.visible).slice(0, 30);
+  const all = elements.filter((e) => e.interactive && e.visible);
+  // Each hover takes about a second, so very busy pages are capped; the rest are reported as
+  // not checked (never silently dropped).
+  const targets = all.slice(0, HOVER_LIMIT);
+  hoverSkipped.push(...all.slice(HOVER_LIMIT).map((e) => e.label));
   for (const e of targets) {
     try {
       const [name, nth] = e.label.split("#");
@@ -223,9 +229,10 @@ export async function extractPage(
     const probe = await page.evaluate(probeElements);
     for (const e of probe.elements) if (stillMoving.has(e.label.split("#")[0])) e.moving = true;
     let hoverChanges = {};
+    const hoverSkipped = [];
     if (hover && !VIEWPORTS[vpName].hasTouch) {
       await page.evaluate(() => window.__dc && window.__dc.setPhase("hover"));
-      hoverChanges = await hoverProbe(page, probe.elements);
+      hoverChanges = await hoverProbe(page, probe.elements, hoverSkipped);
     }
     const motion = (await page.evaluate(() => (window.__dc ? window.__dc.dump() : []))).filter(
       (m) => m.trigger !== "idle",
@@ -240,7 +247,7 @@ export async function extractPage(
         changes,
       });
     const shots = await sectionShots(page, probe.elements, outDir, prefix, vpName);
-    return { url, viewport: vpName, ...probe, motion, shots, consoleErrors };
+    return { url, viewport: vpName, ...probe, motion, shots, consoleErrors, hoverSkipped };
   } finally {
     await ctx.close();
   }

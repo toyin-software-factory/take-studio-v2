@@ -89,6 +89,8 @@ node tools/design-check/src/cli.js tag <design.html> [--out file]
 
 ## Limits
 
+- The "For Toyin" list in `feedback.md` is never cut: it starts with the count ("For Toyin, not for the builder (N, all listed)"), merges the same item across viewports, and is grouped by section, worst first. In `loop` mode the builder gets a one-line count instead of the list.
+- Hover is probed on up to 60 interactive elements per page; any past that are listed in the report's notes as not checked.
 - Elements are matched only by `data-check` labels, so an untagged element is not checked. `tag` covers the main structure; tag anything else that matters by hand.
 - Canvas and WebGL content is only seen in screenshots, so Jev judges it (if `images` is on) or Toyin does.
 - Scroll-scrubbed motion is compared by trigger and by which properties move, not frame by frame.
