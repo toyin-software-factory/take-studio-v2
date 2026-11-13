@@ -127,16 +127,44 @@ test("robots.txt and sitemap.xml list / and keep the app out (AC-3)", async ({ r
   expect(sitemap).not.toMatch(/\/takes|\/design|\/api/);
 });
 
-test("signed in, / still shows the takes library (AC-1)", async ({ page, baseURL }) => {
+test("signed in, / is a 307 to /library, which shows the takes library (AC-1)", async ({
+  page,
+  baseURL,
+}) => {
   const { cleanup } = await signIn(page.context(), baseURL!);
   try {
+    const res = await page.context().request.get("/", { maxRedirects: 0 });
+    expect(res.status()).toBe(307);
+    expect(new URL(res.headers().location!, baseURL).pathname).toBe("/library");
     await page.goto("/");
+    await expect(page).toHaveURL(/\/library$/);
     await expect(page.getByRole("heading", { name: "Your takes", level: 1 })).toBeVisible();
     await expect(page.getByText("Get it back ready to post.")).toHaveCount(0);
     await expect(page).toHaveTitle("Your takes · Take Studio");
   } finally {
     await cleanup();
   }
+});
+
+test("signed out, /library goes to /sign-in", async ({ page }) => {
+  await page.goto("/library");
+  await expect(page).toHaveURL(/\/sign-in$/);
+});
+
+test("the signed out homepage loads none of the signed in library code", async ({
+  page,
+  baseURL,
+}) => {
+  const urls: string[] = [];
+  page.on("response", (r) => {
+    if (r.url().endsWith(".js")) urls.push(r.url());
+  });
+  await page.goto("/", { waitUntil: "networkidle" });
+  const bodies = await Promise.all(urls.map((u) => page.request.get(u).then((r) => r.text())));
+  expect(bodies.length).toBeGreaterThan(0);
+  // Signatures of the library's client code: the upload area, the library list, the toaster.
+  const hits = bodies.filter((b) => /sonner|Upload a video|data-sonner/.test(b));
+  expect(hits.length, `library code on / (${baseURL})`).toBe(0);
 });
 
 test("the skip link comes first and the FAQ opens and closes by keyboard (AC-7, AC-9)", async ({

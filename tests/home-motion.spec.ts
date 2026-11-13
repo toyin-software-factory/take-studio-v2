@@ -356,7 +356,7 @@ test.describe("signed in pages do not load the animation libraries", () => {
         { title: "Interview", status: "ready", durationMs: 5000 },
       ]);
       const scripts = await scriptsOf(page, async () => {
-        await page.goto("/");
+        await page.goto("/library");
         await expect(page.getByRole("heading", { name: "Your takes", level: 1 })).toBeVisible();
         await page.goto(`/takes/${id}`);
         await expect(page.getByRole("heading", { name: "Interview" })).toBeVisible();

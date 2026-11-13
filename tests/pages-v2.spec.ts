@@ -53,7 +53,7 @@ async function seedLibrary(page: Page, baseURL: string) {
 
 test("library with cards in every state passes axe on desktop", async ({ page, baseURL }) => {
   await seedLibrary(page, baseURL!);
-  await page.goto("/");
+  await page.goto("/library");
   await expect(page.getByRole("heading", { level: 3, name: "Founder intro" })).toBeVisible();
   await expect(
     page.getByRole("region", { name: "Takes", exact: true }).getByRole("listitem"),
@@ -67,7 +67,7 @@ test.describe("on a phone", () => {
 
   test("library with cards passes axe and has no sideways scroll", async ({ page, baseURL }) => {
     await seedLibrary(page, baseURL!);
-    await page.goto("/");
+    await page.goto("/library");
     await expect(page.getByRole("heading", { level: 3, name: "Founder intro" })).toBeVisible();
     expect(
       await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
@@ -158,7 +158,7 @@ test("the signed out homepage does load the libraries (so the check below can se
 
 test("signed in pages load no gsap, lenis or three code", async ({ page, baseURL }) => {
   const ids = await seedLibrary(page, baseURL!);
-  const scripts = await scriptsOf(page, baseURL!, ["/", `/takes/${ids[0]}`]);
+  const scripts = await scriptsOf(page, baseURL!, ["/library", `/takes/${ids[0]}`]);
   expect(scripts.size).toBeGreaterThan(0);
   const hits = [...scripts].filter(([, code]) => MARKER.test(code)).map(([url]) => url);
   expect(hits).toEqual([]);

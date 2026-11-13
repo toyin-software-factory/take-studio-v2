@@ -110,7 +110,7 @@ export function TakeView({
     <div className="flex flex-col gap-6">
       {stop === "signed_out" ? (
         <Alert variant="danger" title="You've been signed out">
-          <Link href="/" className="underline underline-offset-2">
+          <Link href="/library" className="underline underline-offset-2">
             Sign in again
           </Link>{" "}
           to see this take.

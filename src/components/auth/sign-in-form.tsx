@@ -43,8 +43,8 @@ export function SignInForm({ notice }: { readonly notice?: "link_expired" }) {
     try {
       const result = await authClient.signIn.magicLink({
         email: email.trim(),
-        callbackURL: "/",
-        newUserCallbackURL: "/",
+        callbackURL: "/library",
+        newUserCallbackURL: "/library",
         errorCallbackURL: "/sign-in/link-expired",
       });
       setState(
@@ -60,7 +60,10 @@ export function SignInForm({ notice }: { readonly notice?: "link_expired" }) {
   async function google() {
     setGooglePending(true);
     try {
-      const result = await authClient.signIn.social({ provider: "google", callbackURL: "/" });
+      const result = await authClient.signIn.social({
+        provider: "google",
+        callbackURL: "/library",
+      });
       if (result.error) setState({ kind: "failed", why: "error" });
     } catch {
       setState({ kind: "failed", why: "error" });

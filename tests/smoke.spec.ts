@@ -20,7 +20,7 @@ test("health reports the database reachable through Hyperdrive", async ({ reques
 
 test("sign in starts the Google OAuth flow", async ({ request }) => {
   const res = await request.post("/api/auth/sign-in/social", {
-    data: { provider: "google", callbackURL: "/" },
+    data: { provider: "google", callbackURL: "/library" },
   });
   expect(res.ok()).toBe(true);
   const body = (await res.json()) as { url: string };

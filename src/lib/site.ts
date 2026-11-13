@@ -26,4 +26,11 @@ export function siteOrigin(value: string | undefined): string | null {
 }
 
 /** Paths that must stay out of search results: the app, the design gallery and the API. */
-export const PRIVATE_PATHS = ["/takes", "/design", "/api/", "/emails", "/sign-in"] as const;
+export const PRIVATE_PATHS = [
+  "/takes",
+  "/library",
+  "/design",
+  "/api/",
+  "/emails",
+  "/sign-in",
+] as const;

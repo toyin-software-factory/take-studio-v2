@@ -51,7 +51,7 @@ function Failed({
         </Button>
       ) : (
         <Button asChild>
-          <Link href="/">Upload another video</Link>
+          <Link href="/library">Upload another video</Link>
         </Button>
       )}
     </StageMessage>

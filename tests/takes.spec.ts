@@ -53,7 +53,7 @@ async function mockPlayback(page: Page) {
 test.describe("library", () => {
   test("empty state, upload area and limits, axe", async ({ page, baseURL }) => {
     await signedIn(page, baseURL!);
-    await page.goto("/");
+    await page.goto("/library");
     await expect(page).toHaveTitle("Your takes · Take Studio");
     await expect(page.getByRole("button", { name: "Choose a video" }).first()).toBeVisible();
     await expect(page.getByText("MP4 or MOV, up to 10 minutes, 2 GB, 1080p")).toBeVisible();
@@ -108,7 +108,7 @@ test.describe("library", () => {
         ],
       },
     ]);
-    await page.goto("/");
+    await page.goto("/library");
 
     const titles = page.getByRole("region", { name: "Takes" }).getByRole("heading", { level: 3 });
     await expect(titles).toHaveText([
@@ -164,7 +164,7 @@ test.describe("library", () => {
     await page.route(`${R2}/thumb.jpg`, (route) =>
       route.fulfill({ body: png, contentType: "image/png" }),
     );
-    await page.goto("/");
+    await page.goto("/library");
     const card = page.getByRole("main").getByRole("listitem").filter({ hasText: "With thumbnail" });
     await expect(card.locator("img")).toBeVisible();
     // No link is requested for the take that is still uploading.
@@ -192,7 +192,7 @@ test.describe("library", () => {
         ? route.fulfill({ status: 401, json: { error: "unauthorized" } })
         : route.continue(),
     );
-    await page.goto("/");
+    await page.goto("/library");
     const alert = page.getByRole("status").filter({ hasText: "Your session ended" });
     await expect(alert).toBeVisible({ timeout: 20_000 });
     await expect(alert.getByRole("button", { name: "Sign in" })).toBeVisible();
@@ -208,7 +208,7 @@ test.describe("library", () => {
       created = true;
       return route.abort();
     });
-    await page.goto("/");
+    await page.goto("/library");
     await page
       .locator("#upload-video-input")
       .setInputFiles({ name: "take.webm", mimeType: "video/webm", buffer: Buffer.from("x") });
@@ -256,7 +256,7 @@ test.describe("library", () => {
       return route.fulfill({ json: { takeId, status: "uploading" } });
     });
 
-    await page.goto("/");
+    await page.goto("/library");
     await page.locator("#upload-video-input").setInputFiles("tests/fixtures/clip.mp4");
     await expect(page.getByText("clip.mp4")).toBeVisible();
     await expect(page.getByRole("progressbar", { name: "Upload progress" })).toBeVisible();
@@ -287,7 +287,7 @@ test.describe("library", () => {
       return route.fulfill({ json: { takeId, status: "uploading" } });
     });
 
-    await page.goto("/");
+    await page.goto("/library");
     await page.locator("#upload-video-input").setInputFiles("tests/fixtures/clip.mp4");
     await page.getByRole("button", { name: "Cancel" }).click();
     await expect(page.getByText("Upload cancelled")).toBeVisible();
@@ -408,7 +408,7 @@ test.describe("take page", () => {
     await expect(page.getByText("This video is bigger than 1080p, the limit.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Upload another video" })).toHaveAttribute(
       "href",
-      "/",
+      "/library",
     );
   });
 
@@ -457,7 +457,7 @@ test.describe("phone width", () => {
       },
     ]);
     await mockPlayback(page);
-    for (const path of ["/", `/takes/${id}`]) {
+    for (const path of ["/library", `/takes/${id}`]) {
       await page.goto(path);
       await expect(page.getByRole("main")).toBeVisible();
       const overflow = await page.evaluate(

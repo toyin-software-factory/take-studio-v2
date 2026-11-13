@@ -14,7 +14,7 @@ export const metadata: Metadata = { title: "Sign in · Take Studio" };
 
 /** Sign in (spec 0006, AC-1): Google or an emailed link. Signed in creators go to the library. */
 export default async function SignInPage() {
-  if (await getSession(await headers())) redirect("/");
+  if (await getSession(await headers())) redirect("/library");
   return (
     <>
       <SkipLink />
