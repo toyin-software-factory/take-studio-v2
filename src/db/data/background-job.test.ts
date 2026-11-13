@@ -54,7 +54,12 @@ describe("startJob with a background (spec 0008)", () => {
     const started = await start(creator.id, t.id);
     if (!started.ok) throw new Error(started.error);
     expect(started.data.targetBackgroundId).toBe(bg.id);
-    expect(started.data.steps.map((s) => s.name)).toEqual(["trim", "background", "render"]);
+    expect(started.data.steps.map((s) => s.name)).toEqual([
+      "trim",
+      "transcript",
+      "background",
+      "render",
+    ]);
     // The charge does not depend on the background.
     expect(started.data.secondsCharged).toBe(10);
   });
@@ -64,7 +69,7 @@ describe("startJob with a background (spec 0008)", () => {
     const started = await start(creator.id, t.id);
     if (!started.ok) throw new Error(started.error);
     expect(started.data.targetBackgroundId).toBeNull();
-    expect(started.data.steps.map((s) => s.name)).toEqual(["trim", "render"]);
+    expect(started.data.steps.map((s) => s.name)).toEqual(["trim", "transcript", "render"]);
   });
 
   it("deleting a background keeps takes, jobs, renders and the creator's default", async () => {

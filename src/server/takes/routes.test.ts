@@ -276,7 +276,11 @@ describe("GET /api/takes/{id} (AC-7, AC-8, AC-9)", () => {
       retryable: false,
       expired: false,
     });
-    expect(body.latestJob.steps.map((s: { name: string }) => s.name)).toEqual(["trim", "render"]);
+    expect(body.latestJob.steps.map((s: { name: string }) => s.name)).toEqual([
+      "trim",
+      "transcript",
+      "render",
+    ]);
     expect(body.latestRender).toMatchObject({ status: "succeeded", durationMs: 50_000 });
     expect(body.removedMs).toBe(2150);
     expect(body.note).toBeNull();
