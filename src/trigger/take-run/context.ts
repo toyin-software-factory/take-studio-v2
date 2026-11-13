@@ -22,6 +22,8 @@ export type RunContext = {
 /** What a run returns (IDs and numbers only): `outcome` says what happened. */
 export type RunResult =
   | { readonly jobId: string; readonly takeId: string; readonly outcome: "no_audio" | "no_cuts" }
+  /** The job was cancelled or finished meanwhile (the finish was refused): nothing was sent. */
+  | { readonly jobId: string; readonly takeId: string; readonly outcome: "not_finished" }
   | {
       readonly jobId: string;
       readonly takeId: string;
