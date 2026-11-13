@@ -28,6 +28,9 @@ export const DEFAULTS = {
   outDir: ".design-check",
   settleMs: 1500,
   hover: true,
+  // "design" (default): flag motion the design has that the build lacks or does differently.
+  // "strict": also send back motion only the build has.
+  motion: "design",
 };
 
 export function loadConfig(file, overrides = {}) {

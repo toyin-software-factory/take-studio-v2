@@ -61,17 +61,18 @@ node tools/design-check/src/cli.js tag <design.html> [--out file]
 
 ## Options (`design-check.json`)
 
-| Key            | Default                                        | Meaning                                                                                                                                |
-| -------------- | ---------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| `pages`        | (required)                                     | `{ name, design, build, storageState? }`. `design` is a file or URL; `build` is usually the dev server URL.                            |
-| `viewports`    | `["desktop","phone"]`                          | Also `laptop` (1280) and `tablet` (834).                                                                                               |
-| `maxRounds`    | `5`                                            | Hard cap. After it, `check` refuses to run until `reset`.                                                                              |
-| `repeatLimit`  | `2`                                            | A failure with the same numbers this many rounds in a row is stuck and goes to Toyin.                                                  |
-| `confidence`   | `0.8`                                          | Jev answers below this go to Toyin.                                                                                                    |
-| `tolerance`    | see `src/config.js`                            | `position`, `size`, `fontSize`, `lineHeight`, `letterSpacing`, `spacing`, `radius`, `color` (delta E), `motionDuration`, `pixelRatio`. |
-| `storageState` | none                                           | Playwright storage state file for signed-in pages (build side only).                                                                   |
-| `watch`        | `["src","app","components","styles","public"]` | Folders `watch` follows.                                                                                                               |
-| `hover`        | `true`                                         | Probe hover states on desktop.                                                                                                         |
+| Key            | Default                                        | Meaning                                                                                                                                                                                 |
+| -------------- | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pages`        | (required)                                     | `{ name, design, build, storageState? }`. `design` is a file or URL; `build` is usually the dev server URL.                                                                             |
+| `viewports`    | `["desktop","phone"]`                          | Also `laptop` (1280) and `tablet` (834).                                                                                                                                                |
+| `maxRounds`    | `5`                                            | Hard cap. After it, `check` refuses to run until `reset`.                                                                                                                               |
+| `repeatLimit`  | `2`                                            | A failure with the same numbers this many rounds in a row is stuck and goes to Toyin.                                                                                                   |
+| `confidence`   | `0.8`                                          | Jev answers below this go to Toyin.                                                                                                                                                     |
+| `tolerance`    | see `src/config.js`                            | `position`, `size`, `fontSize`, `lineHeight`, `letterSpacing`, `spacing`, `radius`, `color` (delta E), `motionDuration`, `pixelRatio`.                                                  |
+| `storageState` | none                                           | Playwright storage state file for signed-in pages (build side only).                                                                                                                    |
+| `watch`        | `["src","app","components","styles","public"]` | Folders `watch` follows.                                                                                                                                                                |
+| `hover`        | `true`                                         | Probe hover states on desktop.                                                                                                                                                          |
+| `motion`       | `"design"`                                     | `"design"`: flag motion the design has that the build lacks or does differently; motion only the build has is listed in the report as a note. `"strict"`: send that to the builder too. |
 
 ## Judge
 
