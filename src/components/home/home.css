@@ -187,18 +187,20 @@
   border-radius: var(--radius-pill);
   background: var(--color-ink);
   color: var(--color-bg);
-  transition: background var(--dur-hover) var(--ease-ui);
+  transition: background var(--dur-swap) var(--ease-ui);
 }
 .h-btn-split-label {
   padding: 0 24px;
+  font-weight: 400;
   transition:
-    background var(--dur-hover) var(--ease-ui),
+    background var(--dur-swap) var(--ease-ui),
     padding var(--dur-swap) var(--ease-in-out);
 }
 .h-btn-split-icon {
   width: 48px;
+  border-radius: var(--radius-round);
   transition:
-    background var(--dur-hover) var(--ease-ui),
+    background var(--dur-swap) var(--ease-ui),
     translate var(--dur-swap) var(--ease-in-out);
 }
 .h-btn-split-icon svg {
@@ -574,6 +576,7 @@
   position: sticky;
   top: 0;
   display: grid;
+  gap: 0;
   place-items: center;
   height: 100vh;
   height: 100svh;
@@ -662,7 +665,7 @@
   height: auto;
   aspect-ratio: 16 / 9;
   object-fit: cover;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
 }
 .h-srt {
   display: flex;
@@ -686,7 +689,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
-  padding-block: var(--section-y);
+  padding-block: 0 var(--section-y);
 }
 .h-studio-fill .h-fill {
   position: relative;
@@ -710,14 +713,15 @@
     --fill-progress: 0%;
   }
 }
-.h-studio-fill .h-btn-split {
-  margin-top: 32px;
+.h-studio-cta {
+  align-self: stretch;
+  margin-top: 48px;
 }
 
 /* What it does: four uneven tiles */
 .h-caps {
   display: grid;
-  gap: 48px 24px;
+  gap: 24px;
   align-items: start;
   grid-template-columns: 1fr;
 }
@@ -785,11 +789,15 @@ html.js .h-tile-media[data-playing="true"] video {
   text-transform: uppercase;
   color: var(--color-on-dark-75);
 }
+.h-cap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 .h-cap figcaption {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 16px;
 }
 .h-cap figcaption p {
   color: var(--color-text-muted);
@@ -799,7 +807,7 @@ html.js .h-tile-media[data-playing="true"] video {
 /* The limits */
 .h-stats {
   display: grid;
-  gap: 32px 24px;
+  gap: 24px;
   grid-template-columns: 1fr 1fr;
 }
 @media (min-width: 1200px) {
@@ -840,7 +848,8 @@ html.js .h-tile-media[data-playing="true"] video {
 }
 @media (min-width: 1200px) {
   .h-faq {
-    grid-template-columns: 5fr 7fr;
+    gap: 24px;
+    grid-template-columns: 4fr 8fr;
   }
 }
 .h-acc-item {
@@ -928,7 +937,8 @@ html.js .h-tile-media[data-playing="true"] video {
 }
 @media (min-width: 1200px) {
   .h-closing {
-    grid-template-columns: 7fr 5fr;
+    gap: 24px;
+    grid-template-columns: 1fr 1fr;
   }
 }
 .h-closing .h-head {
@@ -936,6 +946,16 @@ html.js .h-tile-media[data-playing="true"] video {
 }
 .h-closing-lead {
   max-width: 44ch;
+}
+.h-closing .h-btn-split-label,
+.h-closing .h-btn-split-icon {
+  text-align: center; /* the design's closing button is a <button>, which centres */
+}
+.h-closing-actions-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
 }
 .h-closing-actions {
   display: flex;
@@ -1318,7 +1338,9 @@ html.lenis body {
   width: 116%;
   max-width: none;
   margin-left: -8%;
-  justify-content: center;
+  padding-inline: 0;
+  gap: 48px;
+  justify-content: space-between;
   white-space: nowrap;
 }
 .h-flip {

@@ -43,6 +43,7 @@ export function ReelVideo() {
         preload="none"
         poster={imagePath("reel-poster", largestWidth("reel-poster"), "jpg")}
         aria-label={REEL.label}
+        data-check="s2-reel-media"
         width={1280}
         height={720}
         onPlay={() => setPlaying(true)}
@@ -56,6 +57,7 @@ export function ReelVideo() {
           type="button"
           className="h-media-toggle h-reel-toggle"
           aria-label={playing ? "Pause the reel" : "Play the reel"}
+          data-check="s2-reel-cta"
           onClick={toggle}
         >
           {playing ? <Pause size={18} aria-hidden="true" /> : <Play size={18} aria-hidden="true" />}
