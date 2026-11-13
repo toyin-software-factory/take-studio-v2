@@ -98,6 +98,8 @@ DATABASE_URL_DIRECT=postgres://postgres:postgres@localhost:5432/take_studio pnpm
 pnpm test:pipeline
 ```
 
+On a small machine (3 GB) add `PIPELINE_START=prod`: it builds the app once and runs `next start` instead of `next dev`, which the kernel kills at about 1 GB (for example `PIPELINE_ONLY=changes PIPELINE_START=prod pnpm test:pipeline`).
+
 The migrate line gives a fresh local database the app tables, and keeps `db:migrate` on localhost (the sandbox carries the production URL). If you override `PIPELINE_DATABASE_URL`, point `DATABASE_URL_DIRECT` at that same database.
 
 ## CI and deploy

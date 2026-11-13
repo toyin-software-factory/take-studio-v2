@@ -3,7 +3,7 @@
  * the local app and `trigger dev` as child processes, signed in creators, and an HTTP client.
  * Local Postgres only; R2 and Trigger.dev (dev environment) are real.
  */
-import { type ChildProcess, spawn } from "node:child_process";
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, mkdtempSync, openSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -119,10 +119,35 @@ export async function startServices(): Promise<void> {
   );
 
   startConnectionReaper();
-  start("next", ["exec", "next", "dev", "--port", String(env.PIPELINE_PORT)], {
-    BETTER_AUTH_URL: base,
-    PORT: String(env.PIPELINE_PORT),
-  });
+  const appEnv = { BETTER_AUTH_URL: base, PORT: String(env.PIPELINE_PORT) };
+  if (process.env.PIPELINE_START === "prod") {
+    // One production build (a quarter of `next dev`'s memory), then `next start`. Type errors
+    // are skipped for this build only: `pnpm typecheck` runs separately.
+    const build = spawnSync("pnpm", ["exec", "next", "build"], {
+      env: childEnv({ ...appEnv, PIPELINE_BUILD: "1" }),
+      stdio: ["ignore", openSync(join(work, "next-build.log"), "a"), "inherit"],
+    });
+    if (build.status !== 0) {
+      throw new Error(`The production build failed: see ${join(work, "next-build.log")}`);
+    }
+    // `next start` closes idle connections after 5 s; the checks between scenarios (ffmpeg on the
+    // render) idle longer, and the harness's next request on that socket fails with UND_ERR_SOCKET.
+    start(
+      "next",
+      [
+        "exec",
+        "next",
+        "start",
+        "--port",
+        String(env.PIPELINE_PORT),
+        "--keepAliveTimeout",
+        "120000",
+      ],
+      appEnv,
+    );
+  } else {
+    start("next", ["exec", "next", "dev", "--port", String(env.PIPELINE_PORT)], appEnv);
+  }
 
   for (let i = 0; i < 90; i++) {
     const ok = await fetch(`${base}/api/health`)

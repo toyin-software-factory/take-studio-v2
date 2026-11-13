@@ -7,6 +7,9 @@ const nextConfig: NextConfig = {
   agentRules: false,
   // No image optimisation service on Workers (spec 0001, Runtime rules).
   images: { unoptimized: true },
+  // Only the pipeline harness's own production build (PIPELINE_START=prod) skips type errors;
+  // `pnpm typecheck` runs separately and every other build checks types.
+  ...(process.env.PIPELINE_BUILD === "1" ? { typescript: { ignoreBuildErrors: true } } : {}),
   // The deploy sets WORKER_SOURCE_MAPS (with a Sentry token) so Next writes server source maps;
   // scripts/inline-server-maps.ts then inlines them so Worker frames map back to src/ (AC-6).
   ...(process.env.WORKER_SOURCE_MAPS ? { experimental: { serverSourceMaps: true } } : {}),
