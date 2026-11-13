@@ -45,8 +45,28 @@ export const takeDetailSchema = z.object({
     })
     .nullable(),
   latestRender: z
-    .object({ id: z.string(), status: z.string(), durationMs: z.number().nullable() })
+    .object({
+      id: z.string(),
+      status: z.string(),
+      durationMs: z.number().nullable(),
+      /** Spec 0011: the cut ranges this render was made with. */
+      removedRanges: z.array(z.object({ startMs: z.number(), endMs: z.number() })).default([]),
+    })
     .nullable(),
+  /** Spec 0011: every cut in time order; `applied` is the state of the current video. */
+  cuts: z
+    .array(
+      z.object({
+        id: z.string(),
+        startMs: z.number(),
+        endMs: z.number(),
+        kind: z.string(),
+        applied: z.boolean(),
+      }),
+    )
+    .default([]),
+  /** Spec 0011: false once the original has expired (nothing can be rendered). */
+  originalAvailable: z.boolean().default(true),
   removedMs: z.number(),
   note: z.enum(["no_audio", "no_cuts"]).nullable(),
   /** Spec 0008: the background the finished video is on (green replaced), else null. */

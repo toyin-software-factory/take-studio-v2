@@ -97,6 +97,46 @@ export function removedRanges(
     .sort((a, b) => a.startMs - b.startMs);
 }
 
+/** One cut state change a change job carries (spec 0011): the cut and the state it ends in. */
+export type CutPlanEntry = { readonly cutId: string; readonly applied: boolean };
+
+/**
+ * The removed ranges of a change render (spec 0011): every cut with `applied` taken from the
+ * plan where the plan names it, else the stored flag; the applied ones in start order, with
+ * ranges that touch or overlap merged into one. The render snapshot and the start check both use
+ * this, so what is checked is what is rendered. A null or empty plan gives the stored state.
+ */
+export function effectiveRemovedRanges(
+  cuts: readonly (Range & { readonly id: string; readonly applied: boolean })[],
+  plan: readonly CutPlanEntry[] | null,
+): readonly Range[] {
+  const planned = new Map((plan ?? []).map((entry) => [entry.cutId, entry.applied]));
+  const sorted = removedRanges(
+    cuts.map((c) => ({ ...c, applied: planned.get(c.id) ?? c.applied })),
+  );
+  const merged: Range[] = [];
+  for (const range of sorted) {
+    const last = merged.at(-1);
+    if (last && range.startMs <= last.endMs) {
+      merged[merged.length - 1] = {
+        startMs: last.startMs,
+        endMs: Math.max(last.endMs, range.endMs),
+      };
+    } else {
+      merged.push(range);
+    }
+  }
+  return merged;
+}
+
+/** True when `a` and `b` are the same ranges in the same order. */
+export function sameRanges(a: readonly Range[], b: readonly Range[]): boolean {
+  return (
+    a.length === b.length &&
+    a.every((r, i) => r.startMs === b[i]?.startMs && r.endMs === b[i]?.endMs)
+  );
+}
+
 /** A render's video key: `renders/{takeId}/{renderId}.mp4` (spec 0002, Value sourcing). */
 export function renderKey(takeId: string, renderId: string): string {
   return `renders/${takeId}/${renderId}.mp4`;

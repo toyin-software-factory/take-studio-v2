@@ -1,3 +1,4 @@
+import type { Cut } from "@/db/data/cuts";
 import type { JobStep, ProcessingJob, Render, Take } from "@/db/types";
 import { isExpired, isRetryable } from "@/lib/take-media";
 import type { TakeListRow } from ".";
@@ -68,5 +69,22 @@ export function jobView(job: ProcessingJob & { readonly steps: readonly JobStep[
 }
 
 export function renderView(render: Render) {
-  return { id: render.id, status: render.status, durationMs: render.durationMs };
+  return {
+    id: render.id,
+    status: render.status,
+    durationMs: render.durationMs,
+    // Spec 0011: the snapshot of cut ranges this render was made with (the page maps time with it).
+    removedRanges: render.removedRanges,
+  };
+}
+
+/** A cut as the take page's timeline reads it (spec 0011); `applied` is the current video's state. */
+export function cutView(cut: Cut) {
+  return {
+    id: cut.id,
+    startMs: cut.startMs,
+    endMs: cut.endMs,
+    kind: cut.kind,
+    applied: cut.applied,
+  };
 }

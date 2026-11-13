@@ -3,6 +3,7 @@ import {
   type CutLike,
   type ProposedCut,
   cleanReason,
+  effectiveRemovedRanges,
   isWithinTake,
   overlaps,
   planReanalysis,
@@ -101,5 +102,44 @@ describe("render snapshot (AC-10)", () => {
 
   it("derives the render key", () => {
     expect(renderKey("t1", "r1")).toBe("renders/t1/r1.mp4");
+  });
+});
+
+describe("effectiveRemovedRanges (spec 0011)", () => {
+  const cuts = [
+    { id: "b", startMs: 5000, endMs: 6000, applied: true },
+    { id: "a", startMs: 1000, endMs: 2000, applied: true },
+    { id: "c", startMs: 2000, endMs: 2500, applied: false },
+  ];
+
+  it("gives the stored state for a null or empty plan, in order", () => {
+    const stored = [
+      { startMs: 1000, endMs: 2000 },
+      { startMs: 5000, endMs: 6000 },
+    ];
+    expect(effectiveRemovedRanges(cuts, null)).toEqual(stored);
+    expect(effectiveRemovedRanges(cuts, [])).toEqual(stored);
+  });
+
+  it("lets the plan win over the stored flags", () => {
+    const plan = [
+      { cutId: "a", applied: false },
+      { cutId: "c", applied: true },
+    ];
+    expect(effectiveRemovedRanges(cuts, plan)).toEqual([
+      { startMs: 2000, endMs: 2500 },
+      { startMs: 5000, endMs: 6000 },
+    ]);
+  });
+
+  it("merges touching and overlapping ranges", () => {
+    expect(effectiveRemovedRanges(cuts, [{ cutId: "c", applied: true }])).toEqual([
+      { startMs: 1000, endMs: 2500 },
+      { startMs: 5000, endMs: 6000 },
+    ]);
+  });
+
+  it("ignores plan entries for unknown cuts", () => {
+    expect(effectiveRemovedRanges(cuts, [{ cutId: "zzz", applied: false }])).toHaveLength(2);
   });
 });

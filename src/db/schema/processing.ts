@@ -6,6 +6,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   pgTable,
   smallint,
   text,
@@ -47,6 +48,12 @@ export const processingJob = pgTable(
     targetBackgroundId: uuid("target_background_id").references((): AnyPgColumn => background.id, {
       onDelete: "set null",
     }),
+    /**
+     * Spec 0011: the cut changes a `background` job carries (only the cuts whose state changes);
+     * null on every other job and on a background only change. Applied to `cut` only when the
+     * job succeeds; the render snapshot reads it from the locked job row.
+     */
+    cutPlan: jsonb("cut_plan").$type<readonly { cutId: string; applied: boolean }[]>(),
     ...timestamps,
   },
   (t) => [

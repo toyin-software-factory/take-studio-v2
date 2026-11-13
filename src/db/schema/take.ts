@@ -5,6 +5,7 @@ import {
   check,
   index,
   integer,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -47,6 +48,11 @@ export const take = pgTable(
     backgroundId: uuid("background_id").references((): AnyPgColumn => background.id, {
       onDelete: "set null",
     }),
+    /**
+     * Spec 0011: waveform of the original audio, 1 to 1000 integers 0 to 100 evenly spaced over
+     * `duration_ms`; null when not computed or no audio. Never log it.
+     */
+    waveform: jsonb("waveform").$type<readonly number[]>(),
     ...timestamps,
   },
   (t) => [

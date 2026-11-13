@@ -21,6 +21,8 @@ const STATUS: Readonly<Record<ChangeBackgroundError | "invalid", number>> = {
   background_change_limit: 429,
   background_not_ready: 409,
   dispatch_failed: 503,
+  background_missing: 409,
+  stale: 409,
 };
 
 /** Friendly messages (spec 0008, AC-6). `job_active` has a second wording, below. */
@@ -36,6 +38,8 @@ export const BACKGROUND_MESSAGES: Readonly<Record<ChangeBackgroundError | "inval
     "You've changed backgrounds a lot in the last hour. Please try again later.",
   background_not_ready: "That background isn't ready yet. Try again in a moment.",
   dispatch_failed: "The new video didn't start. Please try again.",
+  background_missing: "The background on this take was deleted. Pick a background to render.",
+  stale: "This take changed in another tab. Reload the page.",
 };
 
 /** The transcript wording when a transcript is what is running (spec 0007 and 0008, AC-6). */
