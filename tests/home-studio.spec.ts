@@ -318,6 +318,29 @@ test.describe("the words, the fill lines and the arc (AC-6)", () => {
     await scrollToStudio(page, 720 * 0.3);
     await expect.poll(arc, { timeout: 8000 }).toBeLessThan(0.3);
   });
+
+  test("the particle field fades out completely before the section's bottom edge arrives", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await open(page);
+    // Scrolls so the section's bottom edge is `offset` px below the top of the viewport.
+    const scrollToBottomEdge = (offset: number) =>
+      page.evaluate((o) => {
+        const r = document.querySelector(".h-studio")!.getBoundingClientRect();
+        window.scrollTo(0, r.bottom + window.scrollY - o);
+      }, offset);
+    const opacity = () => field(page).evaluate((el) => Number(getComputedStyle(el).opacity));
+    await scrollToBottomEdge(720 * 2.5);
+    await expect.poll(opacity, { timeout: 8000 }).toBe(1);
+    await scrollToBottomEdge(720 * 1.3);
+    await expect.poll(opacity, { timeout: 8000 }).toBeGreaterThan(0);
+    await expect.poll(opacity).toBeLessThan(1);
+    await scrollToBottomEdge(720);
+    await expect.poll(opacity, { timeout: 8000 }).toBe(0);
+    await scrollToBottomEdge(720 * 2.5);
+    await expect.poll(opacity, { timeout: 8000 }).toBe(1);
+  });
 });
 
 test.describe("reduced motion (AC-8)", () => {
