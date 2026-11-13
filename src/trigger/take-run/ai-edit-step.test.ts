@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { JobDb } from "@/db/client/job";
 import { cut, jobStep, processingJob, transcript } from "@/db/schema";
@@ -338,7 +338,7 @@ describe("aiEditStep", () => {
     await testDb.db
       .update(cut)
       .set({ creatorChangedAt: new Date(), applied: false })
-      .where(eq(cut.startMs, 3000));
+      .where(and(eq(cut.takeId, take.id), eq(cut.startMs, 3000)));
     const { value } = io({
       call: async () => reply({ keepPauses: [], wordCuts: [], fixes: [], background: null }),
     });

@@ -330,7 +330,9 @@ function mergeCuts(
     const hit = rest.filter((p) => overlaps(p, w));
     const startMs = Math.min(w.startMs, ...hit.map((p) => p.startMs));
     const endMs = Math.max(w.endMs, ...hit.map((p) => p.endMs));
-    if (endMs - startMs > AI_EDIT.wordCutMaxMs) {
+    const span = { startMs, endMs };
+    // Expanding into pauses can make two word cuts touch: the later one is dropped.
+    if (endMs - startMs > AI_EDIT.wordCutMaxMs || merged.some((m) => overlaps(m, span))) {
       count.dropped += 1; // the pauses stay alone
       continue;
     }
@@ -389,7 +391,6 @@ export function validateAiEdit(
     answer.wordCuts.length +
     answer.fixes.length +
     (answer.background ? 1 : 0);
-  if (count.dropped * 2 > total) return err("invalid");
 
   const pauseCuts = candidates.flatMap((c, i): ProposedCut[] => {
     const keptReason = kept.get(i);
@@ -410,5 +411,7 @@ export function validateAiEdit(
   const cuts = [...unapplied, ...mergeCuts(applied, wordCuts, count)].sort(
     (a, b) => a.startMs - b.startMs,
   );
+  // Last, so the merge's drops count too.
+  if (count.dropped * 2 > total) return err("invalid");
   return ok({ cuts, fixes, background, dropped: count.dropped });
 }

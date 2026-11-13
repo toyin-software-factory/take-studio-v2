@@ -237,6 +237,41 @@ describe("validateAiEdit", () => {
     expect(long.ok && long.data.dropped).toBe(1);
   });
 
+  it("never returns overlapping cuts after a word cut expands into a pause", () => {
+    const r = validateAiEdit(
+      {
+        ...empty,
+        wordCuts: [
+          { fromWord: 0, toWord: 0, kind: "false_start", reason: "r1" },
+          { fromWord: 1, toWord: 1, kind: "false_start", reason: "r2" },
+          { fromWord: 2, toWord: 2, kind: "false_start", reason: "r3" },
+        ],
+        background: null,
+      },
+      [w("a", 1000, 1100), w("b", 2000, 2100), w("c", 3000, 3100), w("d", 4000, 4100)],
+      [{ startMs: 1500, endMs: 2500, reason: "Pause" }],
+      60_000,
+    );
+    const cuts = r.ok ? r.data.cuts : [];
+    expect(cuts.length).toBeGreaterThan(0);
+    const sorted = [...cuts].sort((a, b) => a.startMs - b.startMs);
+    sorted.slice(1).forEach((c, i) => expect(c.startMs).toBeGreaterThanOrEqual(sorted[i]!.endMs));
+  });
+
+  it("refuses the answer when the merge drops the only item", () => {
+    const r = validateAiEdit(
+      {
+        ...empty,
+        wordCuts: [{ fromWord: 1, toWord: 1, kind: "false_start", reason: "r" }],
+        background: null,
+      },
+      [w("a", 0, 100), w("b", 1000, 1100), w("c", 1900, 2000)],
+      [{ startMs: 1500, endMs: 30_000, reason: "Long" }],
+      60_000,
+    );
+    expect(r).toEqual({ ok: false, error: "invalid" });
+  });
+
   it("accepts a good fix and drops bad ones", () => {
     const d = data({
       fixes: [
