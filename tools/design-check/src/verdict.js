@@ -50,8 +50,10 @@ export function judgeRound(cfg, result, st, { record = true } = {}) {
         continue;
       }
       const prev = st.history[item.key];
+      // A knock-on finding (relatedTo) is not shown on its own line, so it never counts as stuck:
+      // it clears when its cause is fixed.
       const streak =
-        !result.quick && prev && prev.sig === sig(f) && prev.round === st.round
+        !result.quick && !f.relatedTo && prev && prev.sig === sig(f) && prev.round === st.round
           ? prev.streak + 1
           : 1;
       nextHistory[item.key] = { sig: sig(f), streak, round };

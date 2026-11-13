@@ -53,14 +53,14 @@ export async function comparePixels(browser, designPng, buildPng, outPrefix, max
           }
         }
         xd.putImageData(diff, 0, 0);
-        const jpg = (src, H) => {
+        const jpg = (src, H, mw = maxW, q = 0.72, mh = 1568) => {
           // Jev takes images up to 1568 px a side: scale the whole section down to fit, never crop.
-          const scale = Math.min(1, maxW / w, 1568 / Math.max(1, H));
+          const scale = Math.min(1, mw / w, mh / Math.max(1, H));
           const W2 = Math.max(1, Math.round(w * scale)),
             H2 = Math.max(1, Math.round(H * scale));
           const t = c(W2, H2);
           t.getContext("2d").drawImage(src, 0, 0, W2, H2);
-          return t.toDataURL("image/jpeg", 0.72);
+          return t.toDataURL("image/jpeg", q);
         };
         return {
           ratio: n / (w * h),
@@ -68,6 +68,12 @@ export async function comparePixels(browser, designPng, buildPng, outPrefix, max
           design: jpg(A, A.height * 1),
           build: jpg(B, B.height * (w / B.width)),
           diff: jpg(cd, h),
+          // Smaller copies for the HTML report, so it opens quickly on a phone. Jev gets the above.
+          small: {
+            design: jpg(A, A.height, 420, 0.5, 1200),
+            build: jpg(B, B.height * (w / B.width), 420, 0.5, 1200),
+            diff: jpg(cd, h, 420, 0.5, 1200),
+          },
         };
       },
       { a: toData(designPng), b: toData(buildPng), maxW },
@@ -83,6 +89,11 @@ export async function comparePixels(browser, designPng, buildPng, outPrefix, max
       design: save(res.design, "design"),
       build: save(res.build, "build"),
       diff: save(res.diff, "diff"),
+      small: {
+        design: save(res.small.design, "design-sm"),
+        build: save(res.small.build, "build-sm"),
+        diff: save(res.small.diff, "diff-sm"),
+      },
     };
   } finally {
     await page.close();
