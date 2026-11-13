@@ -83,4 +83,6 @@ node tools/design-check/src/cli.js tag <design.html> [--out file]
 - Elements are matched only by `data-check` labels, so an untagged element is not checked. `tag` covers the main structure; tag anything else that matters by hand.
 - Canvas and WebGL content is only seen in screenshots, so Jev judges it (if `images` is on) or Toyin does.
 - Scroll-scrubbed motion is compared by trigger and by which properties move, not frame by frame.
+- Sections taller than 12,000 px are compared on their top 12,000 px only, and are flagged for Toyin. A section whose screenshot fails is flagged too, never passed.
+- Judge endpoints must use HTTPS (plain HTTP is accepted only for localhost), so API keys never travel in clear text.
 - Reference drafts often hold placeholder content. Text content is not compared. Images that differ only because a placeholder was swapped can make Jev unsure; those go to Toyin rather than to the builder.

@@ -53,11 +53,13 @@ export async function comparePixels(browser, designPng, buildPng, outPrefix, max
           }
         }
         xd.putImageData(diff, 0, 0);
-        const scale = Math.min(1, maxW / w);
         const jpg = (src, H) => {
-          // Jev takes images up to 1568 px a side, so tall sections are cut at that height.
-          const t = c(Math.round(w * scale), Math.min(1568, Math.round(H * scale)));
-          t.getContext("2d").drawImage(src, 0, 0, Math.round(w * scale), Math.round(H * scale));
+          // Jev takes images up to 1568 px a side: scale the whole section down to fit, never crop.
+          const scale = Math.min(1, maxW / w, 1568 / Math.max(1, H));
+          const W2 = Math.max(1, Math.round(w * scale)),
+            H2 = Math.max(1, Math.round(H * scale));
+          const t = c(W2, H2);
+          t.getContext("2d").drawImage(src, 0, 0, W2, H2);
           return t.toDataURL("image/jpeg", 0.72);
         };
         return {

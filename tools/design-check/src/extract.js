@@ -6,6 +6,8 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { autoTag, motionRecorder, probeElements, readHoverStyle } from "./probe.js";
 
+const MAX_SHOT_HEIGHT = 12000;
+
 export const VIEWPORTS = {
   desktop: { width: 1440, height: 900 },
   laptop: { width: 1280, height: 800 },
@@ -122,17 +124,20 @@ async function sectionShots(page, elements, outDir, prefix, vpName) {
     try {
       await page.evaluate((y) => window.scrollTo(0, Math.max(0, y)), s.box.y);
       await page.waitForTimeout(450);
-      const height = Math.min(s.box.h, 2400);
+      // Motion is already recorded, so screenshots are taken with animations stopped: two captures
+      // of the same page then give the same pixels. Very tall sections are capped and marked.
+      const height = Math.max(1, Math.min(s.box.h, MAX_SHOT_HEIGHT));
       await page.screenshot({
         path: file,
         fullPage: true,
         clip: { x: 0, y: s.box.y, width: vp.width, height },
-        animations: "allow",
+        animations: "disabled",
       });
       shots.push({
         label: s.label,
         file,
         h: s.box.h,
+        truncated: s.box.h > MAX_SHOT_HEIGHT || undefined,
         media: elements.some((e) => (e.label === s.label || e.parent === s.label) && e.media),
       });
     } catch (err) {

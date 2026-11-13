@@ -83,12 +83,22 @@ function viaCommand(j, questions) {
         no(new Error("judge command did not print JSON"));
       }
     });
+    p.stdin.on("error", () => {}); // e.g. EPIPE; the close handler reports the command's failure
     p.stdin.end(JSON.stringify({ questions }));
   });
 }
 
+// Credentials only travel over HTTPS (plain HTTP is allowed for this machine, e.g. a mock).
+function secureUrl(u, what) {
+  const url = new URL(u);
+  const local = /^(localhost|127\.\d+\.\d+\.\d+|\[::1\])$/.test(url.hostname);
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && local))
+    throw new Error(`${what} must use https (got ${url.protocol}//${url.hostname})`);
+  return url.toString();
+}
+
 async function viaHttp(j, questions) {
-  const res = await fetch(j.url, {
+  const res = await fetch(secureUrl(j.url, "judge url"), {
     method: "POST",
     headers: { "content-type": "application/json", ...(j.headers || {}) },
     body: JSON.stringify({ questions }),
@@ -216,6 +226,7 @@ async function jevHttp(j, list, withImages) {
   const keyEnv = j.apiKeyEnv || (or ? "OPENROUTER_API_KEY" : "TYPESAFE_API_KEY");
   const key = process.env[keyEnv];
   if (!key) throw new Error(`Jev needs an API key in ${keyEnv}`);
+  secureUrl(url, "Jev endpoint");
   let state = list[0].facts || {};
   const assets = {};
   if (withImages) {

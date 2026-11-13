@@ -14,6 +14,9 @@ const slug = (s) =>
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "") || "page";
+// Output folder per page: readable slug plus a short hash, so "a/b" and "a-b" never share files.
+const pageDir = (name) =>
+  `${slug(name)}-${crypto.createHash("sha1").update(String(name)).digest("hex").slice(0, 6)}`;
 
 // Pages come from the config ("pages": [{ name, design, build }]) or from --design/--build.
 export function resolvePages(cfg, only) {
@@ -73,6 +76,9 @@ async function extractDesign(browser, page, vp, dir, cfg) {
     const hash = crypto.createHash("sha1").update(fs.readFileSync(page.designFile));
     for (const dep of localDependencies(page.designFile))
       hash.update(dep).update(fs.readFileSync(dep));
+    // A new version of the measuring code invalidates the cache too.
+    for (const f of ["probe.js", "extract.js"])
+      hash.update(fs.readFileSync(new URL(`./${f}`, import.meta.url)));
     const h = hash.digest("hex").slice(0, 12);
     prefix = `design-${h}${cfg.hover ? "" : "-nohover"}`;
     key = path.join(dir, `${prefix}-${vp}.json`);
@@ -125,7 +131,7 @@ export async function runRound(cfg, pages, { quick = false } = {}) {
   const result = { at: new Date().toISOString(), quick, pages: [] };
   try {
     for (const page of pages) {
-      const dir = path.join(cfg.outDir, slug(page.name));
+      const dir = path.join(cfg.outDir, pageDir(page.name));
       fs.mkdirSync(dir, { recursive: true });
       const pr = {
         name: page.name,
@@ -173,7 +179,27 @@ export async function runRound(cfg, pages, { quick = false } = {}) {
         // Sections: pixel diff, then the judgment questions for Jev.
         for (const ds of D.shots) {
           const bs = B.shots.find((s) => s.label === ds.label);
-          if (!ds.file || !bs || !bs.file) continue;
+          // A missing build section is already a "missing" finding for the builder.
+          if (!bs) continue;
+          if (!ds.file || !bs.file || ds.truncated || bs.truncated) {
+            // A section that could not be captured in full was never compared, so it cannot pass.
+            const why = !ds.file
+              ? `design screenshot failed: ${ds.error || "unknown error"}`
+              : !bs.file
+                ? `build screenshot failed: ${bs.error || "unknown error"}`
+                : "the section is taller than one screenshot can hold, so only its top part was compared";
+            pr.questions.push({
+              noJudge: true,
+              id: `${vp}:${ds.label}:capture`,
+              page: page.name,
+              viewport: vp,
+              label: ds.label,
+              kind: "capture",
+              question: "Could the section be captured and compared?",
+              answer: { pass: null, confidence: 0, reason: why },
+            });
+            if (!ds.file || !bs.file) continue;
+          }
           const px = await comparePixels(
             browser,
             ds.file,
@@ -269,11 +295,12 @@ export async function runRound(cfg, pages, { quick = false } = {}) {
           .digest("hex")
           .slice(0, 12);
       }
-    const all = result.pages.flatMap((p) => p.questions);
+    const all = result.pages.flatMap((p) => p.questions).filter((q) => !q.noJudge);
     if (all.length) log(`asking the judge (${cfg.judge.type}) ${all.length} question(s)`);
     const answers = await runJudge(cfg, all);
     const byId = new Map(answers.map((a) => [a.id, a]));
-    for (const p of result.pages) for (const q of p.questions) q.answer = byId.get(q.id);
+    for (const p of result.pages)
+      for (const q of p.questions) if (!q.noJudge) q.answer = byId.get(q.id);
   }
   return result;
 }

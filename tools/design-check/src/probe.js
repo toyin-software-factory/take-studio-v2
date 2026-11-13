@@ -54,7 +54,14 @@ export function motionRecorder() {
           : a.transitionProperty
             ? "css-transition"
             : "web-animation";
-        const key = [l.label, kind, a.animationName || "", props.join(","), t.duration].join("|");
+        const key = [
+          S.phase,
+          l.label,
+          kind,
+          a.animationName || "",
+          props.join(","),
+          t.duration,
+        ].join("|");
         if (!S.anims.has(key))
           S.anims.set(key, {
             label: l.label,
@@ -323,6 +330,14 @@ export function probeElements() {
         lineHeight: px(cs.lineHeight),
         letterSpacing: px(cs.letterSpacing),
         textTransform: cs.textTransform,
+        // Where transforms put the element, relative to its layout box. The layout box stays the
+        // base for position checks (it ignores in-flight motion); this catches resting transforms.
+        rendered: {
+          dx: Math.round(r.left + scrollX - box.x),
+          dy: Math.round(r.top + scrollY - box.y),
+          sx: box.w ? Math.round((r.width / box.w) * 100) / 100 : 1,
+          sy: box.h ? Math.round((r.height / box.h) * 100) / 100 : 1,
+        },
         textAlign: cs.textAlign,
         color: norm(cs.color),
         background: norm(cs.backgroundColor),

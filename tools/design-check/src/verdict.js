@@ -73,6 +73,7 @@ export function judgeRound(cfg, result, st, { record = true } = {}) {
         viewport: q.viewport,
         label: q.label,
         kind: q.kind,
+        noJudge: q.noJudge || undefined,
         question: q.question,
         answer: a,
         images: q.images,
@@ -80,7 +81,9 @@ export function judgeRound(cfg, result, st, { record = true } = {}) {
       if (a.pass === null || a.confidence < cfg.confidence)
         flags.push({
           ...item,
-          why: `judge unsure (${Math.round((a.confidence || 0) * 100)}%): ${a.reason}`,
+          why: q.noJudge
+            ? a.reason
+            : `judge unsure (${Math.round((a.confidence || 0) * 100)}%): ${a.reason}`,
         });
       else if (a.pass) passes.push(item);
       else {

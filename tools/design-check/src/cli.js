@@ -142,6 +142,19 @@ async function main() {
         log(`live check: ${v.fails.length} difference(s)`);
       } catch (err) {
         log("live check failed:", err.message);
+        // Replace any older result: the coder must not get stale "no differences" feedback.
+        try {
+          fs.mkdirSync(cfg.outDir, { recursive: true });
+          fs.writeFileSync(
+            path.join(cfg.outDir, "live.json"),
+            JSON.stringify({
+              at: new Date().toISOString(),
+              status: "error",
+              differences: null,
+              markdown: `design-check (live): the latest measurement failed, so the current build was not checked. Error: ${String(err.message || err).slice(0, 300)}`,
+            }),
+          );
+        } catch {}
       } finally {
         running = false;
         if (again) {

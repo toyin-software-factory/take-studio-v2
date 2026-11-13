@@ -53,7 +53,10 @@ export function toMarkdown(v, { quick = false, reportPath } = {}) {
     out.push("", "For Toyin, not for the builder:");
     const grouped = new Map();
     for (const f of v.flags) {
-      const k = f.answer ? `[${f.viewport}] ${clean(f.page, 60)} › ${clean(f.label, 80)}` : null;
+      const k =
+        f.answer && !f.noJudge
+          ? `[${f.viewport}] ${clean(f.page, 60)} › ${clean(f.label, 80)}`
+          : null;
       if (!k) {
         grouped.set(f.key, `${line(f)} (${clean(f.why, 120)})`);
         continue;
@@ -104,7 +107,7 @@ export function toHtml(v, result, state) {
   }[v.status];
   const rows = (list, extra) =>
     list.length
-      ? `<ul class="items">${list.map((f) => `<li><span class="vp">${esc(f.viewport)}</span><b>${esc(f.label)}</b> ${esc(f.message || f.question)}${extra ? `<div class="why">${esc(extra(f))}</div>` : ""}</li>`).join("")}</ul>`
+      ? `<ul class="items">${list.map((f) => `<li><span class="vp">${esc(f.viewport)}</span><b>${f.page ? `${esc(f.page)} › ` : ""}${esc(f.label)}</b> ${esc(f.message || f.question)}${extra ? `<div class="why">${esc(extra(f))}</div>` : ""}</li>`).join("")}</ul>`
       : '<p class="none">None.</p>';
   // Every section a failure or flag points at keeps its screenshots; other sections fill up to 16.
   const referenced = new Set(

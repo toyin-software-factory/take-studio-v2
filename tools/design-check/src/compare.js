@@ -278,6 +278,27 @@ export function compareElements(D, B, vp, tol) {
         ),
       );
     cmpNum(out, vp, label, "opacity", s.opacity, t.opacity, tol.opacity, "");
+    // Transforms move and resize what is drawn without changing the layout box.
+    if (s.rendered && t.rendered && "sx" in s.rendered && "sx" in t.rendered) {
+      const a = s.rendered,
+        b = t.rendered;
+      if (
+        Math.abs(a.dx - b.dx) > tol.position ||
+        Math.abs(a.dy - b.dy) > tol.position ||
+        Math.abs(a.sx - b.sx) > 0.02 ||
+        Math.abs(a.sy - b.sy) > 0.02
+      )
+        out.push(
+          finding(
+            vp,
+            label,
+            "transform",
+            a,
+            b,
+            `a transform draws it shifted ${b.dx},${b.dy}px at scale ${b.sx}×${b.sy}; design shifted ${a.dx},${a.dy}px at scale ${a.sx}×${a.sy}`,
+          ),
+        );
+    }
     if (s.objectFit && t.objectFit && s.objectFit !== t.objectFit)
       out.push(
         finding(
@@ -327,15 +348,16 @@ export function compareElements(D, B, vp, tol) {
         if (area < 64) continue;
         const dA = dMap.get(A.label),
           dC = dMap.get(C.label);
-        if (!dA || !dC || overlap(dA.box, dC.box) >= area * 0.5) continue;
+        const dArea = dA && dC ? overlap(dA.box, dC.box) : 0;
+        if (!dA || !dC || dArea >= area * 0.5) continue;
         out.push(
           finding(
             vp,
             A.label,
             `overlap:${C.label}`,
-            "apart",
-            "overlapping",
-            `overlaps ${C.label} inside ${parent}; in the design they do not touch`,
+            Math.round(dArea),
+            Math.round(area),
+            `overlaps ${C.label} inside ${parent} by ${Math.round(area)} px²; in the design ${dArea ? `by ${Math.round(dArea)} px²` : "they do not touch"}`,
           ),
         );
       }
@@ -464,6 +486,35 @@ export function compareMotion(D, B, vp, tol) {
           build: [...bProps],
           message: `${trig} motion does not move ${missing.join(", ")}; design moves ${[...dProps].join(", ")}, build moves ${[...bProps].join(", ")}`,
         });
+      // Hover: the end values must match too, not only which properties change.
+      const dh = ds.find((m) => m.kind === "hover-style"),
+        bh = bs.find((m) => m.kind === "hover-style");
+      if (dh && bh) {
+        const diffs = [];
+        for (const [k, [, dTo]] of Object.entries(dh.changes || {})) {
+          const bTo = (bh.changes || {})[k]?.[1];
+          if (bTo == null) continue; // a property that does not change is reported above
+          const isColor = /color/i.test(k);
+          const same = isColor ? colorDelta(dTo, bTo).de <= tol.color : dTo === bTo;
+          if (!same) diffs.push({ k, dTo, bTo });
+        }
+        if (diffs.length)
+          out.push({
+            id: id + ":values",
+            source: "code",
+            viewport: vp,
+            label,
+            prop: `motion-${trig}-values`,
+            design: Object.fromEntries(diffs.map((d) => [d.k, d.dTo])),
+            build: Object.fromEntries(diffs.map((d) => [d.k, d.bTo])),
+            message: `on hover ${diffs
+              .map(
+                (d) =>
+                  `${d.k} becomes ${/color/i.test(d.k) ? hex(d.bTo) : d.bTo}, design ${/color/i.test(d.k) ? hex(d.dTo) : d.dTo}`,
+              )
+              .join("; ")}`,
+          });
+      }
       const dMain = ds.find((m) => m.duration) || ds[0];
       const bMain = bs.find((m) => m.duration) || bs[0];
       if (dMain.duration && bMain.duration && trig !== "scroll-scrub") {
@@ -510,17 +561,21 @@ export function compareMotion(D, B, vp, tol) {
     }
   }
   for (const [label, bList] of bm) {
-    if (dm.has(label)) continue;
-    const trigs = [...new Set(bList.map((m) => triggerGroup(m.trigger)))];
+    // Build-only trigger groups, also on labels that have other motion in the design.
+    const dTrigs = new Set((dm.get(label) || []).map((m) => triggerGroup(m.trigger)));
+    const trigs = [...new Set(bList.map((m) => triggerGroup(m.trigger)))].filter(
+      (t) => !dTrigs.has(t),
+    );
+    if (!trigs.length) continue;
     out.push({
       id: `${vp}:${label}:motion-extra`,
       source: "code",
       viewport: vp,
       label,
       prop: "motion-extra",
-      design: "none",
+      design: dTrigs.size ? [...dTrigs] : "none",
       build: trigs,
-      message: `has ${trigs.join(", ")} motion that the design does not have (${describe(bList[0])})`,
+      message: `has ${trigs.join(", ")} motion that the design does not have (${describe(bList.find((m) => trigs.includes(triggerGroup(m.trigger))))})`,
     });
   }
   return [out, questions];
