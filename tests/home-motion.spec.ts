@@ -115,8 +115,9 @@ test.describe("hero fan (AC-5)", () => {
     const pause = page.getByRole("button", { name: "Pause the card animation" });
     await expect(pause).toBeVisible();
     const box = await pause.boundingBox();
-    expect(box!.width).toBeGreaterThanOrEqual(44);
-    expect(box!.height).toBeGreaterThanOrEqual(44);
+    // The message carries the measured box: this check has failed intermittently on CI.
+    expect(box!.width, `pause button box ${JSON.stringify(box)}`).toBeGreaterThanOrEqual(44);
+    expect(box!.height, `pause button box ${JSON.stringify(box)}`).toBeGreaterThanOrEqual(44);
 
     // The loop starts about 1.7 s in: wait for the angle to change.
     const first = await cardAngle(page);
