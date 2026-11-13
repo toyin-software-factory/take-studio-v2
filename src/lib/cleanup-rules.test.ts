@@ -15,6 +15,7 @@ describe("cleanup cut offs (AC-18)", () => {
       uploadBackstopBefore: new Date("2026-11-11T06:00:00Z"), // 6 hours
       queuedJobBefore: new Date("2026-11-11T11:45:00Z"), // 15 min
       queuedBackstopBefore: new Date("2026-11-11T06:00:00Z"), // 6 hours
+      runningBackstopBefore: new Date("2026-11-11T06:00:00Z"), // 6 hours
       runningJobBefore: new Date("2026-11-11T10:35:00Z"), // 2 attempts x 40 min maxDuration + 5 min margin
       transcribeRunningJobBefore: new Date("2026-11-11T11:10:00Z"), // 3 attempts x 15 min + 5 min margin
     });

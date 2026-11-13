@@ -65,6 +65,34 @@ export async function isRunWaiting(runId: string): Promise<boolean> {
   }
 }
 
+/**
+ * Run statuses of a run that has not ended: the waiting ones plus `WAITING` (paused on a wait).
+ * Trigger.dev v4 has no separate status for a run between attempts: a retry that backs off or
+ * waits behind its queue is still the same run, shown as `QUEUED`, `DEQUEUED`, `EXECUTING` or
+ * `WAITING`, so all of them count as alive.
+ */
+const ALIVE_RUN_STATUSES: ReadonlySet<string> = new Set([...WAITING_RUN_STATUSES, "WAITING"]);
+
+/** Whether a Trigger.dev run status is one of a run that has not ended. */
+export function isAliveRunStatus(status: string): boolean {
+  return ALIVE_RUN_STATUSES.has(status);
+}
+
+/**
+ * Whether a run has not ended, for the cleanup's `running` jobs past their usual limit: a late
+ * retry that waited in its creator's queue is healthy. Only a run that ended (completed,
+ * failed, crashed, cancelled, timed out, expired) is false. If Trigger.dev cannot be asked the
+ * answer is "yes", never a guess that fails a live job (the 6 hour backstop still ends it).
+ */
+export async function isRunAlive(runId: string): Promise<boolean> {
+  try {
+    const run = await withTimeout(runs.retrieve(runId), CLEANUP.runCheckTimeoutMs);
+    return isAliveRunStatus(String(run.status));
+  } catch {
+    return true;
+  }
+}
+
 /** Rejects when `promise` takes longer than `ms` (the timer is always cleared). */
 async function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
