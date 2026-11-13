@@ -16,6 +16,7 @@ import { useBackgroundPreview } from "./use-background-preview";
 import { useBackgroundUpload } from "./use-background-upload";
 import { useBackgrounds } from "./use-backgrounds";
 import { usePoster } from "./use-poster";
+import { SuggestedBackground, showSuggestion } from "./suggested-background";
 
 const NO_LIST: BackgroundListData = { builtIn: [], mine: [], defaultId: null };
 
@@ -53,7 +54,12 @@ export function BackgroundChange({
   const busy = review.locked;
   const list = backgrounds.state.kind === "ready" ? backgrounds.state.list : NO_LIST;
   const listed = [...list.builtIn, ...list.mine].filter((b) => b.status === "ready");
-  const extras: BackgroundItem[] = selectOptions(listed, background, choice)
+  const extras: BackgroundItem[] = selectOptions(
+    listed,
+    background,
+    choice,
+    detail.suggestion ? [{ id: detail.suggestion.backgroundId, name: detail.suggestion.name }] : [],
+  )
     .filter((o) => !listed.some((l) => l.id === o.id))
     .map((o) => ({
       id: o.id,
@@ -107,6 +113,14 @@ export function BackgroundChange({
         uncertain={false}
         previewNoGreen={preview.kind === "ready" && preview.noGreenScreen}
       />
+      {detail.suggestion && showSuggestion(detail, current) ? (
+        <SuggestedBackground
+          suggestion={detail.suggestion}
+          chosen={choice === detail.suggestion.backgroundId}
+          disabled={busy}
+          onUse={review.pickBackground}
+        />
+      ) : null}
       <BackgroundGrid
         group="take-background"
         list={list}
