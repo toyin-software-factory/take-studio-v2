@@ -1,5 +1,5 @@
 {
-  "id": "30b40ef9-b413-45df-91b5-11b9750e2920",
+  "id": "654d8358-83bb-4168-9745-bb12c06c19de",
   "prevId": "6b557857-6269-4af1-9a0b-8d692890ca2c",
   "version": "7",
   "dialect": "postgresql",
@@ -690,6 +690,21 @@
           "columns": [
             {
               "expression": "background_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "take_suggested_background_idx": {
+          "name": "take_suggested_background_idx",
+          "columns": [
+            {
+              "expression": "suggested_background_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

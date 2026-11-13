@@ -67,6 +67,7 @@ export const take = pgTable(
   },
   (t) => [
     index("take_background_idx").on(t.backgroundId),
+    index("take_suggested_background_idx").on(t.suggestedBackgroundId),
     index("take_creator_created_idx").on(t.creatorId, t.createdAt.desc(), t.id),
     index("take_status_expires_idx").on(t.status, t.videoExpiresAt),
     check(
