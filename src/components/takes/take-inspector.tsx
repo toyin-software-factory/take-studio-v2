@@ -23,6 +23,8 @@ type InspectorProps = {
   /** The email switch saved a new value: the page keeps it across the not ready to ready swap. */
   readonly onEmailsSaved: (value: boolean) => void;
   readonly review: CutReview;
+  /** Opens the delete dialog (spec 0013 AC-4); `from` is the control to return focus to. */
+  readonly onDelete: (from: HTMLElement | null) => void;
 };
 
 export function TakeInspector(props: InspectorProps) {
@@ -30,13 +32,25 @@ export function TakeInspector(props: InspectorProps) {
   if (take.status === "ready" || take.status === "expired") return <ReadyInspector {...props} />;
   return (
     <section aria-label="Take details" className="rounded-lg bg-card p-4 shadow-card">
-      <TakeDetails take={take} takeEmails={props.takeEmails} onEmailsSaved={props.onEmailsSaved} />
+      <TakeDetails
+        take={take}
+        takeEmails={props.takeEmails}
+        onEmailsSaved={props.onEmailsSaved}
+        onDelete={props.onDelete}
+      />
     </section>
   );
 }
 
 /** The four tabs. Only a ready or expired take gets here, so the transcript is read once, here. */
-function ReadyInspector({ detail, bridge, takeEmails, onEmailsSaved, review }: InspectorProps) {
+function ReadyInspector({
+  detail,
+  bridge,
+  takeEmails,
+  onEmailsSaved,
+  review,
+  onDelete,
+}: InspectorProps) {
   const { take } = detail;
   const transcript = useTranscript(take.id);
   const pane = "mt-4 outline-hidden data-[state=inactive]:hidden";
@@ -67,7 +81,12 @@ function ReadyInspector({ detail, bridge, takeEmails, onEmailsSaved, review }: I
           <TranscriptPanel takeId={take.id} bridge={bridge} transcript={transcript} />
         </TabsContent>
         <TabsContent value="details" className={pane}>
-          <TakeDetails take={take} takeEmails={takeEmails} onEmailsSaved={onEmailsSaved} />
+          <TakeDetails
+            take={take}
+            takeEmails={takeEmails}
+            onEmailsSaved={onEmailsSaved}
+            onDelete={onDelete}
+          />
         </TabsContent>
       </Tabs>
     </div>
