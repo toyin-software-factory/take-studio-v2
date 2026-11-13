@@ -187,7 +187,6 @@
   border-radius: var(--radius-pill);
   background: var(--color-ink);
   color: var(--color-bg);
-  text-align: center;
   transition: background var(--dur-swap) var(--ease-ui);
 }
 .h-btn-split-label {
@@ -940,6 +939,10 @@ html.js .h-tile-media[data-playing="true"] video {
 }
 .h-closing-lead {
   max-width: 44ch;
+}
+.h-closing .h-btn-split-label,
+.h-closing .h-btn-split-icon {
+  text-align: center; /* the design's closing button is a <button>, which centres */
 }
 .h-closing-actions-inner {
   display: flex;
