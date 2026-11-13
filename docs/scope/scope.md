@@ -199,7 +199,8 @@ A proper library of past takes with status and expiry date; delete a take at any
    - [x] Delete route and proof of full removal (AC-3, AC-6, AC-7)
    - [ ] Delete dialog on the take page (AC-4, AC-11, AC-12)
    - [ ] Delete on library cards and the clearer expired states and take page (AC-1, AC-2, AC-5, AC-8)
-   - [ ] R2 lifecycle rules as a backstop, then account deletion and browser tests (AC-9, AC-10, AC-12)
+   - [x] R2 lifecycle rules as a backstop and the account deletion test (AC-9, AC-10) (B2-T06; the deploy skips the step with a warning until `R2_LIFECYCLE_TOKEN` is a CI secret)
+   - [ ] Browser tests and axe for the delete dialog and library (AC-12)
 - [ ] Verify it: `/check verify take library, delete & retention`
 - [ ] Test it: `/test take library, delete & retention`
 Spec [0013](../specs/0013-take-library-delete-retention.md)

@@ -1,10 +1,24 @@
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { background, processingJob, render, storageDeletion, take, user } from "@/db/schema";
+import { setTranscriptEdits, upsertTranscript } from "@/db/data/transcripts";
+import {
+  background,
+  backgroundPreview,
+  cut,
+  jobStep,
+  processingJob,
+  render,
+  storageDeletion,
+  take,
+  transcript,
+  user,
+} from "@/db/schema";
+import { previewKey } from "@/lib/background-preview";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { backgroundKeys } from "@/lib/background-rules";
 import { thumbnailKey } from "@/lib/take-rules";
+import { addManual } from "../cuts";
 import { finish, markRunning, start } from "../jobs";
 import { completeLatest, create as createRender } from "../renders";
 import type { AfterDelete } from "../takes";
@@ -142,5 +156,136 @@ describe("account deletion and uploaded backgrounds (spec 0008, AC-10)", () => {
       );
     }
     expect(queued).not.toContain(backgroundKeys(other.id, theirs).imageKey);
+  });
+});
+
+describe("account deletion with a take of every kind (spec 0013, AC-10)", () => {
+  it("leaves no row of the creator and queues every file, whatever state each take is in", async () => {
+    const creator = await createCreator(db);
+    const other = await createCreator(db);
+    const bystander = await seedTake(db, other.id);
+
+    // Rendered take with cuts, a transcript with AI edits, and a background preview.
+    const rendered = await renderedTake(creator.id);
+    await addManual(db, {
+      creatorId: creator.id,
+      takeId: rendered.take.id,
+      startMs: 0,
+      endMs: 400,
+    });
+    const saved = await upsertTranscript(db, {
+      takeId: rendered.take.id,
+      language: "en",
+      text: "hello",
+      words: [{ text: "hello", startMs: 0, endMs: 400 }] as never,
+      sourceFps: 30,
+      model: "test",
+    });
+    if (!saved.ok) throw new Error(saved.error);
+    await setTranscriptEdits(db, rendered.take.id, [
+      { index: 0, old: "hello", new: "Hello", reason: "case", undone: false },
+    ]);
+    const bgId = crypto.randomUUID();
+    await db.insert(background).values({
+      id: bgId,
+      creatorId: null,
+      name: "Studio",
+      imageKey: `backgrounds/builtin/${bgId}.jpg`,
+      thumbKey: `backgrounds/builtin/${bgId}.webp`,
+      width: 1920,
+      height: 1080,
+      status: "ready",
+    });
+    const previewId = crypto.randomUUID();
+    await db.insert(backgroundPreview).values({
+      id: previewId,
+      takeId: rendered.take.id,
+      backgroundId: bgId,
+      cutVersion: "v",
+      status: "ready",
+      objectKey: previewKey(rendered.take.id, previewId),
+    });
+
+    // A take with a job still running, an expired take, and a failed take.
+    const running = await seedTake(db, creator.id);
+    const job = await start(db, { creatorId: creator.id, takeId: running.id, usageSecret: SECRET });
+    if (!job.ok) throw new Error(job.error);
+    await markRunning(db, { jobId: job.data.id, triggerRunId: "run_every_kind" });
+    const expired = await seedTake(db, creator.id, { status: "expired" });
+    const failed = await seedTake(db, creator.id, { status: "failed" });
+    const takeIds = [rendered.take.id, running.id, expired.id, failed.id];
+
+    // An uploaded background of the creator's own.
+    const own = crypto.randomUUID();
+    const ownKeys = backgroundKeys(creator.id, own);
+    await db.insert(background).values({
+      id: own,
+      creatorId: creator.id,
+      name: "Mine",
+      sourceKey: ownKeys.sourceKey,
+      imageKey: ownKeys.imageKey,
+      thumbKey: ownKeys.thumbKey,
+      width: 1920,
+      height: 1080,
+      status: "ready",
+    });
+
+    const calls = { cancelled: [] as string[], drains: 0 };
+    const deleted = await deleteCreatorData(db, creator.id, {
+      cancelRuns: async (ids) => void calls.cancelled.push(...ids),
+      requestStorageDrain: async () => void calls.drains++,
+    });
+    await db.delete(user).where(eq(user.id, creator.id));
+
+    expect(calls).toEqual({ cancelled: ["run_every_kind"], drains: 1 });
+    for (const key of [
+      rendered.take.originalKey,
+      rendered.renderKey,
+      thumbnailKey(rendered.take.id),
+      previewKey(rendered.take.id, previewId),
+      running.originalKey,
+    ]) {
+      expect(deleted.queuedKeys).toContain(key);
+    }
+    const queued = await db
+      .select({ key: storageDeletion.objectKey })
+      .from(storageDeletion)
+      .where(inArray(storageDeletion.objectKey, [...deleted.queuedKeys]));
+    expect(queued.length).toBe(new Set(deleted.queuedKeys).size);
+    // The creator's own background files are queued by their own step.
+    const ownQueued = await db
+      .select({ key: storageDeletion.objectKey })
+      .from(storageDeletion)
+      .where(
+        inArray(storageDeletion.objectKey, [ownKeys.sourceKey, ownKeys.imageKey, ownKeys.thumbKey]),
+      );
+    expect(ownQueued.length).toBe(3);
+
+    // No row of the creator is left in any table.
+    expect(await db.select().from(take).where(inArray(take.id, takeIds))).toEqual([]);
+    expect(
+      await db.select().from(processingJob).where(inArray(processingJob.takeId, takeIds)),
+    ).toEqual([]);
+    expect(await db.select().from(render).where(inArray(render.takeId, takeIds))).toEqual([]);
+    expect(await db.select().from(cut).where(inArray(cut.takeId, takeIds))).toEqual([]);
+    expect(await db.select().from(transcript).where(inArray(transcript.takeId, takeIds))).toEqual(
+      [],
+    );
+    expect(
+      await db.select().from(backgroundPreview).where(inArray(backgroundPreview.takeId, takeIds)),
+    ).toEqual([]);
+    expect(await db.select().from(jobStep).where(eq(jobStep.jobId, job.data.id))).toEqual([]);
+    expect(await db.select().from(background).where(eq(background.creatorId, creator.id))).toEqual(
+      [],
+    );
+    expect(await db.select().from(user).where(eq(user.id, creator.id))).toEqual([]);
+
+    // The shared studio and the other creator's take stay.
+    expect(
+      await db.select({ id: background.id }).from(background).where(eq(background.id, bgId)),
+    ).toHaveLength(1);
+    expect(
+      await db.select({ id: take.id }).from(take).where(eq(take.id, bystander.id)),
+    ).toHaveLength(1);
   });
 });

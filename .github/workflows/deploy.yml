@@ -192,6 +192,14 @@ jobs:
           SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
           SENTRY_RELEASE: ${{ env.DEPLOY_SHA }}
 
+      - name: 3b. Apply the R2 lifecycle backstop (skips with a warning without R2_LIFECYCLE_TOKEN)
+        if: steps.order.outputs.stale != 'true'
+        run: bash scripts/apply-r2-lifecycle.sh
+        env:
+          R2_LIFECYCLE_TOKEN: ${{ secrets.R2_LIFECYCLE_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+
       - name: 4. Ship the Worker (the bundle built and checked in step 1)
         if: steps.order.outputs.stale != 'true'
         run: pnpm run deploy:ship
