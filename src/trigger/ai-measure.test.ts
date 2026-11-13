@@ -8,7 +8,7 @@ vi.mock("@trigger.dev/sdk", () => ({
 }));
 
 import { realCatalog } from "@/lib/ai-measure";
-import { type AiMeasureIo, runAiMeasure } from "./ai-measure";
+import { type AiMeasureIo, realAiMeasureIo, runAiMeasure } from "./ai-measure";
 import { AiCallError } from "./take-run/ai-call";
 
 // Test values only. The real token is SENTRY_CHECK_TOKEN in Trigger.dev.
@@ -216,5 +216,12 @@ describe("runAiMeasure (B-T18)", () => {
         expect(["outcome", "clip", "fallback"]).toContain(name);
       }
     }
+  });
+});
+
+describe("realAiMeasureIo.durationMs (ten-min path)", () => {
+  it("gives the audio only ten minute clip its fixed 600 s without probing a video stream", async () => {
+    // The file does not exist: the answer must come from the clip's fixed length, not a probe.
+    expect(await realAiMeasureIo.durationMs("/nonexistent/ten-min.m4a")).toBe(600_000);
   });
 });
