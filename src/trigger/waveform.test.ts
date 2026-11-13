@@ -50,7 +50,7 @@ describe("waveformArgs", () => {
 
 describeWithFfmpeg("storeWaveform with the real ffmpeg", () => {
   it("stores a loud first second and a silent second", async () => {
-    const file = join(dir, "tone.wav");
+    const file = join(dir, "tone.mp4");
     execFileSync("ffmpeg", [
       "-y",
       "-v",
@@ -61,6 +61,8 @@ describeWithFfmpeg("storeWaveform with the real ffmpeg", () => {
       "sine=frequency=440:duration=2",
       "-af",
       "volume='if(lt(t,1),0.5,0)':eval=frame",
+      "-c:a",
+      "aac",
       file,
     ]);
     const { takeId, jobId } = await runningJob();

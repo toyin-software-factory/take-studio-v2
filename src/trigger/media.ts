@@ -1,9 +1,10 @@
 import { execFile, spawn } from "node:child_process";
-import { readFile, rm } from "node:fs/promises";
+import { open, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import type { ImageFacts } from "@/lib/background-rules";
+import { ORIGINAL_INPUT, imageInput } from "@/lib/ffmpeg-input";
 import { JOB_ERROR_NAMES } from "@/lib/job-errors";
 import { type ProbeFacts, parseFfprobe, thumbnailSeconds } from "@/lib/probe";
 import { progressOutTimeMs, toneMapFilter } from "@/lib/trim";
@@ -71,7 +72,17 @@ const HTTP_INPUT = ["-rw_timeout", "30000000", "-reconnect", "1", "-reconnect_st
 export async function probeUrl(url: string, signal?: AbortSignal): Promise<ProbeFacts | null> {
   const stdout = await runTool(
     "ffprobe",
-    ["-v", "error", ...HTTP_INPUT, "-print_format", "json", "-show_format", "-show_streams", url],
+    [
+      "-v",
+      "error",
+      ...HTTP_INPUT,
+      ...ORIGINAL_INPUT,
+      "-print_format",
+      "json",
+      "-show_format",
+      "-show_streams",
+      url,
+    ],
     60_000,
     signal,
   );
@@ -104,6 +115,7 @@ export async function thumbnailFromUrl(
         "error",
         "-y",
         ...HTTP_INPUT,
+        ...ORIGINAL_INPUT,
         "-ss",
         String(thumbnailSeconds(facts.durationMs)),
         "-i",
@@ -184,7 +196,16 @@ export function runFfmpeg(
 export async function probeFile(path: string, signal?: AbortSignal): Promise<ProbeFacts | null> {
   const stdout = await runTool(
     "ffprobe",
-    ["-v", "error", "-print_format", "json", "-show_format", "-show_streams", path],
+    [
+      "-v",
+      "error",
+      ...ORIGINAL_INPUT,
+      "-print_format",
+      "json",
+      "-show_format",
+      "-show_streams",
+      path,
+    ],
     60_000,
     signal,
   );
@@ -262,6 +283,9 @@ export async function probeImageFile(
   maxPixels: number,
   signal?: AbortSignal,
 ): Promise<ImageFacts | null> {
+  // The demuxer comes from the first bytes; a file that is none of PNG, JPEG or WebP is not read.
+  const input = await imageInputOfFile(path);
+  if (!input) return null;
   const streams = imageStreams.safeParse(
     JSON.parse(
       await runTool(
@@ -276,6 +300,7 @@ export async function probeImageFile(
           "stream=codec_name,width,height,nb_read_packets:format=format_name",
           "-of",
           "json",
+          ...input,
           path,
         ],
         60_000,
@@ -310,6 +335,7 @@ export async function probeImageFile(
           "-show_frames",
           "-of",
           "json",
+          ...input,
           path,
         ],
         60_000,
@@ -321,4 +347,38 @@ export async function probeImageFile(
     ? (frames.data.frames[0]?.side_data_list?.find((d) => d.rotation !== undefined)?.rotation ?? 0)
     : 0;
   return { ...base, rotation };
+}
+
+/**
+ * The input options for a background image file: the demuxer from the first bytes, null for none
+ * of PNG, JPEG or WebP. An animated PNG is read as `apng` (the `png_pipe` demuxer would show only
+ * its first frame, and the ingest refuses an animation by counting frames).
+ */
+export async function imageInputOfFile(path: string): Promise<readonly string[] | null> {
+  const handle = await open(path, "r");
+  try {
+    const head = new Uint8Array(16);
+    const { bytesRead } = await handle.read(head, 0, head.length, 0);
+    const input = imageInput(head.subarray(0, bytesRead));
+    if (input?.[1] === "png_pipe" && (await pngHasAnimationChunk(handle))) return ["-f", "apng"];
+    return input;
+  } finally {
+    await handle.close();
+  }
+}
+
+/** Walks the PNG chunk headers up to the first image data: `acTL` there means an animation. */
+async function pngHasAnimationChunk(handle: Awaited<ReturnType<typeof open>>): Promise<boolean> {
+  const header = new Uint8Array(8);
+  let offset = 8;
+  for (let chunks = 0; chunks < 64; chunks++) {
+    const { bytesRead } = await handle.read(header, 0, 8, offset);
+    if (bytesRead < 8) return false;
+    const type = String.fromCharCode(...header.subarray(4, 8));
+    if (type === "acTL") return true;
+    if (type === "IDAT" || type === "IEND") return false;
+    const length = new DataView(header.buffer).getUint32(0);
+    offset += 12 + length;
+  }
+  return false;
 }
