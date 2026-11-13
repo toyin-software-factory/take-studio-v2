@@ -602,7 +602,7 @@ const describe = (m) =>
 
 // Returns [findings, judgeQuestions]. Easings written in different systems (a GSAP name vs a
 // CSS cubic-bezier) cannot be compared in code, so those become questions for the judge.
-export function compareMotion(D, B, vp, tol) {
+export function compareMotion(D, B, vp, tol, { strictMotion = false } = {}) {
   const out = [],
     questions = [];
   const labels = new Set(D.elements.map((e) => e.label.split("#")[0]));
@@ -762,6 +762,9 @@ export function compareMotion(D, B, vp, tol) {
       viewport: vp,
       label,
       prop: "motion-extra",
+      // Motion the design lacks is usually polish the builder added on purpose: by default it is
+      // listed for a person, not sent back to the builder. "motion": "strict" sends it back.
+      ...(strictMotion ? {} : { severity: "info" }),
       design: dTrigs.size ? [...dTrigs] : "none",
       build: trigs,
       message: `has ${trigs.join(", ")} motion that the design does not have (${describe(bList.find((m) => trigs.includes(triggerGroup(m.trigger))))})`,

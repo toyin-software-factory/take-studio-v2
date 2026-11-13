@@ -220,6 +220,7 @@ ${v.capped ? `<p>The round limit was reached with ${v.fails.length} item(s) stil
 ${v.setup.length ? `<h2>Setup needed</h2>${rows(v.setup.map((f) => ({ ...f, label: f.label || "(page)" })))}` : ""}
 <h2>For you (${v.flags.length})</h2>${rows(v.flags, (f) => f.why)}
 <h2>For the builder (${v.fails.length})</h2>${rows(v.fails)}
+${v.info.length ? `<h2>Notes, not sent to the builder (${v.info.length})</h2>${rows(v.info)}` : ""}
 <h2>Judge passed (${v.passes.length})</h2>${rows(v.passes, (f) => `${Math.round(f.answer.confidence * 100)}% sure`)}
 <h2>Sections side by side</h2>${visuals || '<p class="none">No section screenshots.</p>'}
 ${history ? `<h2>Rounds</h2><ul>${history}</ul>` : ""}
