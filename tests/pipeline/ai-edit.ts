@@ -163,8 +163,12 @@ export async function aiEditMeasure(ctx: AiMeasureCtx): Promise<void> {
   }
 
   for (const s of samples) {
+    // A fallback (`skipped` or `failed`) can still log tokens, so only a `succeeded` AI edit
+    // counts as a measurement; the others are reported on their own line below.
+    const succeeded = s.aiEditStatus === "succeeded";
+    ctx.check(S, `${s.label}: AI edit succeeded (not a fallback)`, succeeded, s.aiEditStatus);
     const cost =
-      priced && s.inputTokens !== null && s.outputTokens !== null
+      succeeded && priced && s.inputTokens !== null && s.outputTokens !== null
         ? costUsd(s.inputTokens, s.outputTokens, priceIn, priceOut)
         : null;
     console.log(`[ai-measure] ${JSON.stringify({ ...s, costUsd: cost })}`);
@@ -172,13 +176,16 @@ export async function aiEditMeasure(ctx: AiMeasureCtx): Promise<void> {
       ctx.check(
         S,
         `AC-6 ${s.label}: transcript plus AI added ≤ ${MAX_SECONDS} s`,
-        s.addedSeconds !== null && s.addedSeconds <= MAX_SECONDS,
+        succeeded && s.addedSeconds !== null && s.addedSeconds <= MAX_SECONDS,
         s,
       );
-      ctx.check(S, `AC-9 ${s.label}: token counts logged`, s.inputTokens !== null, s);
+      ctx.check(S, `AC-9 ${s.label}: token counts logged`, succeeded && s.inputTokens !== null, s);
     }
   }
-  const longOnes = samples.filter((s) => s.label !== "short");
+  const longOnes = samples.filter((s) => s.label !== "short" && s.aiEditStatus === "succeeded");
+  const fallbacks = samples.filter((s) => s.aiEditStatus !== "succeeded").map((s) => s.label);
+  if (fallbacks.length > 0)
+    console.log(`[ai-measure] fallback samples, not counted: ${JSON.stringify(fallbacks)}`);
   const added = summarise(
     longOnes.flatMap((s) => (s.addedSeconds === null ? [] : [s.addedSeconds])),
   );
