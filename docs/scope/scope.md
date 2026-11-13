@@ -32,7 +32,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 8 | Studio background swap | Slice 3 | done |
 | 9 | Cut review timeline | Slice 4 | done |
 | 10 | AI editing agents | Slice 5 | in-progress |
-| 11 | Take library, delete & retention | Slice 6 | planned |
+| 11 | Take library, delete & retention | Slice 6 | in-progress |
 | 12 | Monthly usage limit | Slice 6 | planned |
 | 13 | Public API | Slice 7 | planned |
 | 14 | MCP server for AI agents | Slice 7 | planned |
@@ -191,10 +191,17 @@ Spec [0012](../specs/0012-ai-editing-agents.md)
 
 ## Slice 6: Library, retention and limits
 
-### 11. Take library, delete & retention · needs a decision
+### 11. Take library, delete & retention · in-progress
 A proper library of past takes with status and expiry date; delete a take at any time; originals and finished videos auto delete after 30 days, transcripts stay until the take is deleted.
 **Done when:** the library shows each take's status and when its video expires; deleting a take removes every stored file and record for it; videos older than 30 days are removed automatically while their transcripts remain.
-- [ ] Design it (spec): `/architect take library, delete & retention`
+- [x] Design it (spec): `/architect take library, delete & retention`
+- [ ] Build it: `/develop take library, delete & retention`
+   - [ ] Delete route, proof of full removal, then the Delete dialog on the take page (AC-3, AC-4, AC-6, AC-7, AC-11, AC-12)
+   - [ ] Delete on library cards and the clearer expired states and take page (AC-1, AC-2, AC-5, AC-8)
+   - [ ] R2 lifecycle rules as a backstop, then account deletion and browser tests (AC-9, AC-10, AC-12)
+- [ ] Verify it: `/check verify take library, delete & retention`
+- [ ] Test it: `/test take library, delete & retention`
+Spec [0013](../specs/0013-take-library-delete-retention.md)
 
 ### 12. Monthly usage limit · needs a decision
 Free accounts get a monthly allowance of processed minutes, keeping costs safe until billing exists.
