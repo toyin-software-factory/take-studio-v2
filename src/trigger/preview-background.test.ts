@@ -9,7 +9,13 @@ import {
   storageDeletion,
   take,
 } from "@/db/schema";
-import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
+import {
+  type TestDb,
+  createCreator,
+  openTestDb,
+  seedTake,
+  builtInTracker,
+} from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { previewKey } from "@/lib/background-preview";
 import { DeadlineExceeded } from "@/lib/deadline";
@@ -23,7 +29,11 @@ beforeAll(async () => {
   testDb = await openTestDb();
   db = testDb.db;
 });
-afterAll(() => testDb?.close());
+const built = builtInTracker();
+afterAll(async () => {
+  if (testDb) await built.clean(testDb.db);
+  await testDb?.close();
+});
 
 const W = 320;
 const H = 180;
@@ -58,7 +68,7 @@ async function seedBackground() {
       status: "ready",
     })
     .returning();
-  return row!;
+  return built.track(row!);
 }
 
 async function pending(opts: { keyedRender?: boolean } = {}) {

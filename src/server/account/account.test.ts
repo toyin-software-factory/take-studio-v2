@@ -14,7 +14,13 @@ import {
   user,
 } from "@/db/schema";
 import { previewKey } from "@/lib/background-preview";
-import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
+import {
+  type TestDb,
+  createCreator,
+  openTestDb,
+  seedTake,
+  builtInTracker,
+} from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { backgroundKeys } from "@/lib/background-rules";
 import { thumbnailKey } from "@/lib/take-rules";
@@ -33,7 +39,11 @@ beforeAll(async () => {
   testDb = await openTestDb();
   db = testDb.db;
 });
-afterAll(() => testDb?.close());
+const built = builtInTracker();
+afterAll(async () => {
+  if (testDb) await built.clean(testDb.db);
+  await testDb?.close();
+});
 
 async function renderedTake(creatorId: string) {
   const t = await seedTake(db, creatorId);
@@ -185,7 +195,7 @@ describe("account deletion with a take of every kind (spec 0013, AC-10)", () => 
     await setTranscriptEdits(db, rendered.take.id, [
       { index: 0, old: "hello", new: "Hello", reason: "case", undone: false },
     ]);
-    const bgId = crypto.randomUUID();
+    const bgId = built.track({ id: crypto.randomUUID() }).id;
     await db.insert(background).values({
       id: bgId,
       creatorId: null,

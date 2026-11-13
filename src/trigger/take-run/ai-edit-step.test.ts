@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { JobDb } from "@/db/client/job";
 import {
@@ -24,10 +24,17 @@ import { type AiEditIo, aiEditStep } from "./ai-edit-step";
 let testDb: TestDb;
 let db: JobDb;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  // Its own database: the AI step sends every ready built in background in the prompt, so rows
+  // other test files leave in the shared database could push the request over the input cap and
+  // make the step skip as too_large (B2-T08). Clear built ins left by an earlier run of this file.
+  testDb = await openTestDb({ database: "take_studio_test_ai_edit" });
   db = testDb.db as unknown as JobDb;
+  await testDb.db.delete(background).where(isNull(background.creatorId));
 });
-afterAll(() => testDb?.close());
+afterAll(async () => {
+  if (testDb) await testDb.db.delete(background).where(isNull(background.creatorId));
+  await testDb?.close();
+});
 afterEach(() => vi.clearAllMocks());
 
 const TITLE = "My very private title";

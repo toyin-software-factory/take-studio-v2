@@ -2,7 +2,13 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { finish, markRunning, startTranscribeJob } from "@/db/data/jobs";
 import { background, jobStep, processingJob, render, take } from "@/db/schema";
-import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
+import {
+  type TestDb,
+  createCreator,
+  openTestDb,
+  seedTake,
+  builtInTracker,
+} from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { cancel } from "../jobs";
 import { type TakeHttpDeps, handleGet } from "../takes/http";
@@ -20,7 +26,11 @@ beforeAll(async () => {
   testDb = await openTestDb();
   db = testDb.db;
 });
-afterAll(() => testDb?.close());
+const built = builtInTracker();
+afterAll(async () => {
+  if (testDb) await built.clean(testDb.db);
+  await testDb?.close();
+});
 
 function deps(creatorId: string | null, triggered: string[] = [], failTrigger = false) {
   const value: BackgroundHttpDeps = {
@@ -68,7 +78,7 @@ async function seedBackground(over: Partial<typeof background.$inferInsert> = {}
       ...over,
     })
     .returning();
-  return row!;
+  return built.track(row!);
 }
 
 async function readyTake(opts: { backgroundId?: string; keyed?: boolean } = {}) {

@@ -1,7 +1,13 @@
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { background, cut, processingJob, render, take } from "../schema";
-import { type TestDb, createCreator, openTestDb, seedTake } from "../testing/test-db";
+import {
+  type TestDb,
+  createCreator,
+  openTestDb,
+  seedTake,
+  builtInTracker,
+} from "../testing/test-db";
 import type { Db } from "../types";
 import { finish, markRunning, startChangeJob } from "./jobs";
 import { create as createRender } from "./renders";
@@ -13,7 +19,11 @@ beforeAll(async () => {
   testDb = await openTestDb();
   db = testDb.db;
 });
-afterAll(() => testDb?.close());
+const built = builtInTracker();
+afterAll(async () => {
+  if (testDb) await built.clean(testDb.db);
+  await testDb?.close();
+});
 
 async function seedBackground() {
   const id = crypto.randomUUID();
@@ -27,6 +37,7 @@ async function seedBackground() {
     height: 1080,
     status: "ready",
   });
+  built.track({ id });
   return id;
 }
 

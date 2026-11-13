@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { background, take, user } from "@/db/schema";
-import { type TestDb, createCreator, openTestDb } from "@/db/testing/test-db";
+import { type TestDb, createCreator, openTestDb, builtInTracker } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import type { UploadDeps } from ".";
 import { type HttpDeps, handleCreate } from "./http";
@@ -16,7 +16,11 @@ beforeAll(async () => {
   testDb = await openTestDb();
   db = testDb.db;
 });
-afterAll(() => testDb?.close());
+const built = builtInTracker();
+afterAll(async () => {
+  if (testDb) await built.clean(testDb.db);
+  await testDb?.close();
+});
 
 const r2: UploadDeps["r2"] = {
   createMultipartUpload: async () => `mpu-${crypto.randomUUID()}`,
@@ -59,7 +63,7 @@ async function seedBackground(over: Partial<typeof background.$inferInsert> = {}
       ...over,
     })
     .returning();
-  return row!;
+  return built.track(row!);
 }
 
 const takeRow = async (id: string) => (await db.select().from(take).where(eq(take.id, id)))[0];
