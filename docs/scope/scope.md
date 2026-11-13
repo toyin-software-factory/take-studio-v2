@@ -252,6 +252,7 @@ Out of scope for this build pass, kept so the plan stays honest.
 - **k3s render cluster (cost step 3)**: when more than about 3 render servers or automatic scaling are needed, combine Hetzner machines into a k3s cluster that runs each render as a Kubernetes job (the step 2 render service runs inside it); a dedicated infrastructure agent joins the team to set up, run and look after the servers and the cluster · needs a decision · after Own render servers
 
 ### Growth ideas (Toyin, 2026-11-13)
+Positioning, costs and competitor research: docs/scope/research/2026-11-13-positioning-and-studio-look.md
 Ways to make people want to use Take Studio quickly. Recommended order when Toyin picks: Product analytics (feature 17, so the rest can be measured), then Upload first, sign in after, then Before and after on the homepage.
 - **Upload first, sign in after**: drop a video on the homepage; the email for the magic link and the take ready email is asked for while it uploads and processes · needs a decision
 - **Before and after on the homepage**: one real take, raw against finished, with a slider and the time saved · needs a decision
@@ -263,6 +264,9 @@ Ways to make people want to use Take Studio quickly. Recommended order when Toyi
 - **Nudge email**: 24 hours after a sign in with no upload, with a sample take · needs a decision
 - **Installable home screen app (PWA)**: web app manifest, icon and full screen; take ready push notifications where the browser supports them · needs a decision
 - **Native phone app**: decide with analytics (#17). Build it only if phone uploads are most of our use and they often fail in the browser; it would be a native iPhone app for recording and background upload, with the web app doing the rest · needs a decision · after Product analytics
+- **Real studio look (AI cut out, matched light, shadow, framing)**: the person looks filmed in the studio, not pasted on · revisit after the core is built · [research](research/2026-11-13-positioning-and-studio-look.md)
+- **Your own branded set**: logo, brand colours and the same framing every time · revisit after the core is built · [research](research/2026-11-13-positioning-and-studio-look.md)
+- **Just talk, we keep the best take**: the best attempt at each point is kept automatically · revisit after the core is built · [research](research/2026-11-13-positioning-and-studio-look.md)
 
 ## Legend
 
