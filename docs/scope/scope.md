@@ -30,7 +30,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 6 | Error monitoring | Slice 1 | done |
 | 7 | Transcript | Slice 2 | done |
 | 8 | Studio background swap | Slice 3 | done |
-| 9 | Cut review timeline | Slice 4 | in-progress |
+| 9 | Cut review timeline | Slice 4 | done |
 | 10 | AI editing agents | Slice 5 | planned |
 | 11 | Take library, delete & retention | Slice 6 | planned |
 | 12 | Monthly usage limit | Slice 6 | planned |
@@ -162,7 +162,7 @@ Spec [0008](../specs/0008-studio-background.md) · code in `src/lib/keying.ts`, 
 
 ## Slice 4: Review the cuts
 
-### 9. Cut review timeline · in-progress
+### 9. Cut review timeline · done
 After automatic trimming, show every cut on a timeline; the creator can undo any cut, then render the final video.
 **Done when:** each cut is visible and playable, undoing a cut restores that part, and the final render and transcript reflect exactly the kept cuts; the timeline works by keyboard.
 - [x] Design it (spec): `/architect cut review timeline`
