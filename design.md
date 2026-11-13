@@ -1720,7 +1720,7 @@ if (matchMedia("(pointer: fine)").matches && !REDUCED) {
 | LCP (hero h1 or centre fan card) | ≤ 2.0s on 4G mid-tier                                                                      |
 | CLS                              | ≤ 0.02                                                                                     |
 | INP                              | ≤ 200ms                                                                                    |
-| Initial JS (gz, excl. three)     | ≤ 90KB (gsap + ScrollTrigger + CustomEase + lenis + app)                                   |
+| Initial JS (gz, excl. three)     | ≤ 90KB added over the `/sign-in` baseline (see spec 0010 AC-10)                            |
 | Deferred JS (three + field)      | ≤ 170KB gz                                                                                 |
 | Fonts                            | ≤ 70KB total                                                                               |
 | Above-fold images                | ≤ 450KB                                                                                    |
