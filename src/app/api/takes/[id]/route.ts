@@ -1,4 +1,4 @@
-import { handleGet, handleRename } from "@/server/takes/http";
+import { handleDelete, handleGet, handleRename } from "@/server/takes/http";
 import { takeHttpDeps } from "@/server/takes/deps";
 
 export const dynamic = "force-dynamic";
@@ -13,4 +13,9 @@ export async function GET(request: Request, { params }: Context): Promise<Respon
 /** Rename the take (AC-9). */
 export async function PATCH(request: Request, { params }: Context): Promise<Response> {
   return handleRename(request, (await params).id, takeHttpDeps());
+}
+
+/** Delete the take and everything under it (spec 0013 AC-3). */
+export async function DELETE(request: Request, { params }: Context): Promise<Response> {
+  return handleDelete(request, (await params).id, takeHttpDeps());
 }

@@ -1,7 +1,7 @@
 # 0013. Take library, delete and retention
 
 **Date**: 2026-11-13
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 

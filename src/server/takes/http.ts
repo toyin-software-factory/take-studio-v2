@@ -3,7 +3,7 @@ import { dispatchJob } from "@/db/data/dispatch";
 import type { Db } from "@/db/types";
 import { removedRanges } from "@/lib/cut-rules";
 import { isExpired, isRetryable, removedMs, takeNote } from "@/lib/take-media";
-import { getForCreator, listForCreator, rename } from ".";
+import { type AfterDelete, deleteTake, getForCreator, listForCreator, rename } from ".";
 import { listForTake } from "../cuts";
 import { hasActiveTranscribe } from "../transcripts";
 import { start } from "../jobs";
@@ -11,7 +11,7 @@ import { cardView, cutView, jobView, renderView, takeView } from "./views";
 
 /**
  * HTTP handlers for the take routes (spec 0004 API surface, AC-10, AC-11): session required
- * (401 JSON), `Origin` checked on PATCH and POST (403), bodies validated with zod, typed
+ * (401 JSON), `Origin` checked on PATCH, POST and DELETE (403), bodies validated with zod, typed
  * errors mapped to status codes and friendly messages, `Cache-Control: no-store` always.
  * Another creator's take and a malformed ID give the same 404. Dependencies are passed in so
  * tests can drive the handlers against a real database.
@@ -29,6 +29,8 @@ export type TakeHttpDeps = {
   /** Triggers `process-take` for a job (idempotent per job ID). */
   readonly triggerProcessTake: (jobId: string) => Promise<{ readonly id: string }>;
   readonly now?: () => Date;
+  /** Post commit steps of a delete; tests pass fakes, routes use the real ones. */
+  readonly afterDelete?: AfterDelete;
 };
 
 export type TakeError =
@@ -179,6 +181,23 @@ export async function handleRename(
   const renamed = await rename(creator.db, creator.creatorId, takeId, parsed.data.title);
   if (!renamed.ok) return errorResponse(renamed.error);
   return json({ take: takeView(renamed.data, deps.now?.() ?? new Date()) });
+}
+
+/**
+ * DELETE /api/takes/{id}: deletes the creator's take with every file and record (spec 0013
+ * AC-3). 204 and no body; a missing take, another creator's take and a malformed ID give the
+ * same 404, so a repeat delete changes nothing.
+ */
+export async function handleDelete(
+  request: Request,
+  takeId: string,
+  deps: TakeHttpDeps,
+): Promise<Response> {
+  const creator = await guard(request, deps, { checkOrigin: true });
+  if (creator instanceof Response) return creator;
+  const deleted = await deleteTake(creator.db, creator.creatorId, takeId, deps.afterDelete);
+  if (!deleted.ok) return errorResponse("not_found");
+  return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
 }
 
 /**
