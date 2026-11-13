@@ -1,9 +1,24 @@
 import { eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { cut, jobStep, processingJob, render, storageDeletion, take } from "@/db/schema";
+import { whileJobActive } from "@/db/data/jobs";
+import { queueDeletions } from "@/db/data/jobs/render-files";
+import { setTranscriptEdits, upsertTranscript } from "@/db/data/transcripts";
+import {
+  background,
+  backgroundPreview,
+  cut,
+  jobStep,
+  processingJob,
+  render,
+  storageDeletion,
+  take,
+  transcript,
+} from "@/db/schema";
+import { previewKey } from "@/lib/background-preview";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { thumbnailKey } from "@/lib/take-rules";
+import { ok } from "@/lib/result";
 import { addManual } from "../cuts";
 import { finish, markRunning, start } from "../jobs";
 import { completeLatest, create as createRender } from "../renders";
@@ -100,5 +115,110 @@ describe("deleteTake (AC-17)", () => {
     expect(await deleteTake(db, b.id, "nope", after)).toEqual({ ok: false, error: "not_found" });
     expect(calls).toEqual({ cancelled: [], drains: 0 });
     expect(await db.select({ id: take.id }).from(take).where(eq(take.id, t.id))).toHaveLength(1);
+  });
+});
+
+describe("deleteTake removes everything (spec 0013 AC-6)", () => {
+  it("removes the transcript with its edits and the previews, and queues the preview stills", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, { durationMs: 10_000 });
+    const saved = await upsertTranscript(db, {
+      takeId: t.id,
+      language: "en",
+      text: "hello there",
+      words: [{ text: "hello", startMs: 0, endMs: 400 }] as never,
+      sourceFps: 30,
+      model: "test",
+    });
+    if (!saved.ok) throw new Error(saved.error);
+    await setTranscriptEdits(db, t.id, [
+      { index: 0, old: "hello", new: "Hello", reason: "case", undone: false },
+    ]);
+    const bgId = crypto.randomUUID();
+    await db.insert(background).values({
+      id: bgId,
+      creatorId: null,
+      name: "Studio",
+      imageKey: `backgrounds/builtin/${bgId}.jpg`,
+      thumbKey: `backgrounds/builtin/${bgId}.webp`,
+      width: 1920,
+      height: 1080,
+      status: "ready",
+    });
+    const previewId = crypto.randomUUID();
+    await db.insert(backgroundPreview).values({
+      id: previewId,
+      takeId: t.id,
+      backgroundId: bgId,
+      cutVersion: "v",
+      status: "ready",
+      objectKey: previewKey(t.id, previewId),
+    });
+
+    const result = await deleteTake(db, creator.id, t.id, spyAfter().after);
+
+    expect(result.ok && result.data.queuedKeys).toContain(previewKey(t.id, previewId));
+    expect(await db.select().from(transcript).where(eq(transcript.takeId, t.id))).toEqual([]);
+    expect(
+      await db.select().from(backgroundPreview).where(eq(backgroundPreview.takeId, t.id)),
+    ).toEqual([]);
+    const queued = await db
+      .select({ key: storageDeletion.objectKey })
+      .from(storageDeletion)
+      .where(eq(storageDeletion.objectKey, previewKey(t.id, previewId)));
+    expect(queued).toHaveLength(1);
+    // The background is shared and stays.
+    expect(
+      await db.select({ id: background.id }).from(background).where(eq(background.id, bgId)),
+    ).toHaveLength(1);
+  });
+
+  it("still returns ok with the rows gone when the cancel and the drain request both fail", async () => {
+    const creator = await createCreator(db);
+    const { take: t } = await richTake(creator.id);
+    const after: AfterDelete = {
+      cancelRuns: async () => {
+        throw new Error("trigger down");
+      },
+      requestStorageDrain: async () => {
+        throw new Error("trigger down");
+      },
+    };
+    const result = await deleteTake(db, creator.id, t.id, after);
+    expect(result.ok).toBe(true);
+    expect(await db.select().from(take).where(eq(take.id, t.id))).toEqual([]);
+    const queued = await db
+      .select({ key: storageDeletion.objectKey })
+      .from(storageDeletion)
+      .where(eq(storageDeletion.objectKey, t.originalKey));
+    expect(queued).toHaveLength(1);
+  });
+
+  it("leaves nothing behind when the take is deleted during a running job (AC-7)", async () => {
+    const creator = await createCreator(db);
+    const { take: t, jobIds } = await richTake(creator.id);
+    const runningJob = jobIds[1]!;
+
+    await deleteTake(db, creator.id, t.id, spyAfter().after);
+
+    // The job's late write is fenced: the job row is gone, so it must not write.
+    let wrote = false;
+    const late = await whileJobActive(db, runningJob, async () => {
+      wrote = true;
+      return ok(null);
+    });
+    expect(late).toEqual({ ok: false, error: "job_final" });
+    expect(wrote).toBe(false);
+
+    // The late upload queues its own key and the file is then drained like any other.
+    const lateKey = `renders/${t.id}/${crypto.randomUUID()}.mp4`;
+    await queueDeletions(db, [lateKey]);
+    const queued = await db
+      .select({ key: storageDeletion.objectKey })
+      .from(storageDeletion)
+      .where(eq(storageDeletion.objectKey, lateKey));
+    expect(queued).toHaveLength(1);
+    expect(await db.select().from(processingJob).where(eq(processingJob.takeId, t.id))).toEqual([]);
+    expect(await db.select().from(render).where(eq(render.takeId, t.id))).toEqual([]);
   });
 });

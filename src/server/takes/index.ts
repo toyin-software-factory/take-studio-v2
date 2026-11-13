@@ -347,10 +347,24 @@ export type AfterDelete = {
 
 const defaultAfterDelete: AfterDelete = { cancelRuns, requestStorageDrain };
 
+/** Runs a post commit side effect; a failure is logged (take ID only) and never thrown. */
+async function bestEffort(step: string, takeId: string, run: () => Promise<unknown>) {
+  try {
+    await run();
+  } catch (error) {
+    console.error("take delete: after commit step failed", {
+      takeId,
+      step,
+      reason: error instanceof Error ? error.name : "unknown",
+    });
+  }
+}
+
 /**
  * `deleteTake` (AC-17): deletes the creator's take and everything under it (jobs, steps, cuts,
  * renders cascade), queuing every file key in the same transaction. After commit it cancels
- * the take's active Trigger.dev runs and asks for a queue drain, both best effort.
+ * the take's active Trigger.dev runs and asks for a queue drain, both best effort: a failure is
+ * logged and the delete still succeeds (spec 0013 AC-3).
  */
 export async function deleteTake(
   db: Executor,
@@ -371,8 +385,11 @@ export async function deleteTake(
   });
 
   if (result.ok) {
-    await after.cancelRuns(result.data.runIds);
-    await after.requestStorageDrain();
+    // The take is already gone: a failure here must not turn the delete into an error. The
+    // storage drain is retried by the cleanup sweep, and a run that is not cancelled ends
+    // quietly because its take is gone. IDs only in the log.
+    await bestEffort("cancel runs", takeId, () => after.cancelRuns(result.data.runIds));
+    await bestEffort("request drain", takeId, () => after.requestStorageDrain());
   }
   return result;
 }

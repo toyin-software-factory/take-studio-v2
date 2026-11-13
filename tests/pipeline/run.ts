@@ -491,6 +491,7 @@ async function main() {
       ["GET", `/api/takes/${normal}`],
       ["PATCH", `/api/takes/${normal}`, { title: "mine" }],
       ["POST", `/api/takes/${normal}/retry`],
+      ["DELETE", `/api/takes/${normal}`],
       ["GET", `/api/takes/${normal}/media?kind=play`],
       ["GET", `/api/takes/${normal}/media?kind=download`],
       ["GET", `/api/takes/${normal}/media?kind=original`],
