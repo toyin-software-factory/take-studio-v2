@@ -414,7 +414,52 @@ export function compareElements(D, B, vp, tol) {
       ),
       severity: "info",
     });
+  linkRelated(out, D, tol);
   return out;
+}
+
+// One wrong size usually shows up on several elements: a narrower column makes every child that
+// fills it narrower too, and a taller item makes its list and section taller. Mark those knock-on
+// findings with `relatedTo` (the element whose fix should clear them), so the builder sees the
+// cause once, with a count, instead of a line per element.
+function linkRelated(findings, D, tol) {
+  const parent = new Map(D.elements.map((e) => [e.label, e.parent]));
+  const ancestors = (label) => {
+    const out = [];
+    for (let p = parent.get(label), g = 0; p && g < 30; p = parent.get(p), g++) out.push(p);
+    return out;
+  };
+  const delta = (f) => Number(f.build) - Number(f.design);
+  const near = (a, b) => Math.abs(a - b) <= tol.size * 2;
+  const sized = (prop) =>
+    new Map(
+      findings.filter((f) => f.prop === prop && Number.isFinite(delta(f))).map((f) => [f.label, f]),
+    );
+  const widths = sized("width"),
+    heights = sized("height");
+  // Width flows down: a child that changed by the same amount as an ancestor follows it.
+  for (const f of widths.values())
+    for (const a of ancestors(f.label)) {
+      const af = widths.get(a);
+      if (af && near(delta(af), delta(f))) f.relatedTo = a;
+    }
+  // Height flows up: an ancestor that grew by the same amount as a descendant follows it.
+  // The deepest such descendant is the cause.
+  for (const f of heights.values()) {
+    for (const a of ancestors(f.label)) {
+      const af = heights.get(a);
+      if (af && near(delta(af), delta(f)) && !af.relatedTo) af.relatedTo = f.label;
+    }
+  }
+  // Point every chain at its root.
+  const byLabel = { width: widths, height: heights };
+  for (const [prop, m] of Object.entries(byLabel))
+    for (const f of m.values()) {
+      let root = f.relatedTo;
+      for (let g = 0; root && m.get(root)?.relatedTo && g < 30; g++) root = m.get(root).relatedTo;
+      if (root) f.relatedTo = root;
+      if (root) f.relatedProp = prop;
+    }
 }
 // The visible element directly above `e` in the same tagged parent (in the design's layout):
 // the nearest one whose bottom edge sits at or above e's top and that overlaps it horizontally.

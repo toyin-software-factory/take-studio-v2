@@ -242,6 +242,7 @@ export async function runRound(cfg, pages, { quick = false } = {}) {
             ratio: px.ratio,
             heightDiff: px.heightDiff,
             images: { design: px.design, build: px.build, diff: px.diff },
+            small: px.small,
             codeFindings: sectionFindings.length,
           });
           // Jev is asked only once the code checks in this section pass and the pixels still differ.

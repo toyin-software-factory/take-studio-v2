@@ -90,7 +90,22 @@ export function toMarkdown(v, { quick = false, reportPath, result } = {}) {
     );
     // Every failure goes to the builder: one it never saw would look "unchanged" next round
     // and stop the loop as stuck. Worst sections first, so the builder knows where to start.
-    const groups = bySection(mergeViewports(v.fails), result);
+    // Knock-on findings are folded into their cause's line as a count.
+    const related = new Map();
+    for (const f of v.fails)
+      if (f.relatedTo) {
+        const k = `${f.page}|${f.viewport}|${f.relatedTo}|${f.relatedProp}`;
+        related.set(k, (related.get(k) || 0) + 1);
+      }
+    const shown = v.fails
+      .filter((f) => !f.relatedTo)
+      .map((f) => {
+        const n = related.get(`${f.page}|${f.viewport}|${f.label}|${f.prop}`);
+        return n
+          ? { ...f, message: `${f.message} (+${n} element${n > 1 ? "s" : ""} that follow it)` }
+          : f;
+      });
+    const groups = bySection(mergeViewports(shown), result);
     for (const g of groups) {
       if (groups.length > 1)
         out.push(
@@ -174,7 +189,7 @@ export function toHtml(v, result, state) {
       (
         x,
       ) => `<details${x.ratio > 0.02 ? " open" : ""}><summary><span class="vp">${esc(x.viewport)}</span><b>${esc(x.page)} › ${esc(x.label)}</b><span class="pct">${(x.ratio * 100).toFixed(1)}% of pixels differ${x.heightDiff ? `, ${x.heightDiff > 0 ? "+" : ""}${x.heightDiff}px tall` : ""}</span></summary>
-      <div class="shots"><figure><img loading="lazy" src="${img(x.images.design)}" alt="Design"><figcaption>Design</figcaption></figure><figure><img loading="lazy" src="${img(x.images.build)}" alt="Build"><figcaption>Build</figcaption></figure><figure><img loading="lazy" src="${img(x.images.diff)}" alt="Differences in red"><figcaption>Differences</figcaption></figure></div></details>`,
+      <div class="shots"><figure><img loading="lazy" src="${img((x.small || x.images).design)}" alt="Design"><figcaption>Design</figcaption></figure><figure><img loading="lazy" src="${img((x.small || x.images).build)}" alt="Build"><figcaption>Build</figcaption></figure><figure><img loading="lazy" src="${img((x.small || x.images).diff)}" alt="Differences in red"><figcaption>Differences</figcaption></figure></div></details>`,
     )
     .join("");
   const history = (state.rounds || [])
