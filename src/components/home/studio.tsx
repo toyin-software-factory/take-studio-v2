@@ -115,21 +115,23 @@ export function HomeStudio() {
               </span>
             </p>
           ))}
-          <Link className="h-btn-split" href="/sign-in" data-check="s4-studio-cta-2">
-            <span className="h-btn-split-label" data-check="s4-studio-cta-3">
-              {STUDIO.cta}
-            </span>
-            <span className="h-btn-split-icon" aria-hidden="true" data-check="s4-studio-cta-4">
-              <svg width="18" height="18" viewBox="0 0 18 18" focusable="false">
-                <path
-                  d="M3 9h12M10 4l5 5-5 5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                />
-              </svg>
-            </span>
-          </Link>
+          <div className="h-studio-cta" data-check="s4-studio-cta">
+            <Link className="h-btn-split" href="/sign-in" data-check="s4-studio-cta-2">
+              <span className="h-btn-split-label" data-check="s4-studio-cta-3">
+                {STUDIO.cta}
+              </span>
+              <span className="h-btn-split-icon" aria-hidden="true" data-check="s4-studio-cta-4">
+                <svg width="18" height="18" viewBox="0 0 18 18" focusable="false">
+                  <path
+                    d="M3 9h12M10 4l5 5-5 5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  />
+                </svg>
+              </span>
+            </Link>
+          </div>
         </div>
       </div>
     </section>

@@ -107,6 +107,11 @@
 [data-theme="dark"] .h-eyebrow {
   color: var(--color-on-dark-75);
 }
+.h-studio-intro .h-eyebrow {
+  color: var(
+    --color-on-dark-60
+  ); /* home-v2 dims the studio eyebrow to 60%, still above AA on the dark stage */
+}
 .h-section {
   padding-block: var(--section-y);
 }
@@ -451,7 +456,7 @@
   z-index: 1;
   max-width: none;
   padding-inline: 0;
-  background: var(--color-dark);
+  background: #000; /* home-v2 uses pure black behind the reel */
   overflow: hidden;
 }
 .h-reel.is-scrub .h-reel-media video {
@@ -576,6 +581,7 @@
   position: sticky;
   top: 0;
   display: grid;
+  gap: 0;
   place-items: center;
   height: 100vh;
   height: 100svh;
@@ -664,7 +670,7 @@
   height: auto;
   aspect-ratio: 16 / 9;
   object-fit: cover;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
 }
 .h-srt {
   display: flex;
@@ -688,7 +694,7 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
-  padding-block: var(--section-y);
+  padding-block: 0 var(--section-y);
 }
 .h-studio-fill .h-fill {
   position: relative;
@@ -712,8 +718,8 @@
     --fill-progress: 0%;
   }
 }
-.h-studio-fill .h-btn-split {
-  margin-top: 32px;
+.h-studio-cta {
+  margin-top: 48px;
 }
 
 /* What it does: four uneven tiles */
@@ -1331,7 +1337,9 @@ html.lenis body {
   width: 116%;
   max-width: none;
   margin-left: -8%;
-  justify-content: center;
+  padding-inline: 0;
+  gap: 48px;
+  justify-content: space-between;
   white-space: nowrap;
 }
 .h-flip {
