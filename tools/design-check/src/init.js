@@ -69,9 +69,13 @@ export async function init({
       const tagged = draft.replace(/\.html?$/i, ".tagged.html");
       const rel = path.relative(root, tagged).split(path.sep).join("/");
       let labels = null;
-      // A tagged copy may have hand edits, so it is only rewritten on --retag.
-      if (retag || !fs.existsSync(tagged))
-        labels = (await tagDesign(browser, draft, tagged)).length;
+      // A tagged copy may have hand edits, so it is only rewritten on --retag, or with
+      // --retag-files when this draft is one of the listed (changed) files.
+      const redo =
+        retag === true ||
+        (Array.isArray(retag) &&
+          retag.some((r) => path.resolve(root, r) === draft || path.basename(r) === f));
+      if (redo || !fs.existsSync(tagged)) labels = (await tagDesign(browser, draft, tagged)).length;
       const existing = pages.find(
         (p) => p.design === rel || p.design === path.relative(root, draft),
       );

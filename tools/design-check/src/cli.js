@@ -5,7 +5,7 @@
 //   design-check loop  --builder "<command that fixes the build>" [--page name]
 //   design-check watch [--page name]       live checks while you build (code checks only)
 //   design-check hook                      Claude Code PostToolUse hook: passes new live results to the coder
-//   design-check init [--dir docs/design] [--base-url http://localhost:3000] [--retag]
+//   design-check init [--dir docs/design] [--base-url http://localhost:3000] [--retag] [--retag-files a.html,b.html]
 //   design-check tag <design.html> [--out tagged.html]
 //   design-check reset
 import { spawn } from "node:child_process";
@@ -31,6 +31,7 @@ const { values: opt, positionals } = parseArgs({
     out: { type: "string", short: "o" },
     reset: { type: "boolean" },
     retag: { type: "boolean" },
+    "retag-files": { type: "string" },
     dir: { type: "string" },
     "base-url": { type: "string" },
     quick: { type: "boolean" },
@@ -245,7 +246,12 @@ async function main() {
       await init({
         dir: opt.dir,
         baseUrl: opt["base-url"],
-        retag: !!opt.retag,
+        retag:
+          !!opt.retag ||
+          (opt["retag-files"] || "")
+            .split(",")
+            .map((f) => f.trim())
+            .filter(Boolean),
         configFile: opt.config,
       }),
     );

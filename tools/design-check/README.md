@@ -21,7 +21,9 @@ Outputs go to `.design-check/`: `feedback.md` (for the builder), `report.html` (
    - writes a tagged copy (`home-v2.tagged.html`) with `data-check` labels on the header, nav, sections, headings, lead text, buttons, media, lists and the first list item;
    - adds a page to `design-check.json` (created if missing), with the route guessed from the file name: `home.html`, `index.html` or `landing.html` go to `/`, `pricing-v2.html` goes to `/pricing`. A draft can set its own route with `<meta name="design-check-route" content="/takes/demo">`.
 
-   Run it again whenever a draft is added: pages already in `design-check.json` and existing tagged copies (which may have hand edits) are kept. `--retag` rewrites the tagged copies, `--base-url` sets the dev server address (default `http://localhost:3000`), `--dir` another drafts folder.
+   Run it again whenever a draft is added: pages already in `design-check.json` and existing tagged copies (which may have hand edits) are kept. `--retag` rewrites the tagged copies, `--retag-files a.html,b.html` only those drafts' copies, `--base-url` sets the dev server address (default `http://localhost:3000`), `--dir` another drafts folder.
+
+   This step runs by itself: the `design-check-init` GitHub Action (`.github/workflows/design-check-init.yml`) runs `init` on any push to a branch other than `main` that adds or changes a draft in `docs/design/`, and commits the tagged copies and `design-check.json` back to that branch (a changed draft gets a fresh tagged copy). Pull before you carry on. Its commit is made with the Actions token, so it starts no CI run of its own; your next push does.
 
 3. Check the routes it printed (guessed ones are marked), then put the same `data-check` labels on the matching elements in the build.
 4. The resulting `design-check.json` looks like this; edit it freely:

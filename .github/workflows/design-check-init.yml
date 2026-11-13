@@ -1,0 +1,71 @@
+# When a reference draft lands in docs/design/ (any branch but main), set design-check up for it:
+# write the tagged copy (data-check labels) and add the page to design-check.json, then commit both
+# back to the same branch. The builder then only puts the same labels on the build.
+# A tagged copy already in the repo is rewritten only when its draft changed in this push.
+# Routes are guessed from the file name (home.html -> /, pricing.html -> /pricing); a draft can
+# name its own with <meta name="design-check-route" content="/real/path">.
+name: design-check-init
+on:
+  push:
+    branches-ignore: [main]
+    paths:
+      - "docs/design/**.html"
+      - "docs/design/**.htm"
+concurrency:
+  group: design-check-init-${{ github.ref }}
+  cancel-in-progress: false
+permissions:
+  contents: write
+jobs:
+  init:
+    # Our own commit only touches tagged copies; skip it so the job never loops.
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    container: mcr.microsoft.com/playwright:v1.65.0-noble
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Drafts changed in this push
+        id: changed
+        env:
+          BEFORE: ${{ github.event.before }}
+          DEFAULT: ${{ github.event.repository.default_branch }}
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          if [ -z "$BEFORE" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            BEFORE=$(git merge-base "origin/$DEFAULT" HEAD 2>/dev/null || true)
+          fi
+          if [ -n "$BEFORE" ]; then
+            FILES=$(git diff --name-only --diff-filter=AMR "$BEFORE" HEAD -- docs/design)
+          else
+            FILES=$(git ls-files docs/design)
+          fi
+          FILES=$(printf '%s\n' "$FILES" | grep -Ei '\.html?$' | grep -Eiv '\.tagged\.html?$' | paste -sd, - || true)
+          echo "files=$FILES" >> "$GITHUB_OUTPUT"
+          echo "Changed drafts: ${FILES:-none}"
+      - name: Playwright for the tagger
+        if: steps.changed.outputs.files != ''
+        # Matches the container's browsers; installed beside the tool so the repo's own deps are untouched.
+        run: npm install --prefix tools/design-check --no-save --no-package-lock --no-audit --no-fund playwright@1.65.0
+      - name: design-check init
+        if: steps.changed.outputs.files != ''
+        env:
+          FILES: ${{ steps.changed.outputs.files }}
+        run: node tools/design-check/src/cli.js init --retag-files "$FILES"
+      - name: Commit the tagged copies and config
+        if: steps.changed.outputs.files != ''
+        env:
+          BRANCH: ${{ github.ref_name }}
+        run: |
+          git add -- docs/design design-check.json
+          git reset -q -- tools/design-check
+          if git diff --cached --quiet; then echo "Nothing to commit."; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898283+github-actions[bot]@users.noreply.github.com" \
+            commit -m "design-check init: tag the changed drafts and update design-check.json"
+          for i in 1 2 3; do
+            git push origin "HEAD:refs/heads/$BRANCH" && exit 0
+            git pull --rebase origin "$BRANCH" || exit 1
+          done
+          exit 1
