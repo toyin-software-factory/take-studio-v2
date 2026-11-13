@@ -554,7 +554,10 @@ let exitCode = 0;
 try {
   await main();
 } catch (error) {
-  check("harness", "run", false, String(error));
+  // A bare "fetch failed" hides the reason (refused, reset, timeout): print the cause's code.
+  const cause = error instanceof Error && error.cause instanceof Error ? error.cause : null;
+  const code = cause ? ` (${(cause as NodeJS.ErrnoException).code ?? cause.message})` : "";
+  check("harness", "run", false, `${String(error)}${code}`);
 } finally {
   // Clean up through the real deletion path: account data deleted, files drained from R2.
   // Only the creators this run made; leftovers of abandoned runs are not touched here.
