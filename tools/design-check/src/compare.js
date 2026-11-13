@@ -333,6 +333,12 @@ export function compareElements(D, B, vp, tol) {
         (g.get(e.parent) || g.set(e.parent, []).get(e.parent)).push(e);
     return g;
   };
+  // Where the element is drawn: its layout box moved and scaled by any resting transform.
+  const drawn = (e) => {
+    const r = e.style && e.style.rendered;
+    if (!r || !("sx" in r)) return e.box;
+    return { x: e.box.x + r.dx, y: e.box.y + r.dy, w: e.box.w * r.sx, h: e.box.h * r.sy };
+  };
   const overlap = (a, b) =>
     Math.max(0, Math.min(a.x + a.w, b.x + b.w) - Math.max(a.x, b.x)) *
     Math.max(0, Math.min(a.y + a.h, b.y + b.h) - Math.max(a.y, b.y));
@@ -343,12 +349,18 @@ export function compareElements(D, B, vp, tol) {
       for (let j = i + 1; j < list.length; j++) {
         const A = list[i],
           C = list[j];
-        if (nested(A.box, C.box) || nested(C.box, A.box)) continue;
-        const area = overlap(A.box, C.box);
-        if (area < 64) continue;
+        const [a, c] = [drawn(A), drawn(C)];
+        if (nested(a, c) || nested(c, a)) continue;
+        const area = overlap(a, c);
+        // Ignore slivers from sub-pixel rounding: the overlap must be at least 2 px deep.
+        const depth = Math.min(
+          Math.min(a.x + a.w, c.x + c.w) - Math.max(a.x, c.x),
+          Math.min(a.y + a.h, c.y + c.h) - Math.max(a.y, c.y),
+        );
+        if (area < 64 || depth < 1.5) continue;
         const dA = dMap.get(A.label),
           dC = dMap.get(C.label);
-        const dArea = dA && dC ? overlap(dA.box, dC.box) : 0;
+        const dArea = dA && dC ? overlap(drawn(dA), drawn(dC)) : 0;
         if (!dA || !dC || dArea >= area * 0.5) continue;
         out.push(
           finding(

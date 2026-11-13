@@ -183,8 +183,29 @@ export async function runRound(cfg, pages, { quick = false } = {}) {
         // Sections: pixel diff, then the judgment questions for Jev.
         for (const ds of D.shots) {
           const bs = B.shots.find((s) => s.label === ds.label);
-          // A missing build section is already a "missing" finding for the builder.
-          if (!bs) continue;
+          if (!bs) {
+            // A label missing from the build is already a "missing" finding for the builder. Any
+            // other unmatched section (e.g. the label is on a non-section element) was never compared.
+            const inBuild = B.elements.some((e) => e.label === ds.label);
+            if (inBuild || !ds.file)
+              pr.questions.push({
+                noJudge: true,
+                id: `${vp}:${ds.label}:capture`,
+                page: page.name,
+                viewport: vp,
+                label: ds.label,
+                kind: "capture",
+                question: "Could the section be captured and compared?",
+                answer: {
+                  pass: null,
+                  confidence: 0,
+                  reason: !ds.file
+                    ? `design screenshot failed: ${ds.error || "unknown error"}`
+                    : "the build has this label, but not on a section element, so the section screenshots were not compared",
+                },
+              });
+            continue;
+          }
           if (!ds.file || !bs.file || ds.truncated || bs.truncated) {
             // A section that could not be captured in full was never compared, so it cannot pass.
             const why = !ds.file

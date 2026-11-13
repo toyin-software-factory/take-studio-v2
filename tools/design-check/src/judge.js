@@ -102,6 +102,7 @@ function secureUrl(u, what) {
 async function viaHttp(j, questions) {
   const res = await fetch(secureUrl(j.url, "judge url"), {
     method: "POST",
+    redirect: "error", // never follow a redirect with credentials attached
     headers: { "content-type": "application/json", ...(j.headers || {}) },
     body: JSON.stringify({ questions }),
     signal: AbortSignal.timeout((j.timeoutSec || 600) * 1000),
@@ -259,6 +260,7 @@ async function jevHttp(j, list, withImages) {
   };
   const res = await fetch(url, {
     method: "POST",
+    redirect: "error", // never follow a redirect with credentials attached
     headers: {
       authorization: `Bearer ${key}`,
       "content-type": "application/json",

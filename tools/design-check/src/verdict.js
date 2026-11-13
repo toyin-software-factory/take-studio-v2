@@ -80,12 +80,18 @@ export function judgeRound(cfg, result, st, { record = true } = {}) {
       };
       // An image question answered without the screenshots is never a pass, whatever the threshold.
       if (a.pass === null || a.blind || a.confidence < cfg.confidence)
-        flags.push({
-          ...item,
-          why: q.noJudge
-            ? a.reason
-            : `judge unsure (${Math.round((a.confidence || 0) * 100)}%): ${a.reason}`,
-        });
+        flags.push(
+          q.noJudge
+            ? {
+                ...item,
+                message: `section not compared: ${a.reason}`,
+                why: "check this section by eye in the report",
+              }
+            : {
+                ...item,
+                why: `judge unsure (${Math.round((a.confidence || 0) * 100)}%): ${a.reason}`,
+              },
+        );
       else if (a.pass) passes.push(item);
       else {
         const prev = st.history[item.key];
