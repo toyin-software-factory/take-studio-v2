@@ -94,13 +94,13 @@ It starts `next dev` on port 3100 and `trigger dev` itself, against your local d
 
 ```bash
 pnpm db:up
-pnpm db:migrate
+DATABASE_URL_DIRECT=postgres://postgres:postgres@localhost:5432/take_studio pnpm db:migrate
 pnpm test:pipeline
 ```
 
 On a small machine (3 GB) add `PIPELINE_START=prod`: it builds the app once and runs `next start` instead of `next dev`, which the kernel kills at about 1 GB (for example `PIPELINE_ONLY=changes PIPELINE_START=prod pnpm test:pipeline`).
 
-The migrate line gives a fresh local database the app tables (with `DATABASE_URL_DIRECT` unset it targets local Postgres). If you override `PIPELINE_DATABASE_URL`, point `DATABASE_URL_DIRECT` at that same database.
+The migrate line gives the pipeline's default local database (`take_studio`) its tables, whatever `DATABASE_URL_DIRECT` your shell has. If you override `PIPELINE_DATABASE_URL`, point `DATABASE_URL_DIRECT` at that same database.
 
 ## CI and deploy
 

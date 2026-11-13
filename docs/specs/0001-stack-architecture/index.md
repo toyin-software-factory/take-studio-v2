@@ -75,7 +75,7 @@ Reasoning and options: see `rationale.md`.
 
 `TRIGGER_PROJECT_REF` is not a secret; it lives in `trigger.config.ts`.
 
-Agent sandboxes (HQ App variables) hold no production database URL, neither `DATABASE_URL` nor `DATABASE_URL_DIRECT`. Production migrations run only from the deploy workflow (GitHub Actions secret), and local `pnpm db:*` scripts default to the local Postgres when `DATABASE_URL_DIRECT` is unset (2026-11-13 review, item 1).
+Agent sandboxes (HQ App variables) hold no production database URL, neither `DATABASE_URL` nor `DATABASE_URL_DIRECT`. Production migrations run only from the deploy workflow (GitHub Actions secret), and the `pnpm db:*` scripts that load `drizzle.config.ts` default to the local Postgres when `DATABASE_URL_DIRECT` is unset; `pnpm db:seed` and the manual check scripts still need `DATABASE_URL_DIRECT` set to the local URL (2026-11-13 review, item 1).
 
 ## CI, deploy and local dev
 
