@@ -4,8 +4,11 @@ import {
   type AiEditAnswer,
   type AiWord,
   AI_EDIT,
+  CHARS_PER_TOKEN,
+  FIXED_INPUT_TOKENS,
   aiEditAnswerSchema,
   buildAiRequest,
+  estimateInputTokens,
   validateAiEdit,
 } from "./ai-edit";
 
@@ -69,6 +72,25 @@ describe("buildAiRequest (AC-8)", () => {
       catalog: [{ id: "x", name: "Loft", alt: "A loft" }],
     });
     expect(r.user).toContain("BACKGROUNDS\nx|Loft|A loft");
+  });
+  it("estimates the two real counts of the C-15 measurement within 15 %", () => {
+    // Characters of the request and the input tokens Anthropic counted for it.
+    for (const [chars, real] of [
+      [2670, 1972],
+      [34_623, 17_884],
+    ] as const) {
+      const estimate = estimateInputTokens(chars);
+      expect(Math.abs(estimate - real) / real).toBeLessThan(0.15);
+    }
+  });
+  it("estimates from the system prompt plus the user message", () => {
+    const r = buildAiRequest({ words: [w("hi", 0, 1)], candidates: [], durationMs: 5 });
+    expect(r.estimatedInputTokens).toBe(estimateInputTokens(r.system.length + r.user.length));
+  });
+  it("sits on the guard exactly: the last size at 60 000 passes, one more character is over", () => {
+    const atGuard = (AI_EDIT.maxInputTokens - FIXED_INPUT_TOKENS) * CHARS_PER_TOKEN;
+    expect(estimateInputTokens(atGuard)).toBe(AI_EDIT.maxInputTokens);
+    expect(estimateInputTokens(atGuard + 1)).toBeGreaterThan(AI_EDIT.maxInputTokens);
   });
   it("estimates a 10 minute take well under the guard", () => {
     const many = Array.from({ length: 1500 }, (_, i) => w("word", i * 400, i * 400 + 300));
