@@ -45,6 +45,25 @@ export function setupStudio(root: HTMLElement, reduced: boolean): () => void {
       },
     );
 
+    // The field fades to nothing before the section's bottom edge reaches the screen (draft:
+    // the field never shows past the studio floor). The canvas is pinned until that edge is at
+    // the bottom of the screen, so it is gone by then and no hard cut of particles is ever seen.
+    gsap.fromTo(
+      canvas,
+      { opacity: 1 },
+      {
+        opacity: 0,
+        ease: "none",
+        immediateRender: false,
+        scrollTrigger: {
+          trigger: section,
+          start: "bottom bottom+=60%",
+          end: "bottom bottom",
+          scrub: true,
+        },
+      },
+    );
+
     // 7.8: each statement line fills as it climbs the screen.
     gsap.utils.toArray<HTMLElement>("[data-fill]", section).forEach((line) => {
       const apply = (progress: number) =>
