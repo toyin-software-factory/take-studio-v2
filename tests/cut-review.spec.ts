@@ -127,7 +127,7 @@ test("toggles a cut by keyboard, lists it in the pending bar and discards (AC-1,
   await page.keyboard.press("Space");
   await expect(cutButton(page, 1)).toHaveAttribute("aria-pressed", "true");
   await expect(bar(page)).toContainText("1 change");
-  await expect(bar(page)).toContainText("Keep 1");
+  await expect(bar(page)).toContainText("Keep pause 1");
   await expectNoSeriousAxeIssues(page);
   await bar(page).getByRole("button", { name: "Discard" }).click();
   await expect(bar(page)).toHaveCount(0);
