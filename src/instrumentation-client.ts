@@ -6,7 +6,11 @@ import { listenForEarlyErrors } from "@/lib/browser-errors";
 // is lost. The SDK installs its own handlers, so the early ones are removed once it is ready.
 const stopEarly = listenForEarlyErrors(window);
 
+let started = false;
+
 const loadSentry = () => {
+  if (started) return;
+  started = true;
   import("@/lib/sentry-browser")
     .then(({ startSentryBrowser }) => {
       startSentryBrowser();
@@ -19,6 +23,10 @@ const afterIdle = () => {
   if ("requestIdleCallback" in window) window.requestIdleCallback(loadSentry, { timeout: 4000 });
   else setTimeout(loadSentry, 1);
 };
+
+// The 4 s deadline runs from now, not from `load`: a slow image or iframe delays `load`, and errors
+// would sit in the bounded queue (lost if the visitor leaves). Whichever path fires first starts it.
+setTimeout(loadSentry, 4000);
 
 if (document.readyState === "complete") afterIdle();
 else window.addEventListener("load", afterIdle, { once: true });
