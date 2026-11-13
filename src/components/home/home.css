@@ -1200,6 +1200,33 @@ html:has(.h-menu[open]) {
   transform-origin: 50% 1100px;
 }
 
+/* The wheel's box is reserved from the first paint (no layout shift when `is-fan` is set after
+   hydration): wherever scripts run and motion is allowed, the panel already has the wheel's
+   height and the cards are stacked in its middle, ready for the opening animation. */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .h-fan {
+    height: clamp(360px, 42vw, 640px);
+    padding: 0;
+  }
+  .h-fan .h-fan-list {
+    position: absolute;
+    inset: 0;
+    display: block;
+    overflow: hidden;
+    padding: 0;
+  }
+  .h-fan .h-fan-list li {
+    position: static;
+  }
+  .h-fan .h-fan-card {
+    position: absolute;
+    left: 50%;
+    top: clamp(40px, 4.5vw, 64px);
+    translate: -50% 0;
+    transform-origin: 50% 1100px;
+  }
+}
+
 /* Play and pause button for anything that moves on its own (WCAG 2.2.2): at least 44 px */
 .h-media-toggle {
   position: absolute;

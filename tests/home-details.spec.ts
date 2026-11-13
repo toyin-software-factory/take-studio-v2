@@ -132,3 +132,45 @@ test("the particle field is clipped to the dark studio floor", async ({ page }) 
   expect(Math.round(result.clipBottom)).toBe(Math.round(result.sectionBottom));
   expect(Math.round(result.clipTop)).toBe(Math.round(result.sectionTop));
 });
+
+// Homepage speed (spec 0010 AC-10): nothing above the fold shifts after the first paint, and the
+// headline and lead are in that first paint, not hidden until the intro runs.
+test.describe("first paint", () => {
+  test.use({ viewport: { width: 412, height: 823 }, hasTouch: true, isMobile: true });
+
+  test("the layout does not shift while the page loads and the motion starts", async ({ page }) => {
+    await page.addInitScript(() => {
+      const w = window as unknown as { __cls: number };
+      w.__cls = 0;
+      new PerformanceObserver((list) => {
+        for (const entry of list.getEntries() as unknown as {
+          value: number;
+          hadRecentInput: boolean;
+        }[]) {
+          if (!entry.hadRecentInput) w.__cls += entry.value;
+        }
+      }).observe({ type: "layout-shift", buffered: true });
+    });
+    await ready(page);
+    await page.waitForTimeout(2500);
+    const cls = await page.evaluate(() => (window as unknown as { __cls: number }).__cls);
+    expect(cls).toBeLessThan(0.01);
+  });
+
+  test("the headline and lead are visible before any script runs", async ({ browser }) => {
+    const context = await browser.newContext({ javaScriptEnabled: false });
+    const page = await context.newPage();
+    await page.goto("/");
+    await expect(page.locator(".h-h1")).toBeVisible();
+    await expect(page.locator(".h-hero-lead")).toHaveCSS("opacity", "1");
+    await context.close();
+  });
+
+  test("the intro never hides or moves the headline and lead", async ({ page }) => {
+    await ready(page);
+    for (const selector of [".h-h1", ".h-hero-lead", ".h-nav"]) {
+      await expect(page.locator(selector).first()).toHaveCSS("opacity", "1");
+    }
+    await expect(page.locator(".h-hero .h-w-mask")).toHaveCount(0);
+  });
+});
