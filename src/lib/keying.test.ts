@@ -201,6 +201,8 @@ describe("sampling", () => {
       "error",
       "-ss",
       "2.500",
+      "-f",
+      "mov",
       "-i",
       "in.mp4",
       "-frames:v",

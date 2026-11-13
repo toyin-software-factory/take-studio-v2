@@ -1,3 +1,4 @@
+import { ORIGINAL_INPUT } from "@/lib/ffmpeg-input";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -207,6 +208,7 @@ async function extractWithFfmpeg(
       "1",
       "-rw_timeout",
       "30000000",
+      ...ORIGINAL_INPUT,
       "-i",
       link,
       "-vn",

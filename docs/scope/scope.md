@@ -31,7 +31,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 7 | Transcript | Slice 2 | done |
 | 8 | Studio background swap | Slice 3 | done |
 | 9 | Cut review timeline | Slice 4 | done |
-| 10 | AI editing agents | Slice 5 | planned |
+| 10 | AI editing agents | Slice 5 | in-progress |
 | 11 | Take library, delete & retention | Slice 6 | planned |
 | 12 | Monthly usage limit | Slice 6 | planned |
 | 13 | Public API | Slice 7 | planned |
@@ -176,10 +176,18 @@ Spec [0011](../specs/0011-cut-review-timeline.md)
 
 ## Slice 5: AI editing agents
 
-### 10. AI editing agents · needs a decision
+### 10. AI editing agents · in-progress
 AI agents make the editing calls inside the pipeline: which pauses to cut (keeping deliberate pauses, removing false starts and filler), cleaning up the transcript, and suggesting a fitting studio background. The creator still reviews and can undo anything on the timeline.
 **Done when:** agent chosen cuts, transcript fixes and background suggestion show up on the review timeline with a short reason each, the creator can undo any of them, and processing still finishes within the agreed time per take.
-- [ ] Design it (spec): `/architect AI editing agents`
+- [x] Design it (spec): `/architect AI editing agents`
+- [ ] Build it: `/develop AI editing agents`
+   - [ ] Transcript inside the run, before the render, with its fallback and reuse on retry (AC-1, AC-6, AC-7, AC-9)
+   - [ ] AI cuts: one structured Claude call, validation, fallback to rules cuts, reasons on the timeline (AC-2, AC-3, AC-6, AC-7, AC-8, AC-9, AC-10, AC-12)
+   - [ ] Transcript fixes with undo and redo, used by the view, captions and downloads (AC-4, AC-11, AC-12)
+   - [ ] Background suggestion card, then measure time and cost on a real 10 minute take (AC-5, AC-6, AC-9, AC-12)
+- [ ] Verify it: `/check verify AI editing agents`
+- [ ] Test it: `/test AI editing agents`
+Spec [0012](../specs/0012-ai-editing-agents.md)
 
 ## Slice 6: Library, retention and limits
 

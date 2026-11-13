@@ -18,6 +18,7 @@ import {
   previewHeight,
   previewKey,
 } from "@/lib/background-preview";
+import { ORIGINAL_INPUT, STORED_IMAGE_INPUT, STORED_IMAGE_URL_INPUT } from "@/lib/ffmpeg-input";
 import { deadlineMs, runWithDeadline } from "@/lib/deadline";
 import { parseJobEnv } from "@/lib/env";
 import {
@@ -140,6 +141,7 @@ export async function makePreview(
           "-y",
           ...HTTP_INPUT,
           ...seek,
+          ...ORIGINAL_INPUT,
           "-i",
           originalUrl,
           "-vf",
@@ -159,9 +161,11 @@ export async function makePreview(
           "-y",
           ...HTTP_INPUT,
           ...seek,
+          ...ORIGINAL_INPUT,
           "-i",
           originalUrl,
           ...HTTP_INPUT,
+          ...STORED_IMAGE_URL_INPUT,
           "-i",
           imageUrl,
           "-filter_complex",
@@ -185,13 +189,13 @@ export async function makePreview(
       // whatever the cause. Never record that as Ready: show the plain frame, no green screen.
       const gate = gateSize(facts.width, facts.height);
       const [still, backdrop] = await Promise.all([
-        io.readImage(gateReadArgs(out, gate, null), gate, signal),
+        io.readImage(gateReadArgs(out, gate, null, STORED_IMAGE_INPUT), gate, signal),
         io.readImage(
           gateReadArgs(
             imageUrl,
             gate,
             { width: PREVIEW_WIDTH, height: previewHeight(facts.width, facts.height) },
-            HTTP_INPUT,
+            [...HTTP_INPUT, ...STORED_IMAGE_URL_INPUT],
           ),
           gate,
           signal,
