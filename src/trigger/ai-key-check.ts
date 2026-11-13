@@ -39,6 +39,13 @@ export const realAiKeyCheckIo: AiKeyCheckIo = {
         .withResponse();
       return { status: response.status, headers: response.headers, errorType: null };
     } catch (error) {
+      // Connection and timeout errors are APIErrors too (no status, no body): check them first.
+      if (
+        error instanceof Anthropic.APIConnectionError ||
+        error instanceof Anthropic.APIConnectionTimeoutError
+      ) {
+        return { status: null, headers: null, errorType: "connection_error" };
+      }
       if (error instanceof Anthropic.APIError) {
         return {
           status: error.status ?? null,
