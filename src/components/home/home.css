@@ -662,8 +662,7 @@
 }
 .h-swatches img {
   width: 100%;
-  height: auto;
-  aspect-ratio: 16 / 9;
+  height: 180px;
   object-fit: cover;
   border-radius: var(--radius-md);
 }
@@ -797,9 +796,9 @@ html.js .h-tile-media[data-playing="true"] video {
 .h-cap figcaption {
   display: flex;
   flex-direction: column;
-  gap: 8px;
 }
 .h-cap figcaption p {
+  margin-top: 6px;
   color: var(--color-text-muted);
   max-width: 28ch;
 }
@@ -852,14 +851,26 @@ html.js .h-tile-media[data-playing="true"] video {
     grid-template-columns: 4fr 8fr;
   }
 }
+.h-faq .h-head {
+  margin-bottom: 0;
+}
 .h-acc-item {
   border-bottom: 1px solid var(--color-line);
+}
+.h-acc-item:first-child {
+  border-top: 1px solid var(--color-line);
+}
+/* As in the draft, the question heading keeps the browser's h3 size and weight (the visible text is the h-h4 span). */
+.h-acc-item h3 {
+  font-size: 1.17em;
+  font-weight: 700;
+  line-height: 1.5;
 }
 .h-acc-trigger {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
   width: 100%;
   min-height: 44px;
   padding: 24px 0;
@@ -976,9 +987,16 @@ html.js .h-tile-media[data-playing="true"] video {
   padding-top: var(--section-y);
 }
 .h-footer-cols {
+  position: relative;
+  z-index: 2;
   display: grid;
-  gap: 40px 24px;
-  grid-template-columns: 1fr 1fr;
+  gap: 48px 24px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 480px) {
+  .h-footer-cols {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 @media (min-width: 810px) {
   .h-footer-cols {
@@ -1014,8 +1032,10 @@ html.js .h-tile-media[data-playing="true"] video {
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;
-  gap: 8px 24px;
-  margin-top: 64px;
+  position: relative;
+  z-index: 2;
+  gap: 12px;
+  margin-top: 96px;
   padding-block: 24px;
   border-top: 1px solid var(--color-line-dark);
   font-size: var(--fs-small);
@@ -1024,7 +1044,9 @@ html.js .h-tile-media[data-playing="true"] video {
 .h-footer-mark {
   padding-inline: var(--container-pad);
   font-size: var(--fs-display-xl);
-  line-height: var(--lh-display);
+  line-height: 0.8;
+  margin-top: 24px;
+  text-align: center;
   letter-spacing: var(--ls-display);
   font-weight: var(--fw-regular);
   /* Decorative (aria-hidden) but axe still checks it: white at 60% is over 3:1 on the footer. */
@@ -1033,7 +1055,7 @@ html.js .h-tile-media[data-playing="true"] video {
   user-select: none;
   position: relative;
   filter: blur(6px);
-  mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 30%, transparent 100%);
 }
 .h-footer-mark::after {
   content: "";
