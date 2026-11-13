@@ -52,6 +52,9 @@ export function CutTimeline({
     .map((c) => ({ ms: c.endMs - c.startMs }));
   const focused = review.numbered.find((c) => c.id === focusedId);
   const reason = reasonLine(focused);
+  // Room for the line only when some cut has a reason, so a take without any adds no height (the
+  // empty status region still exists, for the live announcement, but takes no space).
+  const hasReasons = review.numbered.some((c) => c.reason?.trim());
   const disabled = review.locked || review.readOnly;
 
   return (
@@ -95,7 +98,7 @@ export function CutTimeline({
       <p
         role="status"
         data-testid="cut-reason"
-        className="min-h-5 text-small text-stage-text-muted"
+        className={`text-small text-stage-text-muted ${hasReasons ? "min-h-5" : "empty:-mt-2"}`}
       >
         {reason}
       </p>
