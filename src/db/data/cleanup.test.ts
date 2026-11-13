@@ -2,7 +2,7 @@ import { and, eq, inArray, lt } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { CLEANUP, PROBE_LIMITS, cleanupCutoffs } from "@/lib/cleanup-rules";
 import { thumbnailKey } from "@/lib/take-rules";
-import { cut, processingJob, render, storageDeletion, take } from "../schema";
+import { cut, processingJob, render, storageDeletion, take, transcript } from "../schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "../testing/test-db";
 import type { Db } from "../types";
 import {
@@ -447,6 +447,38 @@ describe("cleanup: video expiry (AC-18)", () => {
       removedRanges: [{ startMs: 0, endMs: 500 }],
     });
     expect(await db.select().from(cut).where(eq(cut.takeId, due.id))).toHaveLength(1);
+  });
+
+  it("expires only after the date, and the transcript with its edits stays (spec 0013, AC-8)", async () => {
+    const creator = await createCreator(db);
+    const justBefore = await seedTake(db, creator.id, {
+      status: "ready",
+      videoExpiresAt: new Date(NOW.getTime() + 1000),
+    });
+    const due = await seedTake(db, creator.id, { status: "ready", videoExpiresAt: minutes(1) });
+    await db.insert(transcript).values({
+      id: crypto.randomUUID(),
+      takeId: due.id,
+      language: "en",
+      text: "kept words",
+      words: [],
+      sourceFps: 30,
+      model: "test",
+      edits: [{ index: 0, old: "a", new: "b", reason: "r", undone: false }],
+    });
+
+    await expireDueTakes(db, NOW);
+
+    const rows = await db
+      .select({ id: take.id, status: take.status })
+      .from(take)
+      .where(inArray(take.id, [justBefore.id, due.id]));
+    expect(Object.fromEntries(rows.map((r) => [r.id, r.status]))).toEqual({
+      [justBefore.id]: "ready",
+      [due.id]: "expired",
+    });
+    const [kept] = await db.select().from(transcript).where(eq(transcript.takeId, due.id));
+    expect(kept).toMatchObject({ text: "kept words", edits: [{ index: 0, new: "b" }] });
   });
 
   it("refuses to expire a processing take", async () => {

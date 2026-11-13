@@ -34,6 +34,7 @@
     "deploy:trigger": "trigger deploy",
     "prepare": "[ -n \"$CI\" ] || { h=$(git rev-parse --git-path hooks/pre-commit 2>/dev/null); if [ -f \"$h\" ] && ! grep -q SIMPLE_GIT_HOOKS \"$h\"; then echo \"prepare: kept your own pre-commit hook at $h, so the lint-staged hook was not installed (see README).\" >&2; else simple-git-hooks; fi; }",
     "r2:cors": "tsx scripts/r2-cors.ts",
+    "r2:lifecycle": "bash scripts/apply-r2-lifecycle.sh",
     "test:pipeline": "tsx tests/pipeline/run.ts",
     "design-check": "node tools/design-check/src/cli.js"
   },
