@@ -22,11 +22,7 @@ import { ok } from "@/lib/result";
 import { renderKey } from "@/lib/cut-rules";
 import type { FailureCode } from "@/lib/failure-codes";
 import { parseJobEnv } from "@/lib/env";
-import {
-  isBackgroundChange as isBackgroundChangeJob,
-  isFinalJobStatus,
-  type StepName,
-} from "@/lib/processing";
+import { isBackgroundKind, isFinalJobStatus, type StepName } from "@/lib/processing";
 import { type R2, createR2 } from "@/lib/r2";
 import { R2DownloadError, downloadToFile, uploadFileMultipart } from "@/lib/r2-file-upload";
 import {
@@ -164,10 +160,8 @@ async function processJob(
     // A background change (spec 0008): a job of kind `background`, on a take that is already
     // Ready. It reuses the take's applied cuts (the render snapshot reads them), so it neither
     // trims nor re analyses, always renders, and starts no transcript. A `rerender` (a re render
-    // of a take that failed, take `processing`) is a full run again, as before. LEGACY (HRF-T08
-    // deploy window): a `rerender` on a take that is not `processing` is still a background
-    // change (`isBackgroundChange` in `src/lib/processing.ts`).
-    const isBackgroundChange = isBackgroundChangeJob(job.kind, t.status);
+    // of a take that failed, take `processing`) is a full run again, as before.
+    const isBackgroundChange = isBackgroundKind(job.kind);
 
     // Waveform (spec 0011, AC-11): on a full run, and on a background change only while the take
     // has none yet (a take processed before this shipped). Best effort, never fails the job.

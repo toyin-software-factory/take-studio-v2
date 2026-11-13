@@ -1,6 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 import { isFailureCode } from "@/lib/failure-codes";
-import { ACTIVE_JOB_STATUSES, isBackgroundChange, isTranscribeKind } from "@/lib/processing";
+import { ACTIVE_JOB_STATUSES, isBackgroundKind, isTranscribeKind } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
 import { processingJob, take } from "../../schema";
 import { runTx } from "../../tx";
@@ -59,11 +59,10 @@ export async function finishInTx(
 
   if (isTranscribeKind(job.kind)) return finishTranscribeJob(tx, job);
 
-  const [current] =
-    job.kind === "background" || job.kind === "rerender"
-      ? await tx.select().from(take).where(eq(take.id, job.takeId))
-      : [];
-  if (current && isBackgroundChange(job.kind, current.status)) {
+  const [current] = isBackgroundKind(job.kind)
+    ? await tx.select().from(take).where(eq(take.id, job.takeId))
+    : [];
+  if (current) {
     return ok(await finishBackgroundJob(tx, { job, current, status: input.status }));
   }
 
