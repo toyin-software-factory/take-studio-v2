@@ -237,6 +237,7 @@ Public privacy policy and terms, needed because we store people's videos.
 ### 17. Product analytics · needs a decision
 Three events that show whether the core loop works: signup, take uploaded, take downloaded.
 **Done when:** the three events are recorded per creator, with no video content or transcript text in the events.
+- Note (2026-11-13): Toyin and Michael recommend building this first, so the growth ideas under Deferred can be measured: signups, first upload, first download and second take. Not repeated there.
 - [ ] Design it (spec): `/architect product analytics`
 
 ## Deferred
@@ -249,6 +250,19 @@ Out of scope for this build pass, kept so the plan stays honest.
 - **Longer or 4K takes**: raise the 10 minute, 2 GB, 1080p limits · needs a decision
 - **Own render servers (cost step 2)**: when the Trigger.dev render bill is steadily above about $150 to $300 a month, move only the ffmpeg render to one or two rented Hetzner servers; Trigger.dev cloud stays the coordinator (the render step pauses, unbilled, while our server renders), with automatic fallback to the cloud machine when our servers are full or down · needs a decision
 - **k3s render cluster (cost step 3)**: when more than about 3 render servers or automatic scaling are needed, combine Hetzner machines into a k3s cluster that runs each render as a Kubernetes job (the step 2 render service runs inside it); a dedicated infrastructure agent joins the team to set up, run and look after the servers and the cluster · needs a decision · after Own render servers
+
+### Growth ideas (Toyin, 2026-11-13)
+Ways to make people want to use Take Studio quickly. Recommended order when Toyin picks: Product analytics (feature 17, so the rest can be measured), then Upload first, sign in after, then Before and after on the homepage.
+- **Upload first, sign in after**: drop a video on the homepage; the email for the magic link and the take ready email is asked for while it uploads and processes · needs a decision
+- **Before and after on the homepage**: one real take, raw against finished, with a slider and the time saved · needs a decision
+- **Vertical 9:16 export**: ready to post on TikTok, Reels and Shorts; goes together with Burned in captions above · needs a decision · with Burned in captions
+- **Share page for a finished take**: a public link with a small "Made with Take Studio" mark and a "Try it on yours" button · needs a decision
+- **Time saved counter**: per take and in total on the library · needs a decision
+- **Record in the browser**: the phone or laptop camera, with no export and upload step · needs a decision
+- **One tap presets**: TikTok, YouTube and Course, each setting the format, background and caption style · needs a decision
+- **Nudge email**: 24 hours after a sign in with no upload, with a sample take · needs a decision
+- **Installable home screen app (PWA)**: web app manifest, icon and full screen; take ready push notifications where the browser supports them · needs a decision
+- **Native phone app**: decide with analytics (#17). Build it only if phone uploads are most of our use and they often fail in the browser; it would be a native iPhone app for recording and background upload, with the web app doing the rest · needs a decision · after Product analytics
 
 ## Legend
 
