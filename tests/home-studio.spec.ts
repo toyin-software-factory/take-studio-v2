@@ -373,3 +373,53 @@ test.describe("reduced motion (AC-8)", () => {
     }
   });
 });
+
+// DV0-T17: the field opens below the heading, as in the draft (docs/design/home-v2.html).
+test.describe("the field opens below the heading (DV0-T17)", () => {
+  test.beforeEach(async ({ page }) => capable(page));
+  for (const [name, viewport] of [
+    ["desktop", { width: 1280, height: 642 }],
+    ["phone", { width: 390, height: 844 }],
+  ] as const) {
+    test(`at ${name} the canvas starts under the heading and the heading has two lines`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      await open(page);
+      await scrollToStudio(page, viewport.height * 0.3);
+      const boxes = await page.evaluate(() => {
+        const rect = (selector: string) => {
+          const r = document.querySelector(selector)!.getBoundingClientRect();
+          return { top: r.top, bottom: r.bottom };
+        };
+        const strong = document.querySelector(".h-studio-intro h2 > .h-w-mask");
+        return {
+          heading: rect(".h-studio-intro h2"),
+          muted: rect(".h-studio-intro .h-muted"),
+          canvas: rect("canvas.h-studio-field"),
+          strongTop: strong?.getBoundingClientRect().top ?? null,
+        };
+      });
+      // The canvas is below the heading (it never covers it) and the top of the stage is plain.
+      expect(boxes.canvas.top).toBeGreaterThanOrEqual(boxes.heading.bottom - 1);
+      // The white sentence (the first word directly under the heading) starts below the muted line.
+      expect(boxes.strongTop).not.toBeNull();
+      expect(boxes.strongTop!).toBeGreaterThanOrEqual(boxes.muted.bottom - 1);
+    });
+  }
+
+  test("the canvas sticks to the top while the words pin, and goes with the section when scrolling back", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1280, height: 642 });
+    await open(page);
+    const canvasTop = () =>
+      page.evaluate(
+        () => document.querySelector("canvas.h-studio-field")!.getBoundingClientRect().top,
+      );
+    await scrollToStudio(page, -700);
+    await expect.poll(canvasTop).toBe(0);
+    await scrollToStudio(page, 400);
+    await expect.poll(canvasTop).toBeGreaterThan(300);
+  });
+});

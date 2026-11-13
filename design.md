@@ -917,25 +917,26 @@ if (!REDUCED)
 - **Trigger:** the Three.js module is dynamically imported when `.studio` is within one viewport of entering. Stage morph is scrubbed across the word-sequence block (`scrub: 1`). Rendering runs only while `.studio` is in view.
 - **Parameters:**
   - Particle count: 24,000 desktop, 8,000 under 810px. DPR capped at 1.5.
-  - Points render as horizontal dashes in an additive blend, coloured `#074868`→`#47a7ca` by depth.
+  - Points render as horizontal dashes in an additive blend, coloured `#074868`→`#47a7ca` by depth. The fragment shader writes the colour as it is, without three's `colorspace_fragment` include (the draft has none): with it the dashes come out much brighter and whiter.
   - Three procedural shapes: beam → ring → wave. `uStage` goes 0→2.
   - Idle drift: y ± 0.03 at 0.6 rad/s.
   - Giant words: 3 words, one per 100vh, set in `--fs-display-xl`. Each word enters with yPercent 100→0 over 700ms `enter` when its third of the block begins (triggered, not scrubbed; inferred from WAMA's 4950px word section).
-- **Clip:** the sticky canvas lives in a wrapper (`.studio__clip`: `position:absolute; inset:0; overflow:clip`) that spans the whole section, so no particle is ever drawn outside the dark stage. Use `overflow: clip`, never `hidden` (a scroll container breaks `sticky`), and do not clip `.studio` itself (the arc `::before` sits above it). Without the wrapper a sticky canvas with a negative bottom margin has a zero tall margin box and keeps drawing past the section's end, over the white section below.
+- **Clip:** the section's content (heading, canvas, words, cards) lives in a wrapper (`.studio__clip`: `position:relative; overflow:clip`) and the canvas sits in the flow right after the heading, so the field opens below the heading and never over it, and no particle is ever drawn outside the dark stage. Use `overflow: clip`, never `hidden` (a scroll container breaks `sticky`), and do not clip `.studio` itself (the arc `::before` sits above it). Do not lay the canvas over the whole section from its top (`absolute; inset:0`): the funnel then shows at the very top of the arc and runs through the heading (DV0-T17). The heading is two lines: the muted sentence, then the white one on its own line.
 - **Implementation:**
 
 ```html
 <section class="studio arc" data-theme="dark">
-  <div class="studio__clip" aria-hidden="true">
-    <canvas class="studio__field"></canvas>
-  </div>
-  <div class="studio__words" style="height:300vh">
-    <div class="studio__word-stage">
-      <span class="studio__word">[Word 1]</span><span class="studio__word">[Word 2]</span
-      ><span class="studio__word">[Word 3]</span>
+  <div class="studio__clip">
+    <div class="container studio__intro">…eyebrow and heading…</div>
+    <canvas class="studio__field" aria-hidden="true"></canvas>
+    <div class="studio__words" style="height:300vh">
+      <div class="studio__word-stage">
+        <span class="studio__word">[Word 1]</span><span class="studio__word">[Word 2]</span
+        ><span class="studio__word">[Word 3]</span>
+      </div>
     </div>
+    <div class="container studio__bento">…glass cards…</div>
   </div>
-  <div class="container studio__bento">…glass cards…</div>
 </section>
 ```
 
