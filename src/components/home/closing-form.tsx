@@ -63,7 +63,9 @@ export function ClosingForm() {
         ? `${failure.title}. ${failure.text}`
         : state.kind === "sent"
           ? `${CLOSING.sentTitle} ${CLOSING.sent(state.email)}`
-          : "";
+          : state.kind === "sending"
+            ? CLOSING.sending
+            : "";
 
   return (
     <form
@@ -83,6 +85,10 @@ export function ClosingForm() {
           autoComplete="email"
           placeholder={CLOSING.emailPlaceholder}
           aria-invalid={state.kind === "invalid"}
+          onChange={() => {
+            // Editing the address clears an old error (invalid or failed) until the next submit.
+            if (state.kind === "invalid" || state.kind === "failed") setState({ kind: "idle" });
+          }}
           aria-describedby="closing-status"
           required
         />

@@ -286,6 +286,13 @@ test.describe("closing email form", () => {
     await expect(page.locator("#closing-status")).toHaveText(
       "Enter an email address like you@example.com.",
     );
+    // Editing the address clears the error.
+    await page.locator("#contact").getByLabel("Email").fill("creator@example.com");
+    await expect(page.locator("#closing-status")).toHaveText("");
+    await expect(page.locator("#contact").getByLabel("Email")).toHaveAttribute(
+      "aria-invalid",
+      "false",
+    );
   });
 
   test("a rate limit shows the friendly message", async ({ page }) => {

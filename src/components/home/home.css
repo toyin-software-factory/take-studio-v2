@@ -659,8 +659,8 @@
   padding-top: 20px;
 }
 .h-mini-tl {
-  background: #003049;
-  border: 1px solid rgba(102, 155, 188, 0.5);
+  background: var(--color-dark-2);
+  border: 1px solid var(--color-ring-dark);
   border-radius: 8px;
   padding: 10px;
 }
@@ -670,17 +670,17 @@
   height: 36px;
 }
 .h-mini-tl-seg {
-  background: #669bbc;
+  background: var(--color-on-dark-60);
   border-radius: 6px;
 }
 .h-mini-tl-cut {
   min-width: 12px;
   border-radius: 6px;
-  border: 1.5px solid #e2545e;
+  border: 1.5px solid var(--color-error);
   background: repeating-linear-gradient(
     135deg,
-    rgba(193, 18, 31, 0.9) 0 4px,
-    rgba(193, 18, 31, 0.4) 4px 8px
+    color-mix(in srgb, var(--color-error) 90%, transparent) 0 4px,
+    color-mix(in srgb, var(--color-error) 40%, transparent) 4px 8px
   );
 }
 .h-mini-tl-meta {
@@ -688,7 +688,7 @@
   justify-content: space-between;
   margin-top: 8px;
   font-size: 12px;
-  color: #fdf0d5;
+  color: var(--color-on-dark-75);
   font-variant-numeric: tabular-nums;
 }
 .h-swatches {

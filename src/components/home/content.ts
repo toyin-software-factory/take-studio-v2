@@ -227,6 +227,7 @@ export const CLOSING = {
   signInNote: "Already have an account?",
   signInLink: "Sign in with Google or an email link",
   invalid: "Enter an email address like you@example.com.",
+  sending: "Sending…",
   sentTitle: "Check your inbox.",
   sent: (email: string) =>
     `If ${email} can sign in, a link is on its way. It works once and expires in 15 minutes.`,
