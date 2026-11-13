@@ -289,7 +289,13 @@ export function probeElements() {
     const family = cs.fontFamily.split(",")[0].replace(/["']/g, "").trim().toLowerCase();
     const ownText = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
     const tag = el.tagName.toLowerCase();
-    const bgImage = (n) => /url\(/.test(getComputedStyle(n).backgroundImage);
+    // An element's own background, or an image drawn by its ::before or ::after.
+    const bgImage = (n) =>
+      /url\(/.test(getComputedStyle(n).backgroundImage) ||
+      ["::before", "::after"].some((p) => {
+        const ps = getComputedStyle(n, p);
+        return /url\(/.test(ps.backgroundImage) || /url\(/.test(ps.content);
+      });
     const media =
       el.matches("img,video,canvas,svg,picture") ||
       !!el.querySelector("img,video,canvas,picture") ||
