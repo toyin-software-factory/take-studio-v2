@@ -176,7 +176,9 @@ export function mountField(options: {
     const visible = ScrollTrigger.create({
       trigger: section,
       start: "top bottom",
-      end: "bottom top",
+      // Matches the end of the opacity fade in studio.ts: from here the canvas is at opacity 0,
+      // so drawing stops instead of running until the section has left the screen.
+      end: "bottom bottom",
       onToggle: (self) => (active = self.isActive),
     });
     const morph = gsap.to(uniforms.uStage, {
