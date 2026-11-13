@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { originalToOutput, outputToOriginal } from "@/lib/cut-playback";
+import type { Range } from "@/lib/cut-rules";
 import { type Link, playLink } from "./play-link";
 import type { Resume } from "./use-source-switch";
 
@@ -15,10 +17,19 @@ export function useRenderLink(
   renderId: string | null,
   video: React.RefObject<HTMLVideoElement | null>,
   resume: React.RefObject<Resume>,
+  /** `removedRanges` of the render `renderId` names (the replacement's, once it changes). */
+  ranges: readonly Range[],
 ) {
+  // The removed ranges of the render the player shows now: they change together with the link.
+  const [shownRanges, setShownRanges] = useState<readonly Range[]>(ranges);
+  const nextRanges = useRef(ranges);
+  useEffect(() => {
+    nextRanges.current = ranges;
+  });
   const [link, setLink] = useState<Link>({ kind: "loading" });
   const [swapFailed, setSwapFailed] = useState(false);
   const shownRender = useRef(renderId);
+  const shownRef = useRef(ranges);
   const retrySwap = useRef<() => void>(() => undefined);
 
   const fetchLink = useCallback(() => {
@@ -42,11 +53,18 @@ export function useRenderLink(
         // Read the place and the state just before the source changes: the viewer may have
         // played on, paused or pressed play while the link was being fetched.
         if (swapping && playing && resume.current) {
-          resume.current.at = playing.currentTime;
+          // Same moment of the recording: through the old render's cuts to the original, then
+          // through the replacement's cuts to its own timeline.
+          const head = outputToOriginal(playing.currentTime * 1000, shownRef.current);
+          resume.current.at = originalToOutput(head, nextRanges.current) / 1000;
           resume.current.playing = !playing.paused;
           resume.current.refreshed = false;
         }
         setSwapFailed(false);
+        if (next.kind === "ready") {
+          shownRef.current = nextRanges.current;
+          setShownRanges(nextRanges.current);
+        }
         setLink(next);
       });
     };
@@ -61,5 +79,12 @@ export function useRenderLink(
     };
   }, [takeId, renderId, video, resume]);
 
-  return { link, setLink, fetchLink, swapFailed, retrySwap: () => retrySwap.current() };
+  return {
+    link,
+    setLink,
+    fetchLink,
+    swapFailed,
+    shownRanges,
+    retrySwap: () => retrySwap.current(),
+  };
 }

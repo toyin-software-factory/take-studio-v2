@@ -8,6 +8,7 @@ import {
   playEnd,
   skipTarget,
 } from "@/lib/cut-playback";
+import type { Range } from "@/lib/cut-rules";
 import type { PlayerBridge } from "./player-bridge";
 import type { CutReview } from "./use-cut-review";
 
@@ -28,9 +29,14 @@ export function useSourceSwitch(
   review: CutReview,
   durationMs: number,
   bridge: PlayerBridge,
-  player: { readonly mounted: boolean; readonly stillPreview: boolean },
+  player: {
+    readonly mounted: boolean;
+    readonly stillPreview: boolean;
+    /** Removed ranges of the render the player actually shows (they trail `review`'s). */
+    readonly renderRanges: readonly Range[];
+  },
 ) {
-  const { mounted, stillPreview } = player;
+  const { mounted, stillPreview, renderRanges } = player;
   const originalUrl = review.originalState.kind === "ready" ? review.originalState.url : null;
   const desired: Source = review.cutEdits && originalUrl ? "original" : "render";
   const [active, setActive] = useState<Source>("render");
@@ -38,7 +44,6 @@ export function useSourceSwitch(
   const [lastUrl, setLastUrl] = useState<string | null>(null);
   if (originalUrl && originalUrl !== lastUrl) setLastUrl(originalUrl);
   const ranges = review.ranges;
-  const renderRanges = review.renderRanges;
   const live = useRef({ active, ranges, renderRanges, durationMs, stillPreview });
   useEffect(() => {
     live.current = { active, ranges, renderRanges, durationMs, stillPreview };

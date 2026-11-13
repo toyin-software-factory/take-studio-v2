@@ -42,11 +42,12 @@ export function TakePlayer({
 }) {
   const video = useRef<HTMLVideoElement>(null);
   const resume = useRef<Resume>({ at: 0, playing: false, refreshed: false });
-  const { link, setLink, fetchLink, swapFailed, retrySwap } = useRenderLink(
+  const { link, setLink, fetchLink, swapFailed, retrySwap, shownRanges } = useRenderLink(
     takeId,
     renderId,
     video,
     resume,
+    review.renderRanges,
   );
   // A still covers the video: the transport is hidden and the video paused (S3S-T14).
   const preview = usePreviewOverlay(bridge);
@@ -54,12 +55,13 @@ export function TakePlayer({
   const source = useSourceSwitch(video, resume, review, durationMs, bridge, {
     mounted: link.kind === "ready",
     stillPreview: stillShown,
+    renderRanges: shownRanges,
   });
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [muted, setMuted] = useState(false);
-  const captions = useCaptions(bridge, video, link.kind === "ready");
+  const captions = useCaptions(bridge, video, link.kind === "ready", source.active);
   const poster = usePoster(takeId).url;
   const controlsRef = useRef<HTMLDivElement>(null);
   const backButton = useRef<HTMLButtonElement>(null);
@@ -175,11 +177,11 @@ export function TakePlayer({
         >
           {captions.version ? (
             <track
-              key={captions.version}
+              key={`${captions.version}.${source.active}`}
               kind="captions"
               srcLang="en"
               label="English"
-              src={`/api/takes/${takeId}/transcript/vtt?v=${encodeURIComponent(captions.version)}`}
+              src={`/api/takes/${takeId}/transcript/vtt?v=${encodeURIComponent(captions.version)}${source.active === "original" ? "&timeline=original" : ""}`}
             />
           ) : null}
         </video>

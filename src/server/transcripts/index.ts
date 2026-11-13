@@ -29,6 +29,8 @@ export async function getTrimmedForCreator(
   db: Executor,
   creatorId: string,
   takeId: string,
+  /** `original`: cues on the original recording's own timeline (the cut review preview). */
+  timeline: "render" | "original" = "render",
 ): Promise<Result<TrimmedTranscriptView, "not_found">> {
   const found = await getForCreator(db, creatorId, takeId);
   if (!found.ok) return err("not_found");
@@ -38,7 +40,7 @@ export async function getTrimmedForCreator(
 
   const paragraphs = toTrimmedTranscript(stored.words, {
     // No latest render (a take handed back uncut) means nothing was removed.
-    removedRanges: latestRender?.removedRanges ?? [],
+    removedRanges: timeline === "original" ? [] : (latestRender?.removedRanges ?? []),
     durationMs: take.durationMs ?? 0,
     sourceFps: stored.sourceFps,
   });
