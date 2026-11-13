@@ -2,6 +2,8 @@
 
 Saved so we can revisit it after the core product is built. Nothing here is a decision. All figures are estimates from web research on 2026-11-13, mostly from blogs and vendor pages, so read them as directional.
 
+See also: [Multi-clip AI creative director: idea and market research](2026-11-13-creative-director-research.md) (an idea only, not approved).
+
 ## Demand and competition (2026-11-13 web research; figures are directional, mostly from blogs and vendor pages)
 
 - **Demand.** Editing and production is the largest category of actionable signals in one comment study: 21.4% of the 9,677 actionable comments (out of 27,555 YouTube comments read; overseeros.com). The category covers editing and production, and the study also counts questions and content requests as actionable, so it does not show that all of those comments are about an editing struggle. Creators spend about 9 to 15 hours a week on content (Adobe). Paid tools sell "skip editing": Gling about $10 to $20 a month, Descript about $16 to $35 a month, AutoCut $79 a year, Captions from about $10 a month.

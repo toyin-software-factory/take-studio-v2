@@ -267,6 +267,7 @@ Ways to make people want to use Take Studio quickly. Recommended order when Toyi
 - **Real studio look (AI cut out, matched light, shadow, framing)**: the person looks filmed in the studio, not pasted on · revisit after the core is built · [research](research/2026-11-13-positioning-and-studio-look.md)
 - **Your own branded set**: logo, brand colours and the same framing every time · revisit after the core is built · [research](research/2026-11-13-positioning-and-studio-look.md)
 - **Just talk, we keep the best take**: the best attempt at each point is kept automatically · revisit after the core is built · [research](research/2026-11-13-positioning-and-studio-look.md)
+- **Multi-clip projects with an AI creative director**: up to 10 clips × 10 min; Claude Fable 5.2 plans keep/cut/order from sampled frames + transcript; creator approves before render. An idea only, not approved. See [research/2026-11-13-creative-director-research.md](research/2026-11-13-creative-director-research.md)
 
 ## Legend
 
