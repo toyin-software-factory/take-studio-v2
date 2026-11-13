@@ -61,7 +61,7 @@ Toyin decided (Slack, 2026-11-12): keep "Made for solo creators" and "The limits
 - Page source contains the copy, metadata and JSON-LD with JS disabled, verifies **AC-3**.
 - Reduced motion emulated in Playwright: no running animations, all text visible, verifies **AC-8**.
 - axe and keyboard run (skip link, menu dialog, FAQ, pause controls on the fan, reel and tiles), verifies **AC-9**, **AC-4**, **AC-5**, **AC-7**.
-- Initial JS gzip from the build as PR proof: the `/` and `/sign-in` totals, then each chunk on `/` that `/sign-in` does not load with its gzip size, marked as homepage code or signed in library code (a chunk counts as library code when the library imports it and no `src/components/home/` module does). The homepage code chunks must sum to 90KB or less. Once the library has its own route, the library list is empty and `/` minus `/sign-in` is the number. Lighthouse mobile (PageSpeed Insights) runs on production after the merge. Verifies **AC-10**.
+- Initial JS gzip from the build as PR proof: the `/` and `/sign-in` totals, then each chunk on `/` that `/sign-in` does not load with its gzip size, marked as one of three: `three` and the field (summed against the deferred 170KB budget), signed in library code (the library imports it and no `src/components/home/` module does), or homepage code (everything else). The homepage code chunks must sum to 90KB or less. Once the library has its own route, the library list is empty and `/` minus `/sign-in` is the number. Lighthouse mobile (PageSpeed Insights) runs on production after the merge. Verifies **AC-10**.
 
 ## Build plan
 
