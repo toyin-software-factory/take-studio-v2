@@ -107,11 +107,6 @@
 [data-theme="dark"] .h-eyebrow {
   color: var(--color-on-dark-75);
 }
-.h-studio-intro .h-eyebrow {
-  color: var(
-    --color-on-dark-60
-  ); /* home-v2 dims the studio eyebrow to 60%, still above AA on the dark stage */
-}
 .h-section {
   padding-block: var(--section-y);
 }
@@ -416,7 +411,7 @@
   width: 100%;
   height: auto;
   aspect-ratio: 16 / 9;
-  background: #000;
+  background: var(--color-dark);
   border-radius: var(--radius-md);
   object-fit: cover;
 }
@@ -456,7 +451,7 @@
   z-index: 1;
   max-width: none;
   padding-inline: 0;
-  background: #000; /* home-v2 uses pure black behind the reel */
+  background: var(--color-dark);
   overflow: hidden;
 }
 .h-reel.is-scrub .h-reel-media video {
@@ -741,7 +736,7 @@
   }
 }
 .h-tile {
-  background: #000;
+  background: var(--color-dark);
   overflow: hidden;
 }
 .h-tile-media {
