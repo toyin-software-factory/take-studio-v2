@@ -98,6 +98,8 @@ export const STUDIO = {
     chip: "01 · Trim",
     title: "Every pause, found and cut",
     text: "Take Studio finds the silent gaps and cuts them out. You get the trimmed video back, with how much was removed, and the original stays yours to download.",
+    metaLeft: "12 pauses removed",
+    metaRight: "38.4 s saved",
   },
   key: {
     chip: "02 · Key",
@@ -219,7 +221,15 @@ export const CLOSING = {
   muted: "Your next take,",
   strong: "without the edit.",
   lead: "Take Studio is in beta and free for now. Sign in with Google or an email link and upload your first take.",
-  cta: "Upload your first take",
+  emailLabel: "Email",
+  emailPlaceholder: "you@example.com",
+  cta: "Email me a sign in link",
+  signInNote: "Already have an account?",
+  signInLink: "Sign in with Google or an email link",
+  invalid: "Enter an email address like you@example.com.",
+  sentTitle: "Check your inbox.",
+  sent: (email: string) =>
+    `If ${email} can sign in, a link is on its way. It works once and expires in 15 minutes.`,
   questions: "Questions?",
   email: CONTACT_EMAIL,
 } as const;

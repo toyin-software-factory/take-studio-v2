@@ -1,3 +1,5 @@
+import { z } from "zod";
+
 /**
  * What the sign in form shows after a failed "Email me a sign in link" request (spec 0006,
  * AC-4, AC-8). Maps the Better Auth error to a state and a friendly message that says what
@@ -34,4 +36,12 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** True for an address worth sending a link to (one @, a dot in the domain, no spaces). */
 export function looksLikeEmail(value: string): boolean {
   return EMAIL_SHAPE.test(value.trim());
+}
+
+const emailSchema = z.string().trim().pipe(z.email());
+
+/** The address to send a link to, or null when it is not an email (zod, used by the homepage form). */
+export function parseSignInEmail(value: string): string | null {
+  const parsed = emailSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
 }

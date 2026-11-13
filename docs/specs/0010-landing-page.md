@@ -13,6 +13,8 @@ Scope feature 15 asked for a simple public page that explains the product, leads
 
 Toyin decided (Slack, 2026-11-12): keep "Made for solo creators" and "The limits" as drafted; turn "Early access" into a closing call to action without a form; contact is `hello@takestudio.app`; copy describes only what works today.
 
+Toyin amended this on 2026-11-13 (A3, B4; Slack thread 1794586900.417329): the studio cards (s4) take the draft's card shapes, sizes and layout, with only today's features inside them (a trim bar with its result line, the studio swatches inside the card, the SRT caption; no cut review, no cut editing, no agent terminal); the closing section (s8) gets the draft's email form, which starts the existing magic link sign in. It is a sign in form, not an invite form: one labelled email field and the split button "Email me a sign in link", no name and no "what do you film" chips (the sign in stores neither).
+
 ## Requirements
 
 **User stories**:
@@ -22,7 +24,7 @@ Toyin decided (Slack, 2026-11-12): keep "Made for solo creators" and "The limits
 
 **Acceptance criteria**:
 - **AC-1**: A signed out visit to `/` renders the ten sections in `design.md` §4 in order (nav, hero, reel, made for solo creators, the studio floor, what it does, the limits, questions, closing call to action, footer). A signed in visit keeps the current behaviour (goes to the takes library).
-- **AC-2**: All copy is true today: no line claims the cut review timeline, undoing single cuts, AI agents choosing cuts or a monthly limit before those ship; "coming soon" appears only for the public API and MCP server. Calls to action go to sign in ("Upload a take", "Upload your first take"); "Questions?" is a `mailto:hello@takestudio.app` link. There is no form.
+- **AC-2**: All copy is true today: no line claims the cut review timeline, undoing single cuts, AI agents choosing cuts or a monthly limit before those ship; "coming soon" appears only for the public API and MCP server. Calls to action go to sign in ("Upload a take", "Upload your first take"); "Questions?" is a `mailto:hello@takestudio.app` link. The closing section has one form (the 2026-11-13 amendment): an email field that calls the same `authClient.signIn.magicLink` as `/sign-in`, so the server's rate limits and Origin check apply; the address is validated with zod, the "check your inbox" and the friendly failure messages are the sign in page's, the address is never logged, and with scripts off the form is a plain GET to `/sign-in`.
 - **AC-3**: The page HTML is server rendered with all text present before any script runs. It has a title, meta description, canonical URL, Open Graph and Twitter card tags with a 1200×630 share image, `SoftwareApplication` JSON-LD, and `robots.txt` plus `sitemap.xml` that list `/` and keep `/takes`, `/design` and API routes out.
 - **AC-4**: Nav: fixed, turns into the floating glass pill after 202px of scroll, switches to its dark variant over dark sections, and under 810px shows logo, short call to action and a menu button that opens a full screen dialog (focus trapped, Esc closes).
 - **AC-5**: Hero fan loop (7.2) pauses when it is out of view and has a visible pause and play toggle (keyboard operable, labelled, at least 44px) so anyone can stop it (WCAG 2.2.2); the choice holds for the visit; the reel expands from the corner thumbnail at 810px and up and is an inline 16:9 video below; the four capability tiles play on hover (pointer) or when in view (touch), muted, never with sound. Every video that starts on its own (the reel once it plays on scroll, tiles that play when in view) has a visible, labelled, keyboard operable pause and play control of at least 44px (WCAG 2.2.2); scroll driven effects that stop when scrolling stops need none.
@@ -35,7 +37,7 @@ Toyin decided (Slack, 2026-11-12): keep "Made for solo creators" and "The limits
 
 ## Decision
 
-**Chosen option**: Build the v2 homepage as server rendered sections with progressive client motion (GSAP, ScrollTrigger, CustomEase, Lenis; Three.js lazy for the studio floor), honest copy, no forms.
+**Chosen option**: Build the v2 homepage as server rendered sections with progressive client motion (GSAP, ScrollTrigger, CustomEase, Lenis; Three.js lazy for the studio floor), honest copy, and one form (the closing sign in email).
 
 **Implementation skills**: `vercel-react-best-practices` (`vercel-labs/agent-skills`, `.claude/skills/vercel-react-best-practices/`) · `web-design-guidelines` (`vercel-labs/agent-skills`, `.claude/skills/web-design-guidelines/`) · `nextjs-on-cloudflare` (`cloudflare/skills`, `.claude/skills/nextjs-on-cloudflare/`; OpenNext wins over vinext per AGENTS.md)
 
@@ -54,7 +56,7 @@ Toyin decided (Slack, 2026-11-12): keep "Made for solo creators" and "The limits
 
 **Dependencies**: `gsap`, `lenis`, `three` (exact pinned versions, current stable at build time), imported only from homepage client components.
 
-**Security model**: public page, no data read except whether a session exists; no forms, no new routes beyond `robots.txt` and `sitemap.xml`.
+**Security model**: public page, no data read except whether a session exists; one form (the closing email field, posting to the existing `/api/auth/sign-in/magic-link` with the Better Auth rate limits and Origin check, nothing new server side), no new routes beyond `robots.txt` and `sitemap.xml`.
 
 **Critical test scenarios**:
 - Signed out `/` shows all sections and the CTAs reach sign in; signed in `/` goes to takes, verifies **AC-1**, **AC-2**.

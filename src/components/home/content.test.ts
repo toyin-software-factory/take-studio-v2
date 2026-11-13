@@ -45,10 +45,12 @@ describe("homepage copy is true today (spec 0010, AC-2)", () => {
     for (const line of lines) expect(line).toMatch(/API|MCP|Coming soon$|Soon\./);
   });
 
-  it("has the closing call to action and the contact address, and no form field", () => {
-    expect(content.CLOSING.cta).toBe("Upload your first take");
+  it("has the closing sign in form (an email link, not an invite form) and the contact address", () => {
+    expect(content.CLOSING.cta).toBe("Email me a sign in link");
     expect(content.CLOSING.email).toBe("hello@takestudio.app");
-    expect(copy).not.toMatch(/your name|get my invite/i);
+    // The draft's "Get my invite" form took a name and what you film; ours only asks for an email.
+    expect(copy).not.toMatch(/your name|get my invite|what do you film/i);
+    expect(content.CLOSING.sent("a@b.co")).toContain("a@b.co");
   });
 
   it("leaves the Legal column at the email until Privacy and Terms ship (feature 16)", () => {

@@ -12,6 +12,22 @@ import { Picture } from "./picture";
  * Without scripts or under reduced motion the words are one plain line and the fill lines are
  * fully white; the motion adds the pinned word sequence, the field and the fill.
  */
+const TRIM_BARS: readonly (readonly ["seg" | "cut", number])[] = [
+  ["seg", 5],
+  ["cut", 0.8],
+  ["seg", 3],
+  ["cut", 1.1],
+  ["seg", 6],
+  ["cut", 0.6],
+  ["seg", 4],
+  ["cut", 1.3],
+  ["seg", 7],
+  ["cut", 0.9],
+  ["seg", 3],
+  ["cut", 0.7],
+  ["seg", 5],
+];
+
 export function HomeStudio() {
   const { trim, key, caption, agents } = STUDIO;
   return (
@@ -56,10 +72,22 @@ export function HomeStudio() {
                   {trim.title}
                 </h3>
                 <p>{trim.text}</p>
-                <div className="h-bars" aria-hidden="true">
-                  {[5, 3, 4, 2, 6, 3, 4].map((n, i) => (
-                    <span key={i} style={{ flex: n }} />
-                  ))}
+                <div className="h-media">
+                  <div className="h-mini-tl" aria-hidden="true">
+                    <div className="h-mini-tl-row">
+                      {TRIM_BARS.map(([kind, flex], i) => (
+                        <span
+                          key={i}
+                          className={kind === "cut" ? "h-mini-tl-cut" : "h-mini-tl-seg"}
+                          style={{ flex }}
+                        />
+                      ))}
+                    </div>
+                    <div className="h-mini-tl-meta">
+                      <span>{trim.metaLeft}</span>
+                      <span>{trim.metaRight}</span>
+                    </div>
+                  </div>
                 </div>
               </article>
               <article className="h-glass" data-enter>
@@ -68,7 +96,7 @@ export function HomeStudio() {
                   {key.title}
                 </h3>
                 <p>{key.text}</p>
-                <div className="h-swatches">
+                <div className="h-media h-swatches">
                   {key.swatches.map((s, i) => (
                     <Picture
                       key={s.image}
@@ -88,11 +116,13 @@ export function HomeStudio() {
                   {caption.title}
                 </h3>
                 <p>{caption.text}</p>
-                <p className="h-srt" role="img" aria-label="Example SRT caption">
-                  {caption.srt.map((line, i) => (
-                    <span key={i}>{line}</span>
-                  ))}
-                </p>
+                <div className="h-media">
+                  <p className="h-srt" role="img" aria-label="Example SRT caption">
+                    {caption.srt.map((line, i) => (
+                      <span key={i}>{line}</span>
+                    ))}
+                  </p>
+                </div>
               </article>
               <article className="h-glass" data-enter>
                 <span className="h-chip h-chip-accent">{agents.chip}</span>
