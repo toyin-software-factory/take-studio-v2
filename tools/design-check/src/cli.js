@@ -54,7 +54,6 @@ function config() {
 const EXIT = { approved: 0, needs_fixes: 1, needs_you: 2, needs_setup: 3 };
 
 async function checkOnce(cfg, { quick = false } = {}) {
-  if (opt.reset) resetState(cfg);
   const st = loadState(cfg);
   if (!quick && st.round >= cfg.maxRounds) {
     const md = `design-check: the round limit (${cfg.maxRounds}) was already reached. STOP: this needs Toyin. Run "design-check reset" only when Toyin or the lead says to start a new loop.`;
@@ -81,6 +80,7 @@ async function checkOnce(cfg, { quick = false } = {}) {
 async function main() {
   if (cmd === "check") {
     const cfg = config();
+    if (opt.reset) resetState(cfg);
     const { v, md } = await checkOnce(cfg, { quick: !!opt.quick });
     console.log(opt.json ? JSON.stringify(v, null, 2) : md);
     process.exitCode = EXIT[v.status] ?? 1;
@@ -132,7 +132,12 @@ async function main() {
       running = true;
       try {
         const { v, md } = await checkOnce(cfg, { quick: true });
-        const live = { at: new Date().toISOString(), differences: v.fails.length, markdown: md };
+        const live = {
+          at: new Date().toISOString(),
+          status: v.status,
+          differences: v.fails.length,
+          markdown: md,
+        };
         fs.writeFileSync(path.join(cfg.outDir, "live.json"), JSON.stringify(live));
         log(`live check: ${v.fails.length} difference(s)`);
       } catch (err) {
@@ -179,9 +184,10 @@ async function main() {
     const seen = fs.existsSync(seenFile) ? fs.readFileSync(seenFile, "utf8") : "";
     if (seen === live.at || Date.now() - Date.parse(live.at) > 15 * 60 * 1000) return;
     fs.writeFileSync(seenFile, live.at);
-    const text = live.differences
-      ? live.markdown
-      : "design-check (live): no measured differences from the design right now.";
+    const text =
+      live.differences || live.status === "needs_setup"
+        ? live.markdown
+        : "design-check (live): no measured differences from the design right now.";
     console.log(
       JSON.stringify({
         hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext: text },

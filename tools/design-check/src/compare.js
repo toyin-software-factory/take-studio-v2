@@ -72,7 +72,7 @@ export function compareElements(D, B, vp, tol) {
         "labels",
         0,
         B.elements.length,
-        "The design has no data-check labels. Run tag_design on it first so elements can be matched.",
+        "The design has no data-check labels. Run "node tools/design-check/src/cli.js tag <design.html>" on it first so elements can be matched.",
         { severity: "setup" },
       ),
     );

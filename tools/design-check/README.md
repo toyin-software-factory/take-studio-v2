@@ -51,7 +51,7 @@ node tools/design-check/src/cli.js tag <design.html> [--out file]
 
 `check` exits 0 when approved, 1 when there is something to fix, 2 when it needs Toyin, and 3 when setup is missing.
 
-**Live feedback while building.** `watch` re-measures after every save and writes `.design-check/live.json`. The Claude Code hook in `.claude/settings.json` runs `design-check hook` after each edit. It passes any new live result to the coder straight away and stays silent otherwise, or when `watch` is not running.
+**Live feedback while building.** `watch` re-measures after every save and writes `.design-check/live.json`. The Claude Code hook in `.claude/settings.json` runs `design-check hook` after every tool call. It passes any new live result to the coder straight away and stays silent otherwise, or when `watch` is not running.
 
 ## Options (`design-check.json`)
 

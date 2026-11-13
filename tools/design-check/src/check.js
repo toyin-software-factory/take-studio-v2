@@ -41,13 +41,15 @@ export function resolvePages(cfg, only) {
 // The design does not change between rounds, so its measurements are cached by file content.
 async function extractDesign(browser, page, vp, dir, cfg) {
   let key = null;
+  let prefix = "design";
   if (page.designFile && fs.existsSync(page.designFile)) {
     const h = crypto
       .createHash("sha1")
       .update(fs.readFileSync(page.designFile))
       .digest("hex")
       .slice(0, 12);
-    key = path.join(dir, `design-${vp}-${h}${cfg.hover ? "" : "-nohover"}.json`);
+    prefix = `design-${h}${cfg.hover ? "" : "-nohover"}`;
+    key = path.join(dir, `${prefix}-${vp}.json`);
     if (fs.existsSync(key)) {
       const cached = JSON.parse(fs.readFileSync(key, "utf8"));
       if (cached.shots.every((s) => !s.file || fs.existsSync(s.file))) return cached;
@@ -55,7 +57,7 @@ async function extractDesign(browser, page, vp, dir, cfg) {
   }
   const res = await extractPage(browser, page.design, vp, {
     outDir: dir,
-    prefix: "design",
+    prefix,
     settleMs: cfg.settleMs,
     hover: cfg.hover,
   });

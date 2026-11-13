@@ -94,10 +94,15 @@ export function toHtml(v, result, state) {
     list.length
       ? `<ul class="items">${list.map((f) => `<li><span class="vp">${esc(f.viewport)}</span><b>${esc(f.label)}</b> ${esc(f.message || f.question)}${extra ? `<div class="why">${esc(extra(f))}</div>` : ""}</li>`).join("")}</ul>`
       : '<p class="none">None.</p>';
-  const visuals = result.pages
+  // Every section a failure or flag points at keeps its screenshots; other sections fill up to 16.
+  const referenced = new Set(
+    [...v.fails, ...v.flags].map((f) => `${f.page}|${f.viewport}|${f.label}`),
+  );
+  const allVisuals = result.pages
     .flatMap((p) => p.visuals.map((x) => ({ ...x, page: p.name })))
-    .sort((a, b) => b.ratio - a.ratio)
-    .slice(0, 16)
+    .sort((a, b) => b.ratio - a.ratio);
+  const isRef = (x) => referenced.has(`${x.page}|${x.viewport}|${x.label}`);
+  const visuals = [...allVisuals.filter(isRef), ...allVisuals.filter((x) => !isRef(x)).slice(0, 16)]
     .map(
       (
         x,
@@ -130,6 +135,7 @@ figure{margin:0}figure img{width:100%;display:block;border-radius:6px;border:1px
 <h1>Design check</h1><div class="meta">${esc(result.pages.map((p) => p.name).join(", "))} · round ${v.round} of ${v.maxRounds} · ${esc(new Date(result.at).toLocaleString("en-GB"))}</div>
 <span class="badge ${v.status}">${badge}</span>
 ${v.capped ? `<p>The round limit was reached with ${v.fails.length} item(s) still failing.</p>` : ""}
+${v.setup.length ? `<h2>Setup needed</h2>${rows(v.setup.map((f) => ({ ...f, label: f.label || "(page)" })))}` : ""}
 <h2>For you (${v.flags.length})</h2>${rows(v.flags, (f) => f.why)}
 <h2>For the builder (${v.fails.length})</h2>${rows(v.fails)}
 <h2>Judge passed (${v.passes.length})</h2>${rows(v.passes, (f) => `${Math.round(f.answer.confidence * 100)}% sure`)}
