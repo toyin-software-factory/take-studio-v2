@@ -177,6 +177,18 @@ export async function extractPage(
       }
     });
     await page.waitForTimeout(300);
+    // Infinite animations never land, so hold them at their start: both pages are then measured
+    // at the same moment instead of wherever the loop happened to be.
+    await page.evaluate(() => {
+      for (const a of document.getAnimations()) {
+        try {
+          if (a.effect.getTiming().iterations === Infinity) {
+            a.pause();
+            a.currentTime = 0;
+          }
+        } catch {}
+      }
+    });
     const probe = await page.evaluate(probeElements);
     let hoverChanges = {};
     if (hover && !VIEWPORTS[vpName].hasTouch) {

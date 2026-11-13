@@ -505,9 +505,18 @@ export function compareMotion(D, B, vp, tol) {
         const diffs = [];
         for (const [k, [, dTo]] of Object.entries(dh.changes || {})) {
           const bTo = (bh.changes || {})[k]?.[1];
-          if (bTo == null) continue; // a property that does not change is reported above
+          // Checked per exact property: the family check above can hide e.g. a missing
+          // border-color when the build changes border-width.
+          if (bTo == null) {
+            diffs.push({ k, dTo, bTo: "unchanged" });
+            continue;
+          }
           const isColor = /color/i.test(k);
-          const same = isColor ? colorDelta(dTo, bTo).de <= tol.color : dTo === bTo;
+          let same = dTo === bTo;
+          if (isColor) {
+            const c = colorDelta(dTo, bTo);
+            same = c.de <= tol.color && c.da <= tol.alpha;
+          }
           if (!same) diffs.push({ k, dTo, bTo });
         }
         if (diffs.length)
@@ -522,7 +531,7 @@ export function compareMotion(D, B, vp, tol) {
             message: `on hover ${diffs
               .map(
                 (d) =>
-                  `${d.k} becomes ${/color/i.test(d.k) ? hex(d.bTo) : d.bTo}, design ${/color/i.test(d.k) ? hex(d.dTo) : d.dTo}`,
+                  `${d.k} becomes ${/color/i.test(d.k) && d.bTo !== "unchanged" ? hex(d.bTo) : d.bTo}, design ${/color/i.test(d.k) ? hex(d.dTo) : d.dTo}`,
               )
               .join("; ")}`,
           });
