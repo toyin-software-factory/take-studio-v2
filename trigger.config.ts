@@ -90,6 +90,8 @@ export default defineConfig({
       pinnedFfmpeg(),
       // The built in studio images (spec 0008): the cleanup task installs them from here.
       additionalFiles({ files: ["./assets/backgrounds/*"] }),
+      // TEMPORARY (B-T18, C-15): the clip the `ai-measure` task times; removed with the task.
+      additionalFiles({ files: ["./tests/fixtures/media/speech-en.mp4"] }),
       syncEnvVars(
         ({ environment }) => [
           { name: "SENTRY_ENVIRONMENT", value: environment === "prod" ? "production" : "preview" },
