@@ -31,7 +31,7 @@ export function PendingBar({ review }: { readonly review: CutReview }) {
       {review.hasEdits && !review.readOnly ? (
         <section
           aria-label="Unsaved changes"
-          className="flex flex-wrap items-center gap-3 rounded-lg border border-stage-border bg-stage-raised px-4 py-3 text-stage-text"
+          className="flex flex-col gap-3 rounded-lg border border-stage-border bg-stage-raised px-4 py-3 text-stage-text sm:flex-row sm:items-center"
         >
           <div className="min-w-0 flex-1">
             <p className="text-small font-medium">
@@ -41,18 +41,21 @@ export function PendingBar({ review }: { readonly review: CutReview }) {
               Renders again in about a minute. Your transcript stays the same.
             </p>
           </div>
-          <Button variant="ghost" onClick={review.discard} disabled={review.locked}>
-            Discard
-          </Button>
-          {review.canRender ? (
-            <Button
-              onClick={review.start}
-              loading={review.phase.kind === "starting"}
-              disabled={review.locked}
-            >
-              {failed ? "Try again" : "Render"}
+          {/* On a phone the text has the full width and the buttons share the row below it. */}
+          <div className="flex gap-3 *:flex-1 sm:*:flex-none">
+            <Button variant="ghost" onClick={review.discard} disabled={review.locked}>
+              Discard
             </Button>
-          ) : null}
+            {review.canRender ? (
+              <Button
+                onClick={review.start}
+                loading={review.phase.kind === "starting"}
+                disabled={review.locked}
+              >
+                {failed ? "Try again" : "Render"}
+              </Button>
+            ) : null}
+          </div>
         </section>
       ) : null}
     </div>

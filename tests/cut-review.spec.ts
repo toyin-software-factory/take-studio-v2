@@ -28,6 +28,8 @@ type Opts = {
   original?: { status: number };
   detail?: Record<string, unknown>;
   change?: { status: number; json: unknown };
+  /** What `GET /jobs/{id}` answers; the default is a job that keeps running. */
+  job?: { status: string };
 };
 
 async function setup(page: Page, baseURL: string, opts: Opts = {}) {
@@ -97,7 +99,7 @@ async function setup(page: Page, baseURL: string, opts: Opts = {}) {
     return route.fulfill({ status: c.status, json: c.json });
   });
   await page.route(new RegExp(`/api/takes/${id}/jobs/`), (route) =>
-    route.fulfill({ json: { status: "running" } }),
+    route.fulfill({ json: opts.job ?? { status: "running" } }),
   );
   return { id: id as string, calls };
 }
@@ -196,6 +198,39 @@ test("an original that cannot be fetched says so and keeps the page usable (AC-3
   await expect(cutButton(page, 3)).toBeDisabled();
 });
 
+test("a failed render keeps the changes and offers Try again, which a reload loses (AC-6)", async ({
+  page,
+  baseURL,
+}) => {
+  const { id, calls } = await setup(page, baseURL!, { job: { status: "failed" } });
+  await load(page, id);
+  await cutButton(page, 3).click();
+  await bar(page).getByRole("button", { name: "Render" }).click();
+  await expect.poll(() => calls.length).toBe(1);
+  // The previous video and its summary stay, the page unlocks and the same changes are offered again.
+  await expect(
+    page.getByRole("status").filter({ hasText: "The new video didn't finish" }),
+  ).toBeVisible();
+  await expect(page.getByText("Removed 0:01 of pauses")).toBeVisible();
+  // aria-pressed means "kept": pause 3 starts kept and the held change cuts it.
+  await expect(cutButton(page, 3)).toHaveAttribute("aria-pressed", "false");
+  await expect(cutButton(page, 3)).toBeEnabled();
+  await expect(bar(page)).toContainText("Cut pause 3");
+  await expect(bar(page).getByRole("button", { name: "Render" })).toHaveCount(0);
+  await expect(bar(page).getByRole("button", { name: "Try again" })).toBeEnabled();
+  await expectNoSeriousAxeIssues(page);
+  // Try again sends exactly the same changes.
+  await bar(page).getByRole("button", { name: "Try again" }).click();
+  await expect.poll(() => calls.length).toBe(2);
+  expect(calls[1]).toBe(calls[0]);
+  // A reload loses the held changes, so there is nothing to retry.
+  await page.reload();
+  await expect(timeline(page)).toBeVisible();
+  await expect(bar(page)).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Try again" })).toHaveCount(0);
+  await expect(cutButton(page, 3)).toHaveAttribute("aria-pressed", "true");
+});
+
 // A phone context made inside the test: `test.use(devices[...])` cannot sit in a describe group.
 test("on a phone the timeline scrolls inside itself and the page does not (AC-1, AC-10)", async ({
   browser,
@@ -210,6 +245,21 @@ test("on a phone the timeline scrolls inside itself and the page does not (AC-1,
     const box = await cutButton(page, 1).boundingBox();
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
     expect(box?.width ?? 0).toBeGreaterThanOrEqual(24);
+    await expectNoSeriousAxeIssues(page);
+    // The pending bar: the text has the full width, the buttons share the row below it, 44 px tall.
+    await cutButton(page, 3).click();
+    await expect(bar(page)).toBeVisible();
+    const text = await bar(page)
+      .getByText(/1 change/)
+      .boundingBox();
+    const discard = await bar(page).getByRole("button", { name: "Discard" }).boundingBox();
+    const render = await bar(page).getByRole("button", { name: "Render" }).boundingBox();
+    const barBox = await bar(page).boundingBox();
+    expect(discard!.y).toBeGreaterThanOrEqual(text!.y + text!.height);
+    expect(Math.abs(discard!.y - render!.y)).toBeLessThan(2);
+    for (const b of [discard!, render!]) expect(b.height).toBeGreaterThanOrEqual(44);
+    expect(text!.width).toBeGreaterThan(barBox!.width * 0.7);
+    expect(await noPageScroll(page)).toBe(true);
     await expectNoSeriousAxeIssues(page);
   } finally {
     await context.close();
