@@ -54,7 +54,12 @@ export function BackgroundChange({
   const busy = review.locked;
   const list = backgrounds.state.kind === "ready" ? backgrounds.state.list : NO_LIST;
   const listed = [...list.builtIn, ...list.mine].filter((b) => b.status === "ready");
-  const extras: BackgroundItem[] = selectOptions(listed, background, choice)
+  const extras: BackgroundItem[] = selectOptions(
+    listed,
+    background,
+    choice,
+    detail.suggestion ? [{ id: detail.suggestion.backgroundId, name: detail.suggestion.name }] : [],
+  )
     .filter((o) => !listed.some((l) => l.id === o.id))
     .map((o) => ({
       id: o.id,

@@ -32,3 +32,14 @@ describe("selectOptions (spec 0008)", () => {
     expect(selectOptions([blue], { id: "b1", name: "Studio blue" }, "b1")).toEqual([blue]);
   });
 });
+
+describe("selectOptions with a known name (the AI suggestion)", () => {
+  it("names a chosen background the list could not, from the known names", () => {
+    const out = selectOptions([], null, "b1", [{ id: "b1", name: "Warm studio" }]);
+    expect(out).toEqual([{ id: "b1", name: "Warm studio" }]);
+  });
+  it("still says earlier choice when nothing known matches", () => {
+    const out = selectOptions([], null, "b2", [{ id: "b1", name: "Warm studio" }]);
+    expect(out).toEqual([{ id: "b2", name: "Your earlier choice" }]);
+  });
+});

@@ -13,13 +13,15 @@ export function selectOptions(
   listed: readonly BackgroundOption[],
   current: { readonly id: string | null; readonly name: string } | null,
   choice: string,
+  /** Backgrounds we can name even when the list failed (the AI's suggestion). */
+  known: readonly BackgroundOption[] = [],
 ): BackgroundOption[] {
   const options = [...listed];
   const has = (id: string) => options.some((o) => o.id === id);
   if (current?.id && !has(current.id)) options.push({ id: current.id, name: current.name });
   if (choice !== ORIGINAL_BACKGROUND && !has(choice)) {
     // A choice we cannot name (the list failed, and it is not what the video is on).
-    options.push({ id: choice, name: "Your earlier choice" });
+    options.push(known.find((k) => k.id === choice) ?? { id: choice, name: "Your earlier choice" });
   }
   return options;
 }
