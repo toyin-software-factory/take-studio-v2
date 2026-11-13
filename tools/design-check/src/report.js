@@ -1,6 +1,7 @@
 // Feedback for the builder (Markdown, short and specific) and a report for a person
 // (one self-contained HTML file with the screenshots inlined, readable on a phone).
 import fs from "node:fs";
+import { FEEDBACK_LIMIT } from "./verdict.js";
 
 const STATUS = {
   approved: "APPROVED: the build matches the design.",
@@ -44,10 +45,10 @@ export function toMarkdown(v, { quick = false, reportPath } = {}) {
         ? 'Differences from the design (measured from the rendered page; "design" is the target):'
         : 'Fix these (measured from the rendered page; "design" is the target):',
     );
-    const show = v.fails.slice(0, 60);
+    const show = v.fails.slice(0, FEEDBACK_LIMIT);
     out.push(...show.map(line));
     if (v.fails.length > show.length)
-      out.push(`- …and ${v.fails.length - show.length} more in the report`);
+      out.push(`- …and ${v.fails.length - show.length} more in the report (they come to you after these are fixed)`);
   }
   if (v.flags.length && !quick) {
     out.push("", "For Toyin, not for the builder:");

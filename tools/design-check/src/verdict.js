@@ -29,6 +29,12 @@ export function resetState(cfg) {
 
 const sig = (f) => JSON.stringify([f.design, f.build]);
 
+// The builder's feedback lists at most this many failures (report.js). A failure only counts toward
+// "unchanged" once the builder has been shown it, so items past the cap are never marked stuck
+// before the builder had a chance to fix them.
+export const FEEDBACK_LIMIT = 60;
+const shownBefore = (prev, round) => prev && prev.round === round && prev.shown;
+
 // Classifies everything in a round. Mutates and returns `st` when record is true.
 export function judgeRound(cfg, result, st, { record = true } = {}) {
   const round = st.round + (record ? 1 : 0);
@@ -51,7 +57,7 @@ export function judgeRound(cfg, result, st, { record = true } = {}) {
       }
       const prev = st.history[item.key];
       const streak =
-        !result.quick && prev && prev.sig === sig(f) && prev.round === st.round
+        !result.quick && shownBefore(prev, st.round) && prev.sig === sig(f)
           ? prev.streak + 1
           : 1;
       nextHistory[item.key] = { sig: sig(f), streak, round };
@@ -96,7 +102,7 @@ export function judgeRound(cfg, result, st, { record = true } = {}) {
       else {
         const prev = st.history[item.key];
         const qsig = `judge:${q.sig || ""}`;
-        const streak = prev && prev.sig === qsig && prev.round === st.round ? prev.streak + 1 : 1;
+        const streak = shownBefore(prev, st.round) && prev.sig === qsig ? prev.streak + 1 : 1;
         nextHistory[item.key] = { sig: qsig, streak, round };
         if (streak >= cfg.repeatLimit)
           flags.push({
@@ -112,6 +118,8 @@ export function judgeRound(cfg, result, st, { record = true } = {}) {
       }
     }
   }
+  for (const f of fails.slice(0, FEEDBACK_LIMIT))
+    if (nextHistory[f.key]) nextHistory[f.key] = { ...nextHistory[f.key], shown: true };
   let status;
   if (setup.length) status = "needs_setup";
   else if (!fails.length && !flags.length) status = "approved";
