@@ -1,0 +1,5217 @@
+{
+  "verdict": {
+    "round": 2,
+    "maxRounds": 5,
+    "status": "needs_fixes",
+    "fails": [
+      {
+        "id": "desktop:s4-studio:height",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s4-studio",
+        "prop": "height",
+        "design": 5226,
+        "build": 4504,
+        "message": "height 4504px, design 5226px",
+        "page": "home",
+        "key": "home|desktop:s4-studio:height",
+        "streak": 1
+      },
+      {
+        "id": "desktop:s4-studio-cta:y",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s4-studio-cta",
+        "prop": "y",
+        "design": 1089,
+        "build": 526,
+        "message": "gap below s4-studio-heading-4: 526px, design 1089px",
+        "page": "home",
+        "key": "home|desktop:s4-studio-cta:y",
+        "streak": 1
+      },
+      {
+        "id": "desktop:s4-studio-cta-3:width",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s4-studio-cta-3",
+        "prop": "width",
+        "design": 200,
+        "build": 203,
+        "message": "width 203px, design 200px",
+        "relatedTo": "s4-studio-cta-2",
+        "relatedProp": "width",
+        "page": "home",
+        "key": "home|desktop:s4-studio-cta-3:width",
+        "streak": 1
+      },
+      {
+        "id": "desktop:s8-contact-cta-2:width",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s8-contact-cta-2",
+        "prop": "width",
+        "design": 141,
+        "build": 203,
+        "message": "width 203px, design 141px",
+        "relatedTo": "s8-contact-cta",
+        "relatedProp": "width",
+        "page": "home",
+        "key": "home|desktop:s8-contact-cta-2:width",
+        "streak": 1
+      },
+      {
+        "id": "phone:s4-studio:height",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s4-studio",
+        "prop": "height",
+        "design": 5411,
+        "build": 4765,
+        "message": "height 4765px, design 5411px",
+        "page": "home",
+        "key": "home|phone:s4-studio:height",
+        "streak": 1
+      },
+      {
+        "id": "phone:s4-studio-heading-5:y",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s4-studio-heading-5",
+        "prop": "y",
+        "design": 298,
+        "build": 318,
+        "message": "gap below s4-studio-heading-4: 318px, design 298px",
+        "page": "home",
+        "key": "home|phone:s4-studio-heading-5:y",
+        "streak": 1
+      },
+      {
+        "id": "phone:s4-studio-cta:y",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s4-studio-cta",
+        "prop": "y",
+        "design": 1031,
+        "build": 421,
+        "message": "gap below s4-studio-heading-5: 421px, design 1031px",
+        "page": "home",
+        "key": "home|phone:s4-studio-cta:y",
+        "streak": 1
+      },
+      {
+        "id": "phone:s4-studio-cta-3:width",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s4-studio-cta-3",
+        "prop": "width",
+        "design": 200,
+        "build": 203,
+        "message": "width 203px, design 200px",
+        "relatedTo": "s4-studio-cta-2",
+        "relatedProp": "width",
+        "page": "home",
+        "key": "home|phone:s4-studio-cta-3:width",
+        "streak": 1
+      },
+      {
+        "id": "phone:s8-contact-cta:y",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s8-contact-cta",
+        "prop": "y",
+        "design": 561,
+        "build": 251,
+        "message": "gap below s8-contact-heading: 251px, design 561px",
+        "page": "home",
+        "key": "home|phone:s8-contact-cta:y",
+        "streak": 1
+      },
+      {
+        "id": "phone:s8-contact-cta-2:width",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s8-contact-cta-2",
+        "prop": "width",
+        "design": 141,
+        "build": 203,
+        "message": "width 203px, design 141px",
+        "relatedTo": "s8-contact-cta",
+        "relatedProp": "width",
+        "page": "home",
+        "key": "home|phone:s8-contact-cta-2:width",
+        "streak": 1
+      }
+    ],
+    "flags": [
+      {
+        "id": "desktop:nav:x",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "nav",
+        "prop": "x",
+        "design": 1254,
+        "build": 1248,
+        "message": "left edge inside header: 1248px, design 1254px",
+        "page": "home",
+        "key": "home|desktop:nav:x",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:nav:y",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "nav",
+        "prop": "y",
+        "design": 28,
+        "build": 18,
+        "message": "top edge inside header: 18px, design 28px",
+        "page": "home",
+        "key": "home|desktop:nav:y",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:nav:width",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "nav",
+        "prop": "width",
+        "design": 373,
+        "build": 385,
+        "message": "width 385px, design 373px",
+        "page": "home",
+        "key": "home|desktop:nav:width",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:nav:height",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "nav",
+        "prop": "height",
+        "design": 24,
+        "build": 44,
+        "message": "height 44px, design 24px",
+        "page": "home",
+        "key": "home|desktop:nav:height",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s2-reel-media:background",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s2-reel-media",
+        "prop": "background",
+        "design": "#000000",
+        "build": "#010101",
+        "message": "background #010101, design #000000 (difference 6.7)",
+        "page": "home",
+        "key": "home|desktop:s2-reel-media:background",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s2-reel-media:transform",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s2-reel-media",
+        "prop": "transform",
+        "design": {
+          "dx": 295,
+          "dy": -51,
+          "sx": 1.15,
+          "sy": 1.15
+        },
+        "build": {
+          "dx": -108,
+          "dy": -68,
+          "sx": 1.15,
+          "sy": 1.15
+        },
+        "message": "a transform draws it shifted -108,-68px at scale 1.15×1.15; design shifted 295,-51px at scale 1.15×1.15",
+        "page": "home",
+        "key": "home|desktop:s2-reel-media:transform",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s2-reel-cta:visible",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s2-reel-cta",
+        "prop": "visible",
+        "design": false,
+        "build": true,
+        "message": "is visible in the build but hidden in the design",
+        "page": "home",
+        "key": "home|desktop:s2-reel-cta:visible",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s3-you-film-alone-list:transform",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s3-you-film-alone-list",
+        "prop": "transform",
+        "design": {
+          "dx": 0,
+          "dy": 0,
+          "sx": 1,
+          "sy": 1
+        },
+        "build": {
+          "dx": -118,
+          "dy": 0,
+          "sx": 1,
+          "sy": 1
+        },
+        "message": "a transform draws it shifted -118,0px at scale 1×1; design shifted 0,0px at scale 1×1",
+        "page": "home",
+        "key": "home|desktop:s3-you-film-alone-list:transform",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s3-you-film-alone-item:width",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s3-you-film-alone-item",
+        "prop": "width",
+        "design": 118,
+        "build": 121,
+        "message": "width 121px, design 118px",
+        "page": "home",
+        "key": "home|desktop:s3-you-film-alone-item:width",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s3-you-film-alone-item:color",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s3-you-film-alone-item",
+        "prop": "color",
+        "design": "#030303",
+        "build": "#4f4f4f",
+        "message": "color #4f4f4f, design #030303 (difference 33.1)",
+        "page": "home",
+        "key": "home|desktop:s3-you-film-alone-item:color",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s3-you-film-alone-item:opacity",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s3-you-film-alone-item",
+        "prop": "opacity",
+        "design": 0.4,
+        "build": 1,
+        "message": "opacity 1, design 0.4",
+        "page": "home",
+        "key": "home|desktop:s3-you-film-alone-item:opacity",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s3-you-film-alone-item:transform",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s3-you-film-alone-item",
+        "prop": "transform",
+        "design": {
+          "dx": 0,
+          "dy": 0,
+          "sx": 1,
+          "sy": 1
+        },
+        "build": {
+          "dx": -118,
+          "dy": 0,
+          "sx": 1,
+          "sy": 1
+        },
+        "message": "a transform draws it shifted -118,0px at scale 1×1; design shifted 0,0px at scale 1×1",
+        "page": "home",
+        "key": "home|desktop:s3-you-film-alone-item:transform",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s4-studio-text:color",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s4-studio-text",
+        "prop": "color",
+        "design": "#ffffff at 60%",
+        "build": "#ffffff at 75%",
+        "message": "color #ffffff at 75%, design #ffffff at 60% (difference 0.0)",
+        "page": "home",
+        "key": "home|desktop:s4-studio-text:color",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s4-studio-heading-2:y",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s4-studio-heading-2",
+        "prop": "y",
+        "design": 2036,
+        "build": 1876,
+        "message": "gap below s4-studio-media: 1876px, design 2036px",
+        "page": "home",
+        "key": "home|desktop:s4-studio-heading-2:y",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s4-studio-heading-3:y",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s4-studio-heading-3",
+        "prop": "y",
+        "design": 2036,
+        "build": 1876,
+        "message": "gap below s4-studio-media: 1876px, design 2036px",
+        "page": "home",
+        "key": "home|desktop:s4-studio-heading-3:y",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s4-studio-cta-2:width",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s4-studio-cta-2",
+        "prop": "width",
+        "design": 252,
+        "build": 255,
+        "message": "width 255px, design 252px",
+        "page": "home",
+        "key": "home|desktop:s4-studio-cta-2:width",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s4-studio-cta-4:x",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s4-studio-cta-4",
+        "prop": "x",
+        "design": 204,
+        "build": 207,
+        "message": "left edge inside s4-studio-cta-2: 207px, design 204px",
+        "page": "home",
+        "key": "home|desktop:s4-studio-cta-4:x",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s5-capabilities-media:background",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s5-capabilities-media",
+        "prop": "background",
+        "design": "#000000",
+        "build": "#010101",
+        "message": "background #010101, design #000000 (difference 6.7)",
+        "page": "home",
+        "key": "home|desktop:s5-capabilities-media:background",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s5-capabilities-media-3:background",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s5-capabilities-media-3",
+        "prop": "background",
+        "design": "#000000",
+        "build": "#010101",
+        "message": "background #010101, design #000000 (difference 6.7)",
+        "page": "home",
+        "key": "home|desktop:s5-capabilities-media-3:background",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s8-contact:height",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s8-contact",
+        "prop": "height",
+        "design": 650,
+        "build": 433,
+        "message": "height 433px, design 650px",
+        "page": "home",
+        "key": "home|desktop:s8-contact:height",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s8-contact-text:y",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s8-contact-text",
+        "prop": "y",
+        "design": 0,
+        "build": 27,
+        "message": "top edge inside s8-contact: 27px, design 0px",
+        "page": "home",
+        "key": "home|desktop:s8-contact-text:y",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s8-contact-cta:y",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s8-contact-cta",
+        "prop": "y",
+        "design": 365,
+        "build": 105,
+        "message": "top edge inside s8-contact: 105px, design 365px",
+        "page": "home",
+        "key": "home|desktop:s8-contact-cta:y",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s8-contact-cta:width",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s8-contact-cta",
+        "prop": "width",
+        "design": 193,
+        "build": 255,
+        "message": "width 255px, design 193px",
+        "page": "home",
+        "key": "home|desktop:s8-contact-cta:width",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s8-contact-cta-3:x",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s8-contact-cta-3",
+        "prop": "x",
+        "design": 145,
+        "build": 207,
+        "message": "left edge inside s8-contact-cta: 207px, design 145px",
+        "page": "home",
+        "key": "home|desktop:s8-contact-cta-3:x",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:footer:height",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "footer",
+        "prop": "height",
+        "design": 663,
+        "build": 713,
+        "message": "height 713px, design 663px",
+        "page": "home",
+        "key": "home|desktop:footer:height",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:header:motion-scroll:props",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "header",
+        "prop": "motion-scroll-props",
+        "design": [
+          "color",
+          "border-bottom-left-radius",
+          "border-bottom-right-radius",
+          "border-top-left-radius",
+          "border-top-right-radius",
+          "height",
+          "padding-left",
+          "padding-right",
+          "top",
+          "width"
+        ],
+        "build": [
+          "color",
+          "border-bottom-left-radius",
+          "border-bottom-right-radius",
+          "border-top-left-radius",
+          "border-top-right-radius",
+          "height",
+          "top",
+          "width"
+        ],
+        "message": "scroll motion does not move padding-left, padding-right; design moves color, border-bottom-left-radius, border-bottom-right-radius, border-top-left-radius, border-top-right-radius, height, padding-left, padding-right, top, width, build moves color, border-bottom-left-radius, border-bottom-right-radius, border-top-left-radius, border-top-right-radius, height, top, width",
+        "page": "home",
+        "key": "home|desktop:header:motion-scroll:props",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:header:motion-hover:props",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "header",
+        "prop": "motion-hover-props",
+        "design": [
+          "color",
+          "border-bottom-left-radius",
+          "border-bottom-right-radius",
+          "border-top-left-radius",
+          "border-top-right-radius",
+          "height",
+          "padding-left",
+          "padding-right",
+          "top",
+          "width"
+        ],
+        "build": [
+          "color",
+          "border-bottom-left-radius",
+          "border-bottom-right-radius",
+          "border-top-left-radius",
+          "border-top-right-radius",
+          "height",
+          "top",
+          "width"
+        ],
+        "message": "hover motion does not move padding-left, padding-right; design moves color, border-bottom-left-radius, border-bottom-right-radius, border-top-left-radius, border-top-right-radius, height, padding-left, padding-right, top, width, build moves color, border-bottom-left-radius, border-bottom-right-radius, border-top-left-radius, border-top-right-radius, height, top, width",
+        "page": "home",
+        "key": "home|desktop:header:motion-hover:props",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s4-studio:motion-scroll-scrub",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s4-studio",
+        "prop": "motion-scroll-scrub",
+        "design": [
+          "scroll-scrub: gsap of --arc-k 500ms none"
+        ],
+        "build": "none",
+        "message": "no scroll-scrub motion; design has scroll-scrub: gsap of --arc-k 500ms none",
+        "page": "home",
+        "key": "home|desktop:s4-studio:motion-scroll-scrub",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s1-top-item:motion-load:props",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s1-top-item",
+        "prop": "motion-load-props",
+        "design": [
+          "transform",
+          "modifiers"
+        ],
+        "build": [
+          "transform"
+        ],
+        "message": "load motion does not move modifiers; design moves transform, modifiers, build moves transform",
+        "page": "home",
+        "key": "home|desktop:s1-top-item:motion-load:props",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s2-reel-heading:motion-scroll-scrub",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s2-reel-heading",
+        "prop": "motion-scroll-scrub",
+        "design": [
+          "scroll-scrub: gsap of opacity 400ms none"
+        ],
+        "build": "none",
+        "message": "no scroll-scrub motion; design has scroll-scrub: gsap of opacity 400ms none",
+        "page": "home",
+        "key": "home|desktop:s2-reel-heading:motion-scroll-scrub",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s2-reel:motion-scroll-scrub",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s2-reel",
+        "prop": "motion-scroll-scrub",
+        "design": [
+          "scroll-scrub: gsap of clipPath 500ms none (on a child)"
+        ],
+        "build": "none",
+        "message": "no scroll-scrub motion; design has scroll-scrub: gsap of clipPath 500ms none (on a child)",
+        "page": "home",
+        "key": "home|desktop:s2-reel:motion-scroll-scrub",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s2-reel-media:motion-scroll-scrub",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s2-reel-media",
+        "prop": "motion-scroll-scrub",
+        "design": [
+          "scroll-scrub: gsap of scale, x, y 500ms none"
+        ],
+        "build": "none",
+        "message": "no scroll-scrub motion; design has scroll-scrub: gsap of scale, x, y 500ms none",
+        "page": "home",
+        "key": "home|desktop:s2-reel-media:motion-scroll-scrub",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s3-you-film-alone-list:motion-scroll-scrub",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s3-you-film-alone-list",
+        "prop": "motion-scroll-scrub",
+        "design": [
+          "scroll-scrub: gsap of xPercent 500ms none"
+        ],
+        "build": "none",
+        "message": "no scroll-scrub motion; design has scroll-scrub: gsap of xPercent 500ms none",
+        "page": "home",
+        "key": "home|desktop:s3-you-film-alone-list:motion-scroll-scrub",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "desktop:s3-you-film-alone:motion-scroll-scrub",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s3-you-film-alone",
+        "prop": "motion-scroll-scrub",
+        "design": [
+          "scroll-scrub: gsap of xPercent 500ms none (on a child)"
+        ],
+        "build": "none",
+        "message": "no scroll-scrub motion; design has scroll-scrub: gsap of xPercent 500ms none (on a child)",
+        "page": "home",
+        "key": "home|desktop:s3-you-film-alone:motion-scroll-scrub",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s2-reel-heading:width",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s2-reel-heading",
+        "prop": "width",
+        "design": 252,
+        "build": 240,
+        "message": "width 240px, design 252px",
+        "page": "home",
+        "key": "home|phone:s2-reel-heading:width",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s2-reel-media:background",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s2-reel-media",
+        "prop": "background",
+        "design": "#000000",
+        "build": "#010101",
+        "message": "background #010101, design #000000 (difference 6.7)",
+        "page": "home",
+        "key": "home|phone:s2-reel-media:background",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s2-reel-cta:x",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s2-reel-cta",
+        "prop": "x",
+        "design": 195,
+        "build": 314,
+        "message": "left edge inside s2-reel: 314px, design 195px",
+        "page": "home",
+        "key": "home|phone:s2-reel-cta:x",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s2-reel-cta:y",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s2-reel-cta",
+        "prop": "y",
+        "design": 130,
+        "build": 173,
+        "message": "gap below s2-reel-heading: 173px, design 130px",
+        "page": "home",
+        "key": "home|phone:s2-reel-cta:y",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s2-reel-cta:width",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s2-reel-cta",
+        "prop": "width",
+        "design": 72,
+        "build": 44,
+        "message": "width 44px, design 72px",
+        "page": "home",
+        "key": "home|phone:s2-reel-cta:width",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s2-reel-cta:height",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s2-reel-cta",
+        "prop": "height",
+        "design": 72,
+        "build": 44,
+        "message": "height 44px, design 72px",
+        "page": "home",
+        "key": "home|phone:s2-reel-cta:height",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s2-reel-cta:font-size",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s2-reel-cta",
+        "prop": "font-size",
+        "design": 12,
+        "build": 16,
+        "message": "font-size 16px, design 12px",
+        "page": "home",
+        "key": "home|phone:s2-reel-cta:font-size",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s2-reel-cta:line-height",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s2-reel-cta",
+        "prop": "line-height",
+        "design": 18,
+        "build": 24,
+        "message": "line-height 24px, design 18px",
+        "page": "home",
+        "key": "home|phone:s2-reel-cta:line-height",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s2-reel-cta:color",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s2-reel-cta",
+        "prop": "color",
+        "design": "#030303",
+        "build": "#ffffff",
+        "message": "color #ffffff, design #030303 (difference 90.3)",
+        "page": "home",
+        "key": "home|phone:s2-reel-cta:color",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s2-reel-cta:background",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s2-reel-cta",
+        "prop": "background",
+        "design": "#cdff59",
+        "build": "#000000 at 30%",
+        "message": "background #000000 at 30%, design #cdff59 (difference 95.5)",
+        "page": "home",
+        "key": "home|phone:s2-reel-cta:background",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s2-reel-cta:padding",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s2-reel-cta",
+        "prop": "padding",
+        "design": "1px 6px 1px 6px",
+        "build": "0px 0px 0px 0px",
+        "message": "padding 0px 0px 0px 0px, design 1px 6px 1px 6px (top right bottom left)",
+        "page": "home",
+        "key": "home|phone:s2-reel-cta:padding",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s2-reel-cta:border-radius",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s2-reel-cta",
+        "prop": "border-radius",
+        "design": 50,
+        "build": 999,
+        "message": "border-radius 999px, design 50px",
+        "page": "home",
+        "key": "home|phone:s2-reel-cta:border-radius",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s2-reel-cta:border-width",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s2-reel-cta",
+        "prop": "border-width",
+        "design": 0,
+        "build": 1,
+        "message": "border-width 1px, design 0px",
+        "page": "home",
+        "key": "home|phone:s2-reel-cta:border-width",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s2-reel-cta:transform",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s2-reel-cta",
+        "prop": "transform",
+        "design": {
+          "dx": -36,
+          "dy": -36,
+          "sx": 1,
+          "sy": 1
+        },
+        "build": {
+          "dx": 0,
+          "dy": 0,
+          "sx": 1,
+          "sy": 1
+        },
+        "message": "a transform draws it shifted 0,0px at scale 1×1; design shifted -36,-36px at scale 1×1",
+        "page": "home",
+        "key": "home|phone:s2-reel-cta:transform",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s3-you-film-alone-list:transform",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s3-you-film-alone-list",
+        "prop": "transform",
+        "design": {
+          "dx": 0,
+          "dy": 0,
+          "sx": 1,
+          "sy": 1
+        },
+        "build": {
+          "dx": -32,
+          "dy": 0,
+          "sx": 1,
+          "sy": 1
+        },
+        "message": "a transform draws it shifted -32,0px at scale 1×1; design shifted 0,0px at scale 1×1",
+        "page": "home",
+        "key": "home|phone:s3-you-film-alone-list:transform",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s3-you-film-alone-item:width",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s3-you-film-alone-item",
+        "prop": "width",
+        "design": 88,
+        "build": 91,
+        "message": "width 91px, design 88px",
+        "page": "home",
+        "key": "home|phone:s3-you-film-alone-item:width",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s3-you-film-alone-item:color",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s3-you-film-alone-item",
+        "prop": "color",
+        "design": "#030303",
+        "build": "#4f4f4f",
+        "message": "color #4f4f4f, design #030303 (difference 33.1)",
+        "page": "home",
+        "key": "home|phone:s3-you-film-alone-item:color",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s3-you-film-alone-item:opacity",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s3-you-film-alone-item",
+        "prop": "opacity",
+        "design": 0.4,
+        "build": 1,
+        "message": "opacity 1, design 0.4",
+        "page": "home",
+        "key": "home|phone:s3-you-film-alone-item:opacity",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s3-you-film-alone-item:transform",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s3-you-film-alone-item",
+        "prop": "transform",
+        "design": {
+          "dx": 0,
+          "dy": 0,
+          "sx": 1,
+          "sy": 1
+        },
+        "build": {
+          "dx": -32,
+          "dy": 0,
+          "sx": 1,
+          "sy": 1
+        },
+        "message": "a transform draws it shifted -32,0px at scale 1×1; design shifted 0,0px at scale 1×1",
+        "page": "home",
+        "key": "home|phone:s3-you-film-alone-item:transform",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s4-studio-text:color",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s4-studio-text",
+        "prop": "color",
+        "design": "#ffffff at 60%",
+        "build": "#ffffff at 75%",
+        "message": "color #ffffff at 75%, design #ffffff at 60% (difference 0.0)",
+        "page": "home",
+        "key": "home|phone:s4-studio-text:color",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s4-studio-heading-2:y",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s4-studio-heading-2",
+        "prop": "y",
+        "design": 1828,
+        "build": 1748,
+        "message": "gap below s4-studio-media: 1748px, design 1828px",
+        "page": "home",
+        "key": "home|phone:s4-studio-heading-2:y",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s4-studio-heading-3:y",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s4-studio-heading-3",
+        "prop": "y",
+        "design": 330,
+        "build": 354,
+        "message": "gap below s4-studio-heading-2: 354px, design 330px",
+        "page": "home",
+        "key": "home|phone:s4-studio-heading-3:y",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s4-studio-cta-2:width",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s4-studio-cta-2",
+        "prop": "width",
+        "design": 252,
+        "build": 255,
+        "message": "width 255px, design 252px",
+        "page": "home",
+        "key": "home|phone:s4-studio-cta-2:width",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s4-studio-cta-4:x",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s4-studio-cta-4",
+        "prop": "x",
+        "design": 204,
+        "build": 207,
+        "message": "left edge inside s4-studio-cta-2: 207px, design 204px",
+        "page": "home",
+        "key": "home|phone:s4-studio-cta-4:x",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s5-capabilities-media:background",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s5-capabilities-media",
+        "prop": "background",
+        "design": "#000000",
+        "build": "#010101",
+        "message": "background #010101, design #000000 (difference 6.7)",
+        "page": "home",
+        "key": "home|phone:s5-capabilities-media:background",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s5-capabilities-media-3:background",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s5-capabilities-media-3",
+        "prop": "background",
+        "design": "#000000",
+        "build": "#010101",
+        "message": "background #010101, design #000000 (difference 6.7)",
+        "page": "home",
+        "key": "home|phone:s5-capabilities-media-3:background",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s8-contact:height",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s8-contact",
+        "prop": "height",
+        "design": 884,
+        "build": 641,
+        "message": "height 641px, design 884px",
+        "page": "home",
+        "key": "home|phone:s8-contact:height",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s8-contact-cta:width",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s8-contact-cta",
+        "prop": "width",
+        "design": 193,
+        "build": 255,
+        "message": "width 255px, design 193px",
+        "page": "home",
+        "key": "home|phone:s8-contact-cta:width",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s8-contact-cta-3:x",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s8-contact-cta-3",
+        "prop": "x",
+        "design": 145,
+        "build": 207,
+        "message": "left edge inside s8-contact-cta: 207px, design 145px",
+        "page": "home",
+        "key": "home|phone:s8-contact-cta-3:x",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:footer:height",
+        "source": "code",
+        "viewport": "phone",
+        "label": "footer",
+        "prop": "height",
+        "design": 1025,
+        "build": 1053,
+        "message": "height 1053px, design 1025px",
+        "page": "home",
+        "key": "home|phone:footer:height",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:header:motion-scroll:props",
+        "source": "code",
+        "viewport": "phone",
+        "label": "header",
+        "prop": "motion-scroll-props",
+        "design": [
+          "color",
+          "border-bottom-left-radius",
+          "border-bottom-right-radius",
+          "border-top-left-radius",
+          "border-top-right-radius",
+          "height",
+          "padding-left",
+          "padding-right",
+          "top",
+          "width"
+        ],
+        "build": [
+          "color",
+          "border-bottom-left-radius",
+          "border-bottom-right-radius",
+          "border-top-left-radius",
+          "border-top-right-radius",
+          "height",
+          "top",
+          "width"
+        ],
+        "message": "scroll motion does not move padding-left, padding-right; design moves color, border-bottom-left-radius, border-bottom-right-radius, border-top-left-radius, border-top-right-radius, height, padding-left, padding-right, top, width, build moves color, border-bottom-left-radius, border-bottom-right-radius, border-top-left-radius, border-top-right-radius, height, top, width",
+        "page": "home",
+        "key": "home|phone:header:motion-scroll:props",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s4-studio:motion-scroll-scrub",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s4-studio",
+        "prop": "motion-scroll-scrub",
+        "design": [
+          "scroll-scrub: gsap of --arc-k 500ms none"
+        ],
+        "build": "none",
+        "message": "no scroll-scrub motion; design has scroll-scrub: gsap of --arc-k 500ms none",
+        "page": "home",
+        "key": "home|phone:s4-studio:motion-scroll-scrub",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s1-top-item:motion-load:props",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s1-top-item",
+        "prop": "motion-load-props",
+        "design": [
+          "transform",
+          "modifiers"
+        ],
+        "build": [
+          "transform"
+        ],
+        "message": "load motion does not move modifiers; design moves transform, modifiers, build moves transform",
+        "page": "home",
+        "key": "home|phone:s1-top-item:motion-load:props",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s3-you-film-alone-list:motion-scroll-scrub",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s3-you-film-alone-list",
+        "prop": "motion-scroll-scrub",
+        "design": [
+          "scroll-scrub: gsap of xPercent 500ms none"
+        ],
+        "build": "none",
+        "message": "no scroll-scrub motion; design has scroll-scrub: gsap of xPercent 500ms none",
+        "page": "home",
+        "key": "home|phone:s3-you-film-alone-list:motion-scroll-scrub",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "phone:s3-you-film-alone:motion-scroll-scrub",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s3-you-film-alone",
+        "prop": "motion-scroll-scrub",
+        "design": [
+          "scroll-scrub: gsap of xPercent 500ms none (on a child)"
+        ],
+        "build": "none",
+        "message": "no scroll-scrub motion; design has scroll-scrub: gsap of xPercent 500ms none (on a child)",
+        "page": "home",
+        "key": "home|phone:s3-you-film-alone:motion-scroll-scrub",
+        "streak": 2,
+        "stuck": true,
+        "why": "came back unchanged 2 rounds in a row, so the builder probably cannot fix it alone"
+      },
+      {
+        "id": "home:desktop:s1-top:arrangement",
+        "key": "home|home:desktop:s1-top:arrangement",
+        "page": "home",
+        "viewport": "desktop",
+        "label": "s1-top",
+        "kind": "arrangement",
+        "question": "Does the build section arrange its elements the same way as the design: same order, same columns or rows, same alignment, and nothing overlapping or cut off that is not in the design?",
+        "answer": {
+          "id": "home:desktop:s1-top:arrangement",
+          "pass": true,
+          "confidence": 0.52,
+          "reason": "Jev: chance it matches 52%"
+        },
+        "images": [
+          {
+            "role": "design",
+            "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-design.jpg"
+          },
+          {
+            "role": "build",
+            "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-build.jpg"
+          }
+        ],
+        "why": "judge unsure (52%): Jev: chance it matches 52%"
+      },
+      {
+        "id": "home:desktop:s1-top:imagery",
+        "key": "home|home:desktop:s1-top:imagery",
+        "page": "home",
+        "viewport": "desktop",
+        "label": "s1-top",
+        "kind": "imagery",
+        "question": "Do the images, video or canvas areas in the build section take the same place, size and crop as in the design?",
+        "answer": {
+          "id": "home:desktop:s1-top:imagery",
+          "pass": true,
+          "confidence": 0.5,
+          "reason": "Jev: chance it matches 84% (judged without the screenshots)",
+          "blind": true
+        },
+        "images": [
+          {
+            "role": "design",
+            "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-design.jpg"
+          },
+          {
+            "role": "build",
+            "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-build.jpg"
+          }
+        ],
+        "why": "judge unsure (50%): Jev: chance it matches 84% (judged without the screenshots)"
+      },
+      {
+        "id": "home:phone:s1-top:arrangement",
+        "key": "home|home:phone:s1-top:arrangement",
+        "page": "home",
+        "viewport": "phone",
+        "label": "s1-top",
+        "kind": "arrangement",
+        "question": "Does the build section arrange its elements the same way as the design: same order, same columns or rows, same alignment, and nothing overlapping or cut off that is not in the design?",
+        "answer": {
+          "id": "home:phone:s1-top:arrangement",
+          "pass": true,
+          "confidence": 0.64,
+          "reason": "Jev: chance it matches 64%"
+        },
+        "images": [
+          {
+            "role": "design",
+            "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-design.jpg"
+          },
+          {
+            "role": "build",
+            "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-build.jpg"
+          }
+        ],
+        "why": "judge unsure (64%): Jev: chance it matches 64%"
+      },
+      {
+        "id": "home:phone:s1-top:imagery",
+        "key": "home|home:phone:s1-top:imagery",
+        "page": "home",
+        "viewport": "phone",
+        "label": "s1-top",
+        "kind": "imagery",
+        "question": "Do the images, video or canvas areas in the build section take the same place, size and crop as in the design?",
+        "answer": {
+          "id": "home:phone:s1-top:imagery",
+          "pass": true,
+          "confidence": 0.5,
+          "reason": "Jev: chance it matches 87% (judged without the screenshots)",
+          "blind": true
+        },
+        "images": [
+          {
+            "role": "design",
+            "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-design.jpg"
+          },
+          {
+            "role": "build",
+            "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-build.jpg"
+          }
+        ],
+        "why": "judge unsure (50%): Jev: chance it matches 87% (judged without the screenshots)"
+      }
+    ],
+    "passes": [
+      {
+        "id": "home:desktop:s1-top:hierarchy",
+        "key": "home|home:desktop:s1-top:hierarchy",
+        "page": "home",
+        "viewport": "desktop",
+        "label": "s1-top",
+        "kind": "hierarchy",
+        "question": "Does the build section keep the same visual hierarchy as the design: the same element reads first, second and third, with the same relative emphasis from size, weight and colour?",
+        "answer": {
+          "id": "home:desktop:s1-top:hierarchy",
+          "pass": true,
+          "confidence": 0.82,
+          "reason": "Jev: chance it matches 82%"
+        },
+        "images": [
+          {
+            "role": "design",
+            "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-design.jpg"
+          },
+          {
+            "role": "build",
+            "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-build.jpg"
+          }
+        ]
+      },
+      {
+        "id": "home:phone:s1-top:hierarchy",
+        "key": "home|home:phone:s1-top:hierarchy",
+        "page": "home",
+        "viewport": "phone",
+        "label": "s1-top",
+        "kind": "hierarchy",
+        "question": "Does the build section keep the same visual hierarchy as the design: the same element reads first, second and third, with the same relative emphasis from size, weight and colour?",
+        "answer": {
+          "id": "home:phone:s1-top:hierarchy",
+          "pass": true,
+          "confidence": 0.85,
+          "reason": "Jev: chance it matches 85%"
+        },
+        "images": [
+          {
+            "role": "design",
+            "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-design.jpg"
+          },
+          {
+            "role": "build",
+            "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-build.jpg"
+          }
+        ]
+      }
+    ],
+    "info": [
+      {
+        "id": "desktop:(page):extra-labels",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "(page)",
+        "prop": "extra-labels",
+        "design": null,
+        "build": [
+          "s8-contact-form"
+        ],
+        "message": "labels in the build that the design does not have: s8-contact-form",
+        "severity": "info",
+        "page": "home",
+        "key": "home|desktop:(page):extra-labels"
+      },
+      {
+        "id": "desktop:s5-capabilities-media-2:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s5-capabilities-media-2",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": "none",
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: css-transition of opacity 300ms cubic-bezier(0.44, 0, 0.56, 1))",
+        "page": "home",
+        "key": "home|desktop:s5-capabilities-media-2:motion-extra"
+      },
+      {
+        "id": "desktop:s5-capabilities-media-4:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s5-capabilities-media-4",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": "none",
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: css-transition of opacity 300ms cubic-bezier(0.44, 0, 0.56, 1))",
+        "page": "home",
+        "key": "home|desktop:s5-capabilities-media-4:motion-extra"
+      },
+      {
+        "id": "desktop:s5-capabilities-list:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s5-capabilities-list",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll",
+          "hover"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: css-transition of opacity 300ms cubic-bezier(0.44, 0, 0.56, 1) (on a child))",
+        "page": "home",
+        "key": "home|desktop:s5-capabilities-list:motion-extra"
+      },
+      {
+        "id": "desktop:s6-simple-limits-free-item:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s6-simple-limits-free-item",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll",
+          "hover"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform (on a child))",
+        "page": "home",
+        "key": "home|desktop:s6-simple-limits-free-item:motion-extra"
+      },
+      {
+        "id": "desktop:s6-simple-limits-free-list:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s6-simple-limits-free-list",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll",
+          "hover"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform (on a child))",
+        "page": "home",
+        "key": "home|desktop:s6-simple-limits-free-list:motion-extra"
+      },
+      {
+        "id": "desktop:s2-reel-cta:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s2-reel-cta",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": "none",
+        "build": [
+          "hover"
+        ],
+        "message": "has hover motion that the design does not have (hover: css-transition of border-bottom-color 300ms cubic-bezier(0.44, 0, 0.56, 1))",
+        "page": "home",
+        "key": "home|desktop:s2-reel-cta:motion-extra"
+      },
+      {
+        "id": "desktop:s2-reel:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s2-reel",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll",
+          "scroll-scrub"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of clip-path (on a child))",
+        "page": "home",
+        "key": "home|desktop:s2-reel:motion-extra"
+      },
+      {
+        "id": "desktop:s2-reel-media:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s2-reel-media",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll",
+          "scroll-scrub"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate)",
+        "page": "home",
+        "key": "home|desktop:s2-reel-media:motion-extra"
+      },
+      {
+        "id": "desktop:s4-studio-item:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s4-studio-item",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll",
+          "hover"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, opacity, translate, scale)",
+        "page": "home",
+        "key": "home|desktop:s4-studio-item:motion-extra"
+      },
+      {
+        "id": "desktop:s4-studio-list:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s4-studio-list",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll",
+          "hover"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, opacity, translate, scale (on a child))",
+        "page": "home",
+        "key": "home|desktop:s4-studio-list:motion-extra"
+      },
+      {
+        "id": "desktop:s3-you-film-alone-list:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s3-you-film-alone-list",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll",
+          "scroll-scrub"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate)",
+        "page": "home",
+        "key": "home|desktop:s3-you-film-alone-list:motion-extra"
+      },
+      {
+        "id": "desktop:s3-you-film-alone:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s3-you-film-alone",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll",
+          "scroll-scrub"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))",
+        "page": "home",
+        "key": "home|desktop:s3-you-film-alone:motion-extra"
+      },
+      {
+        "id": "desktop:s2-reel-heading:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s2-reel-heading",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll",
+          "scroll-scrub"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))",
+        "page": "home",
+        "key": "home|desktop:s2-reel-heading:motion-extra"
+      },
+      {
+        "id": "desktop:s3-you-film-alone-heading:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s3-you-film-alone-heading",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))",
+        "page": "home",
+        "key": "home|desktop:s3-you-film-alone-heading:motion-extra"
+      },
+      {
+        "id": "desktop:s4-studio-heading:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s4-studio-heading",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))",
+        "page": "home",
+        "key": "home|desktop:s4-studio-heading:motion-extra"
+      },
+      {
+        "id": "desktop:s5-capabilities-heading:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s5-capabilities-heading",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))",
+        "page": "home",
+        "key": "home|desktop:s5-capabilities-heading:motion-extra"
+      },
+      {
+        "id": "desktop:s6-simple-limits-free-heading:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s6-simple-limits-free-heading",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))",
+        "page": "home",
+        "key": "home|desktop:s6-simple-limits-free-heading:motion-extra"
+      },
+      {
+        "id": "desktop:s7-faq-heading:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s7-faq-heading",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))",
+        "page": "home",
+        "key": "home|desktop:s7-faq-heading:motion-extra"
+      },
+      {
+        "id": "desktop:s8-contact-heading:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s8-contact-heading",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))",
+        "page": "home",
+        "key": "home|desktop:s8-contact-heading:motion-extra"
+      },
+      {
+        "id": "desktop:s4-studio-media:motion-extra",
+        "source": "code",
+        "viewport": "desktop",
+        "label": "s4-studio-media",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": "none",
+        "build": [
+          "scroll"
+        ],
+        "message": "has scroll motion that the design does not have (scroll: inline-style of opacity)",
+        "page": "home",
+        "key": "home|desktop:s4-studio-media:motion-extra"
+      },
+      {
+        "id": "phone:(page):extra-labels",
+        "source": "code",
+        "viewport": "phone",
+        "label": "(page)",
+        "prop": "extra-labels",
+        "design": null,
+        "build": [
+          "s8-contact-form"
+        ],
+        "message": "labels in the build that the design does not have: s8-contact-form",
+        "severity": "info",
+        "page": "home",
+        "key": "home|phone:(page):extra-labels"
+      },
+      {
+        "id": "phone:s5-capabilities-media-2:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s5-capabilities-media-2",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: css-transition of opacity 300ms cubic-bezier(0.44, 0, 0.56, 1))",
+        "page": "home",
+        "key": "home|phone:s5-capabilities-media-2:motion-extra"
+      },
+      {
+        "id": "phone:s5-capabilities-media-4:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s5-capabilities-media-4",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: css-transition of opacity 300ms cubic-bezier(0.44, 0, 0.56, 1))",
+        "page": "home",
+        "key": "home|phone:s5-capabilities-media-4:motion-extra"
+      },
+      {
+        "id": "phone:s5-capabilities-list:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s5-capabilities-list",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: css-transition of opacity 300ms cubic-bezier(0.44, 0, 0.56, 1) (on a child))",
+        "page": "home",
+        "key": "home|phone:s5-capabilities-list:motion-extra"
+      },
+      {
+        "id": "phone:s6-simple-limits-free-item:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s6-simple-limits-free-item",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform (on a child))",
+        "page": "home",
+        "key": "home|phone:s6-simple-limits-free-item:motion-extra"
+      },
+      {
+        "id": "phone:s6-simple-limits-free-list:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s6-simple-limits-free-list",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform (on a child))",
+        "page": "home",
+        "key": "home|phone:s6-simple-limits-free-list:motion-extra"
+      },
+      {
+        "id": "phone:s4-studio-item:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s4-studio-item",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, opacity, translate, scale)",
+        "page": "home",
+        "key": "home|phone:s4-studio-item:motion-extra"
+      },
+      {
+        "id": "phone:s4-studio-list:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s4-studio-list",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, opacity, translate, scale (on a child))",
+        "page": "home",
+        "key": "home|phone:s4-studio-list:motion-extra"
+      },
+      {
+        "id": "phone:s3-you-film-alone-list:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s3-you-film-alone-list",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll",
+          "scroll-scrub"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate)",
+        "page": "home",
+        "key": "home|phone:s3-you-film-alone-list:motion-extra"
+      },
+      {
+        "id": "phone:s3-you-film-alone:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s3-you-film-alone",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll",
+          "scroll-scrub"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))",
+        "page": "home",
+        "key": "home|phone:s3-you-film-alone:motion-extra"
+      },
+      {
+        "id": "phone:s2-reel-heading:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s2-reel-heading",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))",
+        "page": "home",
+        "key": "home|phone:s2-reel-heading:motion-extra"
+      },
+      {
+        "id": "phone:s3-you-film-alone-heading:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s3-you-film-alone-heading",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))",
+        "page": "home",
+        "key": "home|phone:s3-you-film-alone-heading:motion-extra"
+      },
+      {
+        "id": "phone:s4-studio-heading:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s4-studio-heading",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))",
+        "page": "home",
+        "key": "home|phone:s4-studio-heading:motion-extra"
+      },
+      {
+        "id": "phone:s5-capabilities-heading:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s5-capabilities-heading",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))",
+        "page": "home",
+        "key": "home|phone:s5-capabilities-heading:motion-extra"
+      },
+      {
+        "id": "phone:s6-simple-limits-free-heading:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s6-simple-limits-free-heading",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))",
+        "page": "home",
+        "key": "home|phone:s6-simple-limits-free-heading:motion-extra"
+      },
+      {
+        "id": "phone:s7-faq-heading:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s7-faq-heading",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))",
+        "page": "home",
+        "key": "home|phone:s7-faq-heading:motion-extra"
+      },
+      {
+        "id": "phone:s8-contact-heading:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s8-contact-heading",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": [
+          "scroll"
+        ],
+        "build": [
+          "load"
+        ],
+        "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))",
+        "page": "home",
+        "key": "home|phone:s8-contact-heading:motion-extra"
+      },
+      {
+        "id": "phone:s4-studio-media:motion-extra",
+        "source": "code",
+        "viewport": "phone",
+        "label": "s4-studio-media",
+        "prop": "motion-extra",
+        "severity": "info",
+        "design": "none",
+        "build": [
+          "scroll"
+        ],
+        "message": "has scroll motion that the design does not have (scroll: inline-style of opacity)",
+        "page": "home",
+        "key": "home|phone:s4-studio-media:motion-extra"
+      }
+    ],
+    "setup": [],
+    "capped": false
+  },
+  "result": {
+    "at": "2026-11-13T17:36:32.887Z",
+    "quick": false,
+    "pages": [
+      {
+        "name": "home",
+        "design": "file:///home/hq/.jsmhq/take-studio-v2/jim/docs/design/home-v2.tagged.html",
+        "build": "http://localhost:3000/",
+        "viewports": [
+          {
+            "viewport": "desktop",
+            "designElements": 76,
+            "buildElements": 77,
+            "buildErrors": []
+          },
+          {
+            "viewport": "phone",
+            "designElements": 76,
+            "buildElements": 77,
+            "buildErrors": []
+          }
+        ],
+        "findings": [
+          {
+            "id": "desktop:nav:x",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "nav",
+            "prop": "x",
+            "design": 1254,
+            "build": 1248,
+            "message": "left edge inside header: 1248px, design 1254px"
+          },
+          {
+            "id": "desktop:nav:y",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "nav",
+            "prop": "y",
+            "design": 28,
+            "build": 18,
+            "message": "top edge inside header: 18px, design 28px"
+          },
+          {
+            "id": "desktop:nav:width",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "nav",
+            "prop": "width",
+            "design": 373,
+            "build": 385,
+            "message": "width 385px, design 373px"
+          },
+          {
+            "id": "desktop:nav:height",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "nav",
+            "prop": "height",
+            "design": 24,
+            "build": 44,
+            "message": "height 44px, design 24px"
+          },
+          {
+            "id": "desktop:s2-reel-media:background",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s2-reel-media",
+            "prop": "background",
+            "design": "#000000",
+            "build": "#010101",
+            "message": "background #010101, design #000000 (difference 6.7)"
+          },
+          {
+            "id": "desktop:s2-reel-media:transform",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s2-reel-media",
+            "prop": "transform",
+            "design": {
+              "dx": 295,
+              "dy": -51,
+              "sx": 1.15,
+              "sy": 1.15
+            },
+            "build": {
+              "dx": -108,
+              "dy": -68,
+              "sx": 1.15,
+              "sy": 1.15
+            },
+            "message": "a transform draws it shifted -108,-68px at scale 1.15×1.15; design shifted 295,-51px at scale 1.15×1.15"
+          },
+          {
+            "id": "desktop:s2-reel-cta:visible",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s2-reel-cta",
+            "prop": "visible",
+            "design": false,
+            "build": true,
+            "message": "is visible in the build but hidden in the design"
+          },
+          {
+            "id": "desktop:s3-you-film-alone-list:transform",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s3-you-film-alone-list",
+            "prop": "transform",
+            "design": {
+              "dx": 0,
+              "dy": 0,
+              "sx": 1,
+              "sy": 1
+            },
+            "build": {
+              "dx": -118,
+              "dy": 0,
+              "sx": 1,
+              "sy": 1
+            },
+            "message": "a transform draws it shifted -118,0px at scale 1×1; design shifted 0,0px at scale 1×1"
+          },
+          {
+            "id": "desktop:s3-you-film-alone-item:width",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s3-you-film-alone-item",
+            "prop": "width",
+            "design": 118,
+            "build": 121,
+            "message": "width 121px, design 118px"
+          },
+          {
+            "id": "desktop:s3-you-film-alone-item:color",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s3-you-film-alone-item",
+            "prop": "color",
+            "design": "#030303",
+            "build": "#4f4f4f",
+            "message": "color #4f4f4f, design #030303 (difference 33.1)"
+          },
+          {
+            "id": "desktop:s3-you-film-alone-item:opacity",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s3-you-film-alone-item",
+            "prop": "opacity",
+            "design": 0.4,
+            "build": 1,
+            "message": "opacity 1, design 0.4"
+          },
+          {
+            "id": "desktop:s3-you-film-alone-item:transform",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s3-you-film-alone-item",
+            "prop": "transform",
+            "design": {
+              "dx": 0,
+              "dy": 0,
+              "sx": 1,
+              "sy": 1
+            },
+            "build": {
+              "dx": -118,
+              "dy": 0,
+              "sx": 1,
+              "sy": 1
+            },
+            "message": "a transform draws it shifted -118,0px at scale 1×1; design shifted 0,0px at scale 1×1"
+          },
+          {
+            "id": "desktop:s4-studio:height",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s4-studio",
+            "prop": "height",
+            "design": 5226,
+            "build": 4504,
+            "message": "height 4504px, design 5226px"
+          },
+          {
+            "id": "desktop:s4-studio-text:color",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s4-studio-text",
+            "prop": "color",
+            "design": "#ffffff at 60%",
+            "build": "#ffffff at 75%",
+            "message": "color #ffffff at 75%, design #ffffff at 60% (difference 0.0)"
+          },
+          {
+            "id": "desktop:s4-studio-heading-2:y",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s4-studio-heading-2",
+            "prop": "y",
+            "design": 2036,
+            "build": 1876,
+            "message": "gap below s4-studio-media: 1876px, design 2036px"
+          },
+          {
+            "id": "desktop:s4-studio-heading-3:y",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s4-studio-heading-3",
+            "prop": "y",
+            "design": 2036,
+            "build": 1876,
+            "message": "gap below s4-studio-media: 1876px, design 2036px"
+          },
+          {
+            "id": "desktop:s4-studio-cta:y",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s4-studio-cta",
+            "prop": "y",
+            "design": 1089,
+            "build": 526,
+            "message": "gap below s4-studio-heading-4: 526px, design 1089px"
+          },
+          {
+            "id": "desktop:s4-studio-cta-2:width",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s4-studio-cta-2",
+            "prop": "width",
+            "design": 252,
+            "build": 255,
+            "message": "width 255px, design 252px"
+          },
+          {
+            "id": "desktop:s4-studio-cta-3:width",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s4-studio-cta-3",
+            "prop": "width",
+            "design": 200,
+            "build": 203,
+            "message": "width 203px, design 200px",
+            "relatedTo": "s4-studio-cta-2",
+            "relatedProp": "width"
+          },
+          {
+            "id": "desktop:s4-studio-cta-4:x",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s4-studio-cta-4",
+            "prop": "x",
+            "design": 204,
+            "build": 207,
+            "message": "left edge inside s4-studio-cta-2: 207px, design 204px"
+          },
+          {
+            "id": "desktop:s5-capabilities-media:background",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s5-capabilities-media",
+            "prop": "background",
+            "design": "#000000",
+            "build": "#010101",
+            "message": "background #010101, design #000000 (difference 6.7)"
+          },
+          {
+            "id": "desktop:s5-capabilities-media-3:background",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s5-capabilities-media-3",
+            "prop": "background",
+            "design": "#000000",
+            "build": "#010101",
+            "message": "background #010101, design #000000 (difference 6.7)"
+          },
+          {
+            "id": "desktop:s8-contact:height",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s8-contact",
+            "prop": "height",
+            "design": 650,
+            "build": 433,
+            "message": "height 433px, design 650px"
+          },
+          {
+            "id": "desktop:s8-contact-text:y",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s8-contact-text",
+            "prop": "y",
+            "design": 0,
+            "build": 27,
+            "message": "top edge inside s8-contact: 27px, design 0px"
+          },
+          {
+            "id": "desktop:s8-contact-cta:y",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s8-contact-cta",
+            "prop": "y",
+            "design": 365,
+            "build": 105,
+            "message": "top edge inside s8-contact: 105px, design 365px"
+          },
+          {
+            "id": "desktop:s8-contact-cta:width",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s8-contact-cta",
+            "prop": "width",
+            "design": 193,
+            "build": 255,
+            "message": "width 255px, design 193px"
+          },
+          {
+            "id": "desktop:s8-contact-cta-2:width",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s8-contact-cta-2",
+            "prop": "width",
+            "design": 141,
+            "build": 203,
+            "message": "width 203px, design 141px",
+            "relatedTo": "s8-contact-cta",
+            "relatedProp": "width"
+          },
+          {
+            "id": "desktop:s8-contact-cta-3:x",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s8-contact-cta-3",
+            "prop": "x",
+            "design": 145,
+            "build": 207,
+            "message": "left edge inside s8-contact-cta: 207px, design 145px"
+          },
+          {
+            "id": "desktop:footer:height",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "footer",
+            "prop": "height",
+            "design": 663,
+            "build": 713,
+            "message": "height 713px, design 663px"
+          },
+          {
+            "id": "desktop:(page):extra-labels",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "(page)",
+            "prop": "extra-labels",
+            "design": null,
+            "build": [
+              "s8-contact-form"
+            ],
+            "message": "labels in the build that the design does not have: s8-contact-form",
+            "severity": "info"
+          },
+          {
+            "id": "desktop:header:motion-scroll:props",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "header",
+            "prop": "motion-scroll-props",
+            "design": [
+              "color",
+              "border-bottom-left-radius",
+              "border-bottom-right-radius",
+              "border-top-left-radius",
+              "border-top-right-radius",
+              "height",
+              "padding-left",
+              "padding-right",
+              "top",
+              "width"
+            ],
+            "build": [
+              "color",
+              "border-bottom-left-radius",
+              "border-bottom-right-radius",
+              "border-top-left-radius",
+              "border-top-right-radius",
+              "height",
+              "top",
+              "width"
+            ],
+            "message": "scroll motion does not move padding-left, padding-right; design moves color, border-bottom-left-radius, border-bottom-right-radius, border-top-left-radius, border-top-right-radius, height, padding-left, padding-right, top, width, build moves color, border-bottom-left-radius, border-bottom-right-radius, border-top-left-radius, border-top-right-radius, height, top, width"
+          },
+          {
+            "id": "desktop:header:motion-hover:props",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "header",
+            "prop": "motion-hover-props",
+            "design": [
+              "color",
+              "border-bottom-left-radius",
+              "border-bottom-right-radius",
+              "border-top-left-radius",
+              "border-top-right-radius",
+              "height",
+              "padding-left",
+              "padding-right",
+              "top",
+              "width"
+            ],
+            "build": [
+              "color",
+              "border-bottom-left-radius",
+              "border-bottom-right-radius",
+              "border-top-left-radius",
+              "border-top-right-radius",
+              "height",
+              "top",
+              "width"
+            ],
+            "message": "hover motion does not move padding-left, padding-right; design moves color, border-bottom-left-radius, border-bottom-right-radius, border-top-left-radius, border-top-right-radius, height, padding-left, padding-right, top, width, build moves color, border-bottom-left-radius, border-bottom-right-radius, border-top-left-radius, border-top-right-radius, height, top, width"
+          },
+          {
+            "id": "desktop:s4-studio:motion-scroll-scrub",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s4-studio",
+            "prop": "motion-scroll-scrub",
+            "design": [
+              "scroll-scrub: gsap of --arc-k 500ms none"
+            ],
+            "build": "none",
+            "message": "no scroll-scrub motion; design has scroll-scrub: gsap of --arc-k 500ms none"
+          },
+          {
+            "id": "desktop:s1-top-item:motion-load:props",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s1-top-item",
+            "prop": "motion-load-props",
+            "design": [
+              "transform",
+              "modifiers"
+            ],
+            "build": [
+              "transform"
+            ],
+            "message": "load motion does not move modifiers; design moves transform, modifiers, build moves transform"
+          },
+          {
+            "id": "desktop:s2-reel-heading:motion-scroll-scrub",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s2-reel-heading",
+            "prop": "motion-scroll-scrub",
+            "design": [
+              "scroll-scrub: gsap of opacity 400ms none"
+            ],
+            "build": "none",
+            "message": "no scroll-scrub motion; design has scroll-scrub: gsap of opacity 400ms none"
+          },
+          {
+            "id": "desktop:s2-reel:motion-scroll-scrub",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s2-reel",
+            "prop": "motion-scroll-scrub",
+            "design": [
+              "scroll-scrub: gsap of clipPath 500ms none (on a child)"
+            ],
+            "build": "none",
+            "message": "no scroll-scrub motion; design has scroll-scrub: gsap of clipPath 500ms none (on a child)"
+          },
+          {
+            "id": "desktop:s2-reel-media:motion-scroll-scrub",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s2-reel-media",
+            "prop": "motion-scroll-scrub",
+            "design": [
+              "scroll-scrub: gsap of scale, x, y 500ms none"
+            ],
+            "build": "none",
+            "message": "no scroll-scrub motion; design has scroll-scrub: gsap of scale, x, y 500ms none"
+          },
+          {
+            "id": "desktop:s3-you-film-alone-list:motion-scroll-scrub",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s3-you-film-alone-list",
+            "prop": "motion-scroll-scrub",
+            "design": [
+              "scroll-scrub: gsap of xPercent 500ms none"
+            ],
+            "build": "none",
+            "message": "no scroll-scrub motion; design has scroll-scrub: gsap of xPercent 500ms none"
+          },
+          {
+            "id": "desktop:s3-you-film-alone:motion-scroll-scrub",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s3-you-film-alone",
+            "prop": "motion-scroll-scrub",
+            "design": [
+              "scroll-scrub: gsap of xPercent 500ms none (on a child)"
+            ],
+            "build": "none",
+            "message": "no scroll-scrub motion; design has scroll-scrub: gsap of xPercent 500ms none (on a child)"
+          },
+          {
+            "id": "desktop:s5-capabilities-media-2:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s5-capabilities-media-2",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": "none",
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: css-transition of opacity 300ms cubic-bezier(0.44, 0, 0.56, 1))"
+          },
+          {
+            "id": "desktop:s5-capabilities-media-4:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s5-capabilities-media-4",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": "none",
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: css-transition of opacity 300ms cubic-bezier(0.44, 0, 0.56, 1))"
+          },
+          {
+            "id": "desktop:s5-capabilities-list:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s5-capabilities-list",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll",
+              "hover"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: css-transition of opacity 300ms cubic-bezier(0.44, 0, 0.56, 1) (on a child))"
+          },
+          {
+            "id": "desktop:s6-simple-limits-free-item:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s6-simple-limits-free-item",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll",
+              "hover"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform (on a child))"
+          },
+          {
+            "id": "desktop:s6-simple-limits-free-list:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s6-simple-limits-free-list",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll",
+              "hover"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform (on a child))"
+          },
+          {
+            "id": "desktop:s2-reel-cta:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s2-reel-cta",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": "none",
+            "build": [
+              "hover"
+            ],
+            "message": "has hover motion that the design does not have (hover: css-transition of border-bottom-color 300ms cubic-bezier(0.44, 0, 0.56, 1))"
+          },
+          {
+            "id": "desktop:s2-reel:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s2-reel",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll",
+              "scroll-scrub"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of clip-path (on a child))"
+          },
+          {
+            "id": "desktop:s2-reel-media:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s2-reel-media",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll",
+              "scroll-scrub"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate)"
+          },
+          {
+            "id": "desktop:s4-studio-item:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s4-studio-item",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll",
+              "hover"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, opacity, translate, scale)"
+          },
+          {
+            "id": "desktop:s4-studio-list:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s4-studio-list",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll",
+              "hover"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, opacity, translate, scale (on a child))"
+          },
+          {
+            "id": "desktop:s3-you-film-alone-list:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s3-you-film-alone-list",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll",
+              "scroll-scrub"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate)"
+          },
+          {
+            "id": "desktop:s3-you-film-alone:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s3-you-film-alone",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll",
+              "scroll-scrub"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))"
+          },
+          {
+            "id": "desktop:s2-reel-heading:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s2-reel-heading",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll",
+              "scroll-scrub"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))"
+          },
+          {
+            "id": "desktop:s3-you-film-alone-heading:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s3-you-film-alone-heading",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))"
+          },
+          {
+            "id": "desktop:s4-studio-heading:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s4-studio-heading",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))"
+          },
+          {
+            "id": "desktop:s5-capabilities-heading:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s5-capabilities-heading",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))"
+          },
+          {
+            "id": "desktop:s6-simple-limits-free-heading:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s6-simple-limits-free-heading",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))"
+          },
+          {
+            "id": "desktop:s7-faq-heading:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s7-faq-heading",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))"
+          },
+          {
+            "id": "desktop:s8-contact-heading:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s8-contact-heading",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))"
+          },
+          {
+            "id": "desktop:s4-studio-media:motion-extra",
+            "source": "code",
+            "viewport": "desktop",
+            "label": "s4-studio-media",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": "none",
+            "build": [
+              "scroll"
+            ],
+            "message": "has scroll motion that the design does not have (scroll: inline-style of opacity)"
+          },
+          {
+            "id": "phone:s2-reel-heading:width",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s2-reel-heading",
+            "prop": "width",
+            "design": 252,
+            "build": 240,
+            "message": "width 240px, design 252px"
+          },
+          {
+            "id": "phone:s2-reel-media:background",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s2-reel-media",
+            "prop": "background",
+            "design": "#000000",
+            "build": "#010101",
+            "message": "background #010101, design #000000 (difference 6.7)"
+          },
+          {
+            "id": "phone:s2-reel-cta:x",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s2-reel-cta",
+            "prop": "x",
+            "design": 195,
+            "build": 314,
+            "message": "left edge inside s2-reel: 314px, design 195px"
+          },
+          {
+            "id": "phone:s2-reel-cta:y",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s2-reel-cta",
+            "prop": "y",
+            "design": 130,
+            "build": 173,
+            "message": "gap below s2-reel-heading: 173px, design 130px"
+          },
+          {
+            "id": "phone:s2-reel-cta:width",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s2-reel-cta",
+            "prop": "width",
+            "design": 72,
+            "build": 44,
+            "message": "width 44px, design 72px"
+          },
+          {
+            "id": "phone:s2-reel-cta:height",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s2-reel-cta",
+            "prop": "height",
+            "design": 72,
+            "build": 44,
+            "message": "height 44px, design 72px"
+          },
+          {
+            "id": "phone:s2-reel-cta:font-size",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s2-reel-cta",
+            "prop": "font-size",
+            "design": 12,
+            "build": 16,
+            "message": "font-size 16px, design 12px"
+          },
+          {
+            "id": "phone:s2-reel-cta:line-height",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s2-reel-cta",
+            "prop": "line-height",
+            "design": 18,
+            "build": 24,
+            "message": "line-height 24px, design 18px"
+          },
+          {
+            "id": "phone:s2-reel-cta:color",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s2-reel-cta",
+            "prop": "color",
+            "design": "#030303",
+            "build": "#ffffff",
+            "message": "color #ffffff, design #030303 (difference 90.3)"
+          },
+          {
+            "id": "phone:s2-reel-cta:background",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s2-reel-cta",
+            "prop": "background",
+            "design": "#cdff59",
+            "build": "#000000 at 30%",
+            "message": "background #000000 at 30%, design #cdff59 (difference 95.5)"
+          },
+          {
+            "id": "phone:s2-reel-cta:padding",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s2-reel-cta",
+            "prop": "padding",
+            "design": "1px 6px 1px 6px",
+            "build": "0px 0px 0px 0px",
+            "message": "padding 0px 0px 0px 0px, design 1px 6px 1px 6px (top right bottom left)"
+          },
+          {
+            "id": "phone:s2-reel-cta:border-radius",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s2-reel-cta",
+            "prop": "border-radius",
+            "design": 50,
+            "build": 999,
+            "message": "border-radius 999px, design 50px"
+          },
+          {
+            "id": "phone:s2-reel-cta:border-width",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s2-reel-cta",
+            "prop": "border-width",
+            "design": 0,
+            "build": 1,
+            "message": "border-width 1px, design 0px"
+          },
+          {
+            "id": "phone:s2-reel-cta:transform",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s2-reel-cta",
+            "prop": "transform",
+            "design": {
+              "dx": -36,
+              "dy": -36,
+              "sx": 1,
+              "sy": 1
+            },
+            "build": {
+              "dx": 0,
+              "dy": 0,
+              "sx": 1,
+              "sy": 1
+            },
+            "message": "a transform draws it shifted 0,0px at scale 1×1; design shifted -36,-36px at scale 1×1"
+          },
+          {
+            "id": "phone:s3-you-film-alone-list:transform",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s3-you-film-alone-list",
+            "prop": "transform",
+            "design": {
+              "dx": 0,
+              "dy": 0,
+              "sx": 1,
+              "sy": 1
+            },
+            "build": {
+              "dx": -32,
+              "dy": 0,
+              "sx": 1,
+              "sy": 1
+            },
+            "message": "a transform draws it shifted -32,0px at scale 1×1; design shifted 0,0px at scale 1×1"
+          },
+          {
+            "id": "phone:s3-you-film-alone-item:width",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s3-you-film-alone-item",
+            "prop": "width",
+            "design": 88,
+            "build": 91,
+            "message": "width 91px, design 88px"
+          },
+          {
+            "id": "phone:s3-you-film-alone-item:color",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s3-you-film-alone-item",
+            "prop": "color",
+            "design": "#030303",
+            "build": "#4f4f4f",
+            "message": "color #4f4f4f, design #030303 (difference 33.1)"
+          },
+          {
+            "id": "phone:s3-you-film-alone-item:opacity",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s3-you-film-alone-item",
+            "prop": "opacity",
+            "design": 0.4,
+            "build": 1,
+            "message": "opacity 1, design 0.4"
+          },
+          {
+            "id": "phone:s3-you-film-alone-item:transform",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s3-you-film-alone-item",
+            "prop": "transform",
+            "design": {
+              "dx": 0,
+              "dy": 0,
+              "sx": 1,
+              "sy": 1
+            },
+            "build": {
+              "dx": -32,
+              "dy": 0,
+              "sx": 1,
+              "sy": 1
+            },
+            "message": "a transform draws it shifted -32,0px at scale 1×1; design shifted 0,0px at scale 1×1"
+          },
+          {
+            "id": "phone:s4-studio:height",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s4-studio",
+            "prop": "height",
+            "design": 5411,
+            "build": 4765,
+            "message": "height 4765px, design 5411px"
+          },
+          {
+            "id": "phone:s4-studio-text:color",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s4-studio-text",
+            "prop": "color",
+            "design": "#ffffff at 60%",
+            "build": "#ffffff at 75%",
+            "message": "color #ffffff at 75%, design #ffffff at 60% (difference 0.0)"
+          },
+          {
+            "id": "phone:s4-studio-heading-2:y",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s4-studio-heading-2",
+            "prop": "y",
+            "design": 1828,
+            "build": 1748,
+            "message": "gap below s4-studio-media: 1748px, design 1828px"
+          },
+          {
+            "id": "phone:s4-studio-heading-3:y",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s4-studio-heading-3",
+            "prop": "y",
+            "design": 330,
+            "build": 354,
+            "message": "gap below s4-studio-heading-2: 354px, design 330px"
+          },
+          {
+            "id": "phone:s4-studio-heading-5:y",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s4-studio-heading-5",
+            "prop": "y",
+            "design": 298,
+            "build": 318,
+            "message": "gap below s4-studio-heading-4: 318px, design 298px"
+          },
+          {
+            "id": "phone:s4-studio-cta:y",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s4-studio-cta",
+            "prop": "y",
+            "design": 1031,
+            "build": 421,
+            "message": "gap below s4-studio-heading-5: 421px, design 1031px"
+          },
+          {
+            "id": "phone:s4-studio-cta-2:width",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s4-studio-cta-2",
+            "prop": "width",
+            "design": 252,
+            "build": 255,
+            "message": "width 255px, design 252px"
+          },
+          {
+            "id": "phone:s4-studio-cta-3:width",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s4-studio-cta-3",
+            "prop": "width",
+            "design": 200,
+            "build": 203,
+            "message": "width 203px, design 200px",
+            "relatedTo": "s4-studio-cta-2",
+            "relatedProp": "width"
+          },
+          {
+            "id": "phone:s4-studio-cta-4:x",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s4-studio-cta-4",
+            "prop": "x",
+            "design": 204,
+            "build": 207,
+            "message": "left edge inside s4-studio-cta-2: 207px, design 204px"
+          },
+          {
+            "id": "phone:s5-capabilities-media:background",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s5-capabilities-media",
+            "prop": "background",
+            "design": "#000000",
+            "build": "#010101",
+            "message": "background #010101, design #000000 (difference 6.7)"
+          },
+          {
+            "id": "phone:s5-capabilities-media-3:background",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s5-capabilities-media-3",
+            "prop": "background",
+            "design": "#000000",
+            "build": "#010101",
+            "message": "background #010101, design #000000 (difference 6.7)"
+          },
+          {
+            "id": "phone:s8-contact:height",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s8-contact",
+            "prop": "height",
+            "design": 884,
+            "build": 641,
+            "message": "height 641px, design 884px"
+          },
+          {
+            "id": "phone:s8-contact-cta:y",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s8-contact-cta",
+            "prop": "y",
+            "design": 561,
+            "build": 251,
+            "message": "gap below s8-contact-heading: 251px, design 561px"
+          },
+          {
+            "id": "phone:s8-contact-cta:width",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s8-contact-cta",
+            "prop": "width",
+            "design": 193,
+            "build": 255,
+            "message": "width 255px, design 193px"
+          },
+          {
+            "id": "phone:s8-contact-cta-2:width",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s8-contact-cta-2",
+            "prop": "width",
+            "design": 141,
+            "build": 203,
+            "message": "width 203px, design 141px",
+            "relatedTo": "s8-contact-cta",
+            "relatedProp": "width"
+          },
+          {
+            "id": "phone:s8-contact-cta-3:x",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s8-contact-cta-3",
+            "prop": "x",
+            "design": 145,
+            "build": 207,
+            "message": "left edge inside s8-contact-cta: 207px, design 145px"
+          },
+          {
+            "id": "phone:footer:height",
+            "source": "code",
+            "viewport": "phone",
+            "label": "footer",
+            "prop": "height",
+            "design": 1025,
+            "build": 1053,
+            "message": "height 1053px, design 1025px"
+          },
+          {
+            "id": "phone:(page):extra-labels",
+            "source": "code",
+            "viewport": "phone",
+            "label": "(page)",
+            "prop": "extra-labels",
+            "design": null,
+            "build": [
+              "s8-contact-form"
+            ],
+            "message": "labels in the build that the design does not have: s8-contact-form",
+            "severity": "info"
+          },
+          {
+            "id": "phone:header:motion-scroll:props",
+            "source": "code",
+            "viewport": "phone",
+            "label": "header",
+            "prop": "motion-scroll-props",
+            "design": [
+              "color",
+              "border-bottom-left-radius",
+              "border-bottom-right-radius",
+              "border-top-left-radius",
+              "border-top-right-radius",
+              "height",
+              "padding-left",
+              "padding-right",
+              "top",
+              "width"
+            ],
+            "build": [
+              "color",
+              "border-bottom-left-radius",
+              "border-bottom-right-radius",
+              "border-top-left-radius",
+              "border-top-right-radius",
+              "height",
+              "top",
+              "width"
+            ],
+            "message": "scroll motion does not move padding-left, padding-right; design moves color, border-bottom-left-radius, border-bottom-right-radius, border-top-left-radius, border-top-right-radius, height, padding-left, padding-right, top, width, build moves color, border-bottom-left-radius, border-bottom-right-radius, border-top-left-radius, border-top-right-radius, height, top, width"
+          },
+          {
+            "id": "phone:s4-studio:motion-scroll-scrub",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s4-studio",
+            "prop": "motion-scroll-scrub",
+            "design": [
+              "scroll-scrub: gsap of --arc-k 500ms none"
+            ],
+            "build": "none",
+            "message": "no scroll-scrub motion; design has scroll-scrub: gsap of --arc-k 500ms none"
+          },
+          {
+            "id": "phone:s1-top-item:motion-load:props",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s1-top-item",
+            "prop": "motion-load-props",
+            "design": [
+              "transform",
+              "modifiers"
+            ],
+            "build": [
+              "transform"
+            ],
+            "message": "load motion does not move modifiers; design moves transform, modifiers, build moves transform"
+          },
+          {
+            "id": "phone:s3-you-film-alone-list:motion-scroll-scrub",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s3-you-film-alone-list",
+            "prop": "motion-scroll-scrub",
+            "design": [
+              "scroll-scrub: gsap of xPercent 500ms none"
+            ],
+            "build": "none",
+            "message": "no scroll-scrub motion; design has scroll-scrub: gsap of xPercent 500ms none"
+          },
+          {
+            "id": "phone:s3-you-film-alone:motion-scroll-scrub",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s3-you-film-alone",
+            "prop": "motion-scroll-scrub",
+            "design": [
+              "scroll-scrub: gsap of xPercent 500ms none (on a child)"
+            ],
+            "build": "none",
+            "message": "no scroll-scrub motion; design has scroll-scrub: gsap of xPercent 500ms none (on a child)"
+          },
+          {
+            "id": "phone:s5-capabilities-media-2:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s5-capabilities-media-2",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: css-transition of opacity 300ms cubic-bezier(0.44, 0, 0.56, 1))"
+          },
+          {
+            "id": "phone:s5-capabilities-media-4:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s5-capabilities-media-4",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: css-transition of opacity 300ms cubic-bezier(0.44, 0, 0.56, 1))"
+          },
+          {
+            "id": "phone:s5-capabilities-list:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s5-capabilities-list",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: css-transition of opacity 300ms cubic-bezier(0.44, 0, 0.56, 1) (on a child))"
+          },
+          {
+            "id": "phone:s6-simple-limits-free-item:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s6-simple-limits-free-item",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform (on a child))"
+          },
+          {
+            "id": "phone:s6-simple-limits-free-list:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s6-simple-limits-free-list",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform (on a child))"
+          },
+          {
+            "id": "phone:s4-studio-item:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s4-studio-item",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, opacity, translate, scale)"
+          },
+          {
+            "id": "phone:s4-studio-list:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s4-studio-list",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, opacity, translate, scale (on a child))"
+          },
+          {
+            "id": "phone:s3-you-film-alone-list:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s3-you-film-alone-list",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll",
+              "scroll-scrub"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate)"
+          },
+          {
+            "id": "phone:s3-you-film-alone:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s3-you-film-alone",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll",
+              "scroll-scrub"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))"
+          },
+          {
+            "id": "phone:s2-reel-heading:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s2-reel-heading",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))"
+          },
+          {
+            "id": "phone:s3-you-film-alone-heading:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s3-you-film-alone-heading",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))"
+          },
+          {
+            "id": "phone:s4-studio-heading:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s4-studio-heading",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))"
+          },
+          {
+            "id": "phone:s5-capabilities-heading:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s5-capabilities-heading",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))"
+          },
+          {
+            "id": "phone:s6-simple-limits-free-heading:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s6-simple-limits-free-heading",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))"
+          },
+          {
+            "id": "phone:s7-faq-heading:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s7-faq-heading",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))"
+          },
+          {
+            "id": "phone:s8-contact-heading:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s8-contact-heading",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": [
+              "scroll"
+            ],
+            "build": [
+              "load"
+            ],
+            "message": "has load motion that the design does not have (load: inline-style of transform, translate, scale, rotate (on a child))"
+          },
+          {
+            "id": "phone:s4-studio-media:motion-extra",
+            "source": "code",
+            "viewport": "phone",
+            "label": "s4-studio-media",
+            "prop": "motion-extra",
+            "severity": "info",
+            "design": "none",
+            "build": [
+              "scroll"
+            ],
+            "message": "has scroll motion that the design does not have (scroll: inline-style of opacity)"
+          }
+        ],
+        "questions": [
+          {
+            "id": "home:desktop:s1-top:hierarchy",
+            "group": "home:home:desktop:s1-top",
+            "page": "home",
+            "viewport": "desktop",
+            "label": "s1-top",
+            "kind": "hierarchy",
+            "facts": {
+              "viewport": "desktop",
+              "section": "s1-top",
+              "note": "x and y are pixels from the top-left of the section; w and h are sizes",
+              "design": [
+                {
+                  "label": "s1-top",
+                  "tag": "section",
+                  "text": "Film one take. Get it back ready to post. Upload a",
+                  "x": 0,
+                  "y": 0,
+                  "w": 1440,
+                  "h": 1066,
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-heading",
+                  "tag": "h1",
+                  "text": "Film one take. Get it back ready to post.",
+                  "x": 240,
+                  "y": 160,
+                  "w": 960,
+                  "h": 123,
+                  "font": "inter tight 56px/61.59 400",
+                  "color": "#030303",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-text",
+                  "tag": "p",
+                  "text": "Upload a video and Take Studio trims the pauses, s",
+                  "x": 440,
+                  "y": 307,
+                  "w": 560,
+                  "h": 90,
+                  "font": "inter tight 20px/30 300",
+                  "color": "#4f4f4f",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-list",
+                  "tag": "ul",
+                  "x": 72,
+                  "y": 461,
+                  "w": 1296,
+                  "h": 605,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-2",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-3",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-4",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                }
+              ],
+              "build": [
+                {
+                  "label": "s1-top",
+                  "tag": "section",
+                  "text": "Film one take. Get it back ready to post. Upload a",
+                  "x": 0,
+                  "y": 0,
+                  "w": 1440,
+                  "h": 1066,
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-heading",
+                  "tag": "h1",
+                  "text": "Film one take. Get it back ready to post.",
+                  "x": 240,
+                  "y": 160,
+                  "w": 960,
+                  "h": 123,
+                  "font": "inter tight 56px/61.59 400",
+                  "color": "#030303",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-text",
+                  "tag": "p",
+                  "text": "Upload a video and Take Studio trims the pauses, s",
+                  "x": 440,
+                  "y": 307,
+                  "w": 560,
+                  "h": 90,
+                  "font": "inter tight 20px/30 300",
+                  "color": "#4f4f4f",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-list",
+                  "tag": "ul",
+                  "x": 72,
+                  "y": 461,
+                  "w": 1296,
+                  "h": 605,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-2",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-3",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-4",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                }
+              ]
+            },
+            "images": [
+              {
+                "role": "design",
+                "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-design.jpg"
+              },
+              {
+                "role": "build",
+                "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-build.jpg"
+              }
+            ],
+            "question": "Does the build section keep the same visual hierarchy as the design: the same element reads first, second and third, with the same relative emphasis from size, weight and colour?",
+            "sig": "4bbe2dd6c6e9",
+            "answer": {
+              "id": "home:desktop:s1-top:hierarchy",
+              "pass": true,
+              "confidence": 0.82,
+              "reason": "Jev: chance it matches 82%"
+            }
+          },
+          {
+            "id": "home:desktop:s1-top:arrangement",
+            "group": "home:home:desktop:s1-top",
+            "page": "home",
+            "viewport": "desktop",
+            "label": "s1-top",
+            "kind": "arrangement",
+            "facts": {
+              "viewport": "desktop",
+              "section": "s1-top",
+              "note": "x and y are pixels from the top-left of the section; w and h are sizes",
+              "design": [
+                {
+                  "label": "s1-top",
+                  "tag": "section",
+                  "text": "Film one take. Get it back ready to post. Upload a",
+                  "x": 0,
+                  "y": 0,
+                  "w": 1440,
+                  "h": 1066,
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-heading",
+                  "tag": "h1",
+                  "text": "Film one take. Get it back ready to post.",
+                  "x": 240,
+                  "y": 160,
+                  "w": 960,
+                  "h": 123,
+                  "font": "inter tight 56px/61.59 400",
+                  "color": "#030303",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-text",
+                  "tag": "p",
+                  "text": "Upload a video and Take Studio trims the pauses, s",
+                  "x": 440,
+                  "y": 307,
+                  "w": 560,
+                  "h": 90,
+                  "font": "inter tight 20px/30 300",
+                  "color": "#4f4f4f",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-list",
+                  "tag": "ul",
+                  "x": 72,
+                  "y": 461,
+                  "w": 1296,
+                  "h": 605,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-2",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-3",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-4",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                }
+              ],
+              "build": [
+                {
+                  "label": "s1-top",
+                  "tag": "section",
+                  "text": "Film one take. Get it back ready to post. Upload a",
+                  "x": 0,
+                  "y": 0,
+                  "w": 1440,
+                  "h": 1066,
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-heading",
+                  "tag": "h1",
+                  "text": "Film one take. Get it back ready to post.",
+                  "x": 240,
+                  "y": 160,
+                  "w": 960,
+                  "h": 123,
+                  "font": "inter tight 56px/61.59 400",
+                  "color": "#030303",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-text",
+                  "tag": "p",
+                  "text": "Upload a video and Take Studio trims the pauses, s",
+                  "x": 440,
+                  "y": 307,
+                  "w": 560,
+                  "h": 90,
+                  "font": "inter tight 20px/30 300",
+                  "color": "#4f4f4f",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-list",
+                  "tag": "ul",
+                  "x": 72,
+                  "y": 461,
+                  "w": 1296,
+                  "h": 605,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-2",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-3",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-4",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                }
+              ]
+            },
+            "images": [
+              {
+                "role": "design",
+                "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-design.jpg"
+              },
+              {
+                "role": "build",
+                "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-build.jpg"
+              }
+            ],
+            "question": "Does the build section arrange its elements the same way as the design: same order, same columns or rows, same alignment, and nothing overlapping or cut off that is not in the design?",
+            "sig": "4bbe2dd6c6e9",
+            "answer": {
+              "id": "home:desktop:s1-top:arrangement",
+              "pass": true,
+              "confidence": 0.52,
+              "reason": "Jev: chance it matches 52%"
+            }
+          },
+          {
+            "visualOnly": true,
+            "id": "home:desktop:s1-top:imagery",
+            "group": "home:home:desktop:s1-top",
+            "page": "home",
+            "viewport": "desktop",
+            "label": "s1-top",
+            "kind": "imagery",
+            "facts": {
+              "viewport": "desktop",
+              "section": "s1-top",
+              "note": "x and y are pixels from the top-left of the section; w and h are sizes",
+              "design": [
+                {
+                  "label": "s1-top",
+                  "tag": "section",
+                  "text": "Film one take. Get it back ready to post. Upload a",
+                  "x": 0,
+                  "y": 0,
+                  "w": 1440,
+                  "h": 1066,
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-heading",
+                  "tag": "h1",
+                  "text": "Film one take. Get it back ready to post.",
+                  "x": 240,
+                  "y": 160,
+                  "w": 960,
+                  "h": 123,
+                  "font": "inter tight 56px/61.59 400",
+                  "color": "#030303",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-text",
+                  "tag": "p",
+                  "text": "Upload a video and Take Studio trims the pauses, s",
+                  "x": 440,
+                  "y": 307,
+                  "w": 560,
+                  "h": 90,
+                  "font": "inter tight 20px/30 300",
+                  "color": "#4f4f4f",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-list",
+                  "tag": "ul",
+                  "x": 72,
+                  "y": 461,
+                  "w": 1296,
+                  "h": 605,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-2",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-3",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-4",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                }
+              ],
+              "build": [
+                {
+                  "label": "s1-top",
+                  "tag": "section",
+                  "text": "Film one take. Get it back ready to post. Upload a",
+                  "x": 0,
+                  "y": 0,
+                  "w": 1440,
+                  "h": 1066,
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-heading",
+                  "tag": "h1",
+                  "text": "Film one take. Get it back ready to post.",
+                  "x": 240,
+                  "y": 160,
+                  "w": 960,
+                  "h": 123,
+                  "font": "inter tight 56px/61.59 400",
+                  "color": "#030303",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-text",
+                  "tag": "p",
+                  "text": "Upload a video and Take Studio trims the pauses, s",
+                  "x": 440,
+                  "y": 307,
+                  "w": 560,
+                  "h": 90,
+                  "font": "inter tight 20px/30 300",
+                  "color": "#4f4f4f",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-list",
+                  "tag": "ul",
+                  "x": 72,
+                  "y": 461,
+                  "w": 1296,
+                  "h": 605,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-2",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-3",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-4",
+                  "tag": "img",
+                  "x": 720,
+                  "y": 525,
+                  "w": 245,
+                  "h": 343,
+                  "background": "#f6f6f6"
+                }
+              ]
+            },
+            "images": [
+              {
+                "role": "design",
+                "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-design.jpg"
+              },
+              {
+                "role": "build",
+                "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-build.jpg"
+              }
+            ],
+            "question": "Do the images, video or canvas areas in the build section take the same place, size and crop as in the design?",
+            "sig": "4bbe2dd6c6e9",
+            "answer": {
+              "id": "home:desktop:s1-top:imagery",
+              "pass": true,
+              "confidence": 0.5,
+              "reason": "Jev: chance it matches 84% (judged without the screenshots)",
+              "blind": true
+            }
+          },
+          {
+            "id": "home:phone:s1-top:hierarchy",
+            "group": "home:home:phone:s1-top",
+            "page": "home",
+            "viewport": "phone",
+            "label": "s1-top",
+            "kind": "hierarchy",
+            "facts": {
+              "viewport": "phone",
+              "section": "s1-top",
+              "note": "x and y are pixels from the top-left of the section; w and h are sizes",
+              "design": [
+                {
+                  "label": "s1-top",
+                  "tag": "section",
+                  "text": "Film one take. Get it back ready to post. Upload a",
+                  "x": 0,
+                  "y": 0,
+                  "w": 390,
+                  "h": 801,
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-heading",
+                  "tag": "h1",
+                  "text": "Film one take. Get it back ready to post.",
+                  "x": 20,
+                  "y": 160,
+                  "w": 350,
+                  "h": 145,
+                  "font": "inter tight 44px/48.4 400",
+                  "color": "#030303",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-text",
+                  "tag": "p",
+                  "text": "Upload a video and Take Studio trims the pauses, s",
+                  "x": 20,
+                  "y": 329,
+                  "w": 350,
+                  "h": 108,
+                  "font": "inter tight 18.01px/27.01 300",
+                  "color": "#4f4f4f",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-list",
+                  "tag": "ul",
+                  "x": 0,
+                  "y": 501,
+                  "w": 390,
+                  "h": 300,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-2",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-3",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-4",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                }
+              ],
+              "build": [
+                {
+                  "label": "s1-top",
+                  "tag": "section",
+                  "text": "Film one take. Get it back ready to post. Upload a",
+                  "x": 0,
+                  "y": 0,
+                  "w": 390,
+                  "h": 801,
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-heading",
+                  "tag": "h1",
+                  "text": "Film one take. Get it back ready to post.",
+                  "x": 20,
+                  "y": 160,
+                  "w": 350,
+                  "h": 145,
+                  "font": "inter tight 44px/48.4 400",
+                  "color": "#030303",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-text",
+                  "tag": "p",
+                  "text": "Upload a video and Take Studio trims the pauses, s",
+                  "x": 20,
+                  "y": 329,
+                  "w": 350,
+                  "h": 108,
+                  "font": "inter tight 18.01px/27.01 300",
+                  "color": "#4f4f4f",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-list",
+                  "tag": "ul",
+                  "x": 0,
+                  "y": 501,
+                  "w": 390,
+                  "h": 300,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-2",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-3",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-4",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                }
+              ]
+            },
+            "images": [
+              {
+                "role": "design",
+                "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-design.jpg"
+              },
+              {
+                "role": "build",
+                "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-build.jpg"
+              }
+            ],
+            "question": "Does the build section keep the same visual hierarchy as the design: the same element reads first, second and third, with the same relative emphasis from size, weight and colour?",
+            "sig": "abe67cde67aa",
+            "answer": {
+              "id": "home:phone:s1-top:hierarchy",
+              "pass": true,
+              "confidence": 0.85,
+              "reason": "Jev: chance it matches 85%"
+            }
+          },
+          {
+            "id": "home:phone:s1-top:arrangement",
+            "group": "home:home:phone:s1-top",
+            "page": "home",
+            "viewport": "phone",
+            "label": "s1-top",
+            "kind": "arrangement",
+            "facts": {
+              "viewport": "phone",
+              "section": "s1-top",
+              "note": "x and y are pixels from the top-left of the section; w and h are sizes",
+              "design": [
+                {
+                  "label": "s1-top",
+                  "tag": "section",
+                  "text": "Film one take. Get it back ready to post. Upload a",
+                  "x": 0,
+                  "y": 0,
+                  "w": 390,
+                  "h": 801,
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-heading",
+                  "tag": "h1",
+                  "text": "Film one take. Get it back ready to post.",
+                  "x": 20,
+                  "y": 160,
+                  "w": 350,
+                  "h": 145,
+                  "font": "inter tight 44px/48.4 400",
+                  "color": "#030303",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-text",
+                  "tag": "p",
+                  "text": "Upload a video and Take Studio trims the pauses, s",
+                  "x": 20,
+                  "y": 329,
+                  "w": 350,
+                  "h": 108,
+                  "font": "inter tight 18.01px/27.01 300",
+                  "color": "#4f4f4f",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-list",
+                  "tag": "ul",
+                  "x": 0,
+                  "y": 501,
+                  "w": 390,
+                  "h": 300,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-2",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-3",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-4",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                }
+              ],
+              "build": [
+                {
+                  "label": "s1-top",
+                  "tag": "section",
+                  "text": "Film one take. Get it back ready to post. Upload a",
+                  "x": 0,
+                  "y": 0,
+                  "w": 390,
+                  "h": 801,
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-heading",
+                  "tag": "h1",
+                  "text": "Film one take. Get it back ready to post.",
+                  "x": 20,
+                  "y": 160,
+                  "w": 350,
+                  "h": 145,
+                  "font": "inter tight 44px/48.4 400",
+                  "color": "#030303",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-text",
+                  "tag": "p",
+                  "text": "Upload a video and Take Studio trims the pauses, s",
+                  "x": 20,
+                  "y": 329,
+                  "w": 350,
+                  "h": 108,
+                  "font": "inter tight 18.01px/27.01 300",
+                  "color": "#4f4f4f",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-list",
+                  "tag": "ul",
+                  "x": 0,
+                  "y": 501,
+                  "w": 390,
+                  "h": 300,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-2",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-3",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-4",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                }
+              ]
+            },
+            "images": [
+              {
+                "role": "design",
+                "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-design.jpg"
+              },
+              {
+                "role": "build",
+                "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-build.jpg"
+              }
+            ],
+            "question": "Does the build section arrange its elements the same way as the design: same order, same columns or rows, same alignment, and nothing overlapping or cut off that is not in the design?",
+            "sig": "abe67cde67aa",
+            "answer": {
+              "id": "home:phone:s1-top:arrangement",
+              "pass": true,
+              "confidence": 0.64,
+              "reason": "Jev: chance it matches 64%"
+            }
+          },
+          {
+            "visualOnly": true,
+            "id": "home:phone:s1-top:imagery",
+            "group": "home:home:phone:s1-top",
+            "page": "home",
+            "viewport": "phone",
+            "label": "s1-top",
+            "kind": "imagery",
+            "facts": {
+              "viewport": "phone",
+              "section": "s1-top",
+              "note": "x and y are pixels from the top-left of the section; w and h are sizes",
+              "design": [
+                {
+                  "label": "s1-top",
+                  "tag": "section",
+                  "text": "Film one take. Get it back ready to post. Upload a",
+                  "x": 0,
+                  "y": 0,
+                  "w": 390,
+                  "h": 801,
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-heading",
+                  "tag": "h1",
+                  "text": "Film one take. Get it back ready to post.",
+                  "x": 20,
+                  "y": 160,
+                  "w": 350,
+                  "h": 145,
+                  "font": "inter tight 44px/48.4 400",
+                  "color": "#030303",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-text",
+                  "tag": "p",
+                  "text": "Upload a video and Take Studio trims the pauses, s",
+                  "x": 20,
+                  "y": 329,
+                  "w": 350,
+                  "h": 108,
+                  "font": "inter tight 18.01px/27.01 300",
+                  "color": "#4f4f4f",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-list",
+                  "tag": "ul",
+                  "x": 0,
+                  "y": 501,
+                  "w": 390,
+                  "h": 300,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-2",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-3",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-4",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                }
+              ],
+              "build": [
+                {
+                  "label": "s1-top",
+                  "tag": "section",
+                  "text": "Film one take. Get it back ready to post. Upload a",
+                  "x": 0,
+                  "y": 0,
+                  "w": 390,
+                  "h": 801,
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-heading",
+                  "tag": "h1",
+                  "text": "Film one take. Get it back ready to post.",
+                  "x": 20,
+                  "y": 160,
+                  "w": 350,
+                  "h": 145,
+                  "font": "inter tight 44px/48.4 400",
+                  "color": "#030303",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-text",
+                  "tag": "p",
+                  "text": "Upload a video and Take Studio trims the pauses, s",
+                  "x": 20,
+                  "y": 329,
+                  "w": 350,
+                  "h": 108,
+                  "font": "inter tight 18.01px/27.01 300",
+                  "color": "#4f4f4f",
+                  "background": "#ffffff"
+                },
+                {
+                  "label": "s1-top-list",
+                  "tag": "ul",
+                  "x": 0,
+                  "y": 501,
+                  "w": 390,
+                  "h": 300,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-2",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-3",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                },
+                {
+                  "label": "s1-top-media-4",
+                  "tag": "img",
+                  "x": 195,
+                  "y": 541,
+                  "w": 160,
+                  "h": 224,
+                  "background": "#f6f6f6"
+                }
+              ]
+            },
+            "images": [
+              {
+                "role": "design",
+                "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-design.jpg"
+              },
+              {
+                "role": "build",
+                "path": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-build.jpg"
+              }
+            ],
+            "question": "Do the images, video or canvas areas in the build section take the same place, size and crop as in the design?",
+            "sig": "abe67cde67aa",
+            "answer": {
+              "id": "home:phone:s1-top:imagery",
+              "pass": true,
+              "confidence": 0.5,
+              "reason": "Jev: chance it matches 87% (judged without the screenshots)",
+              "blind": true
+            }
+          }
+        ],
+        "visuals": [
+          {
+            "viewport": "desktop",
+            "label": "header",
+            "ratio": 0.044487847222222224,
+            "heightDiff": 0,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-header-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-header-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-header-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-header-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-header-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-header-diff-sm.jpg"
+            },
+            "codeFindings": 6
+          },
+          {
+            "viewport": "desktop",
+            "label": "s1-top",
+            "ratio": 0.31104661767771524,
+            "heightDiff": 0,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s1-top-diff-sm.jpg"
+            },
+            "codeFindings": 0
+          },
+          {
+            "viewport": "desktop",
+            "label": "s2-reel",
+            "ratio": 0.02820974464492983,
+            "heightDiff": 0,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s2-reel-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s2-reel-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s2-reel-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s2-reel-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s2-reel-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s2-reel-diff-sm.jpg"
+            },
+            "codeFindings": 8
+          },
+          {
+            "viewport": "desktop",
+            "label": "s3-you-film-alone",
+            "ratio": 0.03502101879327399,
+            "heightDiff": 0,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s3-you-film-alone-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s3-you-film-alone-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s3-you-film-alone-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s3-you-film-alone-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s3-you-film-alone-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s3-you-film-alone-diff-sm.jpg"
+            },
+            "codeFindings": 10
+          },
+          {
+            "viewport": "desktop",
+            "label": "s4-studio",
+            "ratio": 0.2199496640727984,
+            "heightDiff": -722,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s4-studio-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s4-studio-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s4-studio-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s4-studio-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s4-studio-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s4-studio-diff-sm.jpg"
+            },
+            "codeFindings": 13
+          },
+          {
+            "viewport": "desktop",
+            "label": "s5-capabilities",
+            "ratio": 0.029614777472247684,
+            "heightDiff": 0,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s5-capabilities-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s5-capabilities-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s5-capabilities-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s5-capabilities-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s5-capabilities-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s5-capabilities-diff-sm.jpg"
+            },
+            "codeFindings": 4
+          },
+          {
+            "viewport": "desktop",
+            "label": "s6-simple-limits-free",
+            "ratio": 0.03678513071895425,
+            "heightDiff": 0,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s6-simple-limits-free-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s6-simple-limits-free-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s6-simple-limits-free-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s6-simple-limits-free-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s6-simple-limits-free-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s6-simple-limits-free-diff-sm.jpg"
+            },
+            "codeFindings": 3
+          },
+          {
+            "viewport": "desktop",
+            "label": "s7-faq",
+            "ratio": 0.04211160443230116,
+            "heightDiff": 0,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s7-faq-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s7-faq-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s7-faq-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s7-faq-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s7-faq-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s7-faq-diff-sm.jpg"
+            },
+            "codeFindings": 1
+          },
+          {
+            "viewport": "desktop",
+            "label": "s8-contact",
+            "ratio": 0.39235576923076926,
+            "heightDiff": -217,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s8-contact-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s8-contact-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s8-contact-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s8-contact-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s8-contact-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-s8-contact-diff-sm.jpg"
+            },
+            "codeFindings": 7
+          },
+          {
+            "viewport": "desktop",
+            "label": "footer",
+            "ratio": 0.1964527816736793,
+            "heightDiff": 50,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-footer-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-footer-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-footer-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-footer-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-footer-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/desktop-footer-diff-sm.jpg"
+            },
+            "codeFindings": 1
+          },
+          {
+            "viewport": "phone",
+            "label": "header",
+            "ratio": 0.08525641025641026,
+            "heightDiff": 0,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-header-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-header-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-header-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-header-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-header-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-header-diff-sm.jpg"
+            },
+            "codeFindings": 1
+          },
+          {
+            "viewport": "phone",
+            "label": "s1-top",
+            "ratio": 0.22965843977079933,
+            "heightDiff": 0,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s1-top-diff-sm.jpg"
+            },
+            "codeFindings": 0
+          },
+          {
+            "viewport": "phone",
+            "label": "s2-reel",
+            "ratio": 0.05598950598950599,
+            "heightDiff": 0,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s2-reel-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s2-reel-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s2-reel-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s2-reel-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s2-reel-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s2-reel-diff-sm.jpg"
+            },
+            "codeFindings": 15
+          },
+          {
+            "viewport": "phone",
+            "label": "s3-you-film-alone",
+            "ratio": 0.0828971167145441,
+            "heightDiff": 0,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s3-you-film-alone-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s3-you-film-alone-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s3-you-film-alone-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s3-you-film-alone-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s3-you-film-alone-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s3-you-film-alone-diff-sm.jpg"
+            },
+            "codeFindings": 10
+          },
+          {
+            "viewport": "phone",
+            "label": "s4-studio",
+            "ratio": 0.30040373597941517,
+            "heightDiff": -646,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s4-studio-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s4-studio-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s4-studio-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s4-studio-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s4-studio-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s4-studio-diff-sm.jpg"
+            },
+            "codeFindings": 14
+          },
+          {
+            "viewport": "phone",
+            "label": "s5-capabilities",
+            "ratio": 0.02900264703543392,
+            "heightDiff": 0,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s5-capabilities-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s5-capabilities-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s5-capabilities-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s5-capabilities-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s5-capabilities-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s5-capabilities-diff-sm.jpg"
+            },
+            "codeFindings": 4
+          },
+          {
+            "viewport": "phone",
+            "label": "s6-simple-limits-free",
+            "ratio": 0.052585119798234554,
+            "heightDiff": 0,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s6-simple-limits-free-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s6-simple-limits-free-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s6-simple-limits-free-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s6-simple-limits-free-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s6-simple-limits-free-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s6-simple-limits-free-diff-sm.jpg"
+            },
+            "codeFindings": 3
+          },
+          {
+            "viewport": "phone",
+            "label": "s7-faq",
+            "ratio": 0.06693191865605659,
+            "heightDiff": 0,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s7-faq-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s7-faq-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s7-faq-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s7-faq-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s7-faq-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s7-faq-diff-sm.jpg"
+            },
+            "codeFindings": 1
+          },
+          {
+            "viewport": "phone",
+            "label": "s8-contact",
+            "ratio": 0.3610221603434273,
+            "heightDiff": -243,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s8-contact-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s8-contact-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s8-contact-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s8-contact-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s8-contact-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-s8-contact-diff-sm.jpg"
+            },
+            "codeFindings": 6
+          },
+          {
+            "viewport": "phone",
+            "label": "footer",
+            "ratio": 0.10927902895583504,
+            "heightDiff": 28,
+            "images": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-footer-design.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-footer-build.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-footer-diff.jpg"
+            },
+            "small": {
+              "design": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-footer-design-sm.jpg",
+              "build": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-footer-build-sm.jpg",
+              "diff": "/home/hq/.jsmhq/take-studio-v2/jim/.design-check/home-e83249/phone-footer-diff-sm.jpg"
+            },
+            "codeFindings": 1
+          }
+        ]
+      }
+    ]
+  }
+}
