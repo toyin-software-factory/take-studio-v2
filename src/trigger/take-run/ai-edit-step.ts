@@ -285,7 +285,7 @@ function parseAnswer(text: string | null) {
 }
 
 /** One retry for 429, 5xx and network errors, only while the deadline allows. */
-async function callWithRetry(
+export async function callWithRetry(
   request: ReturnType<typeof buildAiRequest>,
   apiKey: string,
   signal: AbortSignal,
