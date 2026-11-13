@@ -261,6 +261,8 @@ Ways to make people want to use Take Studio quickly. Recommended order when Toyi
 - **Record in the browser**: the phone or laptop camera, with no export and upload step · needs a decision
 - **One tap presets**: TikTok, YouTube and Course, each setting the format, background and caption style · needs a decision
 - **Nudge email**: 24 hours after a sign in with no upload, with a sample take · needs a decision
+- **Installable home screen app (PWA)**: web app manifest, icon and full screen; take ready push notifications where the browser supports them · needs a decision
+- **Native phone app**: decide with analytics (#17). Build it only if phone uploads are most of our use and they often fail in the browser; it would be a native iPhone app for recording and background upload, with the web app doing the rest · needs a decision · after Product analytics
 
 ## Legend
 
