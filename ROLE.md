@@ -53,7 +53,7 @@ Read its "Heads up" list and clear every item before the task is done: context g
 
 - Before building or changing any screen or section, pull screen references from the Mobbin MCP (search screens and flows for the pattern you are building). Link the references in the PR body and in `design.md`.
 - If the Mobbin MCP is unavailable, stop and raise it to the lead as a blocker. Do not design without references.
-- A screen with a reference design (a draft in `docs/design/`) is checked against it with design-check (`.claude/skills/design-check`): run its live check while you build, and finish with the judged `check` loop, where Jev decides when the screen matches. At most 5 rounds. When it says the result needs Toyin, stop and raise it (builders to the lead, the lead with `ask_user`). The PR gets a `## Design check` section with the verdict.
+- Whoever adds a draft to `docs/design/` (named after its route, e.g. `home.html` for `/`) runs `node tools/design-check/src/cli.js init` and commits the tagged copy and `design-check.json` in the same PR. A screen with a reference design (a draft in `docs/design/`) is checked against it with design-check (`.claude/skills/design-check`): run its live check while you build, and finish with the judged `check` loop, where Jev decides when the screen matches. At most 5 rounds. When it says the result needs Toyin, stop and raise it (builders to the lead, the lead with `ask_user`). The PR gets a `## Design check` section with the verdict.
 
 ## Teamwork
 
