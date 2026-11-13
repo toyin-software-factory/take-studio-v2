@@ -16,6 +16,7 @@ import { useBackgroundPreview } from "./use-background-preview";
 import { useBackgroundUpload } from "./use-background-upload";
 import { useBackgrounds } from "./use-backgrounds";
 import { usePoster } from "./use-poster";
+import { SuggestedBackground, showSuggestion } from "./suggested-background";
 
 const NO_LIST: BackgroundListData = { builtIn: [], mine: [], defaultId: null };
 
@@ -107,6 +108,14 @@ export function BackgroundChange({
         uncertain={false}
         previewNoGreen={preview.kind === "ready" && preview.noGreenScreen}
       />
+      {detail.suggestion && showSuggestion(detail, current) ? (
+        <SuggestedBackground
+          suggestion={detail.suggestion}
+          chosen={choice === detail.suggestion.backgroundId}
+          disabled={busy}
+          onUse={review.pickBackground}
+        />
+      ) : null}
       <BackgroundGrid
         group="take-background"
         list={list}

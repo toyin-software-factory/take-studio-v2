@@ -185,6 +185,48 @@ test("shows the grid, the current background and the clean edges tip (AC-4, AC-1
   await expect(bar(page)).toHaveCount(0);
 });
 
+const SUGGESTION = { backgroundId: WARM, name: "Warm studio", reason: "Suits a calm interview." };
+
+test("the suggested background card: Use it puts the change in the pending bar, nothing renders by itself (spec 0012 AC-5)", async ({
+  page,
+  baseURL,
+}) => {
+  const { id, state } = await setup(page, baseURL!, { detail: { suggestion: SUGGESTION } });
+  await open(page, id);
+  const card = section(page).getByTestId("suggested-background");
+  await expect(card.getByRole("heading", { name: "Suggested: Warm studio" })).toBeVisible();
+  await expect(card).toContainText("Suits a calm interview.");
+  await expect(bar(page)).toHaveCount(0);
+  await expectNoSeriousAxeIssues(page);
+  await card.getByRole("button", { name: "Use it" }).click();
+  await expect(bar(page)).toContainText("Background: Warm studio");
+  await expect(section(page).getByRole("radio", { name: /Warm studio/ })).toBeChecked();
+  await expect(card.getByRole("button", { name: "Use it" })).toHaveCount(0);
+  await expect(card).toContainText("Press Render");
+  expect(state.calls.some((c) => c.startsWith("POST"))).toBe(false);
+  await render(page).click();
+  await expect.poll(() => state.calls.some((c) => c.startsWith("POST"))).toBe(true);
+  expect(state.calls.find((c) => c.startsWith("POST"))).toContain(`"background":{"id":"${WARM}"}`);
+});
+
+const HIDDEN: readonly (readonly [string, Record<string, unknown>])[] = [
+  ["there is no suggestion", { suggestion: null }],
+  [
+    "it is the current background",
+    { suggestion: SUGGESTION, background: { id: WARM, name: "Warm studio", keyed: true } },
+  ],
+  ["the take has no green screen", { suggestion: SUGGESTION, noGreenScreen: true }],
+];
+
+for (const [name, detail] of HIDDEN) {
+  test(`the suggested card is hidden when ${name}`, async ({ page, baseURL }) => {
+    const { id } = await setup(page, baseURL!, { detail });
+    await open(page, id);
+    await expect(section(page).getByRole("radio", { name: /Keep original/ })).toBeVisible();
+    await expect(section(page).getByTestId("suggested-background")).toHaveCount(0);
+  });
+}
+
 test("picks by keyboard, previews on the stage while the video stays, then Render in the pending bar uses the background (AC-4, AC-5, AC-12)", async ({
   page,
   baseURL,
@@ -382,6 +424,20 @@ for (const [name, viewport] of [
 
 test.describe("touch targets on a phone", () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 390, height: 800 } });
+  test("Use it is at least 44 px, axe is clean and the page does not scroll sideways", async ({
+    page,
+    baseURL,
+  }) => {
+    const { id } = await setup(page, baseURL!, { detail: { suggestion: SUGGESTION } });
+    await open(page, id);
+    const box = await section(page).getByRole("button", { name: "Use it" }).boundingBox();
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+    await expectNoSeriousAxeIssues(page);
+    const over = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    );
+    expect(over).toBeLessThanOrEqual(0);
+  });
   test("the tiles and the action are at least 44 px", async ({ page, baseURL }) => {
     const { id } = await setup(page, baseURL!);
     await open(page, id);
