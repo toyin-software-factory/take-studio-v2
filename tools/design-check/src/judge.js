@@ -1,7 +1,7 @@
 // The judge answers the questions code cannot settle. It is pluggable:
 //
 //   { "type": "jev" }   TypeSafe's Jev decision model (default: TypeSafe's own API, TYPESAFE_API_KEY). Gets the
-//                       measured facts as text; add "images": true to also send the section screenshots.
+//                       measured facts as text plus the two section screenshots ("images": false to skip them).
 //   { "type": "command", "command": "jev judge" }   JSON on stdin, JSON on stdout (see README)
 //   { "type": "http", "url": "http://127.0.0.1:9000/judge", "headers": {...} }   same JSON, POSTed
 //   { "type": "anthropic", "model": "claude-opus-5-5" }   built-in fallback using the Claude API
@@ -172,16 +172,29 @@ async function viaJev(j, questions) {
   }
   const answers = [];
   for (const list of groups.values()) {
-    const probs = j.provider === "neon" ? await jevNeon(j, list) : await jevHttp(j, list);
+    // Screenshots go with every visual question unless "images": false. If the request with
+    // images is refused, ask again with the facts only; a purely visual question answered without
+    // the pictures is then marked unsure, so it goes to Toyin instead of passing.
+    const hasImages = list.some((q) => q.images && q.images.length);
+    let withImages = j.provider !== "neon" && j.images !== false && hasImages;
+    let probs;
+    try {
+      probs = j.provider === "neon" ? await jevNeon(j, list) : await jevHttp(j, list, withImages);
+    } catch (err) {
+      if (!withImages) throw err;
+      withImages = false;
+      probs = await jevHttp(j, list, false);
+    }
     list.forEach((q, i) => {
       const p = probs[i];
       if (typeof p !== "number" || !isFinite(p))
         return answers.push({ id: q.id, pass: null, confidence: 0, reason: "Jev gave no answer" });
+      const blind = q.visualOnly && !withImages;
       answers.push({
         id: q.id,
         pass: p >= 0.5,
-        confidence: Math.max(p, 1 - p),
-        reason: `Jev: chance it matches ${Math.round(p * 100)}%`,
+        confidence: blind ? Math.min(0.5, Math.max(p, 1 - p)) : Math.max(p, 1 - p),
+        reason: `Jev: chance it matches ${Math.round(p * 100)}%${blind ? " (judged without the screenshots)" : ""}`,
       });
     });
   }
@@ -193,7 +206,7 @@ const CRITERIA = {
   false: "A careful designer would see a difference on this point and ask for it to be fixed.",
 };
 
-async function jevHttp(j, list) {
+async function jevHttp(j, list, withImages) {
   const or = j.provider === "openrouter";
   const url =
     j.url ||
@@ -205,7 +218,7 @@ async function jevHttp(j, list) {
   if (!key) throw new Error(`Jev needs an API key in ${keyEnv}`);
   let state = list[0].facts || {};
   const assets = {};
-  if (j.images) {
+  if (withImages) {
     // Images go in `assets` and are referenced from the state by their key in backticks.
     const refs = [];
     for (const img of list[0].images || []) {

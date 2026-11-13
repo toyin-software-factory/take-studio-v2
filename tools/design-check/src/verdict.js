@@ -85,8 +85,9 @@ export function judgeRound(cfg, result, st, { record = true } = {}) {
       else if (a.pass) passes.push(item);
       else {
         const prev = st.history[item.key];
-        const streak = prev && prev.round === st.round ? prev.streak + 1 : 1;
-        nextHistory[item.key] = { sig: "judge", streak, round };
+        const qsig = `judge:${q.sig || ""}`;
+        const streak = prev && prev.sig === qsig && prev.round === st.round ? prev.streak + 1 : 1;
+        nextHistory[item.key] = { sig: qsig, streak, round };
         if (streak >= cfg.repeatLimit)
           flags.push({
             ...item,

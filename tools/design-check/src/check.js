@@ -38,16 +38,42 @@ export function resolvePages(cfg, only) {
   return sel;
 }
 
+// Local files the design links to (stylesheets, scripts, images, fonts), so editing one of them
+// invalidates the cached measurements too.
+function localDependencies(file) {
+  const html = fs.readFileSync(file, "utf8");
+  const dir = path.dirname(file);
+  const refs = new Set();
+  for (const m of html.matchAll(
+    /(?:src|href|poster)\s*=\s*["']([^"'#?]+)|url\(\s*["']?([^"')#?]+)/gi,
+  )) {
+    const ref = m[1] || m[2];
+    if (!ref || /^(?:[a-z]+:|\/\/|#)/i.test(ref)) continue;
+    const p = path.resolve(dir, decodeURIComponent(ref));
+    try {
+      if (fs.statSync(p).isFile()) refs.add(p);
+    } catch {}
+  }
+  return [...refs].sort();
+}
+
+const fileHash = (f) => {
+  try {
+    return crypto.createHash("sha1").update(fs.readFileSync(f)).digest("hex").slice(0, 12);
+  } catch {
+    return "";
+  }
+};
+
 // The design does not change between rounds, so its measurements are cached by file content.
 async function extractDesign(browser, page, vp, dir, cfg) {
   let key = null;
   let prefix = "design";
   if (page.designFile && fs.existsSync(page.designFile)) {
-    const h = crypto
-      .createHash("sha1")
-      .update(fs.readFileSync(page.designFile))
-      .digest("hex")
-      .slice(0, 12);
+    const hash = crypto.createHash("sha1").update(fs.readFileSync(page.designFile));
+    for (const dep of localDependencies(page.designFile))
+      hash.update(dep).update(fs.readFileSync(dep));
+    const h = hash.digest("hex").slice(0, 12);
     prefix = `design-${h}${cfg.hover ? "" : "-nohover"}`;
     key = path.join(dir, `${prefix}-${vp}.json`);
     if (fs.existsSync(key)) {
@@ -209,6 +235,7 @@ export async function runRound(cfg, pages, { quick = false } = {}) {
           );
           if (ds.media)
             pr.questions.push({
+              visualOnly: true,
               id: `${vp}:${ds.label}:imagery`,
               group,
               page: page.name,
@@ -228,6 +255,20 @@ export async function runRound(cfg, pages, { quick = false } = {}) {
     await browser.close();
   }
   if (!quick) {
+    // Question ids carry the page, so two pages with the same section label never share an answer.
+    // `sig` is a fingerprint of what was judged, so the loop only calls a failure "unchanged"
+    // when the builder's section really did not change.
+    for (const p of result.pages)
+      for (const q of p.questions) {
+        q.id = `${p.name}:${q.id}`;
+        if (q.group) q.group = `${p.name}:${q.group}`;
+        q.sig = crypto
+          .createHash("sha1")
+          .update(JSON.stringify(q.facts?.build ?? q.question))
+          .update((q.images || []).map((i) => fileHash(i.path)).join(","))
+          .digest("hex")
+          .slice(0, 12);
+      }
     const all = result.pages.flatMap((p) => p.questions);
     if (all.length) log(`asking the judge (${cfg.judge.type}) ${all.length} question(s)`);
     const answers = await runJudge(cfg, all);
