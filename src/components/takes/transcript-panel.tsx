@@ -4,7 +4,9 @@ import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { visibleEdits } from "@/lib/transcript-fixes";
 import { type PlayerBridge, useCurrentParagraph } from "./player-bridge";
+import { TranscriptFixes } from "./transcript-fixes";
 import { TranscriptDownloads } from "./transcript-downloads";
 import { TranscriptParagraphs } from "./transcript-paragraphs";
 import type { useTranscript } from "./use-transcript";
@@ -34,6 +36,8 @@ export function TranscriptPanel({
   readonly transcript: ReturnType<typeof useTranscript>;
 }) {
   const { view, loadError, stopped, starting, startError, make } = transcript;
+  const edits = view?.state === "ready" ? visibleEdits(view) : [];
+  const fixed = new Set(edits.filter((e) => !e.undone).map((e) => e.index));
   const paragraphs = view?.state === "ready" ? (view.paragraphs ?? []) : [];
   const current = useCurrentParagraph(
     bridge,
@@ -100,8 +104,19 @@ export function TranscriptPanel({
       {view.state === "ready" && paragraphs.length > 0 ? (
         <>
           <TranscriptDownloads takeId={takeId} version={view.version} />
+          <TranscriptFixes
+            edits={edits}
+            busy={transcript.fixing}
+            error={transcript.fixError}
+            onSet={transcript.setEditUndone}
+          />
           <div className="max-h-[32rem] overflow-y-auto">
-            <TranscriptParagraphs paragraphs={paragraphs} current={current} onSeek={bridge.seek} />
+            <TranscriptParagraphs
+              paragraphs={paragraphs}
+              current={current}
+              onSeek={bridge.seek}
+              fixed={fixed}
+            />
           </div>
         </>
       ) : null}

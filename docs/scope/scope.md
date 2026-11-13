@@ -183,7 +183,7 @@ AI agents make the editing calls inside the pipeline: which pauses to cut (keepi
 - [ ] Build it: `/develop AI editing agents`
    - [x] Transcript inside the run, before the render, with its fallback and reuse on retry (AC-1, AC-6, AC-7, AC-9)
    - [ ] AI cuts: one structured Claude call, validation, fallback to rules cuts, reasons on the timeline (AC-2, AC-3, AC-6, AC-7, AC-8, AC-9, AC-10, AC-12)
-   - [ ] Transcript fixes with undo and redo, used by the view, captions and downloads (AC-4, AC-11, AC-12)
+   - [x] Transcript fixes with undo and redo, used by the view, captions and downloads (AC-4, AC-11, AC-12)
    - [ ] Background suggestion card, then measure time and cost on a real 10 minute take (AC-5, AC-6, AC-9, AC-12)
 - [ ] Verify it: `/check verify AI editing agents`
 - [ ] Test it: `/test AI editing agents`

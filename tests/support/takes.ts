@@ -88,7 +88,17 @@ export type WordSeed = {
 };
 
 /** Test only: a stored transcript (times on the original take, 25 fps) for a seeded take. */
-export async function seedTranscript(takeId: string, words: readonly WordSeed[]): Promise<void> {
+export async function seedTranscript(
+  takeId: string,
+  words: readonly WordSeed[],
+  edits: readonly {
+    index: number;
+    old: string;
+    new: string;
+    reason: string;
+    undone: boolean;
+  }[] = [],
+): Promise<void> {
   const sql = postgres(localDatabaseUrl(), { max: 1 });
   try {
     const stored = words.map((word) => ({
@@ -99,9 +109,10 @@ export async function seedTranscript(takeId: string, words: readonly WordSeed[])
       filler: word.filler ?? false,
       para: word.para ?? false,
     }));
-    await sql`insert into transcript (id, take_id, language, text, words, source_fps, model)
+    await sql`insert into transcript (id, take_id, language, text, words, edits, source_fps, model)
               values (${randomUUID()}, ${takeId}, 'en', ${words.map((w) => w.w).join(" ")},
-                ${sql.json(stored as unknown as postgres.JSONValue)}, 25, 'nova-3')`;
+                ${sql.json(stored as unknown as postgres.JSONValue)},
+                ${sql.json(edits as unknown as postgres.JSONValue)}, 25, 'nova-3')`;
   } finally {
     await sql.end();
   }
