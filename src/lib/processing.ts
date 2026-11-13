@@ -154,7 +154,7 @@ export const STEPS_BY_KIND = {
  * The latest product slice that is live. Steps and job kinds from later slices are allowed
  * in the database but not created yet. Bump it when a slice ships.
  */
-export const LIVE_SLICE = 3;
+export const LIVE_SLICE = 5;
 
 /**
  * Spec 0012 AC-6: one deadline starts with the `transcript` step of a full run and covers it and

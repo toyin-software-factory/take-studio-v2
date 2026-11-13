@@ -208,6 +208,7 @@ describe("takes.getForCreator, listForCreator and rename", () => {
     expect(result.ok && result.data.latestJob?.steps.map((s) => s.name)).toEqual([
       "trim",
       "transcript",
+      "ai_edit",
       "render",
     ]);
   });

@@ -30,6 +30,7 @@ import {
   work,
 } from "./harness";
 import { avSync, renderFacts } from "./inspect";
+import { aiEditMeasure } from "./ai-edit";
 import { backgroundScenarios } from "./background";
 import { changeScenarios } from "./changes";
 import { transcriptScenarios } from "./transcript";
@@ -46,7 +47,9 @@ function check(scenario: string, name: string, ok: boolean, detail: unknown = ""
 }
 
 const media = (file: string) =>
-  fileURLToPath(new URL(`../fixtures/media/${file}`, import.meta.url));
+  file.startsWith("/")
+    ? file
+    : fileURLToPath(new URL(`../fixtures/media/${file}`, import.meta.url));
 
 /** Upload a fixture the way the browser will: create, part PUTs straight to R2, complete. */
 async function upload(
@@ -329,6 +332,13 @@ async function main() {
   // PIPELINE_ONLY=background runs just the background scenarios (a lighter run for small machines).
   if (process.env.PIPELINE_ONLY === "background") {
     await backgroundScenarios({ c: bg, b, check, upload, waitFinal, downloadRender, media });
+    return;
+  }
+
+  // PIPELINE_ONLY=ai measures the transcript and AI edit time and tokens on a 10 minute take
+  // (spec 0012, real Deepgram and Claude: only run it when told to; see tests/AGENTS.md).
+  if (process.env.PIPELINE_ONLY === "ai") {
+    await aiEditMeasure({ c: t, check, upload, waitFinal, media });
     return;
   }
 

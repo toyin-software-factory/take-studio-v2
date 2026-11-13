@@ -59,7 +59,7 @@ describe("step registry (AC-7)", () => {
       "background",
       "render",
     ]);
-    expect(LIVE_SLICE).toBe(3);
+    expect(LIVE_SLICE).toBe(5);
   });
 
   it("defines every job kind from the spec: transcribe live from slice 2, reanalyse from slice 5", () => {
@@ -107,17 +107,19 @@ describe("step registry (AC-7)", () => {
   });
 
   it("creates only live steps, and the background step only for a job with a background", () => {
-    expect(stepsFor("initial")).toEqual(["trim", "transcript", "render"]);
+    expect(stepsFor("initial")).toEqual(["trim", "transcript", "ai_edit", "render"]);
     expect(stepsFor("initial", { hasBackground: true })).toEqual([
       "trim",
       "transcript",
+      "ai_edit",
       "background",
       "render",
     ]);
-    expect(stepsFor("rerender")).toEqual(["trim", "transcript", "render"]);
+    expect(stepsFor("rerender")).toEqual(["trim", "transcript", "ai_edit", "render"]);
     expect(stepsFor("rerender", { hasBackground: true })).toEqual([
       "trim",
       "transcript",
+      "ai_edit",
       "background",
       "render",
     ]);
