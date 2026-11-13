@@ -18,12 +18,14 @@ export function useCaptions(
   bridge: PlayerBridge,
   video: RefObject<HTMLVideoElement | null>,
   playerReady: boolean,
+  /** Which timeline the cues are on; the track is replaced when it changes. */
+  timeline: "render" | "original" = "render",
 ) {
   const version = useCaptionsVersion(bridge);
   const [on, setOn] = useState(false);
   useEffect(() => {
     setTrackMode(video.current, on);
-  }, [video, version, on, playerReady]);
+  }, [video, version, on, playerReady, timeline]);
   const toggle = useCallback(() => setOn((value) => !value), []);
   return { version, on, toggle };
 }

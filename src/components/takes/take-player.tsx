@@ -10,7 +10,10 @@ import { BackgroundPreviewOverlay } from "./background-preview-overlay";
 import { previewStatusText } from "@/lib/take-display";
 import { type PlayerBridge, usePreviewOverlay } from "./player-bridge";
 import { PlayerControls } from "./player-controls";
-import { type Link, playLink } from "./play-link";
+import { playerNotice } from "./player-notice";
+import type { CutReview } from "./use-cut-review";
+import { useRenderLink } from "./use-render-link";
+import { type Resume, useSourceSwitch } from "./use-source-switch";
 import { useCaptions } from "./use-captions";
 import { usePoster } from "./use-poster";
 import { usePlayerKeys } from "./use-player-keys";
@@ -25,76 +28,43 @@ export function TakePlayer({
   takeId,
   renderId,
   bridge,
+  review,
+  durationMs,
 }: {
   readonly takeId: string;
   /** The latest render's id: when it changes the video was made again (S3S-T13). */
   readonly renderId: string | null;
   readonly bridge: PlayerBridge;
+  /** The cut review state: which source plays, the pending cuts to skip (spec 0011). */
+  readonly review: CutReview;
+  /** The original's length in ms (the timeline and the preview's end). */
+  readonly durationMs: number;
 }) {
   const video = useRef<HTMLVideoElement>(null);
-  const resumeAt = useRef(0);
-  const refreshed = useRef(false);
-  const resumePlaying = useRef(false);
-  const [link, setLink] = useState<Link>({ kind: "loading" });
+  const resume = useRef<Resume>({ at: 0, playing: false, refreshed: false });
+  const { link, setLink, fetchLink, swapFailed, retrySwap, shownRanges } = useRenderLink(
+    takeId,
+    renderId,
+    video,
+    resume,
+    review.renderRanges,
+  );
+  // A still covers the video: the transport is hidden and the video paused (S3S-T14).
+  const preview = usePreviewOverlay(bridge);
+  const stillShown = preview !== null;
+  const source = useSourceSwitch(video, resume, review, durationMs, bridge, {
+    mounted: link.kind === "ready",
+    stillPreview: stillShown,
+    renderRanges: shownRanges,
+  });
   const [playing, setPlaying] = useState(false);
   const [current, setCurrent] = useState(0);
   const [duration, setDuration] = useState(0);
   const [muted, setMuted] = useState(false);
-  const captions = useCaptions(bridge, video, link.kind === "ready");
+  const captions = useCaptions(bridge, video, link.kind === "ready", source.active);
   const poster = usePoster(takeId).url;
-  const shownRender = useRef(renderId);
   const controlsRef = useRef<HTMLDivElement>(null);
   const backButton = useRef<HTMLButtonElement>(null);
-  // A still covers the video: the transport is hidden and the video paused (S3S-T14).
-  const preview = usePreviewOverlay(bridge);
-  const stillShown = preview !== null;
-  const retrySwap = useRef<() => void>(() => undefined);
-  const [swapFailed, setSwapFailed] = useState(false);
-
-  const fetchLink = useCallback(() => {
-    void playLink(takeId).then(setLink);
-  }, [takeId]);
-
-  useEffect(() => {
-    let live = true;
-    // A new render (a background change finished, here or in another tab): fetch its link and
-    // swap the source without a reload, resuming where the viewer was and keeping paused or
-    // playing. The video element stays mounted, so only `src` changes.
-    const swapping = shownRender.current !== renderId;
-    shownRender.current = renderId;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const attempt = (retriesLeft: number) => {
-      void playLink(takeId).then((next) => {
-        if (!live) return;
-        const playing = video.current;
-        // A swap that cannot get its link leaves the working video alone: try again a few
-        // times, then say so with a button (the new link is applied only once it is in hand).
-        if (swapping && playing && next.kind !== "ready") {
-          if (retriesLeft > 0) timer = setTimeout(() => attempt(retriesLeft - 1), 3000);
-          else setSwapFailed(true);
-          return;
-        }
-        // Read the position and the state now, just before the source changes: the viewer may
-        // have played on, paused or pressed play while the link was being fetched.
-        if (swapping && playing) {
-          resumeAt.current = playing.currentTime;
-          resumePlaying.current = !playing.paused;
-          refreshed.current = false;
-        }
-        setSwapFailed(false);
-        setLink(next);
-      });
-    };
-    retrySwap.current = () => {
-      setSwapFailed(false);
-      attempt(0);
-    };
-    attempt(2);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [takeId, renderId]);
 
   const toggle = useCallback(() => {
     const v = video.current;
@@ -119,10 +89,11 @@ export function TakePlayer({
   // No shortcuts while a still covers the video: they would act on a video nobody can see.
   const onKeyDown = stillShown ? undefined : playerKeys;
   // The transcript panel seeks through the bridge (times on the trimmed video, in ms).
+  const { videoSecondsForRender } = source;
   useEffect(() => {
-    bridge.setSeek((ms) => seekTo(ms / 1000));
+    bridge.setSeek((ms) => seekTo(videoSecondsForRender(ms)));
     return () => bridge.setSeek(null);
-  }, [bridge, seekTo]);
+  }, [bridge, seekTo, videoSecondsForRender]);
 
   // Runs before the browser paints, while focus is still where it was: a control that is about
   // to be hidden hands focus to "Back to your video" so it is never left on a hidden button.
@@ -160,7 +131,7 @@ export function TakePlayer({
       <StageLetterbox className="relative">
         <video
           ref={video}
-          src={link.url}
+          src={source.originalUrl ?? link.url}
           poster={poster ?? undefined}
           playsInline
           preload="metadata"
@@ -170,39 +141,47 @@ export function TakePlayer({
           onPause={() => {
             setPlaying(false);
             // A pause while the new link is loading means: stay paused when it arrives.
-            resumePlaying.current = false;
+            resume.current.playing = false;
           }}
           onTimeUpdate={(e) => {
             setCurrent(e.currentTarget.currentTime);
-            bridge.setTime(e.currentTarget.currentTime * 1000);
+            source.publish();
           }}
           onLoadedMetadata={(e) => {
-            setDuration(e.currentTarget.duration);
-            if (resumeAt.current > 0) {
-              e.currentTarget.currentTime = Math.min(resumeAt.current, e.currentTarget.duration);
-              resumeAt.current = 0;
+            const v = e.currentTarget;
+            setDuration(v.duration);
+            if (resume.current.at > 0) {
+              v.currentTime = Math.min(resume.current.at, v.duration);
+              resume.current.at = 0;
             }
             // A replacement link loads paused; carry on if it was playing when the link failed.
-            if (resumePlaying.current) void e.currentTarget.play().catch(() => undefined);
-            resumePlaying.current = false;
+            if (resume.current.playing) void v.play().catch(() => undefined);
+            resume.current.playing = false;
+            resume.current.refreshed = false;
           }}
           onVolumeChange={(e) => setMuted(e.currentTarget.muted)}
           onError={() => {
+            const v = video.current;
             // Most likely the 1 hour link expired: get a new one once and carry on.
-            if (refreshed.current) return setLink({ kind: "error" });
-            refreshed.current = true;
-            resumeAt.current = video.current?.currentTime ?? 0;
-            resumePlaying.current = video.current?.paused === false;
-            fetchLink();
+            if (resume.current.refreshed) {
+              return source.active === "original"
+                ? review.original.fail()
+                : setLink({ kind: "error" });
+            }
+            resume.current.refreshed = true;
+            resume.current.at = v?.currentTime ?? 0;
+            resume.current.playing = v?.paused === false;
+            if (source.active === "original") void review.original.refresh();
+            else fetchLink();
           }}
         >
           {captions.version ? (
             <track
-              key={captions.version}
+              key={`${captions.version}.${source.active}`}
               kind="captions"
               srcLang="en"
               label="English"
-              src={`/api/takes/${takeId}/transcript/vtt?v=${encodeURIComponent(captions.version)}`}
+              src={`/api/takes/${takeId}/transcript/vtt?v=${encodeURIComponent(captions.version)}${source.active === "original" ? "&timeline=original" : ""}`}
             />
           ) : null}
         </video>
@@ -211,11 +190,7 @@ export function TakePlayer({
       {swapFailed ? (
         <p role="status" className="text-small text-stage-text-muted">
           A new version of this video is ready, but it didn&rsquo;t load.{" "}
-          <button
-            type="button"
-            onClick={() => retrySwap.current()}
-            className="underline underline-offset-2"
-          >
+          <button type="button" onClick={retrySwap} className="underline underline-offset-2">
             Try again
           </button>
         </p>
@@ -223,8 +198,13 @@ export function TakePlayer({
       {/* The status region is always in the page so the line is announced when it fills. */}
       <div className={`flex flex-wrap items-center gap-3 ${preview ? "" : "-mb-3"}`}>
         <p role="status" className="min-w-0 flex-1 text-small">
-          {preview ? previewStatusText(preview) : null}
+          {preview ? previewStatusText(preview) : playerNotice(source.active, review.originalState)}
         </p>
+        {!preview && review.originalState.kind === "failed" ? (
+          <Button variant="secondary" onClick={() => review.original.retry()}>
+            Try again
+          </Button>
+        ) : null}
         {preview ? (
           <Button ref={backButton} variant="secondary" onClick={() => bridge.back()}>
             Back to your video
@@ -234,12 +214,12 @@ export function TakePlayer({
       <div ref={controlsRef} hidden={stillShown} inert={stillShown}>
         <PlayerControls
           playing={playing}
-          current={current}
-          duration={duration}
+          current={source.displayTime(current)}
+          duration={source.displayDuration(duration)}
           muted={muted}
           captions={captions.version ? { on: captions.on, onToggle: captions.toggle } : null}
           onToggle={toggle}
-          onSeek={seekTo}
+          onSeek={(seconds) => seekTo(source.videoTime(seconds))}
           onMute={() => {
             if (video.current) video.current.muted = !video.current.muted;
           }}

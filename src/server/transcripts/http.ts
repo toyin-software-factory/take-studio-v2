@@ -10,7 +10,7 @@ export type TranscriptHttpDeps = Pick<TakeHttpDeps, "getCreator" | "allowedOrigi
 
 /**
  * GET /api/takes/{id}/transcript/{format} (spec 0007, AC-4, AC-5, AC-10): the transcript as
- * `txt`, `srt` or `vtt`, on the trimmed timeline. 401 without a session; 404 (the take's own
+ * `txt`, `srt` or `vtt`, on the trimmed timeline (`?timeline=original`: the original's own timeline, for the cut review preview). 401 without a session; 404 (the take's own
  * not found body) for another creator's take, a take with no transcript, or a transcript with
  * no kept words; 422 for any other format. Never cached, because it holds personal data.
  */
@@ -22,7 +22,9 @@ export async function handleTranscriptDownload(
 ): Promise<Response> {
   const creator = await guard(request, deps, { checkOrigin: false });
   if (creator instanceof Response) return creator;
-  const view = await getTrimmedForCreator(creator.db, creator.creatorId, takeId);
+  const timeline =
+    new URL(request.url).searchParams.get("timeline") === "original" ? "original" : "render";
+  const view = await getTrimmedForCreator(creator.db, creator.creatorId, takeId, timeline);
   if (!view.ok) return errorResponse("not_found");
 
   const parsed = downloadFormatSchema.safeParse(format);

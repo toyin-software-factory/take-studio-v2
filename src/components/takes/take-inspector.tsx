@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TakeDetail } from "@/lib/take-api";
 import { BackgroundChange } from "./background-change";
 import type { PlayerBridge } from "./player-bridge";
-import type { PollResult } from "./use-poll";
+import type { CutReview } from "./use-cut-review";
 import { TakeDetails } from "./take-details";
 import { TakeExport } from "./take-export";
 import { TranscriptPanel } from "./transcript-panel";
@@ -22,9 +22,7 @@ type InspectorProps = {
   readonly takeEmails: boolean;
   /** The email switch saved a new value: the page keeps it across the not ready to ready swap. */
   readonly onEmailsSaved: (value: boolean) => void;
-  readonly onStarted: (target: string | null) => void;
-  readonly onUncertain: () => Promise<PollResult>;
-  readonly onStale: () => void;
+  readonly review: CutReview;
 };
 
 export function TakeInspector(props: InspectorProps) {
@@ -38,15 +36,7 @@ export function TakeInspector(props: InspectorProps) {
 }
 
 /** The four tabs. Only a ready or expired take gets here, so the transcript is read once, here. */
-function ReadyInspector({
-  detail,
-  bridge,
-  takeEmails,
-  onEmailsSaved,
-  onStarted,
-  onUncertain,
-  onStale,
-}: InspectorProps) {
+function ReadyInspector({ detail, bridge, takeEmails, onEmailsSaved, review }: InspectorProps) {
   const { take } = detail;
   const transcript = useTranscript(take.id);
   const pane = "mt-4 outline-hidden data-[state=inactive]:hidden";
@@ -71,13 +61,7 @@ function ReadyInspector({
           <TakeExport detail={detail} transcript={transcript} />
         </TabsContent>
         <TabsContent value="background" forceMount className={pane}>
-          <BackgroundChange
-            detail={detail}
-            bridge={bridge}
-            onStarted={onStarted}
-            onUncertain={onUncertain}
-            onStale={onStale}
-          />
+          <BackgroundChange detail={detail} bridge={bridge} review={review} />
         </TabsContent>
         <TabsContent value="transcript" forceMount className={pane}>
           <TranscriptPanel takeId={take.id} bridge={bridge} transcript={transcript} />

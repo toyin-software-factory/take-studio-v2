@@ -214,19 +214,13 @@ describe("pollDelay keeps the idle interval (S3S-T13)", () => {
 });
 
 describe("previewStatusText (S3S-T14)", () => {
-  it("says a still image is not a video and names the button that renders it", () => {
-    expect(previewStatusText({ kind: "image", action: "Use this background" })).toBe(
-      "Still preview, not a video. Press “Use this background” to render it.",
+  it("says a still image is not a video and names Render", () => {
+    expect(previewStatusText({ kind: "image" })).toBe(
+      "Still preview, not a video. Press “Render” to make it.",
     );
-    expect(previewStatusText({ kind: "image", action: "Keep original" })).toContain(
-      "“Keep original”",
-    );
-  });
-  it("names no button when the button is off for this choice", () => {
-    expect(previewStatusText({ kind: "image", action: null })).toBe("Still preview, not a video.");
   });
   it("says the video is paused while the still is made", () => {
-    expect(previewStatusText({ kind: "making", action: "Use this background" })).toBe(
+    expect(previewStatusText({ kind: "making" })).toBe(
       "Making a still preview. Your video is paused.",
     );
   });

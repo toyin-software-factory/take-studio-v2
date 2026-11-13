@@ -244,19 +244,10 @@ export function keepPolling(detail: {
 }
 
 /**
- * The line on the stage while a still preview covers the video (S3S-T14): it says the picture is
- * a still, not a video, and which button renders it. `action` is the label of the section's
- * main button ("Use this background", "Keep original" or "Try again"), or null when that button
- * is off for this choice.
+ * The line on the stage while a still preview covers the video (S3S-T14, spec 0011): it says the
+ * picture is a still, not a video, and that the pending bar's Render makes it.
  */
-export function previewStatusText(preview: {
-  readonly kind: "making" | "image";
-  readonly action: string | null;
-}): string {
+export function previewStatusText(preview: { readonly kind: "making" | "image" }): string {
   if (preview.kind === "making") return "Making a still preview. Your video is paused.";
-  // No action: the button is not available for this choice (a real background on a take with no
-  // green screen), so the line names no button.
-  return preview.action
-    ? `Still preview, not a video. Press \u201c${preview.action}\u201d to render it.`
-    : "Still preview, not a video.";
+  return "Still preview, not a video. Press \u201cRender\u201d to make it.";
 }

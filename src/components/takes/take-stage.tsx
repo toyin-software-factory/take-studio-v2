@@ -9,6 +9,9 @@ import type { TakeDetail } from "@/lib/take-api";
 import { expiryNote, failureMessage } from "@/lib/take-display";
 import type { PlayerBridge } from "./player-bridge";
 import { ProcessingSteps } from "./processing-steps";
+import { CutTimeline } from "./cut-timeline";
+import { PendingBar } from "./pending-bar";
+import type { CutReview } from "./use-cut-review";
 import { TakePlayer } from "./take-player";
 import { useRetry } from "./use-retry";
 
@@ -58,6 +61,35 @@ function Failed({
   );
 }
 
+/** The player with the cut timeline and the pending bar under it (spec 0011). */
+function ReadyStage({
+  detail,
+  bridge,
+  review,
+}: {
+  readonly detail: TakeDetail;
+  readonly bridge: PlayerBridge;
+  readonly review: CutReview;
+}) {
+  const { take } = detail;
+  const durationMs = take.durationMs;
+  return (
+    <div className="flex flex-col gap-3">
+      <TakePlayer
+        takeId={take.id}
+        renderId={detail.latestRender?.id ?? null}
+        bridge={bridge}
+        review={review}
+        durationMs={durationMs ?? 0}
+      />
+      {durationMs ? (
+        <CutTimeline takeId={take.id} durationMs={durationMs} review={review} bridge={bridge} />
+      ) : null}
+      <PendingBar review={review} />
+    </div>
+  );
+}
+
 /**
  * The dark stage of the take page (AC-8 to AC-10; design.md light shell, dark stage): step
  * progress while uploading or processing, the player when ready, the failure with its action,
@@ -66,10 +98,12 @@ function Failed({
 export function TakeStage({
   detail,
   bridge,
+  review,
   onRetried,
 }: {
   readonly detail: TakeDetail;
   readonly bridge: PlayerBridge;
+  readonly review: CutReview;
   readonly onRetried: () => void;
 }) {
   const { take, latestJob } = detail;
@@ -84,7 +118,7 @@ export function TakeStage({
           <p className="text-stage-text-muted">Videos are kept for 30 days.</p>
         </StageMessage>
       ) : take.status === "ready" ? (
-        <TakePlayer takeId={take.id} renderId={detail.latestRender?.id ?? null} bridge={bridge} />
+        <ReadyStage detail={detail} bridge={bridge} review={review} />
       ) : take.status === "failed" ? (
         <Failed detail={detail} onRetried={onRetried} />
       ) : (

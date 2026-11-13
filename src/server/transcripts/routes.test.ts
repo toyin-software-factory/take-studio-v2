@@ -91,9 +91,9 @@ async function seed(
   return t;
 }
 
-const get = (creatorId: string | null, takeId: string, format: string) =>
+const get = (creatorId: string | null, takeId: string, format: string, query = "") =>
   handleTranscriptDownload(
-    new Request(`${ORIGIN}/api/takes/${takeId}/transcript/${format}`),
+    new Request(`${ORIGIN}/api/takes/${takeId}/transcript/${format}${query}`),
     takeId,
     format,
     deps(creatorId),
@@ -139,6 +139,15 @@ describe("GET /api/takes/{id}/transcript/{format}", () => {
       "WEBVTT\n\n00:00:00.500 --> 00:00:02.800\nBefore the pause.\n\n" +
         "00:00:03.080 --> 00:00:04.080\nAfter it.\n\n",
     );
+  });
+
+  it("sends cues on the original's own timeline with ?timeline=original (the cut review preview)", async () => {
+    const creator = await createCreator(db);
+    const t = await seed(creator.id);
+    const res = await get(creator.id, t.id, "vtt", "?timeline=original");
+    expect(res.status).toBe(200);
+    // Nothing is taken out: "After" stays at its recorded 5.6 s.
+    expect(await res.text()).toContain("00:00:05.600 -->");
   });
 
   it("keeps the whole transcript when there is no render (a take handed back uncut)", async () => {

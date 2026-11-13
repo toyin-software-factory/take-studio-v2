@@ -14,7 +14,7 @@ describe("player bridge preview and back (S3S-T14)", () => {
     expect(back).toHaveBeenCalledTimes(1);
   });
 
-  it("tells listeners when the action in the stage line changes, not only the picture", () => {
+  it("tells listeners when the picture changes, not on an identical preview", () => {
     const bridge = createPlayerBridge();
     const listener = vi.fn();
     bridge.subscribe(listener);
@@ -22,12 +22,11 @@ describe("player bridge preview and back (S3S-T14)", () => {
       kind: "image",
       label: "Calm studio",
       url: "u",
-      action: "Use this background",
     } as const;
     bridge.setPreview(base);
     bridge.setPreview({ ...base });
     expect(listener).toHaveBeenCalledTimes(1);
-    bridge.setPreview({ ...base, action: "Keep original" });
+    bridge.setPreview({ ...base, url: "v" });
     expect(listener).toHaveBeenCalledTimes(2);
     bridge.setPreview(null);
     expect(bridge.getPreview()).toBeNull();
