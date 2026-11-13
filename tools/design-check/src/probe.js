@@ -294,7 +294,12 @@ export function probeElements() {
       el.matches("img,video,canvas,svg,picture") ||
       !!el.querySelector("img,video,canvas,picture") ||
       bgImage(el) ||
-      [...el.querySelectorAll("*")].slice(0, 400).some(bgImage);
+      (() => {
+        // A section too big to scan in full counts as having media, so it gets the imagery
+        // question instead of passing on facts alone.
+        const all = el.querySelectorAll("*");
+        return all.length > 5000 || [...all].some(bgImage);
+      })();
     out.push({
       label,
       tag,
