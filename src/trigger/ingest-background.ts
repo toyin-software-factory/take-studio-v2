@@ -24,7 +24,7 @@ import { deadlineMs, runWithDeadline } from "@/lib/deadline";
 import { parseJobEnv } from "@/lib/env";
 import { type R2, createR2 } from "@/lib/r2";
 import { downloadToFile } from "@/lib/r2-file-upload";
-import { MediaToolError, probeImageFile, runFfmpeg } from "./media";
+import { MediaToolError, imageInputOfFile, probeImageFile, runFfmpeg } from "./media";
 
 /**
  * `ingest-background` (spec 0008, Pipeline step 5; AC-8 to AC-10). Dispatched by `/complete`
@@ -67,7 +67,12 @@ export type IngestOutcome =
   | { readonly outcome: "gone" };
 
 /** The ffmpeg graph: first frame, transparency on black, fitted inside 3840x2160, plus the thumbnail. */
-export function convertArgs(source: string, dir: string, facts: ImageFacts): string[] {
+export function convertArgs(
+  source: string,
+  dir: string,
+  facts: ImageFacts,
+  input: readonly string[],
+): string[] {
   const display = displaySize(facts);
   const { maxWidth, maxHeight, thumbWidth, thumbHeight } = BACKGROUND_IMAGE;
   const graph = [
@@ -82,6 +87,7 @@ export function convertArgs(source: string, dir: string, facts: ImageFacts): str
   return [
     "-y",
     "-noautorotate",
+    ...input,
     "-i",
     source,
     "-filter_complex",
@@ -168,21 +174,23 @@ export async function ingestBackground(
   return { outcome: "ready" };
 }
 
+async function readHeadOf(path: string): Promise<Uint8Array> {
+  const handle = await open(path, "r");
+  try {
+    const buffer = new Uint8Array(64);
+    const { bytesRead } = await handle.read(buffer, 0, 64, 0);
+    return buffer.subarray(0, bytesRead);
+  } finally {
+    await handle.close();
+  }
+}
+
 export function realIo(r2: R2): IngestIo {
   return {
     head: (key) => r2.headObject(key),
     presignGet: (key) => r2.presignGet(key, { expiresSeconds: 3600 }),
     download: (url, path, signal) => downloadToFile(url, path, signal),
-    readHead: async (path) => {
-      const handle = await open(path, "r");
-      try {
-        const buffer = new Uint8Array(64);
-        const { bytesRead } = await handle.read(buffer, 0, 64, 0);
-        return buffer.subarray(0, bytesRead);
-      } finally {
-        await handle.close();
-      }
-    },
+    readHead: readHeadOf,
     probe: async (path, signal) => {
       try {
         return await probeImageFile(path, BACKGROUND_IMAGE.maxPixels, signal);
@@ -193,7 +201,10 @@ export function realIo(r2: R2): IngestIo {
       }
     },
     convert: async (source, dir, facts, signal) => {
-      await runFfmpeg(convertArgs(source, dir, facts), { timeoutMs: 120_000, signal });
+      // The probe already refused anything that is not PNG, JPEG or WebP, so the pin is set.
+      const input = await imageInputOfFile(source);
+      if (!input) throw new MediaToolError("ffmpeg", null, false);
+      await runFfmpeg(convertArgs(source, dir, facts, input), { timeoutMs: 120_000, signal });
     },
     put: async (key, path, contentType, signal) => {
       const bytes = await readFile(path);

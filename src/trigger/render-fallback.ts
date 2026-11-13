@@ -1,3 +1,4 @@
+import { ORIGINAL_INPUT, STORED_IMAGE_INPUT } from "@/lib/ffmpeg-input";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
@@ -54,11 +55,20 @@ export async function encodeRender(
   await runFfmpeg(
     [
       "-y",
+      ...ORIGINAL_INPUT,
       "-i",
       plan.source,
       // The background image, looped at the output frame rate, is input 1 of the key graph.
       ...(background
-        ? ["-loop", "1", "-framerate", outputFps(facts.fps), "-i", background.imagePath]
+        ? [
+            "-loop",
+            "1",
+            "-framerate",
+            outputFps(facts.fps),
+            ...STORED_IMAGE_INPUT,
+            "-i",
+            background.imagePath,
+          ]
         : []),
       "-filter_complex_script",
       script,
@@ -106,7 +116,7 @@ export async function outputIsOnlyBackground(
   signal?: AbortSignal,
 ): Promise<boolean> {
   const gate = gateSize(input.width, input.height);
-  const seek = ["-ss", (input.durationMs / 2000).toFixed(3)];
+  const seek = ["-ss", (input.durationMs / 2000).toFixed(3), ...ORIGINAL_INPUT];
   const read = async (args: string[]) => {
     const bytes = await runFfmpegBytes(args, { timeoutMs: 60_000, signal });
     if (bytes.length !== gate.width * gate.height * 3) {
@@ -116,7 +126,14 @@ export async function outputIsOnlyBackground(
   };
   const [frame, backdrop] = await Promise.all([
     read(gateReadArgs(input.output, gate, null, seek)),
-    read(gateReadArgs(input.imagePath, gate, { width: input.width, height: input.height })),
+    read(
+      gateReadArgs(
+        input.imagePath,
+        gate,
+        { width: input.width, height: input.height },
+        STORED_IMAGE_INPUT,
+      ),
+    ),
   ]);
   return isOnlyBackground(centreDifferenceShare(frame, backdrop));
 }

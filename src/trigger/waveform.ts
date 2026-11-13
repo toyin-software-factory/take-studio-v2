@@ -1,3 +1,4 @@
+import { ORIGINAL_INPUT } from "@/lib/ffmpeg-input";
 import { logger } from "@trigger.dev/sdk";
 import type { Executor } from "@/db/types";
 import { whileJobActive } from "@/db/data/jobs";
@@ -10,6 +11,7 @@ export const waveformArgs = (source: string): readonly string[] => [
   "-hide_banner",
   "-v",
   "error",
+  ...ORIGINAL_INPUT,
   "-i",
   source,
   "-vn",
