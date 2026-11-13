@@ -64,6 +64,13 @@
       "when": 1794530889076,
       "tag": "0008_change_job",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1794570386306,
+      "tag": "0009_transcript_edits",
+      "breakpoints": true
     }
   ]
 }

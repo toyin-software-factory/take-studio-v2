@@ -1,5 +1,5 @@
 import { jsonb, numeric, pgTable, text, unique, uuid } from "drizzle-orm/pg-core";
-import type { TranscriptWord } from "@/lib/transcript-rules";
+import type { TranscriptEdit, TranscriptWord } from "@/lib/transcript-rules";
 import { timestamps } from "./helpers";
 import { take } from "./take";
 
@@ -22,6 +22,8 @@ export const transcript = pgTable(
     /** Frame rate of the original (from the task's own probe), so captions use the render's frame aligned cuts. */
     sourceFps: numeric("source_fps", { mode: "number" }).notNull(),
     model: text("model").notNull(),
+    /** AI word fixes (spec 0012): at most one per word index; `words` and `text` are never rewritten. */
+    edits: jsonb("edits").$type<readonly TranscriptEdit[]>().notNull().default([]),
     ...timestamps,
   },
   (t) => [unique("transcript_take_unique").on(t.takeId)],

@@ -22,6 +22,7 @@ const word = (w: string, startMs: number, endMs: number, extra: Partial<Transcri
 });
 const base = { durationMs: 20_000, sourceFps: 30 } as const;
 const trimmedWord = (w: string, startMs: number, endMs: number, filler = false): TrimmedWord => ({
+  index: 0,
   w,
   startMs,
   endMs,
@@ -41,8 +42,8 @@ describe("toTrimmedTranscript", () => {
       {
         startMs: 500,
         words: [
-          { w: "Hello", startMs: 500, endMs: 900, filler: false },
-          { w: "there.", startMs: 900, endMs: 1400, filler: false },
+          { index: 0, w: "Hello", startMs: 500, endMs: 900, filler: false },
+          { index: 1, w: "there.", startMs: 900, endMs: 1400, filler: false },
         ],
       },
     ]);
@@ -82,7 +83,13 @@ describe("toTrimmedTranscript", () => {
       removedRanges: [{ startMs: 5000, endMs: 7000 }],
     });
     // Midpoint 4950 is kept; the end is cut off at 5000 and not stretched across the cut.
-    expect(out[0]?.words[0]).toEqual({ w: "edge", startMs: 4700, endMs: 5000, filler: false });
+    expect(out[0]?.words[0]).toEqual({
+      index: 0,
+      w: "edge",
+      startMs: 4700,
+      endMs: 5000,
+      filler: false,
+    });
   });
 
   it("keeps every end after its start and never goes backwards", () => {

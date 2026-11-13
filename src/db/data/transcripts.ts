@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { runTx } from "../tx";
-import type { TranscriptWord } from "@/lib/transcript-rules";
+import type { TranscriptEdit, TranscriptWord } from "@/lib/transcript-rules";
 import { ACTIVE_JOB_STATUSES } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
 import { processingJob, take, transcript } from "../schema";
@@ -19,6 +19,21 @@ export async function getTranscriptByTake(
 ): Promise<Transcript | null> {
   const [row] = await db.select().from(transcript).where(eq(transcript.takeId, takeId));
   return row ?? null;
+}
+
+/**
+ * Sets the take's AI fixes (spec 0012: `[]` on fallback), bumping `updated_at` so the caption
+ * track version changes. No transcript row is a no op. Personal data: IDs only in logs.
+ */
+export async function setTranscriptEdits(
+  db: Executor,
+  takeId: string,
+  edits: readonly TranscriptEdit[],
+): Promise<void> {
+  await db
+    .update(transcript)
+    .set({ edits, updatedAt: new Date() })
+    .where(eq(transcript.takeId, takeId));
 }
 
 export type TranscriptInput = {
@@ -53,7 +68,8 @@ export async function upsertTranscript(
       .values({ id: crypto.randomUUID(), takeId: input.takeId, ...values })
       .onConflictDoUpdate({
         target: transcript.takeId,
-        set: { ...values, updatedAt: new Date() },
+        // A new transcript replaces the words, so any earlier fixes no longer apply.
+        set: { ...values, edits: [], updatedAt: new Date() },
       })
       .returning();
     return row ? ok(row) : err("take_gone");

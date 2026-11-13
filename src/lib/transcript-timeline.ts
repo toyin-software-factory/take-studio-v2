@@ -1,4 +1,4 @@
-import type { TranscriptWord } from "./transcript-rules";
+import { type TranscriptEdit, type TranscriptWord, editedWords } from "./transcript-rules";
 import { alignToFrames, keepRanges, type Range } from "./trim";
 
 /**
@@ -10,6 +10,8 @@ import { alignToFrames, keepRanges, type Range } from "./trim";
 
 /** A kept word on the trimmed timeline. */
 export type TrimmedWord = {
+  /** Index into `transcript.words` (spec 0012): matches a visible word to its fix. */
+  readonly index: number;
   readonly w: string;
   readonly startMs: number;
   readonly endMs: number;
@@ -41,6 +43,8 @@ export type TimelineOptions = {
   readonly durationMs: number;
   /** `transcript.source_fps`; null when unknown (the render then assumes 30). */
   readonly sourceFps: number | null;
+  /** AI fixes (spec 0012): the shown word text is `editedWords(words, edits)`. */
+  readonly edits?: readonly TranscriptEdit[];
 };
 
 /**
@@ -50,10 +54,11 @@ export type TimelineOptions = {
  * and a paragraph with no kept words disappears.
  */
 export function toTrimmedTranscript(
-  words: readonly TranscriptWord[],
+  storedWords: readonly TranscriptWord[],
   options: TimelineOptions,
 ): TrimmedParagraph[] {
   const { removedRanges, durationMs, sourceFps } = options;
+  const words = editedWords(storedWords, options.edits ?? []);
   if (!(durationMs > 0)) return [];
   const keep = alignToFrames(keepRanges(removedRanges, durationMs), sourceFps);
   if (keep.length === 0) return [];
@@ -91,7 +96,7 @@ export function toTrimmedTranscript(
     const startMs = Math.max(Math.round(offset + clamp(word.startMs) - range.startMs), lastStart);
     const endMs = Math.max(Math.round(offset + clamp(word.endMs) - range.startMs), startMs + 1);
     lastStart = startMs;
-    groups[groupOf[index] ?? 0]?.push({ w: word.w, startMs, endMs, filler: word.filler });
+    groups[groupOf[index] ?? 0]?.push({ index, w: word.w, startMs, endMs, filler: word.filler });
   }
 
   return groups.flatMap((kept) => {
