@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { type TranscriptViewData, apiMessage, transcriptViewSchema } from "@/lib/take-api";
 import { POLL } from "@/lib/take-display";
+import { withEditUndone } from "@/lib/transcript-fixes";
 import { callApi } from "./browser-io";
 import { type PollResult, usePoll } from "./use-poll";
 
@@ -95,6 +96,36 @@ export function useTranscript(takeId: string) {
     }
   }, [takeId, load]);
 
+  const [fixError, setFixError] = useState<string | null>(null);
+  const [fixing, setFixing] = useState<number | null>(null);
+
+  /** Undo (true) or redo (false) one fix; the view changes only when the server says yes. */
+  const setEditUndone = useCallback(
+    async (index: number, undone: boolean): Promise<boolean> => {
+      setFixing(index);
+      setFixError(null);
+      try {
+        const reply = await callApi(`/api/takes/${takeId}/transcript/edits/${index}`, "PATCH", {
+          undone,
+        });
+        const data = reply.data as { version?: unknown } | null;
+        if (reply.status !== 200) {
+          setFixError(apiMessage(reply.data, "That change didn't save. Please try again."));
+          return false;
+        }
+        const version = typeof data?.version === "string" ? data.version : undefined;
+        setView((v) => (v ? withEditUndone(v, index, undone, version) : v));
+        return true;
+      } catch {
+        setFixError("That change didn't save. Check your connection and try again.");
+        return false;
+      } finally {
+        setFixing(null);
+      }
+    },
+    [takeId],
+  );
+
   usePoll(
     load,
     POLL.takeMs,
@@ -112,5 +143,8 @@ export function useTranscript(takeId: string) {
     starting,
     startError: startError?.message ?? null,
     make,
+    setEditUndone,
+    fixError,
+    fixing,
   };
 }

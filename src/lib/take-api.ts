@@ -125,6 +125,15 @@ export function cardFromDetail(detail: TakeDetail): TakeCard {
   };
 }
 
+/** One transcript fix (spec 0012): the word index, the old and new text, the reason, undone or not. */
+export const transcriptEditSchema = z.object({
+  index: z.number(),
+  old: z.string(),
+  new: z.string(),
+  reason: z.string(),
+  undone: z.boolean(),
+});
+
 /** GET /api/takes/{id}/transcript (spec 0007): state, optional skip reason, trimmed paragraphs and version. */
 export const transcriptViewSchema = z.object({
   state: z.enum(["none", "making", "ready", "skipped", "failed"]),
@@ -136,10 +145,17 @@ export const transcriptViewSchema = z.object({
       z.object({
         startMs: z.number(),
         words: z.array(
-          z.object({ w: z.string(), startMs: z.number(), endMs: z.number(), filler: z.boolean() }),
+          z.object({
+            index: z.number(),
+            w: z.string(),
+            startMs: z.number(),
+            endMs: z.number(),
+            filler: z.boolean(),
+          }),
         ),
       }),
     )
     .optional(),
+  edits: z.array(transcriptEditSchema).default([]),
 });
 export type TranscriptViewData = z.infer<typeof transcriptViewSchema>;

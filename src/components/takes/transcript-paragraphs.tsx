@@ -9,15 +9,19 @@ type Paragraph = NonNullable<TranscriptViewData["paragraphs"]>[number];
  * The words of a ready transcript (spec 0007, AC-2, AC-3, AC-12; design.md Transcript panel).
  * Each paragraph has a mono `m:ss` button (the one tab stop per paragraph, so a long transcript
  * stays usable by keyboard); clicking a word seeks too, for pointer users. Filler words are
- * underlined dotted; the paragraph being played has `aria-current`. Times are already on the
+ * underlined dotted, words the AI fixed solid (spec 0012, `fixed` holds their indexes; the Fixes
+ * list names each one); the paragraph being played has `aria-current`. Times are already on the
  * trimmed video.
  */
 export function TranscriptParagraphs({
   paragraphs,
   current,
   onSeek,
+  fixed,
 }: {
   readonly paragraphs: readonly Paragraph[];
+  /** Indexes of words with a fix that is not undone. */
+  readonly fixed: ReadonlySet<number>;
   readonly current: number | null;
   readonly onSeek: (ms: number) => void;
 }) {
@@ -55,8 +59,13 @@ export function TranscriptParagraphs({
                   {i > 0 ? " " : null}
                   <span
                     data-start={word.startMs}
+                    data-fixed={fixed.has(word.index) ? "true" : undefined}
                     className={`cursor-pointer rounded-sm hover:bg-hover-surface ${
-                      word.filler ? "underline decoration-dotted underline-offset-4" : ""
+                      fixed.has(word.index)
+                        ? "underline decoration-solid underline-offset-4"
+                        : word.filler
+                          ? "underline decoration-dotted underline-offset-4"
+                          : ""
                     }`}
                   >
                     {word.w}
