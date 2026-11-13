@@ -22,7 +22,7 @@ export type ShellUser = {
   readonly email: string;
 };
 
-/** Signs out, then refreshes so server components see the signed out state. */
+/** Signs out, goes to the public homepage and refreshes so server components see the signed out state. */
 function useSignOut() {
   const router = useRouter();
   return async () => {
@@ -34,7 +34,11 @@ function useSignOut() {
     try {
       const { error } = await authClient.signOut();
       if (error) failed();
-      else router.refresh();
+      else {
+        // /library signed out goes to /sign-in, so land on the public page first.
+        router.replace("/");
+        router.refresh();
+      }
     } catch {
       failed();
     }
