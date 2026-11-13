@@ -22,9 +22,9 @@ export function Logo() {
  */
 export function HomeNav() {
   return (
-    <header className="h-nav" id="nav">
+    <header className="h-nav" id="nav" data-check="header">
       <Logo />
-      <nav className="h-nav-links" aria-label="Main">
+      <nav className="h-nav-links" aria-label="Main" data-check="nav">
         {NAV_LINKS.map((l) => (
           <a key={l.href} className="h-link" href={l.href}>
             {l.label}
