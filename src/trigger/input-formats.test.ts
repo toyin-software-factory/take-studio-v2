@@ -16,6 +16,7 @@ describeWithFfmpeg("input formats (RF3-T04)", () => {
   let video: string;
   let script: string;
   let textAsImage: string;
+  let realPng: string;
   beforeAll(async () => {
     dir = await mkdtemp(join(tmpdir(), "input-formats-"));
     video = join(dir, "real.mp4");
@@ -36,6 +37,13 @@ describeWithFfmpeg("input formats (RF3-T04)", () => {
       { encoding: "utf8" },
     );
     if (made.status !== 0) throw new Error(`ffmpeg failed: ${made.stderr}`);
+    realPng = join(dir, "real.png");
+    const still = spawnSync(
+      "ffmpeg",
+      ["-y", "-loglevel", "error", "-i", video, "-frames:v", "1", realPng],
+      { encoding: "utf8" },
+    );
+    if (still.status !== 0) throw new Error(`ffmpeg failed: ${still.stderr}`);
     script = join(dir, "sneaky.mp4");
     await writeFile(script, `ffconcat version 1.0\nfile '${video}'\n`);
     textAsImage = join(dir, "sneaky.png");
@@ -74,15 +82,13 @@ describeWithFfmpeg("input formats (RF3-T04)", () => {
 
   it("probeImageFile refuses a text file named .png and reads a real PNG", async () => {
     expect(await probeImageFile(textAsImage, 40_000_000)).toBeNull();
-    const png = join(dir, "real.png");
-    spawnSync("ffmpeg", ["-y", "-loglevel", "error", "-i", video, "-frames:v", "1", png]);
-    const facts = await probeImageFile(png, 40_000_000);
+    const facts = await probeImageFile(realPng, 40_000_000);
     expect(facts).toMatchObject({ width: 64, height: 48, format: "png_pipe" });
   });
 
   it("refuses a PNG whose chunks before the image data exceed the scan limit", async () => {
     const png = join(dir, "text-heavy.png");
-    const real = await readFile(join(dir, "real.png"));
+    const real = await readFile(realPng);
     const text = Buffer.alloc(12 + 1);
     text.writeUInt32BE(1, 0);
     text.write("tEXt", 4, "latin1");
