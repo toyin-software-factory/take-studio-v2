@@ -84,6 +84,26 @@ jobs:
             has "$name" || echo "::warning::Optional Worker secret $name is not set on take-studio; the site runs without it."
           done
 
+          # Trigger.dev Prod holds the job secrets (the job, usage and email env schemas in src/lib/env.ts,
+          # plus the Deepgram key; a test keeps this list equal to them). The management API answers with
+          # name and value, so the response stays in a variable and only names are ever read or printed.
+          ref=$(sed -n 's/^ *project: "\(proj_[a-z0-9]*\)".*/\1/p' trigger.config.ts)
+          [ -n "$ref" ] || skip "No Trigger.dev project ref in trigger.config.ts."
+          if ! vars=$(curl -fsS --max-time 30 -H "Authorization: Bearer $TRIGGER_ACCESS_TOKEN" "https://api.trigger.dev/api/v1/projects/$ref/envvars/prod" 2>/dev/null); then
+            skip "Trigger.dev Prod env vars can't be listed (check TRIGGER_ACCESS_TOKEN and that the prod environment exists)."
+          fi
+          trigger_required="R2_ACCOUNT_ID R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_BUCKET DATABASE_URL USAGE_HASH_SECRET BETTER_AUTH_URL RESEND_API_KEY EMAIL_FROM EMAIL_LINK_SECRET DEEPGRAM_API_KEY"
+          trigger_optional="SENTRY_DSN"
+          has_trigger() { echo "$vars" | jq -e --arg n "$1" 'any(.[]; .name == $n and ((.value // "") != ""))' > /dev/null; }
+          missing=""
+          for name in $trigger_required; do
+            has_trigger "$name" || missing="$missing $name"
+          done
+          [ -z "$missing" ] || skip "Missing Trigger.dev Prod env vars:$missing"
+          for name in $trigger_optional; do
+            has_trigger "$name" || echo "::warning::Optional Trigger.dev Prod env var $name is not set; the jobs run without it."
+          done
+
           echo "ready=true" >> "$GITHUB_OUTPUT"
 
   deploy:
