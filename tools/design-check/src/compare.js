@@ -258,8 +258,26 @@ export function compareElements(D, B, vp, tol) {
         ),
       );
     }
-    for (const p of ["marginTop", "marginBottom", "gap", "columnGap"])
+    for (const p of ["marginTop", "marginBottom"])
       cmpNum(out, vp, label, kebab(p), s[p], t[p], tol.spacing);
+    // Gaps only matter on flex and grid containers, and "normal" there means 0. When row and
+    // column gaps differ the same way, that is one finding, not two.
+    const gaps = (o) =>
+      /flex|grid/.test(o.display || "") ? [num(o.gap) || 0, num(o.columnGap) || 0] : [0, 0];
+    const [sr, sc] = gaps(s),
+      [tr, tc] = gaps(t);
+    const rowOff = Math.abs(sr - tr) > tol.spacing,
+      colOff = Math.abs(sc - tc) > tol.spacing;
+    if (rowOff && colOff && sr === sc && tr === tc)
+      out.push(finding(vp, label, "gap", sr, tr, `gap ${fmt(tr)}, design ${fmt(sr)}`));
+    else {
+      if (rowOff)
+        out.push(finding(vp, label, "row-gap", sr, tr, `row-gap ${fmt(tr)}, design ${fmt(sr)}`));
+      if (colOff)
+        out.push(
+          finding(vp, label, "column-gap", sc, tc, `column-gap ${fmt(tc)}, design ${fmt(sc)}`),
+        );
+    }
     cmpNum(out, vp, label, "border-radius", s.borderRadius, t.borderRadius, tol.radius);
     cmpNum(out, vp, label, "border-width", s.borderWidth, t.borderWidth, 0.5);
     if (s.borderColor && t.borderColor)
@@ -279,7 +297,16 @@ export function compareElements(D, B, vp, tol) {
       );
     cmpNum(out, vp, label, "opacity", s.opacity, t.opacity, tol.opacity, "");
     // Transforms move and resize what is drawn without changing the layout box.
-    if (s.rendered && t.rendered && "sx" in s.rendered && "sx" in t.rendered) {
+    // Elements that never stopped moving (a marquee, a timer loop) have no resting position to
+    // compare; their motion is compared separately.
+    if (
+      !d.moving &&
+      !b.moving &&
+      s.rendered &&
+      t.rendered &&
+      "sx" in s.rendered &&
+      "sx" in t.rendered
+    ) {
       const a = s.rendered,
         b = t.rendered;
       if (
@@ -444,6 +471,86 @@ const EASE = {
   none: "cubic-bezier(0, 0, 1, 1)",
 };
 const normEase = (e) => (e ? EASE[e] || String(e).replace(/\s+/g, " ").trim() : e);
+
+// GSAP's named eases as their standard cubic-bezier equivalents, so most easing comparisons
+// can be settled in code instead of going to the judge.
+const GSAP_FAMILY = {
+  power1: "quad",
+  quad: "quad",
+  power2: "cubic",
+  cubic: "cubic",
+  power3: "quart",
+  quart: "quart",
+  power4: "quint",
+  quint: "quint",
+  strong: "quint",
+  sine: "sine",
+  expo: "expo",
+  circ: "circ",
+};
+const GSAP_CURVES = {
+  quad: {
+    in: [0.55, 0.085, 0.68, 0.53],
+    out: [0.25, 0.46, 0.45, 0.94],
+    inOut: [0.455, 0.03, 0.515, 0.955],
+  },
+  cubic: {
+    in: [0.55, 0.055, 0.675, 0.19],
+    out: [0.215, 0.61, 0.355, 1],
+    inOut: [0.645, 0.045, 0.355, 1],
+  },
+  quart: {
+    in: [0.895, 0.03, 0.685, 0.22],
+    out: [0.165, 0.84, 0.44, 1],
+    inOut: [0.77, 0, 0.175, 1],
+  },
+  quint: { in: [0.755, 0.05, 0.855, 0.06], out: [0.23, 1, 0.32, 1], inOut: [0.86, 0, 0.07, 1] },
+  sine: {
+    in: [0.47, 0, 0.745, 0.715],
+    out: [0.39, 0.575, 0.565, 1],
+    inOut: [0.445, 0.05, 0.55, 0.95],
+  },
+  expo: { in: [0.95, 0.05, 0.795, 0.035], out: [0.19, 1, 0.22, 1], inOut: [1, 0, 0, 1] },
+  circ: {
+    in: [0.6, 0.04, 0.98, 0.335],
+    out: [0.075, 0.82, 0.165, 1],
+    inOut: [0.785, 0.135, 0.15, 0.86],
+  },
+};
+// Control points [x1, y1, x2, y2] for an easing, or null when it is not a plain curve
+// (steps, elastic, bounce, back, custom eases): those still go to the judge.
+export function easeCurve(e) {
+  if (!e) return null;
+  const s = String(e).trim();
+  const css = normEase(s);
+  const m = /^cubic-bezier\(\s*([^)]+)\)$/.exec(css);
+  if (m) {
+    const v = m[1].split(",").map(Number);
+    return v.length === 4 && v.every(Number.isFinite) ? v : null;
+  }
+  const g = /^([a-z0-9]+)(?:\.(in|out|inOut))?$/i.exec(s);
+  if (!g) return null;
+  const fam = GSAP_FAMILY[g[1].toLowerCase()];
+  return fam ? GSAP_CURVES[fam][g[2] || "out"] : null; // GSAP defaults to .out
+}
+// Largest vertical gap between two curves, sampled across the timeline (0 = identical).
+export function curveGap(a, b) {
+  const at = ([x1, y1, x2, y2], x) => {
+    let lo = 0,
+      hi = 1,
+      t = x;
+    for (let i = 0; i < 30; i++) {
+      t = (lo + hi) / 2;
+      const bx = 3 * (1 - t) * (1 - t) * t * x1 + 3 * (1 - t) * t * t * x2 + t * t * t;
+      if (bx < x) lo = t;
+      else hi = t;
+    }
+    return 3 * (1 - t) * (1 - t) * t * y1 + 3 * (1 - t) * t * t * y2 + t * t * t;
+  };
+  let max = 0;
+  for (let i = 1; i < 20; i++) max = Math.max(max, Math.abs(at(a, i / 20) - at(b, i / 20)));
+  return max;
+}
 const triggerGroup = (t) => (t === "scroll-scrub" ? "scroll-scrub" : t);
 const describe = (m) =>
   `${m.trigger}: ${m.kind}${m.props && m.props.length ? " of " + m.props.slice(0, 4).join(", ") : ""}${m.duration ? ` ${m.duration}ms` : ""}${m.easing ? " " + m.easing : ""}${m.on === "child" ? " (on a child)" : ""}`;
@@ -555,9 +662,25 @@ export function compareMotion(D, B, vp, tol) {
       if (dMain.easing && bMain.easing) {
         const a = normEase(dMain.easing),
           b = normEase(bMain.easing);
-        if (a !== b) {
-          const comparable = /^cubic-bezier|^steps/.test(a) && /^cubic-bezier|^steps/.test(b);
-          if (comparable && dMain.kind !== "gsap" && bMain.kind !== "gsap")
+        const ca = easeCurve(dMain.easing),
+          cb = easeCurve(bMain.easing);
+        if (a !== b && ca && cb) {
+          // Both are plain curves: compare their shapes. A gap above 0.1 of the full movement is
+          // visible; below it the two feel the same.
+          if (curveGap(ca, cb) > (tol.easing ?? 0.1))
+            out.push({
+              id: id + ":easing",
+              source: "code",
+              viewport: vp,
+              label,
+              prop: `motion-${trig}-easing`,
+              design: dMain.easing,
+              build: bMain.easing,
+              message: `${trig} easing ${bMain.easing}, design ${dMain.easing} (the curves differ by ${Math.round(curveGap(ca, cb) * 100)}% at most)`,
+            });
+        } else if (a !== b) {
+          const comparable = /^steps/.test(a) && /^steps/.test(b);
+          if (comparable)
             out.push({
               id: id + ":easing",
               source: "code",

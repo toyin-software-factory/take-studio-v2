@@ -75,6 +75,36 @@ async function scrollTour(page) {
   await page.waitForTimeout(700);
 }
 
+// Smooth scrolling (Lenis) and scrubbed GSAP tweens keep moving for a while after the scroll
+// returns to the top. Wait until every tagged element is drawn in the same place twice in a row,
+// so the layout is measured at rest, not mid-tween. Gives up after about 5 s and returns the
+// labels that never stopped (marquees, timer-driven loops): their drawn position is not compared.
+async function waitForStillLayout(page) {
+  const sample = () =>
+    page
+      .evaluate(() =>
+        [...document.querySelectorAll("[data-check]")].map((el) => {
+          const r = el.getBoundingClientRect();
+          return [
+            el.getAttribute("data-check"),
+            `${Math.round(r.x)},${Math.round(r.y)},${Math.round(r.width)},${Math.round(r.height)}`,
+          ];
+        }),
+      )
+      .catch(() => null);
+  let last = await sample();
+  for (let i = 0; i < 25 && last; i++) {
+    await page.waitForTimeout(200);
+    const now = await sample();
+    if (!now) break;
+    const moving = now.filter((x, j) => !last[j] || last[j][1] !== x[1]).map((x) => x[0]);
+    if (!moving.length) return new Set();
+    if (i === 24) return new Set(moving);
+    last = now;
+  }
+  return new Set();
+}
+
 async function hoverProbe(page, elements) {
   const out = {};
   const targets = elements.filter((e) => e.interactive && e.visible).slice(0, 30);
@@ -189,7 +219,9 @@ export async function extractPage(
         } catch {}
       }
     });
+    const stillMoving = await waitForStillLayout(page);
     const probe = await page.evaluate(probeElements);
+    for (const e of probe.elements) if (stillMoving.has(e.label.split("#")[0])) e.moving = true;
     let hoverChanges = {};
     if (hover && !VIEWPORTS[vpName].hasTouch) {
       await page.evaluate(() => window.__dc && window.__dc.setPhase("hover"));
