@@ -17,9 +17,14 @@ Outputs go to `.design-check/`: `feedback.md` (for the builder), `report.html` (
 ## Setup in a project
 
 1. The project needs Playwright with Chromium (`pnpm add -D @playwright/test` and `pnpm exec playwright install chromium`). The tool uses the project's own copy.
-2. Tag the design once: `node tools/design-check/src/cli.js tag docs/design/home-v2.html`. It writes `docs/design/home-v2.tagged.html` with `data-check` labels on the header, nav, sections, headings, lead text, buttons, media, lists and the first list item, and prints the labels. You can add or rename labels by hand in the tagged copy.
-3. Put the same `data-check` labels on the matching elements in the build.
-4. Add `design-check.json` at the repo root:
+2. Put the reference drafts in `docs/design/`, one `.html` file per page, and run `node tools/design-check/src/cli.js init`. For every draft it:
+   - writes a tagged copy (`home-v2.tagged.html`) with `data-check` labels on the header, nav, sections, headings, lead text, buttons, media, lists and the first list item;
+   - adds a page to `design-check.json` (created if missing), with the route guessed from the file name: `home.html`, `index.html` or `landing.html` go to `/`, `pricing-v2.html` goes to `/pricing`. A draft can set its own route with `<meta name="design-check-route" content="/takes/demo">`.
+
+   Run it again whenever a draft is added: pages already in `design-check.json` and existing tagged copies (which may have hand edits) are kept. `--retag` rewrites the tagged copies, `--base-url` sets the dev server address (default `http://localhost:3000`), `--dir` another drafts folder.
+
+3. Check the routes it printed (guessed ones are marked), then put the same `data-check` labels on the matching elements in the build.
+4. The resulting `design-check.json` looks like this; edit it freely:
 
 ```json
 {
@@ -46,6 +51,7 @@ node tools/design-check/src/cli.js check --page home
 node tools/design-check/src/cli.js watch            # live: re-checks on every save (code checks only)
 node tools/design-check/src/cli.js loop --builder "claude -p"   # headless loop: check, hand failures to the builder, repeat
 node tools/design-check/src/cli.js reset            # start a new loop at round 1
+node tools/design-check/src/cli.js init             # tag every draft in docs/design and write design-check.json
 node tools/design-check/src/cli.js tag <design.html> [--out file]
 ```
 
