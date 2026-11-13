@@ -4,52 +4,24 @@ import { join } from "node:path";
 import { logger, task } from "@trigger.dev/sdk";
 import { and, eq } from "drizzle-orm";
 import { type JobDb, withJobDb } from "@/db/client/job";
-import { reanalyse } from "@/db/data/cuts";
-import { dispatchJob } from "@/db/data/dispatch";
-import {
-  discardJobRenders,
-  finish,
-  markRunning,
-  queueDeletions,
-  startTranscribeJob,
-  updateStep,
-  whileJobActive,
-} from "@/db/data/jobs";
-import { completeLatest, create as createRender, markUnkeyed } from "@/db/data/renders";
-import { background, jobStep, processingJob, take } from "@/db/schema";
+import { discardJobRenders, finish, markRunning, updateStep } from "@/db/data/jobs";
+import { jobStep, processingJob, take } from "@/db/schema";
 import { runTx } from "@/db/tx";
 import { ok } from "@/lib/result";
-import { renderKey } from "@/lib/cut-rules";
 import type { FailureCode } from "@/lib/failure-codes";
 import { parseJobEnv } from "@/lib/env";
 import { isBackgroundKind, isFinalJobStatus, type StepName } from "@/lib/processing";
 import { type R2, createR2 } from "@/lib/r2";
-import { R2DownloadError, downloadToFile, uploadFileMultipart } from "@/lib/r2-file-upload";
-import {
-  alignToFrames,
-  cutsFromSilences,
-  keepRanges,
-  parseSilences,
-  silencedetectFilter,
-  throttledProgress,
-  totalMs,
-} from "@/lib/trim";
-import { triggerForTranscribe } from "@/lib/trigger-runs";
+import { downloadToFile } from "@/lib/r2-file-upload";
 import { deadlineMs, isDeadlineExceeded, runWithDeadline } from "@/lib/deadline";
 import { JOB_ERROR_NAMES, hasJobErrorName } from "@/lib/job-errors";
 import { PROCESS_TAKE_LIMITS } from "@/lib/cleanup-rules";
-import { RENDER_UPLOAD } from "@/lib/uploads";
 import { queueTakeEmail } from "./email/queue";
-import { toHex } from "@/lib/keying";
-import { BackgroundMissingError, detectInFile } from "./keying";
-import { MediaToolError, probeFile, runFfmpeg } from "./media";
-import {
-  type RenderPlan,
-  encodeRender,
-  outputIsOnlyBackground,
-  renderWithFallback,
-} from "./render-fallback";
-import { storeWaveform } from "./waveform";
+import { BackgroundMissingError } from "./keying";
+import { MediaToolError, probeFile } from "./media";
+import { changeRun } from "./take-run/change-run";
+import type { RunContext } from "./take-run/context";
+import { fullRun } from "./take-run/full-run";
 
 /**
  * `process-take` (spec 0004, Flow steps 5 and 6; AC-5, AC-6, AC-7, AC-10). Dispatched by the
@@ -114,7 +86,10 @@ export const processTakeTask = task({
   },
 });
 
-/** The work of one attempt, on one database client. */
+/**
+ * The work of one attempt, on one database client: load the job, download and probe the original
+ * (the shared part), then hand over to the path the job kind picks (`src/trigger/take-run/`).
+ */
 async function processJob(
   client: JobDb,
   jobId: string,
@@ -122,28 +97,23 @@ async function processJob(
   r2: R2,
   signal: AbortSignal,
 ) {
-  const db = <T>(fn: (d: JobDb) => Promise<T>) => fn(client);
-  const payload = { jobId };
-  const ctx = { run: { id: runId } };
-  const loaded = await db(async (d) => {
-    const [job] = await d.select().from(processingJob).where(eq(processingJob.id, payload.jobId));
+  const loaded = await (async (d: JobDb) => {
+    const [job] = await d.select().from(processingJob).where(eq(processingJob.id, jobId));
     if (!job || isFinalJobStatus(job.status)) return null;
     const [t] = await d.select().from(take).where(eq(take.id, job.takeId));
     if (!t) return null;
     // Rejected means the job was cancelled or finished meanwhile: stop, do no work.
-    const running = await markRunning(d, { jobId: job.id, triggerRunId: ctx.run.id });
+    const running = await markRunning(d, { jobId: job.id, triggerRunId: runId });
     if (!running.ok) return null;
     // A retry starts the render again: drop what an earlier attempt left behind.
     await runTx(d, async (tx) => ok(await discardJobRenders(tx, { takeId: t.id, jobId: job.id })));
     return { job, take: t };
-  });
+  })(client);
   if (!loaded) {
-    logger.info("process-take: job or take gone, or already final", { jobId: payload.jobId });
-    return { jobId: payload.jobId, outcome: "skipped" as const };
+    logger.info("process-take: job or take gone, or already final", { jobId });
+    return { jobId, outcome: "skipped" as const };
   }
   const { job, take: t } = loaded;
-  const step = (name: StepName, status: "running" | "succeeded" | "skipped", progress: number) =>
-    db((d) => updateStep(d, { jobId: job.id, name, status, progress }));
 
   const work = await mkdtemp(join(tmpdir(), `take-${t.id}-`));
   try {
@@ -156,300 +126,14 @@ async function processJob(
     );
     const facts = await probeFile(source, signal);
     if (!facts) throw new MediaToolError("ffprobe", null, false);
+    const ctx: RunContext = { client, r2, signal, job, take: t, work, source, facts };
 
     // A background change (spec 0008): a job of kind `background`, on a take that is already
-    // Ready. It reuses the take's applied cuts (the render snapshot reads them), so it neither
-    // trims nor re analyses, always renders, and starts no transcript. A `rerender` (a re render
-    // of a take that failed, take `processing`) is a full run again, as before.
-    const isBackgroundChange = isBackgroundKind(job.kind);
-
-    // Waveform (spec 0011, AC-11): on a full run, and on a background change only while the take
-    // has none yet (a take processed before this shipped). Best effort, never fails the job.
-    if (facts.hasAudio && (!isBackgroundChange || t.waveform == null)) {
-      await storeWaveform(client, {
-        jobId: job.id,
-        takeId: t.id,
-        source,
-        durationMs: facts.durationMs,
-        signal,
-      });
-    }
-
-    // Trim. A take with no sound has nothing to trim: with no background it ends here (the
-    // original is the video); with one it still renders, below.
-    if (!isBackgroundChange) await step("trim", "running", 0);
-    if (!isBackgroundChange && !facts.hasAudio) {
-      await step("trim", "skipped", 0);
-      if (!job.targetBackgroundId) {
-        await step("render", "skipped", 0);
-        signal.throwIfAborted();
-        await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
-        await queueTakeEmail(job.id, job.kind);
-        // The transcript job skips it as `no_speech` without calling Deepgram (spec 0007, AC-7).
-        await startTranscript(client, t.id);
-        return { jobId: job.id, takeId: t.id, outcome: "no_audio" as const };
-      }
-    }
-    let hasCuts = false;
-    if (!isBackgroundChange && facts.hasAudio) {
-      const trimProgress = throttledProgress((p) => step("trim", "running", p));
-      const stderr = await runFfmpeg(
-        ["-i", source, "-vn", "-af", silencedetectFilter(), "-f", "null", "-"],
-        {
-          timeoutMs: 15 * 60_000,
-          signal,
-          onOutTimeMs: (ms) => void trimProgress.report((ms / facts.durationMs) * 100),
-        },
-      );
-      const proposed = cutsFromSilences(parseSilences(stderr, facts.durationMs), facts.durationMs);
-      signal.throwIfAborted();
-      const analysed = await db((d) =>
-        whileJobActive(d, job.id, (tx) => reanalyse(tx, { takeId: t.id, proposed }), signal),
-      );
-      if (!analysed.ok) throw new Error(`reanalyse failed: ${analysed.error}`);
-      await trimProgress.flush();
-      await step("trim", "succeeded", 100);
-      hasCuts = analysed.data.cuts.some((c) => c.applied);
-    }
-
-    // Background (spec 0008): find the green screen and its colour; none usable keeps the
-    // original background and the step ends skipped.
-    let backgroundFacts: {
-      readonly id: string;
-      readonly name: string;
-      readonly imagePath: string;
-      readonly keyColor: string | null;
-    } | null = null;
-    if (job.targetBackgroundId) {
-      await step("background", "running", 0);
-      const [bg] = await db((d) =>
-        d.select().from(background).where(eq(background.id, job.targetBackgroundId!)),
-      );
-      if (!bg || bg.status !== "ready" || !bg.imageKey) throw new BackgroundMissingError();
-      const imagePath = join(work, "background.jpg");
-      try {
-        await downloadToFile(
-          await r2.presignGet(bg.imageKey, { expiresSeconds: 60 * 60 }),
-          imagePath,
-          signal,
-        );
-      } catch (error) {
-        // The row is ready but its image is gone from R2: the job's own code (spec 0008).
-        if (error instanceof R2DownloadError && error.status === 404) {
-          throw new BackgroundMissingError();
-        }
-        throw error;
-      }
-      const detection = await detectInFile(source, facts, signal);
-      backgroundFacts = {
-        id: bg.id,
-        name: bg.name,
-        imagePath,
-        keyColor: detection.usable ? toHex(detection.keyColor) : null,
-      };
-      if (detection.usable) {
-        await step("background", "succeeded", 100);
-      } else {
-        await db((d) =>
-          updateStep(d, {
-            jobId: job.id,
-            name: "background",
-            status: "skipped",
-            progress: 0,
-            failureCode: "no_green_screen",
-          }),
-        );
-      }
-    }
-    const keyed = backgroundFacts?.keyColor != null;
-
-    // Spec 0008 AC-2: a take with a chosen background is always rendered (the whole take when
-    // there are no cuts), keyed or not, so the render records which background it was for.
-    if (!isBackgroundChange && !hasCuts && !backgroundFacts) {
-      await step("render", "skipped", 0);
-      signal.throwIfAborted();
-      await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
-      await queueTakeEmail(job.id, job.kind);
-      await startTranscript(client, t.id);
-      return { jobId: job.id, takeId: t.id, outcome: "no_cuts" as const };
-    }
-
-    // Render.
-    await step("render", "running", 0);
-    const created = await db((d) =>
-      whileJobActive(
-        d,
-        job.id,
-        (tx) =>
-          createRender(tx, {
-            takeId: t.id,
-            jobId: job.id,
-            background: backgroundFacts
-              ? {
-                  backgroundId: backgroundFacts.id,
-                  backgroundName: backgroundFacts.name,
-                  keyed,
-                  keyColor: backgroundFacts.keyColor,
-                }
-              : undefined,
-          }),
-        signal,
-      ),
-    );
-    if (!created.ok) throw new Error(`render create failed: ${created.error}`);
-    const renderId = created.data.id;
-    const keep = alignToFrames(keepRanges(created.data.removedRanges, facts.durationMs), facts.fps);
-    if (keep.length === 0) {
-      // Every range collapsed when snapped to frames: nothing would be left to render.
-      throw new Error("render has nothing to keep: the cuts remove the whole take");
-    }
-    const expectedMs = totalMs(keep);
-    const output = join(work, "render.mp4");
-    const plan: RenderPlan = {
-      source,
-      keep,
-      facts,
-      work,
-      output,
-      background:
-        keyed && backgroundFacts?.keyColor
-          ? { imagePath: backgroundFacts.imagePath, keyColor: backgroundFacts.keyColor }
-          : null,
-      timeoutMs: 38 * 60_000,
-    };
-    const renderProgress = throttledProgress((p) => step("render", "running", p));
-    // Encoding is most of the render step; the upload takes the last few points.
-    const onOutTimeMs = (ms: number) => void renderProgress.report((ms / expectedMs) * 95);
-    let shippedKeyed = keyed;
-    if (keyed && backgroundFacts) {
-      // RF3-T05 (spec 0008 AC-13): a keyed output that is only the background has no person in
-      // it; it is never shipped. Render again without the key and record that on the render row.
-      const imagePath = backgroundFacts.imagePath;
-      const result = await renderWithFallback({
-        renderKeyed: () => encodeRender(plan, true, { signal, onOutTimeMs }),
-        isErased: async () => {
-          const probed = await probeFile(output, signal);
-          if (!probed) throw new MediaToolError("ffprobe", null, false);
-          return outputIsOnlyBackground(
-            {
-              output,
-              imagePath,
-              width: facts.width,
-              height: facts.height,
-              durationMs: probed.durationMs,
-            },
-            signal,
-          );
-        },
-        markUnkeyed: async () => {
-          logger.warn("process-take: keyed render is only the background, rendering without key", {
-            jobId: job.id,
-            takeId: t.id,
-            renderId,
-            backgroundId: backgroundFacts?.id,
-          });
-          const marked = await db((d) =>
-            whileJobActive(d, job.id, (tx) => markUnkeyed(tx, { renderId }), signal),
-          );
-          if (!marked.ok) throw new Error(`render markUnkeyed failed: ${marked.error}`);
-          await db((d) =>
-            updateStep(d, {
-              jobId: job.id,
-              name: "background",
-              status: "skipped",
-              progress: 0,
-              failureCode: "no_green_screen",
-            }),
-          );
-        },
-        renderPlain: () => encodeRender(plan, false, { signal, onOutTimeMs }),
-      });
-      shippedKeyed = result.keyed;
-    } else {
-      await encodeRender(plan, false, { signal, onOutTimeMs });
-    }
-    await rm(source, { force: true });
-    await renderProgress.flush();
-
-    const rendered = await probeFile(output, signal);
-    if (!rendered) throw new MediaToolError("ffprobe", null, false);
-    await uploadFileMultipart(r2, renderKey(t.id, renderId), output, {
-      contentType: "video/mp4",
-      partSize: RENDER_UPLOAD.partSize,
-      attempts: RENDER_UPLOAD.attempts,
-      signal,
-    });
-    const completed = await db((d) =>
-      whileJobActive(
-        d,
-        job.id,
-        (tx) => completeLatest(tx, { renderId, durationMs: rendered.durationMs }),
-        signal,
-      ),
-    );
-    if (!completed.ok) {
-      // The job was cancelled or finished while we uploaded: the file is not tracked by any
-      // render row. Queue its key (a no op if the cancel already queued it); if the queue
-      // write fails, delete the object now. If that fails too, the error surfaces (the run
-      // fails visibly) instead of the file being forgotten.
-      const key = renderKey(t.id, renderId);
-      try {
-        await db((d) => queueDeletions(d, [key]));
-      } catch {
-        await r2.deleteObject(key);
-      }
-      throw new Error(`render complete failed: ${completed.error}`);
-    }
-    await step("render", "succeeded", 100);
-    signal.throwIfAborted();
-    const finished = await db((d) => finish(d, { jobId: job.id, status: "succeeded" }));
-    if (!finished.ok) throw new Error(`finish failed: ${finished.error}`);
-    await queueTakeEmail(job.id, job.kind);
-    if (!isBackgroundChange) await startTranscript(client, t.id);
-
-    return {
-      jobId: job.id,
-      takeId: t.id,
-      outcome: "rendered" as const,
-      renderId,
-      keyed: shippedKeyed,
-      removedMs: facts.durationMs - expectedMs,
-      renderMs: rendered.durationMs,
-    };
+    // Ready. A `rerender` (a re render of a take that failed, take `processing`) is a full run
+    // again, as before.
+    return isBackgroundKind(job.kind) ? await changeRun(ctx) : await fullRun(ctx);
   } finally {
     await rm(work, { recursive: true, force: true });
-  }
-}
-
-/**
- * After the video is Ready (spec 0007, Pipeline step 1): starts the take's transcribe job and
- * triggers `transcribe-take` (key `transcribe-{jobId}`; a throwing trigger finishes the job
- * `trigger_failed` at once, so it never sits queued). Never throws and never touches the
- * video job: a refused start (transcript exists, original gone) just leaves "Make transcript".
- */
-async function startTranscript(client: JobDb, takeId: string): Promise<void> {
-  // A thrown start (the database blinked) is tried 3 times; a retry of this task would exit
-  // early because the video job is already final. A refused start is final, not retried. If
-  // all three throw, the take shows "Make transcript" (spec 0007, Pipeline step 1).
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const started = await startTranscribeJob(client, { takeId });
-      if (!started.ok) {
-        logger.info("process-take: transcript not started", { takeId, reason: started.error });
-        return;
-      }
-      const dispatched = await dispatchJob(client, {
-        jobId: started.data.id,
-        trigger: triggerForTranscribe(),
-      });
-      if (!dispatched.ok) {
-        logger.warn("process-take: transcript trigger failed", { takeId, jobId: started.data.id });
-      }
-      return;
-    } catch {
-      logger.warn("process-take: transcript start threw", { takeId, attempt });
-      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 1000));
-    }
   }
 }
 
