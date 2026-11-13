@@ -4,7 +4,7 @@ import { setupCursor } from "./cursor";
 import { refreshOnFaq, setupDrift, setupFlip, watchEdgeBlur } from "./details";
 import { setupEntrances, setupWordReveals } from "./enter";
 import { setupFan } from "./fan";
-import { playIntro } from "./intro";
+import { INTRO_PENDING, playIntro } from "./intro";
 import { watchNav } from "./nav";
 import { setupReel } from "./reel";
 import { setupStudio } from "./studio";
@@ -44,6 +44,9 @@ export function startHomeMotion(): () => void {
 /** One build of the motion for `reduced` (see `startHomeMotion`); returns its teardown. */
 function run(root: HTMLElement, reduced: boolean): () => void {
   const teardown: (() => void)[] = [];
+  // Reduced motion shows the bar, headline and lead at once (the intro is the only thing that
+  // would take the early hiding off).
+  if (reduced) document.documentElement.classList.remove(INTRO_PENDING);
   const smooth = reduced ? null : startSmoothScroll();
   if (smooth) {
     document.documentElement.classList.add("lenis");

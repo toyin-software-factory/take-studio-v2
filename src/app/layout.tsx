@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 /** Root HTML shell for every page. Exposes the self hosted fonts as CSS variables. */
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={interTight.variable}>
+    <html lang="en" className={interTight.variable} suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );

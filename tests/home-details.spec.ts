@@ -154,7 +154,7 @@ test("the particle field is clipped to the dark studio floor", async ({ page }) 
 });
 
 // Homepage speed (spec 0010 AC-10): nothing above the fold shifts after the first paint, and the
-// headline and lead are in that first paint, not hidden until the intro runs.
+// headline and lead wait for the draft's intro (rise in masks, fade) and are never left hidden.
 test.describe("first paint", () => {
   test.use({ viewport: { width: 412, height: 823 }, hasTouch: true, isMobile: true });
 
@@ -183,12 +183,59 @@ test.describe("first paint", () => {
     await page.goto("/");
     await expect(page.locator(".h-h1")).toBeVisible();
     await expect(page.locator(".h-hero-lead")).toHaveCSS("opacity", "1");
+    await expect(page.locator(".h-nav")).toHaveCSS("opacity", "1");
     await context.close();
   });
 
-  test("the intro never hides or moves the headline and lead", async ({ page }) => {
-    await ready(page);
+  test("the intro hides the headline words, lead and bar at load, then shows them", async ({
+    page,
+  }) => {
+    // Hold the intro at its start: the draft's load motion (AC-10, as changed 2026-11-13).
+    await page.goto("/");
+    await expect(page.locator(".h-hero .h-w-mask").first()).toBeAttached({ timeout: 20_000 });
+    await expect(page.locator(".h-h1")).toHaveAttribute("aria-label", /Film one take\./);
+    await expect(page.locator(".h-hero .h-w-mask").first()).toHaveAttribute("aria-hidden", "true");
+    await page.waitForTimeout(3500);
     for (const selector of [".h-h1", ".h-hero-lead", ".h-nav"]) {
+      await expect(page.locator(selector).first()).toBeVisible();
+      await expect(page.locator(selector).first()).toHaveCSS("opacity", "1");
+    }
+    await expect(page.locator("html")).not.toHaveClass(/h-intro-pending/);
+    const words = await page
+      .locator(".h-hero .h-w")
+      .evaluateAll((els) => els.map((el) => getComputedStyle(el).transform));
+    expect(words.every((t) => t === "none" || t === "matrix(1, 0, 0, 1, 0, 0)")).toBe(true);
+  });
+
+  test("before the intro runs the headline is hidden, and the 3 s timer brings it back", async ({
+    page,
+  }) => {
+    // Browser time is held, so a slow parse cannot run the guard timer early.
+    await page.clock.install();
+    // Only the inline guard runs: no bundle loads, so the intro never takes over.
+    await page.route("**/*.js", (route) => route.abort());
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("html")).toHaveClass(/h-intro-pending/);
+    await expect(page.locator(".h-h1")).toBeHidden();
+    const box = await page.locator(".h-h1").boundingBox();
+    expect(box?.height ?? 0).toBeGreaterThan(40);
+    // Past the guard's deadline the mark is gone and nothing is left hidden.
+    await page.clock.fastForward(3500);
+    await expect(page.locator("html")).not.toHaveClass(/h-intro-pending/);
+    await expect(page.locator(".h-h1")).toBeVisible();
+    await expect(page.locator(".h-nav")).toHaveCSS("opacity", "1");
+    await expect(page.locator(".h-hero-lead")).toHaveCSS("opacity", "1");
+  });
+});
+
+test.describe("first paint, reduced motion", () => {
+  test.use({ reducedMotion: "reduce" });
+
+  test("nothing is hidden or split, the text shows at once", async ({ page }) => {
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    await expect(page.locator("html")).not.toHaveClass(/h-intro-pending/);
+    for (const selector of [".h-h1", ".h-hero-lead", ".h-nav"]) {
+      await expect(page.locator(selector).first()).toBeVisible();
       await expect(page.locator(selector).first()).toHaveCSS("opacity", "1");
     }
     await expect(page.locator(".h-hero .h-w-mask")).toHaveCount(0);
