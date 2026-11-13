@@ -41,7 +41,7 @@ pnpm dev                   # next dev + trigger dev (needs a Trigger.dev login)
 pnpm dev:web               # next dev only
 ```
 
-`db:migrate` (and any `pnpm db:*` script that connects, since they all load `drizzle.config.ts`) refuses a database that isn't on localhost unless it runs in CI or you set `MIGRATE_TARGET=prod`. Credentials passed straight to drizzle-kit with `--url` skip that config and the guard. If your shell has a remote `DATABASE_URL_DIRECT` (agent sandboxes do), point it at local Postgres for the command: `DATABASE_URL_DIRECT=postgres://postgres:postgres@localhost:5432/take_studio pnpm db:migrate`.
+`db:migrate` (and the other drizzle-kit `pnpm db:*` scripts, which load `drizzle.config.ts`) refuses a database that isn't on localhost unless it runs in CI or you set `MIGRATE_TARGET=prod`. Credentials passed straight to drizzle-kit with `--url` skip that config and the guard. With `DATABASE_URL_DIRECT` unset it uses local Postgres (`postgres://postgres:postgres@localhost:5432/take_studio`). Agent sandboxes carry no database URL; production migrations run only from CI.
 
 `pnpm install` also sets up a git pre commit hook (`simple-git-hooks` plus `lint-staged`, config in `.lintstagedrc.json`). On each commit it runs ESLint and Prettier on your staged files only: Prettier fixes the formatting for you, and an ESLint error stops the commit until you fix it. It takes about two seconds. Typecheck and tests are not in the hook; run them before you push, and CI runs them too. The hook is not installed when `CI` is set. To skip it once, use `git commit --no-verify`. If you change the hook command in `package.json`, run `pnpm exec simple-git-hooks` to reinstall it. If you already have your own `pre-commit` hook, install keeps it and prints a warning instead of overwriting it; to use this one, add `pnpm exec lint-staged` to your hook.
 
@@ -100,7 +100,7 @@ pnpm test:pipeline
 
 On a small machine (3 GB) add `PIPELINE_START=prod`: it builds the app once and runs `next start` instead of `next dev`, which the kernel kills at about 1 GB (for example `PIPELINE_ONLY=changes PIPELINE_START=prod pnpm test:pipeline`).
 
-The migrate line gives a fresh local database the app tables, and keeps `db:migrate` on localhost (the sandbox carries the production URL). If you override `PIPELINE_DATABASE_URL`, point `DATABASE_URL_DIRECT` at that same database.
+The migrate line gives the pipeline's default local database (`take_studio`) its tables, whatever `DATABASE_URL_DIRECT` your shell has. If you override `PIPELINE_DATABASE_URL`, point `DATABASE_URL_DIRECT` at that same database.
 
 ## CI and deploy
 
