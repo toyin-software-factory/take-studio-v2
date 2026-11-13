@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { levelFromRms, samplesFromPcm16, waveformBuckets, waveformFromSamples } from "./waveform";
+import {
+  alignSamples,
+  levelFromRms,
+  samplesFromPcm16,
+  waveformBuckets,
+  waveformFromSamples,
+} from "./waveform";
 
 const tone = (n: number, amp: number) => Float32Array.from({ length: n }, () => amp);
 
@@ -55,5 +61,24 @@ describe("samplesFromPcm16", () => {
   it("reads little endian signed 16 bit samples", () => {
     const bytes = Uint8Array.from([0x00, 0x40, 0x00, 0xc0, 0xff, 0x7f]);
     expect(Array.from(samplesFromPcm16(bytes))).toEqual([0.5, -0.5, 32767 / 32768]);
+  });
+});
+
+describe("alignSamples", () => {
+  it("pads audio that ends early with silence so a sound keeps its place", () => {
+    const aligned = alignSamples(tone(8_000, 0.5), 2_000);
+    expect(aligned.length).toBe(16_000);
+    const w = waveformFromSamples(aligned, 2_000) ?? [];
+    expect(w.slice(0, 10).every((v) => v > 0)).toBe(true);
+    expect(w.slice(10)).toEqual(Array(10).fill(0));
+  });
+  it("cuts audio that runs past the video", () => {
+    expect(alignSamples(tone(24_000, 0.5), 2_000).length).toBe(16_000);
+  });
+  it("leaves no audio and exact lengths alone", () => {
+    const none = new Float32Array(0);
+    expect(alignSamples(none, 2_000)).toBe(none);
+    const exact = tone(16_000, 0.5);
+    expect(alignSamples(exact, 2_000)).toBe(exact);
   });
 });

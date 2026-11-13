@@ -341,7 +341,13 @@ async function main() {
     }
     const syncTake = takes["pauses + A/V sync"];
     if (!syncTake) throw new Error("the sync fixture did not run");
-    await changeScenarios({ a, takeId: syncTake, silentTakeId: takes["silent"], check });
+    await changeScenarios({
+      a,
+      takeId: syncTake,
+      silentTakeId: takes["silent"],
+      check,
+      downloadRender,
+    });
     return;
   }
 
@@ -507,7 +513,13 @@ async function main() {
   const syncTake = takes["pauses + A/V sync"];
   if (syncTake) {
     try {
-      await changeScenarios({ a, takeId: syncTake, silentTakeId: takes["silent"], check });
+      await changeScenarios({
+        a,
+        takeId: syncTake,
+        silentTakeId: takes["silent"],
+        check,
+        downloadRender,
+      });
     } catch (error) {
       check("changes", "ran", false, String(error));
     }

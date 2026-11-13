@@ -53,6 +53,21 @@ export function waveformFromSamples(
   });
 }
 
+/**
+ * Makes the samples cover exactly the take's length: audio that ends before the video is padded
+ * with silence and audio that runs past it is cut, so a sound keeps its place on the video
+ * timeline. No samples stays empty (no audio).
+ */
+export function alignSamples(samples: Float32Array, durationMs: number): Float32Array {
+  if (samples.length === 0 || !(durationMs > 0)) return samples;
+  const want = Math.round((durationMs * WAVEFORM.sampleRate) / 1000);
+  if (samples.length === want) return samples;
+  if (samples.length > want) return samples.subarray(0, want);
+  const out = new Float32Array(want);
+  out.set(samples);
+  return out;
+}
+
 /** Raw signed 16 bit little endian PCM (ffmpeg `-f s16le`) to samples scaled to -1..1. */
 export function samplesFromPcm16(bytes: Uint8Array): Float32Array {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);

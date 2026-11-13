@@ -2,7 +2,7 @@ import { logger } from "@trigger.dev/sdk";
 import type { Executor } from "@/db/types";
 import { whileJobActive } from "@/db/data/jobs";
 import { saveWaveform } from "@/db/data/waveform";
-import { WAVEFORM, samplesFromPcm16, waveformFromSamples } from "@/lib/waveform";
+import { WAVEFORM, alignSamples, samplesFromPcm16, waveformFromSamples } from "@/lib/waveform";
 import { runFfmpegBytes } from "./media";
 
 /** ffmpeg arguments for the waveform pass: mono 8 kHz signed 16 bit PCM on stdout. */
@@ -41,7 +41,10 @@ export async function storeWaveform(
   const { jobId, takeId, signal } = input;
   try {
     const pcm = await runFfmpegBytes(waveformArgs(input.source), { timeoutMs: 5 * 60_000, signal });
-    const waveform = waveformFromSamples(samplesFromPcm16(pcm), input.durationMs);
+    const waveform = waveformFromSamples(
+      alignSamples(samplesFromPcm16(pcm), input.durationMs),
+      input.durationMs,
+    );
     if (!waveform) return;
     const saved = await whileJobActive(
       client,
