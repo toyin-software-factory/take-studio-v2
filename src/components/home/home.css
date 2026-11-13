@@ -191,9 +191,31 @@
 }
 .h-btn-split-label {
   padding: 0 24px;
+  transition:
+    background var(--dur-hover) var(--ease-ui),
+    padding var(--dur-swap) var(--ease-in-out);
 }
 .h-btn-split-icon {
   width: 48px;
+  transition:
+    background var(--dur-hover) var(--ease-ui),
+    translate var(--dur-swap) var(--ease-in-out);
+}
+.h-btn-split-icon svg {
+  rotate: -45deg;
+  transition: rotate var(--dur-swap) var(--ease-in-out);
+}
+.h-btn-split:hover .h-btn-split-label,
+.h-btn-split:focus-visible .h-btn-split-label {
+  padding: 0 32px;
+}
+.h-btn-split:hover .h-btn-split-icon,
+.h-btn-split:focus-visible .h-btn-split-icon {
+  translate: -4px 0;
+}
+.h-btn-split:hover .h-btn-split-icon svg,
+.h-btn-split:focus-visible .h-btn-split-icon svg {
+  rotate: 0deg;
 }
 .h-btn-split:hover .h-btn-split-label,
 .h-btn-split:hover .h-btn-split-icon {
@@ -488,8 +510,19 @@
   margin-bottom: 0;
 }
 /* The particle field canvas: the CSS glow is its own background, so where the field is not
-   drawn (save data, no WebGL, little memory) the section still has its light. It is sticky and
-   takes no space (negative margin), so the content scrolls over it. */
+   drawn (save data, no WebGL, little memory) the section still has its light. The clip wrapper
+   spans the whole section and cuts the canvas at its edges with `overflow: clip` (not `hidden`,
+   which would make it a scroll container and break `sticky`); the canvas sticks inside it, so no
+   particle is ever drawn outside the dark stage, and a canvas that is clipped away is not on
+   screen for the renderer's observer either. The section itself is not clipped (the arc
+   `::before` sits above it). */
+.h-studio-clip {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  pointer-events: none;
+  z-index: var(--z-field);
+}
 .h-studio-field {
   position: sticky;
   top: 0;
@@ -497,9 +530,6 @@
   width: 100%;
   height: 100vh;
   height: 100svh;
-  margin-bottom: -100vh;
-  margin-bottom: -100svh;
-  z-index: var(--z-field);
   background: radial-gradient(
     60% 50% at 50% 60%,
     color-mix(in srgb, var(--color-field-1) 25%, transparent),
@@ -696,10 +726,36 @@
   background: var(--color-dark);
   overflow: hidden;
 }
-.h-tile video {
+.h-tile-media {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.h-tile-media video,
+.h-tile-media .h-tile-poster {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+.h-tile-poster {
+  transition: scale var(--dur-media) var(--ease-out);
+}
+.h-tile-media:hover .h-tile-poster {
+  scale: 1.04;
+}
+/* With scripts the video waits invisible over the poster and fades in once it plays; without them it keeps its controls and stays visible. */
+html.js .h-tile-media video {
+  opacity: 0;
+  transition: opacity var(--dur-hover) var(--ease-ui);
+}
+html.js .h-tile-media[data-playing="true"] video {
+  opacity: 1;
+}
+.h-tile-toggle {
+  right: 12px;
+  bottom: 12px;
 }
 .h-tile-1,
 .h-tile-3 {
@@ -825,15 +881,34 @@
   transform: rotate(45deg);
 }
 .h-acc-panel {
-  display: none;
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-swap) var(--ease-in-out);
 }
 .h-acc-item[data-open="true"] .h-acc-panel {
-  display: block;
+  grid-template-rows: 1fr;
 }
 .h-acc-inner {
-  padding: 0 0 24px 48px;
+  min-height: 0;
+  overflow: hidden;
   max-width: 64ch;
   color: var(--color-text-muted);
+  opacity: 0;
+  translate: 0 -8px;
+  visibility: hidden;
+  transition:
+    opacity var(--dur-spread) var(--ease-settle),
+    translate var(--dur-spread) var(--ease-settle),
+    visibility 0s linear var(--dur-swap);
+}
+.h-acc-inner > p {
+  padding: 0 0 24px 48px;
+}
+.h-acc-item[data-open="true"] .h-acc-inner {
+  opacity: 1;
+  translate: 0 0;
+  visibility: visible;
+  transition-delay: 0s;
 }
 
 /* Closing call to action */
@@ -927,6 +1002,17 @@
   color: var(--color-on-dark-60);
   white-space: nowrap;
   user-select: none;
+  position: relative;
+  filter: blur(6px);
+  mask-image: linear-gradient(to bottom, #000 40%, transparent 100%);
+}
+.h-footer-mark::after {
+  content: "";
+  position: absolute;
+  inset: 20% 10% -20%;
+  background: radial-gradient(ellipse at 50% 100%, var(--color-accent), transparent 65%);
+  opacity: 0.18;
+  pointer-events: none;
 }
 
 /* ---------- Motion (spec 0010 task 2): states the scripts switch on ---------- */
@@ -1188,4 +1274,97 @@ html.lenis body {
   .h-nav * {
     transition-duration: 0ms !important;
   }
+}
+
+/* ---------- Details (spec 0010 task 4) ---------- */
+.h-drift.is-drift {
+  flex-wrap: nowrap;
+  width: 116%;
+  max-width: none;
+  margin-left: -8%;
+  justify-content: center;
+  white-space: nowrap;
+}
+.h-flip {
+  display: inline-flex;
+}
+.h-flip-cell {
+  display: block;
+  height: 1em;
+  line-height: 1;
+  overflow: hidden;
+}
+.h-flip-col {
+  display: block;
+}
+.h-flip-col > span {
+  display: block;
+  height: 1em;
+}
+.edge-blur {
+  position: fixed;
+  inset: auto 0 0;
+  height: 12vh;
+  z-index: var(--z-edge-blur);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-swap) var(--ease-ui);
+  display: none;
+}
+.edge-blur.is-on {
+  opacity: 1;
+}
+@media (min-width: 810px) {
+  .edge-blur {
+    display: block;
+  }
+}
+.edge-blur span {
+  position: absolute;
+  inset: 0;
+}
+.edge-blur span:nth-child(1) {
+  backdrop-filter: blur(1px);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 25%, #000 50%, transparent 62%);
+}
+.edge-blur span:nth-child(2) {
+  backdrop-filter: blur(2px);
+  mask-image: linear-gradient(to bottom, transparent 25%, #000 50%, #000 75%, transparent 87%);
+}
+.edge-blur span:nth-child(3) {
+  backdrop-filter: blur(4px);
+  mask-image: linear-gradient(to bottom, transparent 50%, #000 75%, #000 100%);
+}
+.edge-blur span:nth-child(4) {
+  backdrop-filter: blur(8px);
+  mask-image: linear-gradient(to bottom, transparent 75%, #000 100%);
+}
+.h-cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: var(--z-cursor);
+  display: grid;
+  place-items: center;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-ink);
+  font-size: var(--fs-micro);
+  pointer-events: none;
+  transition:
+    width var(--dur-hover) var(--ease-ui),
+    height var(--dur-hover) var(--ease-ui);
+}
+.h-cursor span {
+  opacity: 0;
+  transition: opacity var(--dur-hover) var(--ease-ui);
+}
+.h-cursor.is-play {
+  width: 72px;
+  height: 72px;
+}
+.h-cursor.is-play span {
+  opacity: 1;
 }

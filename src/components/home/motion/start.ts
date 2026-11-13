@@ -1,5 +1,7 @@
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { setupCursor } from "./cursor";
+import { refreshOnFaq, setupDrift, setupFlip, watchEdgeBlur } from "./details";
 import { setupEntrances, setupWordReveals } from "./enter";
 import { setupFan } from "./fan";
 import { playIntro } from "./intro";
@@ -59,7 +61,12 @@ function run(root: HTMLElement, reduced: boolean): () => void {
     const reel = setupReel(root);
     teardown.push(() => reel.revert());
     teardown.push(setupStudio(root, reduced));
+    teardown.push(watchEdgeBlur(root));
+    teardown.push(refreshOnFaq(root));
     if (!reduced) {
+      teardown.push(setupDrift(root));
+      teardown.push(setupFlip(root));
+      teardown.push(setupCursor(root));
       playIntro(root);
       setupWordReveals(root);
       teardown.push(setupEntrances(root));
