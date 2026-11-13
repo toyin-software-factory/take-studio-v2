@@ -209,4 +209,5 @@ Tracer Bullet: one thin thread first (restore one cut, render, see it in the vid
 - [ ] Spec 0008: AC-4 and AC-6 note that rendering a background choice now goes through the pending bar and the shared change limit (spec 0011 AC-5, AC-8); updated in the same PR as this spec.
 - [ ] Remove `PUT /api/takes/[id]/background` one release after task 3 ships.
 - [ ] Adding your own cuts (select a range to remove) is out of this slice by Toyin's decision; enroll it as its own feature if wanted.
+- [ ] Frame aligned resume: mapping the playhead between the old and new render (`src/components/takes/use-render-link.ts:59`) can drift by about 1 frame per cut; storing `sourceFps` on the render would make it exact.
 - [ ] Slice 5 (AI editing agents) shows the reason for each agent proposed cut on this timeline; `cut.reason` and `proposed_by` are already stored.
