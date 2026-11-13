@@ -22,7 +22,9 @@ export function HomeStudio() {
           strong={STUDIO.strong}
         />
       </div>
-      <canvas className="h-studio-field" aria-hidden="true" />
+      <div className="h-studio-clip" aria-hidden="true">
+        <canvas className="h-studio-field" />
+      </div>
       <div className="h-studio-words">
         <div className="h-studio-word-stage" aria-hidden="true">
           {STUDIO.words.map((w) => (

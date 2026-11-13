@@ -1,28 +1,6 @@
 import { CAPABILITIES } from "./content";
 import { SectionHead } from "./head";
-import { type HomeImage, imagePath, largestWidth, videoPath } from "./media";
-
-type Tile = (typeof CAPABILITIES.tiles)[number];
-
-/** A tile's silent loop with its poster and the browser's controls (hover play comes later). */
-function TileMedia({ tile, media }: { readonly tile: Tile; readonly media: HomeImage }) {
-  return (
-    <video
-      controls
-      muted
-      loop
-      playsInline
-      preload="none"
-      poster={imagePath(media, largestWidth(media), "jpg")}
-      aria-label={`${tile.title}: short silent loop`}
-      width={tile.width}
-      height={tile.height}
-    >
-      <source src={videoPath(media as "tile-pauses", "webm")} type="video/webm" />
-      <source src={videoPath(media as "tile-pauses", "mp4")} type="video/mp4" />
-    </video>
-  );
-}
+import { TileVideo } from "./tile-video";
 
 /** What it does: four uneven tiles, each with a caption. The fourth is text only (coming soon). */
 export function HomeCapabilities() {
@@ -40,7 +18,12 @@ export function HomeCapabilities() {
             <figure key={tile.key} className="h-cap" data-enter>
               <div className={`h-tile h-tile-${i + 1}`}>
                 {tile.media ? (
-                  <TileMedia tile={tile} media={tile.media} />
+                  <TileVideo
+                    title={tile.title}
+                    media={tile.media}
+                    width={tile.width}
+                    height={tile.height}
+                  />
                 ) : (
                   <p className="h-tile-soon">Coming soon</p>
                 )}

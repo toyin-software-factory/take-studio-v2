@@ -24,7 +24,11 @@ export function HomePage({ origin }: { readonly origin: string | null }) {
     <div className="home">
       <JsonLd origin={origin} />
       <noscript>
-        <style>{".home .h-acc-panel{display:block !important}"}</style>
+        <style>
+          {
+            ".home .h-acc-panel{grid-template-rows:1fr !important}.home .h-acc-inner{opacity:1 !important;translate:none !important;visibility:visible !important}"
+          }
+        </style>
       </noscript>
       <HomeMotion />
       <SkipLink target="main" />
@@ -40,6 +44,12 @@ export function HomePage({ origin }: { readonly origin: string | null }) {
         <HomeClosing />
       </main>
       <HomeFooter />
+      <div className="edge-blur" aria-hidden="true">
+        <span />
+        <span />
+        <span />
+        <span />
+      </div>
     </div>
   );
 }
