@@ -416,7 +416,7 @@
   width: 100%;
   height: auto;
   aspect-ratio: 16 / 9;
-  background: var(--color-dark);
+  background: #000;
   border-radius: var(--radius-md);
   object-fit: cover;
 }
@@ -719,13 +719,14 @@
   }
 }
 .h-studio-cta {
+  align-self: stretch;
   margin-top: 48px;
 }
 
 /* What it does: four uneven tiles */
 .h-caps {
   display: grid;
-  gap: 48px 24px;
+  gap: 24px;
   align-items: start;
   grid-template-columns: 1fr;
 }
@@ -740,7 +741,7 @@
   }
 }
 .h-tile {
-  background: var(--color-dark);
+  background: #000;
   overflow: hidden;
 }
 .h-tile-media {
@@ -793,11 +794,15 @@ html.js .h-tile-media[data-playing="true"] video {
   text-transform: uppercase;
   color: var(--color-on-dark-75);
 }
+.h-cap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 .h-cap figcaption {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: 16px;
 }
 .h-cap figcaption p {
   color: var(--color-text-muted);
@@ -807,7 +812,7 @@ html.js .h-tile-media[data-playing="true"] video {
 /* The limits */
 .h-stats {
   display: grid;
-  gap: 32px 24px;
+  gap: 24px;
   grid-template-columns: 1fr 1fr;
 }
 @media (min-width: 1200px) {
@@ -848,7 +853,8 @@ html.js .h-tile-media[data-playing="true"] video {
 }
 @media (min-width: 1200px) {
   .h-faq {
-    grid-template-columns: 5fr 7fr;
+    gap: 24px;
+    grid-template-columns: 4fr 8fr;
   }
 }
 .h-acc-item {
