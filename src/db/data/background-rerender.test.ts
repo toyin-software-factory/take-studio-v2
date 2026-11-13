@@ -6,7 +6,7 @@ import type { Db } from "../types";
 import {
   finish,
   markRunning,
-  startBackgroundJob,
+  startChangeJob,
   startJob,
   startTranscribeJob,
   whileJobActive,
@@ -77,11 +77,11 @@ async function readyTake(opts: { backgroundId?: string | null; keyed?: boolean }
 }
 
 const change = (creatorId: string, takeId: string, backgroundId: string | null) =>
-  startBackgroundJob(db, { creatorId, takeId, backgroundId });
+  startChangeJob(db, { creatorId, takeId, background: { id: backgroundId }, cuts: [] });
 
 const takeRow = async (id: string) => (await db.select().from(take).where(eq(take.id, id)))[0]!;
 
-describe("startBackgroundJob", () => {
+describe("startChangeJob", () => {
   it("starts a free re render that keeps the take Ready and records the target (AC-5)", async () => {
     const bg = await seedBackground();
     const { creator, take: t } = await readyTake();
@@ -179,17 +179,17 @@ describe("startBackgroundJob", () => {
     });
   });
 
-  it("refuses the background the video already has (same_background), original included", async () => {
+  it("refuses the background the video already has (nothing_changed), original included", async () => {
     const bg = await seedBackground();
     const keyed = await readyTake({ backgroundId: bg.id, keyed: true });
     expect(await change(keyed.creator.id, keyed.take.id, bg.id)).toEqual({
       ok: false,
-      error: "same_background",
+      error: "nothing_changed",
     });
     const plain = await readyTake();
     expect(await change(plain.creator.id, plain.take.id, null)).toEqual({
       ok: false,
-      error: "same_background",
+      error: "nothing_changed",
     });
   });
 
@@ -206,19 +206,8 @@ describe("startBackgroundJob", () => {
     // Back to the original is not a no_green_screen refusal: the video is on it already.
     expect(await change(unkeyed.creator.id, unkeyed.take.id, null)).toEqual({
       ok: false,
-      error: "same_background",
+      error: "nothing_changed",
     });
-    // After a failed job the original is a retry and goes through.
-    await db.insert(processingJob).values({
-      id: crypto.randomUUID(),
-      takeId: unkeyed.take.id,
-      kind: "background",
-      status: "failed",
-      failureCode: "internal_error",
-      secondsCharged: 0,
-      createdAt: new Date(Date.now() + 1000),
-    });
-    expect((await change(unkeyed.creator.id, unkeyed.take.id, null)).ok).toBe(true);
     // A take with no render snapshot name at all (never keyed on a chosen background) is free.
     const plain = await readyTake();
     expect((await change(plain.creator.id, plain.take.id, bg.id)).ok).toBe(true);
@@ -410,7 +399,7 @@ describe("lock order with a background (spec 0008)", () => {
     return found;
   };
 
-  it("deleting a background while startBackgroundJob picks it never deadlocks", async () => {
+  it("deleting a background while startChangeJob picks it never deadlocks", async () => {
     const count = await deadlocks(async () => {
       const bg = await seedBackground();
       const { creator, take: t } = await readyTake();
@@ -534,10 +523,11 @@ describe("background change limit (HRF-T01)", () => {
     const { creator, take: t } = await readyTake();
     const now = new Date();
     for (let i = 0; i < 10; i += 1) await seedChange(t.id, new Date(now.getTime() - i * 60_000));
-    const refused = await startBackgroundJob(db, {
+    const refused = await startChangeJob(db, {
       creatorId: creator.id,
       takeId: t.id,
-      backgroundId: bg.id,
+      background: { id: bg.id },
+      cuts: [],
       now,
     });
     expect(refused).toEqual({ ok: false, error: "background_change_limit" });
@@ -549,10 +539,11 @@ describe("background change limit (HRF-T01)", () => {
     ).toHaveLength(0);
     // Once the oldest of the ten (made at `now`) is more than an hour old, the window has room.
     const later = new Date(now.getTime() + 3_600_000 + 1_000);
-    const again = await startBackgroundJob(db, {
+    const again = await startChangeJob(db, {
       creatorId: creator.id,
       takeId: t.id,
-      backgroundId: bg.id,
+      background: { id: bg.id },
+      cuts: [],
       now: later,
     });
     expect(again.ok).toBe(true);
@@ -565,10 +556,11 @@ describe("background change limit (HRF-T01)", () => {
     for (let i = 0; i < 9; i += 1) await seedChange(t.id, now);
     expect(
       (
-        await startBackgroundJob(db, {
+        await startChangeJob(db, {
           creatorId: creator.id,
           takeId: t.id,
-          backgroundId: bg.id,
+          background: { id: bg.id },
+          cuts: [],
           now,
         })
       ).ok,
@@ -583,10 +575,11 @@ describe("background change limit (HRF-T01)", () => {
     for (let i = 0; i < 6; i += 1) await seedChange(first.id, now);
     for (let i = 0; i < 4; i += 1) await seedChange(second.id, now);
     expect(
-      await startBackgroundJob(db, {
+      await startChangeJob(db, {
         creatorId: creator.id,
         takeId: first.id,
-        backgroundId: bg.id,
+        background: { id: bg.id },
+        cuts: [],
         now,
       }),
     ).toEqual({ ok: false, error: "background_change_limit" });
@@ -609,10 +602,11 @@ describe("background change limit (HRF-T01)", () => {
     }
     expect(
       (
-        await startBackgroundJob(db, {
+        await startChangeJob(db, {
           creatorId: creator.id,
           takeId: t.id,
-          backgroundId: bg.id,
+          background: { id: bg.id },
+          cuts: [],
           now,
         })
       ).ok,
@@ -622,19 +616,21 @@ describe("background change limit (HRF-T01)", () => {
     for (let i = 0; i < 10; i += 1) await seedChange(busy.take.id, now);
     const calm = await readyTake();
     expect(
-      await startBackgroundJob(db, {
+      await startChangeJob(db, {
         creatorId: busy.creator.id,
         takeId: busy.take.id,
-        backgroundId: bg.id,
+        background: { id: bg.id },
+        cuts: [],
         now,
       }),
     ).toEqual({ ok: false, error: "background_change_limit" });
     expect(
       (
-        await startBackgroundJob(db, {
+        await startChangeJob(db, {
           creatorId: calm.creator.id,
           takeId: calm.take.id,
-          backgroundId: bg.id,
+          background: { id: bg.id },
+          cuts: [],
           now,
         })
       ).ok,
@@ -647,10 +643,11 @@ describe("background change limit (HRF-T01)", () => {
     const now = new Date();
     for (let i = 0; i < 10; i += 1) await seedChange(t.id, now, "rerender");
     expect(
-      await startBackgroundJob(db, {
+      await startChangeJob(db, {
         creatorId: creator.id,
         takeId: t.id,
-        backgroundId: bg.id,
+        background: { id: bg.id },
+        cuts: [],
         now,
       }),
     ).toEqual({ ok: false, error: "background_change_limit" });
@@ -667,7 +664,13 @@ describe("background change limit (HRF-T01)", () => {
     for (let i = 0; i < 9; i += 1) await seedChange(filler.id, now);
     const results = await Promise.all(
       takes.map((t) =>
-        startBackgroundJob(db, { creatorId: creator.id, takeId: t.id, backgroundId: bg.id, now }),
+        startChangeJob(db, {
+          creatorId: creator.id,
+          takeId: t.id,
+          background: { id: bg.id },
+          cuts: [],
+          now,
+        }),
       ),
     );
     expect(results.filter((r) => r.ok)).toHaveLength(1);

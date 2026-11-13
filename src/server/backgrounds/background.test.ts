@@ -359,7 +359,9 @@ describe("GET /api/takes/[id] background fields (spec 0008)", () => {
 
   it("returns the target of the latest change, so Try again repeats it", async () => {
     const bg = await seedBackground();
-    const { creator, take: t } = await readyTake();
+    const first = await seedBackground();
+    // Keyed on `first`, so going back to the original is a real change (no failed job exemption).
+    const { creator, take: t } = await readyTake({ backgroundId: first.id, keyed: true });
     const res = await call(deps(creator.id), t.id, { backgroundId: bg.id });
     await markRunning(db, { jobId: res.json.jobId as string, triggerRunId: "run" });
     await finish(db, {

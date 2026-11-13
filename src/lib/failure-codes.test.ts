@@ -28,6 +28,8 @@ const NOT_REFUNDABLE = [
   "image_too_small",
   "image_too_large",
   "image_animated",
+  // Spec 0011: a change render did not match its cut plan; the change job is free anyway.
+  "render_mismatch",
 ];
 
 describe("failure code registry (AC-13)", () => {

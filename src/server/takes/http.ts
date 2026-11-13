@@ -2,12 +2,12 @@ import { z } from "zod";
 import { dispatchJob } from "@/db/data/dispatch";
 import type { Db } from "@/db/types";
 import { removedRanges } from "@/lib/cut-rules";
-import { isRetryable, removedMs, takeNote } from "@/lib/take-media";
+import { isExpired, isRetryable, removedMs, takeNote } from "@/lib/take-media";
 import { getForCreator, listForCreator, rename } from ".";
 import { listForTake } from "../cuts";
 import { hasActiveTranscribe } from "../transcripts";
 import { start } from "../jobs";
-import { cardView, jobView, renderView, takeView } from "./views";
+import { cardView, cutView, jobView, renderView, takeView } from "./views";
 
 /**
  * HTTP handlers for the take routes (spec 0004 API surface, AC-10, AC-11): session required
@@ -128,14 +128,13 @@ export async function handleGet(
   const { take, latestJob, latestRender, background, noGreenScreen, backgroundJob } = found.data;
 
   // The latest render's snapshot, or else the applied cuts (spec 0004, value sourcing).
-  let ranges = latestRender?.removedRanges ?? null;
-  if (!ranges) {
-    const cuts = await listForTake(creator.db, creator.creatorId, take.id);
-    ranges = cuts.ok ? removedRanges(cuts.data) : [];
-  }
+  const cutsResult = await listForTake(creator.db, creator.creatorId, take.id);
+  const cuts = cutsResult.ok ? cutsResult.data : [];
+  const ranges = latestRender?.removedRanges ?? removedRanges(cuts);
+  const now = deps.now?.() ?? new Date();
 
   return json({
-    take: takeView(take, deps.now?.() ?? new Date()),
+    take: takeView(take, now),
     latestJob: latestJob ? jobView(latestJob) : null,
     latestRender: latestRender ? renderView(latestRender) : null,
     removedMs: removedMs(ranges),
@@ -145,6 +144,10 @@ export async function handleGet(
     background: background ? { ...background, keyed: true } : null,
     noGreenScreen,
     backgroundJob,
+    // Spec 0011: every cut in time order (`applied` is what the current video has), and whether
+    // the original can still be played and rendered from.
+    cuts: cuts.map(cutView),
+    originalAvailable: !isExpired(take, now),
   });
 }
 

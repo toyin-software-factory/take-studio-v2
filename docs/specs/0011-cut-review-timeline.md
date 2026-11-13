@@ -1,7 +1,7 @@
 # 0011. Cut review timeline
 
 **Date**: 2026-11-12
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 

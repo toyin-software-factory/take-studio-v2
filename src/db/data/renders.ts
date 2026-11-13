@@ -1,6 +1,6 @@
 import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
-import { removedRanges, renderKey } from "@/lib/cut-rules";
+import { effectiveRemovedRanges, renderKey } from "@/lib/cut-rules";
 import { type Result, err, ok } from "@/lib/result";
 import { background, cut, processingJob, render } from "../schema";
 import { runTx } from "../tx";
@@ -27,7 +27,9 @@ export type BackgroundSnapshot = {
 /**
  * `renders.create`: a `pending` render for a job, snapshotting the applied cuts as
  * `removed_ranges` at render step start (AC-9: a re render never recomputes cuts) and, with
- * `background`, the background it is made for (spec 0008).
+ * `background`, the background it is made for (spec 0008). A change job's `cut_plan` (spec
+ * 0011) is read from the job row here, never from the task payload, so a retry gets the same
+ * ranges; the callers run this under `whileJobActive`, which holds that row locked.
  */
 export async function create(
   db: Executor,
@@ -39,13 +41,13 @@ export async function create(
 ): Promise<Result<Render, "not_found">> {
   return runTx(db, async (tx) => {
     const [job] = await tx
-      .select({ id: processingJob.id })
+      .select({ id: processingJob.id, cutPlan: processingJob.cutPlan })
       .from(processingJob)
       .where(and(eq(processingJob.id, input.jobId), eq(processingJob.takeId, input.takeId)));
     if (!job) return err("not_found");
 
     const cuts = await tx
-      .select({ startMs: cut.startMs, endMs: cut.endMs, applied: cut.applied })
+      .select({ id: cut.id, startMs: cut.startMs, endMs: cut.endMs, applied: cut.applied })
       .from(cut)
       .where(eq(cut.takeId, input.takeId))
       .orderBy(asc(cut.startMs));
@@ -69,7 +71,7 @@ export async function create(
         takeId: input.takeId,
         jobId: input.jobId,
         status: "pending",
-        removedRanges: removedRanges(cuts),
+        removedRanges: effectiveRemovedRanges(cuts, job.cutPlan),
         backgroundId,
         backgroundName: input.background?.backgroundName ?? null,
         keyed: input.background?.keyed ?? false,
