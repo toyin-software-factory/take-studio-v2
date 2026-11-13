@@ -13,6 +13,7 @@ import { drainDeletions } from "../../src/db/data/deletion";
 import * as schema from "../../src/db/schema";
 import { type Creator, db, r2 } from "./harness";
 import { frameStats } from "./inspect";
+import { until, waitIdle } from "./wait";
 
 export type Ctx = {
   readonly c: Creator;
@@ -39,22 +40,10 @@ type TakeJson = {
   backgroundJob: { status: string; failureCode: string | null } | null;
 };
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /** The blue, test only studio: the checks look for blue where the green was (the six real studios are not blue). */
 const PLACEHOLDER = BUILT_IN_BACKGROUNDS.find((b) => b.testOnly)!;
 const STUDIO = PLACEHOLDER;
 const S = "background";
-
-/** Waits (polling every 2 s) until `done` says so; null on timeout. */
-async function until<T>(read: () => Promise<T>, done: (v: T) => boolean, seconds: number) {
-  const end = Date.now() + seconds * 1000;
-  for (;;) {
-    const value = await read();
-    if (done(value)) return value;
-    if (Date.now() > end) return null;
-    await sleep(2_000);
-  }
-}
 
 export async function backgroundScenarios(ctx: Ctx): Promise<void> {
   const { c, b, check } = ctx;
@@ -64,14 +53,6 @@ export async function backgroundScenarios(ctx: Ctx): Promise<void> {
     (await c.api("GET", `/api/takes/${id}`)).json as unknown as TakeJson;
   const jobsOf = (takeId: string) =>
     db.select().from(schema.processingJob).where(eq(schema.processingJob.takeId, takeId));
-  const waitIdle = async (takeId: string) => {
-    const idle = await until(
-      jobsOf.bind(null, takeId),
-      (jobs) => jobs.every((j) => !["queued", "running"].includes(j.status)),
-      240,
-    );
-    if (!idle) throw new Error("the take still has a running job after 4 minutes");
-  };
   const charged = async (takeId: string) =>
     (await jobsOf(takeId)).filter((j) => !j.refunded).reduce((n, j) => n + j.secondsCharged, 0);
 

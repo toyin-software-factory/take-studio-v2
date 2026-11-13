@@ -49,6 +49,7 @@ import { queueTakeEmail } from "./email/queue";
 import { toHex } from "@/lib/keying";
 import { BackgroundMissingError, detectInFile } from "./keying";
 import { MediaToolError, probeFile, runFfmpeg } from "./media";
+import { storeWaveform } from "./waveform";
 
 /**
  * `process-take` (spec 0004, Flow steps 5 and 6; AC-5, AC-6, AC-7, AC-10). Dispatched by the
@@ -163,6 +164,18 @@ async function processJob(
     // deploy window): a `rerender` on a take that is not `processing` is still a background
     // change (`isBackgroundChange` in `src/lib/processing.ts`).
     const isBackgroundChange = isBackgroundChangeJob(job.kind, t.status);
+
+    // Waveform (spec 0011, AC-11): on a full run, and on a background change only while the take
+    // has none yet (a take processed before this shipped). Best effort, never fails the job.
+    if (facts.hasAudio && (!isBackgroundChange || t.waveform == null)) {
+      await storeWaveform(client, {
+        jobId: job.id,
+        takeId: t.id,
+        source,
+        durationMs: facts.durationMs,
+        signal,
+      });
+    }
 
     // Trim. A take with no sound has nothing to trim: with no background it ends here (the
     // original is the video); with one it still renders, below.
