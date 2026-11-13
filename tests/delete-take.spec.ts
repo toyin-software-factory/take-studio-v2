@@ -120,7 +120,7 @@ test.describe("library card menu", () => {
     await expect(page.getByRole("dialog")).toBeVisible();
     // The page behind the dialog is hidden from the accessibility tree, so look past that.
     await expect(
-      page.getByRole("main").getByRole("link", { name: "Alpha take", includeHidden: true }),
+      page.locator("main").getByRole("link", { name: "Alpha take", includeHidden: true }),
     ).toBeVisible();
     await expectNoSeriousAxeIssues(page);
     await page.getByRole("button", { name: "Delete take" }).click();
