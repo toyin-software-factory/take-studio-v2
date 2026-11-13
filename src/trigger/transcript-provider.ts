@@ -130,7 +130,10 @@ export async function extractAudioWithFfmpeg(
 }
 
 /** What Deepgram's answer parsed to (words, or a skip reason); `invalid` is thrown instead. */
-export type TranscribedAudio = Exclude<ReturnType<typeof parseDeepgramResponse>, { kind: "invalid" }>;
+export type TranscribedAudio = Exclude<
+  ReturnType<typeof parseDeepgramResponse>,
+  { kind: "invalid" }
+>;
 
 /** Reads the audio file, posts it and checks the answer. An unusable answer is a retryable error. */
 export async function postAudioFile(

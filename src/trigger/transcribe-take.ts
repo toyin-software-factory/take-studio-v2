@@ -18,7 +18,6 @@ import { type R2, createR2 } from "@/lib/r2";
 import { MediaToolError, probeUrl } from "./media";
 import { failureCodeFor } from "./process-take";
 import {
-  DeepgramError,
   deepgramFailureCode,
   extractAudioWithFfmpeg,
   postAudioFile,
