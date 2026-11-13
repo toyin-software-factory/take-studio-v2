@@ -66,12 +66,14 @@ void main(){
   vDepth = clamp((p.z+2.5)/5.,0.,1.);
 }`;
 
+// No `colorspace_fragment` include, as in the draft: the token colours reach the shader in linear
+// light and are written out as they are, so the dashes are the deeper, see through blue of the
+// draft; converting them back to sRGB made the additive points much brighter and whiter (DV0-T17).
 const FRAGMENT = `uniform vec3 uC1, uC2; varying float vDepth;
 void main(){
   vec2 uv = gl_PointCoord - .5;
   if (abs(uv.y) > .14 || abs(uv.x) > .46) discard;
   gl_FragColor = vec4(mix(uC2, uC1, vDepth), .85);
-  #include <colorspace_fragment>
 }`;
 
 /** A colour token from the page's CSS, so no colour value is written in this file. */

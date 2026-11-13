@@ -509,19 +509,24 @@
 .h-studio-intro .h-head {
   margin-bottom: 0;
 }
+/* Two lines as in the draft: the muted sentence, then the white one on its own line (it used to
+   run on after "by hand." and break mid sentence). */
+.h-studio-intro .h-muted {
+  display: block;
+}
 /* The particle field canvas: the CSS glow is its own background, so where the field is not
-   drawn (save data, no WebGL, little memory) the section still has its light. The clip wrapper
-   spans the whole section and cuts the canvas at its edges with `overflow: clip` (not `hidden`,
-   which would make it a scroll container and break `sticky`); the canvas sticks inside it, so no
-   particle is ever drawn outside the dark stage, and a canvas that is clipped away is not on
-   screen for the renderer's observer either. The section itself is not clipped (the arc
-   `::before` sits above it). */
+   drawn (save data, no WebGL, little memory) the section still has its light. As in the draft
+   (docs/design/home-v2.html) the canvas sits in the flow right after the heading, one screen
+   tall with a negative bottom margin, and sticks to the top of the screen from there: the
+   field opens below the heading, never over it, and the top of the arc is plain black while it
+   rises. The clip wrapper holds all the section's content and cuts the canvas at the section's
+   edges with `overflow: clip` (not `hidden`, which would make it a scroll container and break
+   `sticky`), so no particle is ever drawn outside the dark stage, and a canvas that is clipped
+   away is not on screen for the renderer's observer either. The section itself is not clipped
+   (the arc `::before` sits above it). */
 .h-studio-clip {
-  position: absolute;
-  inset: 0;
+  position: relative;
   overflow: clip;
-  pointer-events: none;
-  z-index: var(--z-field);
 }
 .h-studio-field {
   position: sticky;
@@ -530,6 +535,10 @@
   width: 100%;
   height: 100vh;
   height: 100svh;
+  margin-bottom: -100vh;
+  margin-bottom: -100svh;
+  pointer-events: none;
+  z-index: var(--z-field);
   background: radial-gradient(
     60% 50% at 50% 60%,
     color-mix(in srgb, var(--color-field-1) 25%, transparent),
