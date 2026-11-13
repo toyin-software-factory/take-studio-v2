@@ -219,6 +219,18 @@ describe("transcriptStep", () => {
     expect(j?.status).toBe("running");
   });
 
+  it("a database error before Deepgram ends only the step, even if the status write fails too", async () => {
+    const { ctx } = await seedRun();
+    const broken = new Proxy(db, {
+      get: () => () => {
+        throw new Error("db down");
+      },
+    }) as unknown as JobDb;
+    const { value, post } = io();
+    expect(await run({ ...ctx, client: broken } as RunContext, value)).toBe("failed");
+    expect(post).not.toHaveBeenCalled();
+  });
+
   it("rethrows when the run itself was stopped", async () => {
     const { ctx } = await seedRun();
     const stop = new AbortController();

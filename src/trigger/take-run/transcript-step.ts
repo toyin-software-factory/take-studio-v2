@@ -75,24 +75,24 @@ export async function transcriptStep(
 ): Promise<TranscriptOutcome> {
   const { client, job, take: t, signal, source, facts } = ctx;
 
-  if (!facts.hasAudio) {
-    await setStep(ctx, "transcript", "skipped", 0, "no_speech");
-    return "skipped";
-  }
-
-  const reused = await reusedOutcome(ctx);
-  if (reused) return reused;
-
-  const apiKey = io.apiKey();
-  if (!apiKey) {
-    logger.warn("process-take: transcript step has no Deepgram key", { jobId: job.id });
-    await setStep(ctx, "transcript", "failed", 0, "provider_error");
-    return "failed";
-  }
-
-  await setStep(ctx, "transcript", "running", 0);
   const audioPath = join(ctx.work, "audio.ogg");
   try {
+    if (!facts.hasAudio) {
+      await setStep(ctx, "transcript", "skipped", 0, "no_speech");
+      return "skipped";
+    }
+
+    const reused = await reusedOutcome(ctx);
+    if (reused) return reused;
+
+    const apiKey = io.apiKey();
+    if (!apiKey) {
+      logger.warn("process-take: transcript step has no Deepgram key", { jobId: job.id });
+      await setStep(ctx, "transcript", "failed", 0, "provider_error");
+      return "failed";
+    }
+
+    await setStep(ctx, "transcript", "running", 0);
     await io.extractAudio(source, audioPath, editSignal);
     await setStep(ctx, "transcript", "running", 40);
 
@@ -150,7 +150,10 @@ export async function transcriptStep(
     signal.throwIfAborted();
     const code = failureCodeOf(error, editSignal);
     logger.warn("process-take: transcript step failed", { jobId: job.id, takeId: t.id, code });
-    await setStep(ctx, "transcript", "failed", 0, code);
+    // Best effort: a failed status write must not replace the nonfatal outcome.
+    await setStep(ctx, "transcript", "failed", 0, code).catch(() => {
+      logger.warn("process-take: transcript status write failed", { jobId: job.id, takeId: t.id });
+    });
     return "failed";
   } finally {
     await rm(audioPath, { force: true });
