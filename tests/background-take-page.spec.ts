@@ -357,11 +357,6 @@ for (const [name, viewport] of [
     const { id } = await setup(page, baseURL!, {
       detail: {
         noGreenScreen: true,
-        backgroundJob: {
-          status: "failed",
-          failureCode: "background_missing",
-          targetBackgroundId: CALM,
-        },
       },
       preview: {
         post: {
@@ -371,7 +366,7 @@ for (const [name, viewport] of [
       },
     });
     await open(page, id);
-    await expect(section(page)).toContainText("The new background didn't finish");
+    await expect(section(page)).toContainText("couldn't find a green screen");
     await expectNoSeriousAxeIssues(page);
     await section(page)
       .getByRole("radio", { name: /Warm studio/ })

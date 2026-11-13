@@ -120,7 +120,7 @@ test("toggles a cut by keyboard, lists it in the pending bar and discards (AC-1,
 }) => {
   const { id } = await setup(page, baseURL!);
   await load(page, id);
-  await expect(timeline(page)).toContainText("2 pauses cut");
+  await expect(page.getByRole("status").filter({ hasText: "2 pauses cut" })).toBeVisible();
   await expect(cutButton(page, 1)).toHaveAttribute("aria-pressed", "false");
   await expect(bar(page)).toHaveCount(0);
   await cutButton(page, 1).focus();
