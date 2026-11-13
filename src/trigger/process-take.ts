@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { logger, task } from "@trigger.dev/sdk";
@@ -15,7 +15,7 @@ import {
   updateStep,
   whileJobActive,
 } from "@/db/data/jobs";
-import { completeLatest, create as createRender } from "@/db/data/renders";
+import { completeLatest, create as createRender, markUnkeyed } from "@/db/data/renders";
 import { background, jobStep, processingJob, take } from "@/db/schema";
 import { runTx } from "@/db/tx";
 import { ok } from "@/lib/result";
@@ -33,9 +33,7 @@ import {
   alignToFrames,
   cutsFromSilences,
   keepRanges,
-  outputFps,
   parseSilences,
-  renderFilterScript,
   silencedetectFilter,
   throttledProgress,
   totalMs,
@@ -49,6 +47,12 @@ import { queueTakeEmail } from "./email/queue";
 import { toHex } from "@/lib/keying";
 import { BackgroundMissingError, detectInFile } from "./keying";
 import { MediaToolError, probeFile, runFfmpeg } from "./media";
+import {
+  type RenderPlan,
+  encodeRender,
+  outputIsOnlyBackground,
+  renderWithFallback,
+} from "./render-fallback";
 import { storeWaveform } from "./waveform";
 
 /**
@@ -306,61 +310,70 @@ async function processJob(
       throw new Error("render has nothing to keep: the cuts remove the whole take");
     }
     const expectedMs = totalMs(keep);
-    const script = join(work, "graph.txt");
-    await writeFile(
-      script,
-      renderFilterScript(keep, {
-        hdr: facts.hdrTransfer,
-        hasAudio: facts.hasAudio,
-        background:
-          keyed && backgroundFacts?.keyColor
-            ? { keyColor: backgroundFacts.keyColor, width: facts.width, height: facts.height }
-            : undefined,
-      }),
-    );
     const output = join(work, "render.mp4");
+    const plan: RenderPlan = {
+      source,
+      keep,
+      facts,
+      work,
+      output,
+      background:
+        keyed && backgroundFacts?.keyColor
+          ? { imagePath: backgroundFacts.imagePath, keyColor: backgroundFacts.keyColor }
+          : null,
+      timeoutMs: 38 * 60_000,
+    };
     const renderProgress = throttledProgress((p) => step("render", "running", p));
-    await runFfmpeg(
-      [
-        "-y",
-        "-i",
-        source,
-        // The background image, looped at the output frame rate, is input 1 of the key graph.
-        ...(keyed && backgroundFacts
-          ? ["-loop", "1", "-framerate", outputFps(facts.fps), "-i", backgroundFacts.imagePath]
-          : []),
-        "-filter_complex_script",
-        script,
-        "-map",
-        "[vout]",
-        ...(facts.hasAudio ? ["-map", "[aout]"] : []),
-        "-fps_mode",
-        "cfr",
-        "-r",
-        outputFps(facts.fps),
-        "-c:v",
-        "libx264",
-        "-preset",
-        "fast",
-        "-crf",
-        "18",
-        "-pix_fmt",
-        "yuv420p",
-        ...(facts.hdrTransfer
-          ? ["-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709"]
-          : []),
-        ...(facts.hasAudio ? ["-c:a", "aac", "-b:a", "192k"] : []),
-        "-movflags",
-        "+faststart",
-        output,
-      ],
-      {
-        timeoutMs: 38 * 60_000,
-        signal,
-        // Encoding is most of the render step; the upload takes the last few points.
-        onOutTimeMs: (ms) => void renderProgress.report((ms / expectedMs) * 95),
-      },
-    );
+    // Encoding is most of the render step; the upload takes the last few points.
+    const onOutTimeMs = (ms: number) => void renderProgress.report((ms / expectedMs) * 95);
+    let shippedKeyed = keyed;
+    if (keyed && backgroundFacts) {
+      // RF3-T05 (spec 0008 AC-13): a keyed output that is only the background has no person in
+      // it; it is never shipped. Render again without the key and record that on the render row.
+      const imagePath = backgroundFacts.imagePath;
+      const result = await renderWithFallback({
+        renderKeyed: () => encodeRender(plan, true, { signal, onOutTimeMs }),
+        isErased: async () => {
+          const probed = await probeFile(output, signal);
+          if (!probed) throw new MediaToolError("ffprobe", null, false);
+          return outputIsOnlyBackground(
+            {
+              output,
+              imagePath,
+              width: facts.width,
+              height: facts.height,
+              durationMs: probed.durationMs,
+            },
+            signal,
+          );
+        },
+        markUnkeyed: async () => {
+          logger.warn("process-take: keyed render is only the background, rendering without key", {
+            jobId: job.id,
+            takeId: t.id,
+            renderId,
+            backgroundId: backgroundFacts?.id,
+          });
+          const marked = await db((d) =>
+            whileJobActive(d, job.id, (tx) => markUnkeyed(tx, { renderId }), signal),
+          );
+          if (!marked.ok) throw new Error(`render markUnkeyed failed: ${marked.error}`);
+          await db((d) =>
+            updateStep(d, {
+              jobId: job.id,
+              name: "background",
+              status: "skipped",
+              progress: 0,
+              failureCode: "no_green_screen",
+            }),
+          );
+        },
+        renderPlain: () => encodeRender(plan, false, { signal, onOutTimeMs }),
+      });
+      shippedKeyed = result.keyed;
+    } else {
+      await encodeRender(plan, false, { signal, onOutTimeMs });
+    }
     await rm(source, { force: true });
     await renderProgress.flush();
 
@@ -405,7 +418,7 @@ async function processJob(
       takeId: t.id,
       outcome: "rendered" as const,
       renderId,
-      keyed,
+      keyed: shippedKeyed,
       removedMs: facts.durationMs - expectedMs,
       renderMs: rendered.durationMs,
     };

@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { markUnkeyed } from "@/db/data/renders";
 import { render, storageDeletion } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
@@ -200,5 +201,38 @@ describe("ownership (AC-2)", () => {
     expect((await getForCreator(db, a.id, own.id)).ok).toBe(true);
     expect(await getForCreator(db, b.id, own.id)).toEqual({ ok: false, error: "not_found" });
     expect(await getForCreator(db, b.id, "x")).toEqual({ ok: false, error: "not_found" });
+  });
+});
+
+describe("renders.markUnkeyed (RF3-T05)", () => {
+  it("makes a pending keyed render unkeyed and keeps the background name, and changes no other render", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, { durationMs: 10_000 });
+    const job = await startJob(creator.id, t.id);
+    const created = await create(db, {
+      takeId: t.id,
+      jobId: job.id,
+      background: {
+        backgroundId: null,
+        backgroundName: "Studio",
+        keyed: true,
+        keyColor: "#00b140",
+      },
+    });
+    if (!created.ok) throw new Error(created.error);
+    const marked = await markUnkeyed(db, { renderId: created.data.id });
+    expect(marked.ok && marked.data).toMatchObject({
+      keyed: false,
+      keyColor: null,
+      backgroundName: "Studio",
+      status: "pending",
+    });
+    const done = await completeLatest(db, { renderId: created.data.id, durationMs: 9_000 });
+    expect(done.ok).toBe(true);
+    // Once the render is final it is not changed any more.
+    expect(await markUnkeyed(db, { renderId: created.data.id })).toEqual({
+      ok: false,
+      error: "not_found",
+    });
   });
 });

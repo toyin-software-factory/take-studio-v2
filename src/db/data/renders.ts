@@ -110,3 +110,21 @@ export async function completeLatest(
     .returning();
   return updated ? ok(updated) : err("already_final");
 }
+
+/**
+ * `renders.markUnkeyed` (RF3-T05, spec 0008 AC-13): a `pending` render whose keyed output turned
+ * out to be only the background is redone without the key, so the row now says so: `keyed`
+ * false and no key colour. The background reference and name stay, which is what makes the take
+ * page show the "no green screen" note. Only a `pending` render changes.
+ */
+export async function markUnkeyed(
+  db: Executor,
+  input: { readonly renderId: string },
+): Promise<Result<Render, "not_found">> {
+  const [updated] = await db
+    .update(render)
+    .set({ keyed: false, keyColor: null })
+    .where(and(eq(render.id, input.renderId), eq(render.status, "pending")))
+    .returning();
+  return updated ? ok(updated) : err("not_found");
+}
