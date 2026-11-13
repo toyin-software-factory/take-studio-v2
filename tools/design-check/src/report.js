@@ -44,10 +44,9 @@ export function toMarkdown(v, { quick = false, reportPath } = {}) {
         ? 'Differences from the design (measured from the rendered page; "design" is the target):'
         : 'Fix these (measured from the rendered page; "design" is the target):',
     );
-    const show = v.fails.slice(0, 60);
-    out.push(...show.map(line));
-    if (v.fails.length > show.length)
-      out.push(`- …and ${v.fails.length - show.length} more in the report`);
+    // Every failure goes to the builder: one it never saw would look "unchanged" next round
+    // and stop the loop as stuck.
+    out.push(...v.fails.map(line));
   }
   if (v.flags.length && !quick) {
     out.push("", "For Toyin, not for the builder:");
