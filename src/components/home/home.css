@@ -1372,6 +1372,31 @@ html:has(.h-menu[open]) {
   }
 }
 
+/* Load motion (home-v2 intro): the bar, headline and lead wait for the intro, which sets their start
+   states and removes the mark. Only while scripts run and motion is allowed; the failsafe lets go
+   after 3 s if the script never starts. */
+@media (prefers-reduced-motion: no-preference) {
+  html.h-intro-pending .h-nav,
+  html.h-intro-pending .h-hero-lead {
+    opacity: 0;
+    animation: h-intro-failsafe 0s 3s forwards;
+  }
+  html.h-intro-pending .h-hero .h-h1 {
+    visibility: hidden;
+    animation: h-intro-failsafe-visible 0s 3s forwards;
+  }
+}
+@keyframes h-intro-failsafe {
+  to {
+    opacity: 1;
+  }
+}
+@keyframes h-intro-failsafe-visible {
+  to {
+    visibility: visible;
+  }
+}
+
 /* Smooth scroll (Lenis) */
 html.lenis,
 html.lenis body {

@@ -4,6 +4,7 @@ import { HomeClosing } from "./closing";
 import { HomeFaq } from "./faq";
 import { HomeFooter } from "./footer";
 import { HomeHero } from "./hero";
+import { IntroGuard } from "./intro-guard";
 import { JsonLd } from "./json-ld";
 import { HomeLimits } from "./limits";
 import { HomeMotion } from "./motion";
@@ -30,6 +31,7 @@ export function HomePage({ origin }: { readonly origin: string | null }) {
           }
         </style>
       </noscript>
+      <IntroGuard />
       <HomeMotion />
       <SkipLink target="main" />
       <HomeNav />
