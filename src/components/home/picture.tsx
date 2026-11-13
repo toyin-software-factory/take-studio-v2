@@ -10,15 +10,12 @@ export function Picture({
   sizes,
   priority = false,
   className,
-  check,
 }: {
   readonly name: HomeImage;
   readonly alt: string;
   readonly sizes: string;
   readonly priority?: boolean;
   readonly className?: string;
-  /** The `data-check` label for the design check (tools/design-check), when the draft tags this image. */
-  readonly check?: string;
 }) {
   const width = largestWidth(name);
   const [rw, rh] = HOME_IMAGES[name].ratio;
@@ -38,7 +35,6 @@ export function Picture({
         decoding="async"
         fetchPriority={priority ? "high" : undefined}
         className={className}
-        data-check={check}
       />
     </picture>
   );
