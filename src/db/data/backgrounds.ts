@@ -1,12 +1,13 @@
-import { and, count, eq, gt, inArray, isNotNull, lt, or } from "drizzle-orm";
+import { and, asc, count, eq, gt, inArray, isNotNull, isNull, lt, or } from "drizzle-orm";
 import { ACTIVE_JOB_STATUSES } from "@/lib/processing";
 import {
   BACKGROUND_UPLOAD,
   type BackgroundFailureCode,
   backgroundKeys,
 } from "@/lib/background-rules";
+import type { CatalogEntry } from "@/lib/ai-edit";
 import { type Result, err, ok } from "@/lib/result";
-import { background, backgroundPreview, processingJob, user } from "../schema";
+import { background, backgroundPreview, processingJob, take, user } from "../schema";
 import { runTx } from "../tx";
 import type { Executor } from "../types";
 import { queueDeletions } from "./jobs";
@@ -306,4 +307,36 @@ export async function failIngest(
     .where(and(eq(background.id, id), eq(background.status, "processing")))
     .returning({ id: background.id });
   return row !== undefined;
+}
+
+/**
+ * The built in catalog the AI sees (spec 0012 AC-8): built in (`creator_id` null) and ready only,
+ * ID, name and alt text, oldest first so the order is stable. Never an upload: those names are
+ * creator text.
+ */
+export async function listBuiltInCatalog(db: Executor): Promise<readonly CatalogEntry[]> {
+  const rows = await db
+    .select({ id: background.id, name: background.name, alt: background.alt })
+    .from(background)
+    .where(and(isNull(background.creatorId), eq(background.status, "ready")))
+    .orderBy(asc(background.createdAt), asc(background.id));
+  return rows.map((r) => ({ id: r.id, name: r.name, alt: r.alt ?? r.name }));
+}
+
+/**
+ * Sets or clears the take's AI background suggestion (spec 0012 AC-5; null clears both columns).
+ * The reason can quote the take: never log it.
+ */
+export async function setTakeSuggestion(
+  db: Executor,
+  takeId: string,
+  suggestion: { readonly backgroundId: string; readonly reason: string } | null,
+): Promise<void> {
+  await db
+    .update(take)
+    .set({
+      suggestedBackgroundId: suggestion?.backgroundId ?? null,
+      suggestionReason: suggestion?.reason ?? null,
+    })
+    .where(eq(take.id, takeId));
 }
