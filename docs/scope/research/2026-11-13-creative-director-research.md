@@ -45,7 +45,7 @@ Status: idea only, not approved. Revisit after the core is built and today's AI 
 
 - Big players are moving fast: Adobe, CapCut, Captions, Riverside.
 - Trust in AI edits (cut off words, jump cuts). The approval step helps only if the plan is easy to read on a phone.
-- AI app retention: about 6.1% of subscribers kept after 12 months, against 9.5% for non AI apps (RevenueCat via TechCrunch, Mar 2026). We need a weekly habit (series, templates).
+- AI app retention: on monthly plans, about 6.1% of subscribers kept after 12 months, against 9.5% for non AI apps. On annual plans the figures are higher: 21.1% for AI apps and 30.7% for non AI apps (RevenueCat via TechCrunch, Mar 2026). We need a weekly habit (series, templates).
 - People dislike credit systems, so keep the limit simple (minutes per month).
 - Cost, if users often upload close to 100 minutes.
 
