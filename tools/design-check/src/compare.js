@@ -410,7 +410,7 @@ export function compareElements(D, B, vp, tol) {
         "extra-labels",
         null,
         extra,
-        `labels in the build that the design does not have: ${extra.slice(0, 8).join(", ")}`,
+        `labels in the build that the design does not have: ${extra.slice(0, 8).join(", ")}${extra.length > 8 ? ` …and ${extra.length - 8} more` : ""}`,
       ),
       severity: "info",
     });
@@ -770,6 +770,22 @@ export function compareMotion(D, B, vp, tol, { strictMotion = false } = {}) {
       message: `has ${trigs.join(", ")} motion that the design does not have (${describe(bList.find((m) => trigs.includes(triggerGroup(m.trigger))))})`,
     });
   }
+  // Hover is probed on a limited number of elements per page; say which ones were not.
+  const skipped = [...new Set([...(D.hoverSkipped || []), ...(B.hoverSkipped || [])])].filter((l) =>
+    labels.has(l.split("#")[0]),
+  );
+  if (skipped.length)
+    out.push({
+      id: `${vp}:(page):hover-not-checked`,
+      source: "code",
+      viewport: vp,
+      label: "(page)",
+      prop: "hover-not-checked",
+      design: null,
+      build: skipped,
+      severity: "info",
+      message: `hover not checked on ${skipped.length} element(s) past the per-page limit: ${skipped.slice(0, 8).join(", ")}${skipped.length > 8 ? ` …and ${skipped.length - 8} more` : ""}`,
+    });
   return [out, questions];
 }
 function propFamily(p) {
