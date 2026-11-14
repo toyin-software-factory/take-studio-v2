@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { storageDeletion, take } from "@/db/schema";
+import { analyticsEvent, storageDeletion, take } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { R2CompleteError } from "@/lib/r2";
@@ -10,6 +10,13 @@ import { type HttpDeps, handleAbort, handleComplete, handleCreate, handleParts }
 
 const ORIGIN = "https://take-studio.example";
 const MiB = 1024 * 1024;
+
+/** The recorded events of one name for a creator (spec 0016). */
+const eventsOf = (db: Db, creatorId: string, name: string) =>
+  db
+    .select()
+    .from(analyticsEvent)
+    .where(and(eq(analyticsEvent.creatorId, creatorId), eq(analyticsEvent.name, name)));
 
 let testDb: TestDb;
 let db: Db;
@@ -289,6 +296,10 @@ describe("POST /api/uploads/{takeId}/complete (AC-4)", () => {
     expect(await res.json()).toEqual({ takeId, status: "uploading" });
     expect(fake.calls).toContain("complete 3");
     expect(dispatched).toEqual([takeId]);
+    // Spec 0016 AC-4: the upload is counted once, before the probe decides anything.
+    const events = await eventsOf(db, creator.id, "take_uploaded");
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ takeId, props: {} });
   });
 
   it("is idempotent: a repeat after R2 already completed re-dispatches only under the same probe key", async () => {
@@ -308,6 +319,7 @@ describe("POST /api/uploads/{takeId}/complete (AC-4)", () => {
     expect(again.status).toBe(200);
     // Both dispatches carry the same take, so the `probe-{takeId}` key makes them one run.
     expect(dispatched).toEqual([takeId, takeId]);
+    expect(await eventsOf(db, creator.id, "take_uploaded")).toHaveLength(1);
   });
 
   it("returns the current status without touching R2 once the take moved on", async () => {

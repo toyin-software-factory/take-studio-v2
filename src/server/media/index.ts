@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { MEDIA_KINDS, type MediaKind, chooseMedia, downloadFileName } from "@/lib/take-media";
 import { MEDIA_LINKS } from "@/lib/uploads";
+import { recordEvent } from "../analytics/record";
 import { getForCreator } from "../takes";
 import { type Creator, errorResponse, guard, json } from "../takes/http";
 
@@ -65,6 +66,16 @@ export async function handleMedia(
           : downloadFileName(take.title, choice.file, take.container),
     },
   });
+  // Spec 0016 AC-5: a download link was issued (not play, thumb or original). Repeats count;
+  // the funnel counts distinct creators. Best effort: a failed write never changes the answer.
+  if (kind.data === "download") {
+    await recordEvent(creator.db, {
+      name: "take_downloaded",
+      creatorId: creator.creatorId,
+      takeId: take.id,
+      props: { kind: "video" },
+    });
+  }
   return json({
     url,
     expiresInSeconds: inline ? MEDIA_LINKS.playSeconds : MEDIA_LINKS.downloadSeconds,

@@ -6,6 +6,7 @@ import { processingJob, take } from "@/db/schema";
 import type { Executor } from "@/db/types";
 import type { CutPlanEntry } from "@/lib/cut-rules";
 import { type Result, err, ok } from "@/lib/result";
+import { recordEvent } from "../analytics/record";
 
 export type StartChangesError = ChangeStartError | "dispatch_failed";
 
@@ -31,6 +32,12 @@ export async function startChanges(
   if (!started.ok) return err(started.error);
   const dispatched = await dispatchJob(db, { jobId: started.data.id, trigger });
   if (!dispatched.ok) return err("dispatch_failed");
+  // Spec 0016 AC-4: a change request started (IDs only). Best effort, never changes the result.
+  await recordEvent(db, {
+    name: "change_requested",
+    creatorId: input.creatorId,
+    takeId: input.takeId,
+  });
   return ok({ jobId: started.data.id });
 }
 

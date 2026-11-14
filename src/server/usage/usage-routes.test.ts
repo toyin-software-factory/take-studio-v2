@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { appSetting, take } from "@/db/schema";
+import { analyticsEvent, appSetting, take } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { chargedMonth } from "@/lib/billing";
@@ -148,6 +148,13 @@ describe("early refusal at upload (AC-7, AC-8)", () => {
       resetsOn: "2026-12-01",
     });
     expect(created).toBe(0);
+    // Spec 0016 AC-4: the refusal is a limit hit at the upload start, with no take.
+    const hits = await db
+      .select()
+      .from(analyticsEvent)
+      .where(and(eq(analyticsEvent.creatorId, a.creator.id), eq(analyticsEvent.name, "limit_hit")));
+    expect(hits).toHaveLength(1);
+    expect(hits[0]).toMatchObject({ takeId: null, props: { place: "upload_start" } });
     expect(await db.select().from(take).where(eq(take.creatorId, a.creator.id))).toHaveLength(0);
   });
 
@@ -203,6 +210,12 @@ describe("retry at the limit (AC-6)", () => {
     });
     const res = await retry(a.creator.id, t.id);
     expect(res.status).toBe(403);
+    const hits = await db
+      .select()
+      .from(analyticsEvent)
+      .where(and(eq(analyticsEvent.creatorId, a.creator.id), eq(analyticsEvent.name, "limit_hit")));
+    expect(hits).toHaveLength(1);
+    expect(hits[0]).toMatchObject({ takeId: t.id, props: { place: "upload_complete" } });
     expect(res.headers.get("cache-control")).toBe("private, no-store");
     expect(await res.json()).toEqual({
       error: "limit_exceeded",

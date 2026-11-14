@@ -9,7 +9,7 @@ import { FAILURE_CODE_VALUES } from "./failure-codes";
 
 const smallInt = z.number().int().min(0).max(1000);
 const AI_EDIT_OUTCOMES = ["done", "unavailable", "none"] as const;
-const DOWNLOAD_KINDS = ["video", "transcript_txt", "transcript_srt"] as const;
+const DOWNLOAD_KINDS = ["video", "transcript_txt", "transcript_srt", "transcript_vtt"] as const;
 const LIMIT_PLACES = ["upload_start", "upload_complete"] as const;
 
 /** Property keys no schema may use (AC-3). A test checks every schema against this list. */

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { downloadBody, downloadFormatSchema, downloadHeaders } from "@/lib/transcript-download";
+import { recordEvent } from "../analytics/record";
 import { type TakeHttpDeps, errorResponse, guard, json } from "../takes/http";
 import {
   type MakeError,
@@ -43,6 +44,13 @@ export async function handleTranscriptDownload(
   }
   const body = downloadBody(parsed.data, view.data.paragraphs);
   if (body === null) return errorResponse("not_found");
+  // Spec 0016 AC-5: a transcript file is served. Best effort, the file is sent either way.
+  await recordEvent(creator.db, {
+    name: "transcript_downloaded",
+    creatorId: creator.creatorId,
+    takeId,
+    props: { kind: `transcript_${parsed.data}` },
+  });
   return new Response(body, {
     status: 200,
     headers: downloadHeaders(parsed.data, view.data.title),

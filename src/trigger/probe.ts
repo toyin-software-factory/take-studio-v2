@@ -12,7 +12,7 @@ import { createR2 } from "@/lib/r2";
 import { thumbnailKey } from "@/lib/take-rules";
 import { triggerForJob } from "@/lib/trigger-runs";
 import { ACTIVE_JOB_STATUSES } from "@/lib/processing";
-import { recordTakeFailed } from "./analytics/record";
+import { recordJobEvent, recordTakeFailed } from "./analytics/record";
 import { MediaToolError, probeUrl, thumbnailFromUrl } from "./media";
 import { queueTakeEmail } from "./email/queue";
 
@@ -224,7 +224,15 @@ export async function startAndDispatch(
       failureCode: "limit_exceeded",
     });
     logger.info("probe: allowance used up, take kept", { takeId, moved: failed.ok });
-    if (failed.ok) await recordTakeFailed(db, { id: takeId, creatorId }, "limit_exceeded");
+    if (failed.ok) {
+      await recordTakeFailed(db, { id: takeId, creatorId }, "limit_exceeded");
+      await recordJobEvent(db, {
+        name: "limit_hit",
+        creatorId,
+        takeId,
+        props: { place: "upload_complete" },
+      });
+    }
     return { takeId, outcome: "limit_exceeded" as const };
   }
   return { takeId, outcome: "not_started" as const, reason: started.error };

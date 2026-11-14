@@ -1,7 +1,15 @@
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { finish } from "@/db/data/jobs";
-import { cut, jobStep, processingJob, render, storageDeletion, take } from "@/db/schema";
+import {
+  analyticsEvent,
+  cut,
+  jobStep,
+  processingJob,
+  render,
+  storageDeletion,
+  take,
+} from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { MEDIA_LINKS } from "@/lib/uploads";
@@ -493,6 +501,23 @@ describe("GET /api/takes/{id}/media (AC-9, AC-12)", () => {
       }),
     ]);
     expect(signed[0]?.key).toMatch(/^renders\//);
+  });
+
+  it("records take_downloaded for a download link only, every time (spec 0016 AC-5)", async () => {
+    const creator = await createCreator(db);
+    const t = await readyTake(creator.id, { render: "succeeded" });
+    const { deps } = mediaDeps(creator.id);
+    for (const kind of ["play", "thumb", "original", "download", "download"]) {
+      await handleMedia(req("GET", `/x?kind=${kind}`), t.id, deps);
+    }
+    const rows = await db
+      .select()
+      .from(analyticsEvent)
+      .where(and(eq(analyticsEvent.creatorId, creator.id), eq(analyticsEvent.takeId, t.id)));
+    expect(rows.map((r) => [r.name, r.props])).toEqual([
+      ["take_downloaded", { kind: "video" }],
+      ["take_downloaded", { kind: "video" }],
+    ]);
   });
 
   it("downloads the original when a ready take has no render (AC-7), named take-… for a non ASCII title", async () => {
