@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ApiKeysManager } from "@/components/account/api-keys-manager";
+import { ConnectedApps } from "@/components/oauth/connected-apps";
 import { AppShell } from "@/components/shell/app-shell";
 import { listApiKeys } from "@/db/data/api-keys";
 import { getDb, getSession } from "@/server/request";
@@ -40,6 +41,7 @@ export default async function ApiKeysPage() {
             lastUsedAt: row.lastUsedAt?.toISOString() ?? null,
           }))}
         />
+        <ConnectedApps />
       </div>
     </AppShell>
   );
