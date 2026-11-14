@@ -83,6 +83,14 @@ test("off by default; the first time it says what is sent and to whom (AC-12, AC
   await expectNoSeriousAxeIssues(page);
   await dialog.getByRole("button", { name: "Not now" }).click();
   await expect(toggle).not.toBeChecked();
+  await expect(toggle).toBeFocused();
+
+  // Escape closes the disclosure and returns focus to the switch as well.
+  await toggle.click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(toggle).toBeFocused();
 
   await toggle.click();
   await page.getByRole("dialog").getByRole("button", { name: "Turn on" }).click();

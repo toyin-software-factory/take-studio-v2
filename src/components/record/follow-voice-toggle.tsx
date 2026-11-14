@@ -69,7 +69,13 @@ export function FollowVoiceToggle({
         {enabled && follow.status === "fallback" ? follow.note : null}
       </p>
       <Dialog open={asking} onOpenChange={setAsking}>
-        <DialogContent>
+        <DialogContent
+          onCloseAutoFocus={(event) => {
+            // No trigger element holds the dialog, so put focus back on the switch.
+            event.preventDefault();
+            document.getElementById(id)?.focus();
+          }}
+        >
           <DialogHeader>
             <DialogTitle>{FOLLOW_DISCLOSURE.title}</DialogTitle>
             <DialogDescription>{FOLLOW_DISCLOSURE.sent}</DialogDescription>

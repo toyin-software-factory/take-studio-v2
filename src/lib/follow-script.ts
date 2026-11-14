@@ -73,8 +73,10 @@ export function followScript(
       // Only the whole compared tail lining up is a revision; one shared last word of a new phrase is not.
       return run === Math.min(FOLLOW_TAIL, heard.length) ? { ...stay, repeat: true } : stay;
     }
-    for (let end = from + run - 1; end <= to; end++) {
+    // The matching tail may overlap the last match (a repeated phrase in the script); only its end must advance.
+    for (let end = from; end <= to; end++) {
       const start = end - run + 1;
+      if (start < 0) continue;
       if (tail.every((w, k) => wordsMatch(w, scriptWords[start + k] ?? ""))) {
         return { matchIndex: end, advanced: true };
       }
