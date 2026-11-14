@@ -117,6 +117,33 @@ describe("uploadFile (AC-3)", () => {
     expect(phases).toEqual(["uploading", "completing"]);
   });
 
+  it("sends source recording, a webm container and the script for a recording (spec 0021)", async () => {
+    const fake = fakeIo({});
+    await uploadFile(file(), "webm", fake.io, new AbortController().signal, {}, undefined, {
+      script: "Hello there",
+    });
+    expect(fake.calls[0]?.body).toEqual({
+      fileName: "take.mp4",
+      sizeBytes: 40,
+      container: "webm",
+      source: "recording",
+      script: "Hello there",
+    });
+  });
+
+  it("leaves the script out when it is blank", async () => {
+    const fake = fakeIo({});
+    await uploadFile(file(), "mp4", fake.io, new AbortController().signal, {}, undefined, {
+      script: "  \n ",
+    });
+    expect(fake.calls[0]?.body).toEqual({
+      fileName: "take.mp4",
+      sizeBytes: 40,
+      container: "mp4",
+      source: "recording",
+    });
+  });
+
   it("retries a failing part with backoff and still succeeds", async () => {
     const fake = fakeIo({ put: (part, attempt) => (part === 2 && attempt < 3 ? 500 : `e${part}`) });
     const outcome = await uploadFile(file(), "mp4", fake.io, new AbortController().signal);
