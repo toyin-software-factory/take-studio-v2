@@ -131,17 +131,31 @@ export function keepRanges(
 }
 
 /**
- * Snaps keep ranges to the source's frame grid (spec 0004 AC-6). `trim` can only start a video
- * segment on a frame, while `atrim` cuts audio anywhere, so an unaligned cut point leaves the
- * audio up to one frame late after every cut. Aligning both to the same frame boundary removes
- * that offset. Ranges that collapse to nothing are dropped. Times stay in (fractional) ms.
+ * Snaps keep ranges to the source's frame grid (spec 0004 AC-6, spec 0020 AC-7). `trim` can only
+ * start a video segment on a frame, while `atrim` cuts audio anywhere, so an unaligned cut point
+ * leaves the audio up to one frame late after every cut. Aligning both to the same frame
+ * boundary removes that offset. A start snaps down and an end snaps up, so a kept word is never
+ * trimmed (a cut can only lose a sliver of the removed part). Ranges that now touch or overlap
+ * are merged. Times stay in (fractional) ms.
  */
 export function alignToFrames(keep: readonly Range[], fps: number | null): Range[] {
   const frameMs = 1000 / (fps && fps > 0 ? fps : 30);
-  const snap = (ms: number) => Math.round(ms / frameMs) * frameMs;
-  return keep
-    .map((r) => ({ startMs: snap(r.startMs), endMs: snap(r.endMs) }))
-    .filter((r) => r.endMs > r.startMs);
+  // The tiny margin keeps a time already on a frame (up to float error) on that frame.
+  const down = (ms: number) => Math.floor(ms / frameMs + 1e-9) * frameMs;
+  const up = (ms: number) => Math.ceil(ms / frameMs - 1e-9) * frameMs;
+  const aligned: Range[] = [];
+  for (const r of keep) {
+    if (r.endMs <= r.startMs) continue;
+    const next = { startMs: down(r.startMs), endMs: up(r.endMs) };
+    const last = aligned[aligned.length - 1];
+    if (last && next.startMs <= last.endMs + 1e-9) {
+      aligned[aligned.length - 1] = {
+        startMs: last.startMs,
+        endMs: Math.max(last.endMs, next.endMs),
+      };
+    } else aligned.push(next);
+  }
+  return aligned;
 }
 
 /** Total length of ranges in ms. */
@@ -198,7 +212,13 @@ export function endSlackMs(fps: number | null | undefined): number {
  * follow a cut (never the first piece), so a take with no cuts has none.
  */
 function pieceMotion(
-  piece: { readonly lenMs: number; readonly index: number; readonly zoomed: boolean },
+  piece: {
+    readonly lenMs: number;
+    readonly index: number;
+    readonly zoomed: boolean;
+    /** The piece before it ended pushed in (only used by a short piece). */
+    readonly holdsPush: boolean;
+  },
   size: { readonly width: number; readonly height: number } | undefined,
   crop: { w: number; h: number } | null,
 ): string {
@@ -212,6 +232,14 @@ function pieceMotion(
     // same scaled size.
     const centre = (n: number) => `(${even(n)}-${n})/2`;
     return `,scale=w='${even(size.width)}':h='${even(size.height)}':eval=frame,crop=${size.width}:${size.height}:x='${centre(size.width)}':y='${centre(size.height)}',setsar=1`;
+  }
+  if (piece.index > 0 && piece.holdsPush) {
+    // A short piece after a pushed one holds that piece's final scale for its whole length.
+    const scale = base + SMOOTH.pushScale;
+    const even = (n: number) => Math.ceil((n * scale) / 2) * 2;
+    const w = even(size.width);
+    const h = even(size.height);
+    return `,scale=${w}:${h},crop=${size.width}:${size.height}:x=${(w - size.width) / 2}:y=${(h - size.height) / 2},setsar=1`;
   }
   return piece.zoomed
     ? `,crop=${crop.w}:${crop.h},scale=${size.width}:${size.height},setsar=1`
@@ -227,6 +255,19 @@ export function zoomPlan(keep: readonly Range[]): boolean[] {
   return keep.map((r, i) => {
     if (i > 0 && r.endMs - r.startMs >= SMOOTH.zoomMinPieceMs) zoomed = !zoomed;
     return zoomed;
+  });
+}
+
+/**
+ * Per keep range, whether it ends pushed in (at base plus `pushScale`): a piece of at least
+ * `zoomMinPieceMs` after the first pushes, and a shorter piece holds the scale the piece before
+ * it ended at, so the picture never jumps back (spec 0020 AC-5).
+ */
+export function pushPlan(keep: readonly Range[]): boolean[] {
+  let pushed = false;
+  return keep.map((r, i) => {
+    if (i > 0 && r.endMs - r.startMs >= SMOOTH.zoomMinPieceMs) pushed = true;
+    return pushed && i > 0;
   });
 }
 
@@ -265,6 +306,7 @@ export function renderFilterScript(keep: readonly Range[], options: RenderGraphO
   const { hdr, background } = options;
   const hasAudio = options.hasAudio ?? true;
   const zooms = options.size && keep.length > 1 ? zoomPlan(keep) : null;
+  const pushes = pushPlan(keep);
   const crop = options.size ? zoomCrop(options.size.width, options.size.height) : null;
   const lastIndex = keep.length - 1;
   const fades = (r: Range, i: number): string => {
@@ -283,7 +325,12 @@ export function renderFilterScript(keep: readonly Range[], options: RenderGraphO
     `[0:v]trim=start=${videoSeconds(r.startMs)}:end=${videoSeconds(r.endMs)},setpts=PTS-STARTPTS${
       zooms
         ? pieceMotion(
-            { lenMs: r.endMs - r.startMs, index: i, zoomed: zooms[i] ?? false },
+            {
+              lenMs: r.endMs - r.startMs,
+              index: i,
+              zoomed: zooms[i] ?? false,
+              holdsPush: pushes[i] ?? false,
+            },
             options.size,
             crop,
           )
