@@ -212,6 +212,35 @@ export async function deleteExpiredOauthRows(
   };
 }
 
+/** An OAuth client with no consent and no token for this long is an unused registration. */
+export const UNUSED_CLIENT_DAYS = 30;
+
+/**
+ * Deletes registered OAuth clients that were never used: older than `UNUSED_CLIENT_DAYS`, with no
+ * consent row and no access or refresh token (B2-T104, security review item 2). Registration is
+ * open, so unused rows only grow. A client created at or after the cutoff, or with a null
+ * `created_at`, is kept; so is any client a creator ever consented to and still holds a grant.
+ * The resource link rows go with it (cascade). Returns the number deleted.
+ */
+export async function deleteUnusedOauthClients(
+  db: Executor,
+  now: Date = new Date(),
+): Promise<number> {
+  const cutoff = new Date(now.getTime() - UNUSED_CLIENT_DAYS * 24 * 60 * 60 * 1000);
+  const removed = await db
+    .delete(oauthClient)
+    .where(
+      and(
+        lt(oauthClient.createdAt, cutoff),
+        sql`not exists (select 1 from ${oauthConsent} where ${oauthConsent.clientId} = ${oauthClient.clientId})`,
+        sql`not exists (select 1 from ${oauthAccessToken} where ${oauthAccessToken.clientId} = ${oauthClient.clientId})`,
+        sql`not exists (select 1 from ${oauthRefreshToken} where ${oauthRefreshToken.clientId} = ${oauthClient.clientId})`,
+      ),
+    )
+    .returning({ id: oauthClient.id });
+  return removed.length;
+}
+
 /** Disconnects by consent row ID; false when it is not this creator's (or already gone). */
 export async function disconnectConsent(
   db: Executor,

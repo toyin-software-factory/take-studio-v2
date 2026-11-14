@@ -1,4 +1,4 @@
-import { and, count, desc, eq, lt, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { API_KEYS, API_RATE, rateWindowStart } from "@/lib/api-rules";
 import { type Result, err, ok } from "@/lib/result";
@@ -117,9 +117,9 @@ export async function purgeOldRateWindows(
 
 /**
  * The key check (spec 0018 AC-3, AC-10): one `UPDATE ... RETURNING` by hash. It is a write, so
- * Hyperdrive never caches it and a revoked key stops at once. `last_used_at` moves at most once
- * an hour (database `now()`, so two requests at once write at most once). Null when no key has
- * that hash.
+ * Hyperdrive never caches it and a revoked key stops at once. It sets the column to itself, so
+ * nothing moves here: `last_used_at` is moved by `touchApiKey` once the request is let through
+ * (a 429 is not a use). Null when no key has that hash.
  */
 export async function authenticateApiKey(
   db: Executor,
@@ -127,13 +127,26 @@ export async function authenticateApiKey(
 ): Promise<{ readonly keyId: string; readonly creatorId: string } | null> {
   const [row] = await db
     .update(apiKey)
-    .set({
-      lastUsedAt: sql`case when ${apiKey.lastUsedAt} is null
-        or ${apiKey.lastUsedAt} < now() - interval '1 hour' then now() else ${apiKey.lastUsedAt} end`,
-    })
+    .set({ lastUsedAt: sql`${apiKey.lastUsedAt}` })
     .where(eq(apiKey.keyHash, keyHash))
     .returning({ keyId: apiKey.id, creatorId: apiKey.creatorId });
   return row ?? null;
+}
+
+/**
+ * Moves `last_used_at` for a key whose request was let through, at most once an hour (database
+ * `now()`, so two requests at once write at most once).
+ */
+export async function touchApiKey(db: Executor, keyId: string): Promise<void> {
+  await db
+    .update(apiKey)
+    .set({ lastUsedAt: sql`now()` })
+    .where(
+      and(
+        eq(apiKey.id, keyId),
+        or(isNull(apiKey.lastUsedAt), lt(apiKey.lastUsedAt, sql`now() - interval '1 hour'`)),
+      ),
+    );
 }
 
 /**
