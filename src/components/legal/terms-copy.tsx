@@ -79,6 +79,14 @@ export function TermsCopy({
       <LegalSection id="allowance" title="The free allowance">
         <AllowanceNote state={allowance} />
       </LegalSection>
+      <LegalSection id="api" title="Using the API">
+        <p>
+          You can make an API key and use it to reach your own takes from your own tools. Keep the
+          key secret: anyone who has it can act as you, so revoke it if it leaks. Requests with a
+          key are limited per minute, use the same free allowance as the website, and you may not
+          resell access to Take Studio through a key.
+        </p>
+      </LegalSection>
       <LegalSection id="service" title="Availability">
         <p>
           We work to keep Take Studio running, but we do not promise it will always be available or

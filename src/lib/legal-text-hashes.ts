@@ -21,11 +21,21 @@ export const LEGAL_TEXT_HASHES: Readonly<Record<"privacy" | "terms", readonly Re
       date: "2026-11-14",
       hash: "eaa6591705ef7dc7fd891fdc8bd9267b7c9a30d06aee4e06f53cdfa976b79884",
     },
+    {
+      date: "2026-11-14",
+      hash: "72eec5ee1bb7155e255d0688446f5a29b24c8216e0d627bf3d86bb39679a092a",
+      after: "48253593f0e8a21c213507eef110b4c0437c050edd413320b88a8c0353d82ad3",
+    },
   ],
   terms: [
     {
       date: "2026-11-14",
       hash: "cc21c86f998d5b0a07bc08fb0bbd9d3d6b4fe992f25023f9c0a6cd7b4d09ecd1",
+    },
+    {
+      date: "2026-11-14",
+      hash: "280af0e6aed037a4ec2710ed2d022ba76579114b5cba9288cc2b22e29f03a662",
+      after: "8a8a80929fba6c70be1e3a27e8b3cfd56ff66a8852f619886a586ccd59ecd449",
     },
   ],
 };
