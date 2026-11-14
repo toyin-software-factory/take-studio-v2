@@ -169,6 +169,73 @@ const seconds = (ms: number) => (ms / 1000).toFixed(6);
  */
 const videoSeconds = (ms: number) => (Math.max(0, ms - 0.001) / 1000).toFixed(6);
 
+/**
+ * Smooth cuts (spec 0020): a short audio fade on each edge that touches a cut, and a gentle
+ * alternating zoom between kept pieces so a cut reads as an edit, not a glitch.
+ */
+export const SMOOTH = {
+  audioFadeMs: 30,
+  wordEdgeMaxMs: 80,
+  zoomScale: 1.08,
+  zoomMinPieceMs: 1000,
+  /** The slow push: a long piece after a cut grows by this much of its base scale. */
+  pushScale: 0.04,
+} as const;
+
+/**
+ * How far before the take's end the last piece may stop and still be the take's own end: the
+ * uncut end snaps to the nearest frame, so it is at most half a frame early. A real trailing cut
+ * of a frame or more leaves the piece ending a whole frame early, so it is not mistaken for the end.
+ */
+export function endSlackMs(fps: number | null | undefined): number {
+  return 500 / (fps && fps > 0 ? fps : 30) + 0.001;
+}
+
+/**
+ * The video filters of one kept piece (after `setpts`): a slow linear push from the base scale
+ * (1.00, or the zoom) to base plus `pushScale` across the piece, centred, at the source size; or
+ * the plain zoom crop; or nothing. The push applies to pieces of at least `zoomMinPieceMs` that
+ * follow a cut (never the first piece), so a take with no cuts has none.
+ */
+function pieceMotion(
+  piece: { readonly lenMs: number; readonly index: number; readonly zoomed: boolean },
+  size: { readonly width: number; readonly height: number } | undefined,
+  crop: { w: number; h: number } | null,
+): string {
+  if (!size || !crop) return "";
+  const base = piece.zoomed ? SMOOTH.zoomScale : 1;
+  if (piece.index > 0 && piece.lenMs >= SMOOTH.zoomMinPieceMs) {
+    const factor = `(${base}+${SMOOTH.pushScale}*t/${(piece.lenMs / 1000).toFixed(6)})`;
+    const even = (n: number) => `ceil(${n}*${factor}/2)*2`;
+    // crop reads in_w and in_h once, at configuration, so its default centring would use the
+    // first frame's size; x and y are evaluated per frame, so spell the centre out from the
+    // same scaled size.
+    const centre = (n: number) => `(${even(n)}-${n})/2`;
+    return `,scale=w='${even(size.width)}':h='${even(size.height)}':eval=frame,crop=${size.width}:${size.height}:x='${centre(size.width)}':y='${centre(size.height)}',setsar=1`;
+  }
+  return piece.zoomed
+    ? `,crop=${crop.w}:${crop.h},scale=${size.width}:${size.height},setsar=1`
+    : "";
+}
+
+/**
+ * Per keep range, whether it is zoomed in: the first piece is not, then each piece of at least
+ * `zoomMinPieceMs` flips it, and a shorter piece keeps the previous piece's zoom.
+ */
+export function zoomPlan(keep: readonly Range[]): boolean[] {
+  let zoomed = false;
+  return keep.map((r, i) => {
+    if (i > 0 && r.endMs - r.startMs >= SMOOTH.zoomMinPieceMs) zoomed = !zoomed;
+    return zoomed;
+  });
+}
+
+/** Even pixel size of the centre crop for a zoom, so yuv420p stays valid. */
+function zoomCrop(width: number, height: number): { w: number; h: number } {
+  const even = (n: number) => Math.max(2, Math.floor(n / SMOOTH.zoomScale / 2) * 2);
+  return { w: even(width), h: even(height) };
+}
+
 export type RenderGraphOptions = {
   /** The source's HDR transfer (tone mapped to SDR), or null for SDR. */
   readonly hdr: HdrTransfer | null;
@@ -179,6 +246,12 @@ export type RenderGraphOptions = {
    * as input 1 (`-loop 1 -framerate {fps} -i image`).
    */
   readonly background?: BackgroundComposite;
+  /** The source's size. With it, and more than one piece, the pieces alternate a zoom. */
+  readonly size?: { readonly width: number; readonly height: number };
+  /** The take's length. A last piece ending at or past it has no cut at its end (no fade). */
+  readonly durationMs?: number;
+  /** The source's frame rate (for the half frame end slack); unknown counts as 30. */
+  readonly fps?: number | null;
 };
 
 /**
@@ -191,11 +264,34 @@ export type RenderGraphOptions = {
 export function renderFilterScript(keep: readonly Range[], options: RenderGraphOptions): string {
   const { hdr, background } = options;
   const hasAudio = options.hasAudio ?? true;
+  const zooms = options.size && keep.length > 1 ? zoomPlan(keep) : null;
+  const crop = options.size ? zoomCrop(options.size.width, options.size.height) : null;
+  const lastIndex = keep.length - 1;
+  const fades = (r: Range, i: number): string => {
+    const len = r.endMs - r.startMs;
+    const fadeMs = Math.min(SMOOTH.audioFadeMs, len / 2);
+    const cutAtStart = !(i === 0 && r.startMs <= 0);
+    const cutAtEnd = !(i === lastIndex && options.durationMs !== undefined
+      ? r.endMs >= options.durationMs - endSlackMs(options.fps)
+      : i === lastIndex && options.durationMs === undefined);
+    return [
+      cutAtStart ? `,afade=t=in:st=0:d=${seconds(fadeMs)}` : "",
+      cutAtEnd ? `,afade=t=out:st=${seconds(len - fadeMs)}:d=${seconds(fadeMs)}` : "",
+    ].join("");
+  };
   const lines = keep.flatMap((r, i) => [
-    `[0:v]trim=start=${videoSeconds(r.startMs)}:end=${videoSeconds(r.endMs)},setpts=PTS-STARTPTS[v${i}];`,
+    `[0:v]trim=start=${videoSeconds(r.startMs)}:end=${videoSeconds(r.endMs)},setpts=PTS-STARTPTS${
+      zooms
+        ? pieceMotion(
+            { lenMs: r.endMs - r.startMs, index: i, zoomed: zooms[i] ?? false },
+            options.size,
+            crop,
+          )
+        : ""
+    }[v${i}];`,
     ...(hasAudio
       ? [
-          `[0:a]atrim=start=${seconds(r.startMs)}:end=${seconds(r.endMs)},asetpts=PTS-STARTPTS[a${i}];`,
+          `[0:a]atrim=start=${seconds(r.startMs)}:end=${seconds(r.endMs)},asetpts=PTS-STARTPTS${fades(r, i)}[a${i}];`,
         ]
       : []),
   ]);

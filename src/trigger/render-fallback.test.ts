@@ -57,7 +57,7 @@ function fixtures() {
 const planFor = (source: string, imagePath: string, output: string): RenderPlan => ({
   source,
   keep: [{ startMs: 0, endMs: 2000 }],
-  facts: { width: 640, height: 360, fps: 25, hdrTransfer: null, hasAudio: false },
+  facts: { width: 640, height: 360, durationMs: 2000, fps: 25, hdrTransfer: null, hasAudio: false },
   work,
   output,
   background: { imagePath, keyColor: KEY },
