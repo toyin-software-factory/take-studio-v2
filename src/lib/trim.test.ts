@@ -448,6 +448,31 @@ describe("alignToFrames (AC-6 sync)", () => {
     expect(alignToFrames([{ startMs: 5, endMs: 5 }], 30)).toEqual([]);
     expect(alignToFrames([{ startMs: 0, endMs: 1_000 }], null)).toHaveLength(1);
   });
+
+  it("drops an internal cut that covers no whole frame (spec 0020 AC-5)", () => {
+    const out = alignToFrames(
+      [
+        { startMs: 0, endMs: 1_010 },
+        { startMs: 1_050, endMs: 2_000 },
+      ],
+      30,
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]?.startMs).toBeCloseTo(0, 6);
+    expect(out[0]?.endMs).toBeCloseTo(2_000, 6);
+  });
+
+  it("shortens a trailing edge cut by up to one frame (spec 0020 AC-5)", () => {
+    // A 1990 ms take with the cut [1950, 1990]: keep [0, 1950] ends on the next frame, 1966.7 ms.
+    const [r] = alignToFrames([{ startMs: 0, endMs: 1_950 }], 30);
+    expect(r?.endMs).toBeCloseTo(1_966.667, 2);
+  });
+
+  it("drops a trailing edge cut shorter than a frame (spec 0020 AC-5)", () => {
+    // A 2000 ms take with the cut [1990, 2000]: keep [0, 1990] ends on the take's last frame.
+    const [r] = alignToFrames([{ startMs: 0, endMs: 1_990 }], 30);
+    expect(r?.endMs).toBeCloseTo(2_000, 6);
+  });
 });
 
 describe("progress (Flow step 6)", () => {
