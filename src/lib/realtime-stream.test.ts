@@ -102,12 +102,20 @@ describe("realtime stream (spec 0021 AC-12)", () => {
   it("tells the caller when the connection drops, and stops the timer", () => {
     const { s, intervals, handlers } = harness();
     s.open();
-    s.onclose?.();
+    s.onclose?.({ code: 1008 });
     expect(handlers.onClose).toHaveBeenCalledTimes(1);
+    expect(handlers.onClose).toHaveBeenCalledWith(1008);
     expect(intervals[0]!.cleared).toBe(true);
-    const again = harness();
-    again.s.onerror?.();
-    expect(again.handlers.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a failed socket once, with the close code: error then close", () => {
+    const { s, handlers } = harness();
+    s.onerror?.();
+    expect(handlers.onClose).not.toHaveBeenCalled();
+    s.onclose?.({ code: 1006 });
+    s.onclose?.({ code: 1006 });
+    expect(handlers.onClose).toHaveBeenCalledTimes(1);
+    expect(handlers.onClose).toHaveBeenCalledWith(1006);
   });
 
   it("closing it ourselves sends CloseStream and is not reported as a drop", () => {
@@ -135,17 +143,55 @@ describe("fetchRealtimeToken", () => {
     expect(r).toEqual({ ok: true, token: "t" });
   });
 
-  it("maps limit, rate limit and everything else to typed failures", async () => {
-    expect(await fetchRealtimeToken(reply(403))).toEqual({ ok: false, error: "limit_exceeded" });
-    expect(await fetchRealtimeToken(reply(429))).toEqual({ ok: false, error: "rate_limited" });
-    expect(await fetchRealtimeToken(reply(503))).toEqual({ ok: false, error: "unavailable" });
+  it("maps limit, rate limit and everything else to typed failures with a step code", async () => {
+    expect(await fetchRealtimeToken(reply(403))).toEqual({
+      ok: false,
+      error: "limit_exceeded",
+      code: "token_403",
+    });
+    expect(await fetchRealtimeToken(reply(429))).toEqual({
+      ok: false,
+      error: "rate_limited",
+      code: "token_429",
+    });
+    expect(await fetchRealtimeToken(reply(503))).toEqual({
+      ok: false,
+      error: "unavailable",
+      code: "token_503",
+    });
+    expect(await fetchRealtimeToken(reply(401))).toMatchObject({ code: "token_401" });
     expect(await fetchRealtimeToken(reply(200, { nope: 1 }))).toEqual({
       ok: false,
       error: "unavailable",
+      code: "token_body",
     });
     const boom = vi.fn(async () => {
       throw new TypeError("offline");
     }) as unknown as typeof fetch;
-    expect(await fetchRealtimeToken(boom)).toEqual({ ok: false, error: "unavailable" });
+    expect(await fetchRealtimeToken(boom)).toEqual({
+      ok: false,
+      error: "unavailable",
+      code: "token_network",
+    });
+  });
+
+  it("calls a 200 with invalid JSON token_body, not a network failure", async () => {
+    const bad = vi.fn(async () => new Response("{", { status: 200 })) as unknown as typeof fetch;
+    expect(await fetchRealtimeToken(bad)).toEqual({
+      ok: false,
+      error: "unavailable",
+      code: "token_body",
+    });
+  });
+
+  it("adds the server's step name to a 503 code, and ignores anything else in the body", async () => {
+    for (const step of ["no_key", "usage", "grant"]) {
+      expect(await fetchRealtimeToken(reply(503, { error: "unavailable", step }))).toMatchObject({
+        code: `token_503_${step}`,
+      });
+    }
+    expect(await fetchRealtimeToken(reply(503, { step: "my secret text" }))).toMatchObject({
+      code: "token_503",
+    });
   });
 });

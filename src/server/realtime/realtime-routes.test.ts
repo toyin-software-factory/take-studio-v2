@@ -98,10 +98,16 @@ describe("POST /api/realtime/token", () => {
 
   it("is a friendly 503 and takes no slot when the separate key is not set", async () => {
     const c = await createCreator(db);
-    const d = deps(c.id, { deepgramKey: () => null });
+    const log = vi.fn();
+    const d = deps(c.id, { deepgramKey: () => null, log });
     const res = await call(d);
     expect(res.status).toBe(503);
-    expect((await res.json()).error).toBe("unavailable");
+    const body = await res.json();
+    expect(body).toMatchObject({ error: "unavailable", step: "no_key" });
+    expect(log).toHaveBeenCalledWith("realtime token unavailable", {
+      step: "no_key",
+      reason: "key_not_set",
+    });
     expect(d.fetch).not.toHaveBeenCalled();
     expect(
       await db.select().from(realtimeTokenMint).where(eq(realtimeTokenMint.creatorId, c.id)),
@@ -177,6 +183,7 @@ describe("POST /api/realtime/token", () => {
     };
     const res = await call(broken);
     expect(res.status).toBe(503);
+    expect(await res.json()).toMatchObject({ step: "usage" });
     expect(d.fetch).not.toHaveBeenCalled();
   });
 
@@ -186,6 +193,7 @@ describe("POST /api/realtime/token", () => {
     const failing = vi.fn(async () => new Response(`secret ${KEY} ${TOKEN}`, { status: 402 }));
     const res = await call(deps(c.id, { fetch: failing as unknown as typeof fetch, log }));
     expect(res.status).toBe(503);
+    expect(await res.clone().json()).toMatchObject({ step: "grant" });
     expect(log).toHaveBeenCalledWith("realtime token grant failed", { reason: "status_402" });
     expect(JSON.stringify([...log.mock.calls, await res.text()])).not.toMatch(
       new RegExp(`${KEY}|${TOKEN}`),

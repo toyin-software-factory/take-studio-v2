@@ -67,6 +67,12 @@ const reply = (body: unknown, status: number, headers: Record<string, string> = 
 const refuse = (code: Exclude<RealtimeError, "limit_exceeded">, headers = {}): Response =>
   reply({ error: code, message: MESSAGES[code] }, STATUS[code], headers);
 
+/** Which step made the route unavailable. A code only, so the browser can name the step (B2-T87). */
+export type UnavailableStep = "no_key" | "usage" | "grant";
+
+const unavailable = (step: UnavailableStep): Response =>
+  reply({ error: "unavailable", message: MESSAGES.unavailable, step }, STATUS.unavailable);
+
 /** Asks Deepgram for the token. A failure is a status code or a name, never a body. */
 async function grant(
   key: string,
@@ -93,6 +99,7 @@ async function grant(
 
 /** The usage refusal, or null. A missing secret lets the mint go on; a failed read refuses it. */
 async function usageRefusal(creator: Creator, deps: RealtimeHttpDeps, now: Date) {
+  const log = deps.log ?? (() => undefined);
   const secret = deps.usageSecret?.() ?? null;
   if (!secret) return null;
   try {
@@ -101,7 +108,10 @@ async function usageRefusal(creator: Creator, deps: RealtimeHttpDeps, now: Date)
       usageSecret: secret,
       now,
     });
-    if (!usage.ok) return refuse("unavailable");
+    if (!usage.ok) {
+      log("realtime token unavailable", { step: "usage", reason: "read_failed" });
+      return unavailable("usage");
+    }
     if (!usage.data.enforced || usage.data.remainingSeconds > 0) return null;
     return reply(
       {
@@ -111,8 +121,12 @@ async function usageRefusal(creator: Creator, deps: RealtimeHttpDeps, now: Date)
       },
       STATUS.limit_exceeded,
     );
-  } catch {
-    return refuse("unavailable");
+  } catch (error) {
+    log("realtime token unavailable", {
+      step: "usage",
+      reason: error instanceof Error ? error.name : "unknown",
+    });
+    return unavailable("usage");
   }
 }
 
@@ -120,7 +134,13 @@ export async function handleToken(request: Request, deps: RealtimeHttpDeps): Pro
   const creator = await guard(request, deps, { checkOrigin: true, sessionOnly: true });
   if (creator instanceof Response) return creator;
   const key = deps.deepgramKey();
-  if (!key) return refuse("unavailable");
+  if (!key) {
+    (deps.log ?? (() => undefined))("realtime token unavailable", {
+      step: "no_key",
+      reason: "key_not_set",
+    });
+    return unavailable("no_key");
+  }
   const now = deps.now?.() ?? new Date();
   const limited = await usageRefusal(creator, deps, now);
   if (limited) return limited;
@@ -133,7 +153,7 @@ export async function handleToken(request: Request, deps: RealtimeHttpDeps): Pro
   const minted = await grant(key, deps);
   if ("failure" in minted) {
     (deps.log ?? (() => undefined))("realtime token grant failed", { reason: minted.failure });
-    return refuse("unavailable");
+    return unavailable("grant");
   }
   return reply({ token: minted.token, expiresInSeconds: minted.expiresInSeconds }, 200);
 }

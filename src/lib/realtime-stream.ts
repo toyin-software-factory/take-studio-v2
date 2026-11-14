@@ -52,7 +52,7 @@ const tokenSchema = z.object({ token: z.string().min(1), expiresInSeconds: z.num
 export type TokenFailure = "limit_exceeded" | "rate_limited" | "unavailable";
 export type TokenResult =
   | { readonly ok: true; readonly token: string }
-  | { readonly ok: false; readonly error: TokenFailure };
+  | { readonly ok: false; readonly error: TokenFailure; readonly code: string };
 
 /** Ask our server for a short lived token. Any trouble is a typed failure, never a throw. */
 export async function fetchRealtimeToken(fetchFn: typeof fetch): Promise<TokenResult> {
@@ -61,15 +61,31 @@ export async function fetchRealtimeToken(fetchFn: typeof fetch): Promise<TokenRe
       method: "POST",
       credentials: "same-origin",
     });
-    if (res.status === 403) return { ok: false, error: "limit_exceeded" };
-    if (res.status === 429) return { ok: false, error: "rate_limited" };
-    if (!res.ok) return { ok: false, error: "unavailable" };
-    const body = tokenSchema.safeParse(await res.json());
+    if (res.status === 403) return failed("limit_exceeded", "token_403");
+    if (res.status === 429) return failed("rate_limited", "token_429");
+    if (!res.ok) return failed("unavailable", await statusCode(res));
+    const json: unknown = await res.json().catch(() => undefined);
+    const body = tokenSchema.safeParse(json);
     return body.success
       ? { ok: true, token: body.data.token }
-      : { ok: false, error: "unavailable" };
+      : failed("unavailable", "token_body");
   } catch {
-    return { ok: false, error: "unavailable" };
+    return failed("unavailable", "token_network");
+  }
+}
+
+const failed = (error: TokenFailure, code: string): TokenResult => ({ ok: false, error, code });
+
+const stepSchema = z.object({ step: z.enum(["no_key", "usage", "grant"]) });
+
+/** `token_<status>`, plus the server's step name when it sent one (a code, never a body). */
+async function statusCode(res: Response): Promise<string> {
+  const base = `token_${res.status}`;
+  try {
+    const step = stepSchema.safeParse(await res.json());
+    return step.success ? `${base}_${step.data.step}` : base;
+  } catch {
+    return base;
   }
 }
 
@@ -78,7 +94,7 @@ export type SocketLike = {
   readonly readyState: number;
   onopen: (() => void) | null;
   onmessage: ((event: { data: unknown }) => void) | null;
-  onclose: (() => void) | null;
+  onclose: ((event?: { code?: number }) => void) | null;
   onerror: (() => void) | null;
   send(data: string | ArrayBufferLike): void;
   close(): void;
@@ -94,7 +110,8 @@ export type RealtimeDeps = {
 export type RealtimeHandlers = {
   readonly onOpen: () => void;
   readonly onWords: (words: readonly string[]) => void;
-  readonly onClose: () => void;
+  /** `code` is the socket close code when the browser gave one. */
+  readonly onClose: (code?: number) => void;
 };
 
 export type RealtimeConnection = {
@@ -127,12 +144,17 @@ export function connectRealtime(
     const words = wordsFromMessage(event.data);
     if (words) handlers.onWords(words);
   };
-  const ended = () => {
+  // A failed socket fires `error` and then `close`: close is the one notification, with its code.
+  let notified = false;
+  const ended = (code?: number) => {
     stopTimer();
-    if (!closedByUs) handlers.onClose();
+    if (!closedByUs && !notified) {
+      notified = true;
+      handlers.onClose(code);
+    }
   };
-  socket.onclose = ended;
-  socket.onerror = ended;
+  socket.onclose = (event) => ended(event?.code);
+  socket.onerror = () => stopTimer();
   return {
     sendAudio: (frame) => {
       if (socket.readyState === SOCKET_OPEN) socket.send(frame);
