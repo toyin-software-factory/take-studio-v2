@@ -56,6 +56,19 @@ describe("followScript (spec 0021 AC-12)", () => {
     expect(followScript(script, heard("talking"), 5).matchIndex).toBe(script.indexOf("talking"));
   });
 
+  it("does not treat a revision of the same words as new speech", () => {
+    const onions = scriptWordsOf("Chop the onions then fry the onions").map(normaliseWord);
+    const first = followScript(onions, heard("chop the onions"), -1);
+    expect(first).toEqual({ matchIndex: 2, advanced: true });
+    // The interim result arrives again as its final revision: the position stays.
+    const again = followScript(onions, heard("chop the onions"), first.matchIndex);
+    expect(again).toEqual({ matchIndex: 2, advanced: false });
+    // New words after the revision still move forward, onto the right "onions".
+    expect(followScript(onions, heard("chop the onions then fry the onions"), 2).matchIndex).toBe(
+      6,
+    );
+  });
+
   it("only looks a window ahead", () => {
     const long = [...Array(60).fill("filler"), "uniqueword", "another"];
     expect(followScript(long, heard("uniqueword another"), -1).advanced).toBe(false);

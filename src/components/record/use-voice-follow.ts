@@ -30,11 +30,22 @@ async function pipeMicrophone(
   if (tracks.length === 0) return null;
   const ctx = new AudioContext({ sampleRate: 16000 });
   const url = URL.createObjectURL(new Blob([PCM_WORKLET_SOURCE], { type: "text/javascript" }));
-  await ctx.audioWorklet.addModule(url);
-  const node = new AudioWorkletNode(ctx, PCM_WORKLET_NAME, { numberOfOutputs: 0 });
-  node.port.onmessage = (event: MessageEvent<ArrayBuffer>) => conn.sendAudio(event.data);
-  ctx.createMediaStreamSource(new MediaStream(tracks)).connect(node);
-  return { ctx, url };
+  try {
+    await ctx.audioWorklet.addModule(url);
+    const node = new AudioWorkletNode(ctx, PCM_WORKLET_NAME, { numberOfOutputs: 0 });
+    node.port.onmessage = (event: MessageEvent<ArrayBuffer>) => conn.sendAudio(event.data);
+    ctx.createMediaStreamSource(new MediaStream(tracks)).connect(node);
+    return { ctx, url };
+  } catch (error) {
+    // The caller never gets the handles on failure, so release them here.
+    releaseAudio({ ctx, url });
+    throw error;
+  }
+}
+
+function releaseAudio(audio: Audio): void {
+  URL.revokeObjectURL(audio.url);
+  void audio.ctx.close();
 }
 
 /**
@@ -93,7 +104,13 @@ export function useVoiceFollow(args: {
         },
       );
       try {
-        audio = await pipeMicrophone(stream, conn);
+        const piped = await pipeMicrophone(stream, conn);
+        if (piped && cancelled) {
+          // Follow was turned off while the worklet loaded: cleanup has run, so release now.
+          releaseAudio(piped);
+          return;
+        }
+        audio = piped;
         if (!audio && !cancelled) dispatch({ type: "unavailable" });
       } catch {
         if (!cancelled) dispatch({ type: "unavailable" });
@@ -104,10 +121,7 @@ export function useVoiceFollow(args: {
       cancelled = true;
       clearInterval(timer);
       conn?.close();
-      if (audio) {
-        URL.revokeObjectURL(audio.url);
-        void audio.ctx.close();
-      }
+      if (audio) releaseAudio(audio);
       dispatch({ type: "stop" });
     };
   }, [enabled, recording, stream]);

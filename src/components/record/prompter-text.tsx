@@ -35,8 +35,8 @@ export function PrompterText({
     if (!el) return;
     let frame = 0;
     const place = () => {
-      // Voice following moves the script to the matched word; the timed position is only a fallback.
-      if (follow.current !== null) position.current = follow.current;
+      // Voice following moves the script to the matched word (not while paused); the timed position is only a fallback.
+      if (follow.current !== null && !paused) position.current = follow.current;
       const index = lineAt(lines, position.current);
       const line = lines[index];
       const node = el.children[index] as HTMLElement | undefined;
@@ -57,7 +57,7 @@ export function PrompterText({
     };
     place();
     return () => cancelAnimationFrame(frame);
-  }, [lines, reducedMotion, position, setLineIndex, settings.size]);
+  }, [lines, reducedMotion, paused, position, setLineIndex, settings.size]);
 
   if (lines.length === 0) return null;
   const showHighlight = reducedMotion && active;

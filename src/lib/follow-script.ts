@@ -48,7 +48,7 @@ export type FollowResult = {
  * `lastMatchIndex` the last matched script index (-1 at the start). Matching only looks forward,
  * inside `FOLLOW_WINDOW` words, so a repeated line never drags the prompter back and a skipped
  * line is jumped over. Words that match nothing (ad libs) change nothing. A run of two or more
- * heard words must line up; a single heard word only counts when it is four letters or longer,
+ * heard words must line up, and words that line up with the last match again are a revision, not new speech; a single heard word only counts when it is four letters or longer,
  * so "the" or "and" cannot jump the prompter.
  */
 export function followScript(
@@ -64,6 +64,12 @@ export function followScript(
   for (let run = Math.min(FOLLOW_TAIL, heard.length); run >= 1; run--) {
     const tail = heard.slice(heard.length - run);
     if (run === 1 && (tail[0]?.length ?? 0) < 4) break;
+    // The same words again (an interim result, then its final revision) are not new speech: when
+    // the tail already lines up with the script ending at the last match, the position stays.
+    const lastStart = lastMatchIndex - run + 1;
+    if (lastStart >= 0 && tail.every((w, k) => wordsMatch(w, scriptWords[lastStart + k] ?? ""))) {
+      return stay;
+    }
     for (let end = from + run - 1; end <= to; end++) {
       const start = end - run + 1;
       if (tail.every((w, k) => wordsMatch(w, scriptWords[start + k] ?? ""))) {

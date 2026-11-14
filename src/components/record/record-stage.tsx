@@ -69,7 +69,7 @@ export function RecordStage({
   const follow = useVoiceFollow({
     script,
     stream,
-    enabled: prompter.settings.follow,
+    enabled: prompter.settings.follow && prompter.total > 0,
     recording,
   });
   const leftMs = Math.max(0, limitMs - elapsedMs);
