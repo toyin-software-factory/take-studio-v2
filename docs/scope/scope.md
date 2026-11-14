@@ -239,6 +239,8 @@ A documented API so programs and agents can do everything the web app does for a
    - [ ] Real run by key from upload to download, then revoke (AC-3, AC-5, AC-7)
 - [ ] Verify it: `/check verify public API`
 - [ ] Test it: `/test public API`
+- [ ] Review it: `/check review public API`
+- [ ] Document it: `/document public API`
 Spec [0018](../specs/0018-public-api.md)
 
 ### 14. MCP server for AI agents · needs a decision · GA
