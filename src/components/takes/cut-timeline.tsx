@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { StagePanel } from "@/components/stage";
-import { reasonLine, summaryLine, timelineWidth } from "@/lib/cut-review";
+import { nextCutIndex, reasonLine, summaryLine, timelineWidth } from "@/lib/cut-review";
 import { CutBlock } from "./cut-block";
 import { CutList } from "./cut-list";
 import { type PlayerBridge, useHead } from "./player-bridge";
@@ -57,6 +57,26 @@ export function CutTimeline({
   // empty status region still exists, for the live announcement, but takes no space).
   const hasReasons = review.numbered.some((c) => c.reason?.trim());
   const disabled = review.locked || review.readOnly;
+  // Roving tabindex: the cut last focused (else the first) is the one Tab stop among the blocks.
+  const stopId = focused?.id ?? review.numbered[0]?.id;
+
+  function moveFocus(event: React.KeyboardEvent<HTMLDivElement>) {
+    const blocks = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>("button[data-cut-block]"),
+    );
+    const current = blocks.indexOf(event.target as HTMLButtonElement);
+    const next = current < 0 ? null : nextCutIndex(event.key, current, blocks.length);
+    if (next === null || event.altKey || event.ctrlKey || event.metaKey) return;
+    event.preventDefault();
+    const target = blocks[next];
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+      behavior: reduced ? "auto" : "smooth",
+    });
+  }
 
   return (
     <StagePanel className="flex flex-col gap-2">
@@ -67,7 +87,7 @@ export function CutTimeline({
         tabIndex={0}
         className="overflow-x-auto overscroll-x-contain"
       >
-        <div className="relative h-16" style={{ width: widthPx }}>
+        <div className="relative h-16" style={{ width: widthPx }} onKeyDown={moveFocus}>
           <WaveformTrack values={values} />
           {review.numbered.map((cut) => (
             <CutBlock
@@ -77,6 +97,7 @@ export function CutTimeline({
               durationMs={durationMs}
               widthPx={widthPx}
               disabled={disabled}
+              tabStop={cut.id === stopId}
               describedBy={cut.reason?.trim() ? `${takeId}-reason-${cut.id}` : undefined}
               onFocus={() => setFocusedId(cut.id)}
               onPress={() => {
