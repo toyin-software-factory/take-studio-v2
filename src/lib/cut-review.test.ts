@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   blockRect,
+  pendingApplied,
   changeBody,
   cutName,
   NO_EDITS,
@@ -61,6 +62,27 @@ describe("cut review model", () => {
     expect(summaryLine([w(500), w(600)])).toBe("2 word cuts, 1.1 s saved.");
     expect(summaryLine([w(500)])).toBe("1 word cut, 0.5 s saved.");
     expect(summaryLine([p(400), p(1000)])).toBe("2 pauses cut, 1.4 s saved.");
+  });
+  it("summary matches the cut list after any keep or undo (C-36)", () => {
+    const list = numberCuts([
+      { id: "a", startMs: 1000, endMs: 1800, kind: "ai", applied: true },
+      { id: "b", startMs: 2500, endMs: 3200, kind: "pause", applied: true },
+      { id: "c", startMs: 4000, endMs: 4600, kind: "filler", applied: false },
+    ]);
+    const line = (edits: Parameters<typeof pendingApplied>[1]) => {
+      const on = list.filter((c) => pendingApplied(c, edits));
+      return {
+        on: on.length,
+        text: summaryLine(on.map((c) => ({ ms: c.endMs - c.startMs, kind: c.kind }))),
+      };
+    };
+    expect(line(NO_EDITS)).toEqual({ on: 2, text: "1 word cut and 1 pause, 1.5 s saved." });
+    const kept = toggleCut(NO_EDITS, list, null, "b");
+    expect(line(kept)).toEqual({ on: 1, text: "1 word cut, 0.8 s saved." });
+    const more = toggleCut(kept, list, null, "c");
+    expect(line(more)).toEqual({ on: 2, text: "2 word cuts, 1.4 s saved." });
+    const none = toggleCut(toggleCut(more, list, null, "a"), list, null, "c");
+    expect(line(none)).toEqual({ on: 0, text: "No pauses cut." });
   });
   it("toggling twice returns to no edits", () => {
     const once = toggleCut(NO_EDITS, cuts, null, "a");

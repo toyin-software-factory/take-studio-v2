@@ -432,3 +432,152 @@ test("on a phone the reason line wraps without sideways page scroll (AC-3)", asy
     await context.close();
   }
 });
+
+// B2-T95 (/test cut review timeline): keyboard, focus, targets, themes, reduced motion and the
+// summary against the cut list. Arrow keys are not part of the timeline (it has no key handler),
+// so Tab and Enter or Space are the keyboard model; see the PR for that gap.
+const listButtons = (page: Page) => list(page).getByRole("button", { name: /^(Undo|Redo) / });
+
+test("Enter and Space both toggle a block, and keeping then cutting again leaves no change (AC-1, AC-2, AC-10)", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!);
+  await load(page, id);
+  await cutButton(page, 2).focus();
+  await page.keyboard.press("Enter");
+  await expect(cutButton(page, 2)).toHaveAttribute("aria-pressed", "true");
+  await expect(bar(page)).toContainText("Keep pause 2");
+  await page.keyboard.press("Space");
+  await expect(cutButton(page, 2)).toHaveAttribute("aria-pressed", "false");
+  await expect(bar(page)).toHaveCount(0);
+});
+
+test("Tab reaches the timeline, then every block in time order, before the cut list (AC-10)", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!);
+  await load(page, id);
+  await timeline(page).focus();
+  const seen: string[] = [];
+  for (let i = 0; i < 12 && !seen.some((s) => s.startsWith("list:")); i += 1) {
+    await page.keyboard.press("Tab");
+    seen.push(
+      await page.evaluate(() => {
+        const el = document.activeElement;
+        const inList = el?.closest("[data-testid='cut-list']") !== null;
+        return `${inList ? "list:" : ""}${el?.getAttribute("aria-label") ?? el?.textContent ?? ""}`;
+      }),
+    );
+  }
+  const order = [1, 2, 3].map((n) => seen.findIndex((s) => s.startsWith(`Pause ${n},`)));
+  expect(order.every((i) => i >= 0)).toBe(true);
+  expect(order).toEqual([...order].sort((a, b) => a - b));
+  expect(seen.findIndex((s) => s.startsWith("list:"))).toBeGreaterThan(order[2]!);
+});
+
+test("a focused block shows a visible focus ring, and the targets are 44 px on desktop (AC-10)", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!, { detail: { cuts: AI_CUTS, aiEdit: "done" } });
+  await load(page, id);
+  await cutAny(page, 1).focus();
+  await page.keyboard.press("Tab");
+  await page.keyboard.press("Shift+Tab");
+  await expect(cutAny(page, 1)).toBeFocused();
+  await expect(cutAny(page, 1)).toHaveCSS("outline-style", "solid");
+  await expect(cutAny(page, 1)).not.toHaveCSS("outline-width", "0px");
+  const block = await cutAny(page, 1).boundingBox();
+  expect(block!.height).toBeGreaterThanOrEqual(44);
+  expect(block!.width).toBeGreaterThanOrEqual(24);
+  const buttons = listButtons(page);
+  await expect(buttons).toHaveCount(3);
+  for (let i = 0; i < 3; i += 1) {
+    const box = await buttons.nth(i).boundingBox();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+  }
+  await buttons.nth(0).focus();
+  await expect(buttons.nth(0)).toHaveCSS("outline-style", "solid");
+});
+
+test("the summary follows every keep and undo and always matches the cut list (C-36)", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!, { detail: { cuts: AI_CUTS, aiEdit: "done" } });
+  await load(page, id);
+  const cutCount = async () => listButtons(page).filter({ hasText: "Undo" }).count();
+  await expect(page.getByText("1 word cut and 1 pause, 1.5 s saved.")).toBeVisible();
+  expect(await cutCount()).toBe(2);
+  // Keep the pause: only the word cut is left.
+  await cutAny(page, 2).click();
+  await expect(page.getByText("1 word cut, 0.8 s saved.")).toBeVisible();
+  expect(await cutCount()).toBe(1);
+  // Cut the kept word as well: two word cuts, no pause.
+  await cutAny(page, 3).click();
+  await expect(page.getByText("2 word cuts, 1.4 s saved.")).toBeVisible();
+  expect(await cutCount()).toBe(2);
+  // Keep everything.
+  await cutAny(page, 1).click();
+  await cutAny(page, 3).click();
+  await expect(page.getByText("No pauses cut.")).toBeVisible();
+  expect(await cutCount()).toBe(0);
+});
+
+test("the timeline, the list and the pending bar pass axe in light and dark (AC-10)", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!, { detail: { cuts: AI_CUTS, aiEdit: "done" } });
+  await load(page, id);
+  await cutAny(page, 1).click();
+  await expect(bar(page)).toBeVisible();
+  for (const colorScheme of ["light", "dark"] as const) {
+    await page.emulateMedia({ colorScheme });
+    await expectNoSeriousAxeIssues(page);
+  }
+});
+
+test("with reduced motion the timeline still toggles, with no running transitions (AC-10)", async ({
+  page,
+  baseURL,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const { id } = await setup(page, baseURL!);
+  await load(page, id);
+  await cutButton(page, 1).click();
+  await expect(cutButton(page, 1)).toHaveAttribute("aria-pressed", "true");
+  await expect(bar(page)).toBeVisible();
+  const running = await page.evaluate(
+    () =>
+      document
+        .getAnimations()
+        .filter(
+          (a) =>
+            a.playState === "running" &&
+            (a.effect?.getComputedTiming().iterations ?? 1) !== Infinity &&
+            (a.effect?.getComputedTiming().duration as number) > 1,
+        ).length,
+  );
+  expect(running).toBe(0);
+  await expectNoSeriousAxeIssues(page);
+});
+
+test("the Missed button on the take page leaves every cut and the pending bar alone, in dark too", async ({
+  page,
+  baseURL,
+}) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  const { id } = await setup(page, baseURL!);
+  await page.route(new RegExp(`/api/takes/${id}/missed$`), (r) => r.fulfill({ status: 204 }));
+  await load(page, id);
+  const missed = page.getByRole("button", { name: "Missed something?" });
+  await missed.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("missed-note")).toContainText("Thanks, noted at");
+  await expect(bar(page)).toHaveCount(0);
+  await expect(cutButton(page, 1)).toHaveAttribute("aria-pressed", "false");
+  await expectNoSeriousAxeIssues(page);
+});
