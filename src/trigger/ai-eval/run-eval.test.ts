@@ -238,3 +238,38 @@ describe("buildCaseSummary (spec 0017 AC-10, the run output)", () => {
     }
   });
 });
+
+describe("saving the run (B2-T72)", () => {
+  const answer = () => Promise.resolve(answerFor(emptyAnswer));
+
+  it("hands the totals and the per case summary to save, and reports saved", async () => {
+    const { io } = harness(answer);
+    const save = vi.fn(async () => undefined);
+    const result = await runAiEval({ token: TOKEN }, ENV, { ...io, save });
+    expect(save).toHaveBeenCalledTimes(1);
+    const [run] = save.mock.calls[0] as unknown as [
+      { model: string; all: { cases: number }; summary: unknown[] },
+    ];
+    expect(run.all.cases).toBe(CASE_ENTRIES.length);
+    expect(run.summary).toHaveLength(CASE_ENTRIES.length);
+    expect(result).toMatchObject({ outcome: "done", saved: true });
+  });
+
+  it("still finishes when saving fails, and logs no error text", async () => {
+    const { io, lines } = harness(answer);
+    const save = vi.fn(async () => {
+      throw new Error("connection string postgres://secret");
+    });
+    const result = await runAiEval({ token: TOKEN }, ENV, { ...io, save });
+    expect(result).toMatchObject({ outcome: "done", saved: false });
+    expect(JSON.stringify(lines)).not.toContain("secret");
+    expect(lines.some((l) => l.message === "ai-eval: save failed")).toBe(true);
+  });
+
+  it("saves nothing for a skipped run", async () => {
+    const { io } = harness(answer);
+    const save = vi.fn(async () => undefined);
+    await runAiEval({ token: "wrong" }, ENV, { ...io, save });
+    expect(save).not.toHaveBeenCalled();
+  });
+});
