@@ -75,6 +75,34 @@ function registerTools(
   TOOLS.forEach(register);
 }
 
+/**
+ * Reads the body up to `MCP.maxBodyBytes`, counting bytes as they arrive, so a stream with no
+ * (or a false) `Content-Length` is cut off at the limit instead of buffered whole. Null: too big.
+ */
+async function readBody(request: Request): Promise<string | null> {
+  if (request.body === null) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MCP.maxBodyBytes) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
 export async function handleMcp(request: Request, deps: McpHttpDeps): Promise<Response> {
   if (request.method !== "POST") {
     return finish(
@@ -99,7 +127,9 @@ export async function handleMcp(request: Request, deps: McpHttpDeps): Promise<Re
   if (Number.isFinite(length) && length > MCP.maxBodyBytes) {
     return rpcError(413, RPC_CODE.invalidRequest, "The request is too large.");
   }
-  const checked = checkBody(await request.text());
+  const text = await readBody(request);
+  if (text === null) return rpcError(413, RPC_CODE.invalidRequest, "The request is too large.");
+  const checked = checkBody(text);
   if (!checked.ok) return rpcError(checked.status, checked.code, checked.message);
   try {
     const server = new McpServer(
