@@ -185,6 +185,7 @@ AI agents make the editing calls inside the pipeline: which pauses to cut (keepi
    - [x] AI cuts: one structured Claude call, validation, fallback to rules cuts, reasons on the timeline (AC-2, AC-3, AC-6, AC-7, AC-8, AC-9, AC-10, AC-12)
    - [x] Transcript fixes with undo and redo, used by the view, captions and downloads (AC-4, AC-11, AC-12)
    - [x] Background suggestion card, then measure time and cost on a real 10 minute take (AC-5, AC-6, AC-9, AC-12)
+   - [x] Word cuts judged from meaning, no fixed filler list (placeholder speech, retakes, asides), cap 40% (spec 0012 step 9, C-33, B2-T20)
 - [x] Verify it: `/check verify AI editing agents` (`docs/reviews/0012-ai-editing-verify.md`: AC-2, AC-3, AC-5 pass live; AC-4 and AC-7 not exercised live, AC-8 and AC-9 covered by tests)
 - [x] Test it: `/test AI editing agents` (`src/trigger/take-run/ai-call-request.test.ts` added for AC-9; the rest already covered, see the review)
 Spec [0012](../specs/0012-ai-editing-agents.md)
@@ -201,6 +202,7 @@ A proper library of past takes with status and expiry date; delete a take at any
    - [ ] Delete on library cards and the clearer expired states and take page (AC-1, AC-2, AC-5, AC-8)
    - [x] R2 lifecycle rules as a backstop and the account deletion test (AC-9, AC-10) (B2-T06; the deploy skips the step with a warning until `R2_LIFECYCLE_TOKEN` is a CI secret)
    - [ ] Browser tests and axe for the delete dialog and library (AC-12)
+   - [ ] Fix: the player's Full screen button does nothing on iPhone; add the webkit fallback (B2-T21, reported by Toyin 2026-11-14)
 - [ ] Verify it: `/check verify take library, delete & retention`
 - [ ] Test it: `/test take library, delete & retention`
 Spec [0013](../specs/0013-take-library-delete-retention.md)
@@ -278,7 +280,7 @@ Three events that show whether the core loop works: signup, take uploaded, take 
    - [ ] Legal facts entry and copy bump (AC-11)
    - [ ] Docs and deploy env list for the viewer secret
 - [ ] Verify it: `/check verify product analytics`
-Spec [0016](../specs/0016-product-analytics.md) · Toyin answers seven open questions (tool, visits, who sees it, retention, deletion, founding member rule, event list)
+Spec [0016](../specs/0016-product-analytics.md) · Toyin answered the open questions on 2026-11-14 (C-30): our own events in our database, recommended options otherwise
 
 ## Deferred
 Out of scope for this build pass, kept so the plan stays honest.
