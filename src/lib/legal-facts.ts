@@ -167,7 +167,8 @@ export const PROCESSORS: readonly Processor[] = [
     id: "anthropic",
     name: "Anthropic",
     role: "Suggests which words to fix and which pauses to cut (the AI edit).",
-    receives: "Transcript words and where the pauses are.",
+    receives:
+      "Transcript words, which words the transcriber was unsure of, and where the pauses are.",
     doesNotReceive: "Video, audio, your name or your email.",
     location: "Anthropic cloud.",
     trainsOnContent: false,

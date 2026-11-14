@@ -11,7 +11,8 @@ export function ServicesSection() {
         {DEEPGRAM_OPTS_OUT
           ? " We tell Deepgram not to use your audio to train its models."
           : ""}{" "}
-        The AI step sees transcript words and where the pauses are, never your video or your audio.
+        The AI step sees transcript words, which words the transcriber was unsure of, and where the
+        pauses are, never your video or your audio.
       </p>
       <dl className="flex flex-col gap-4">
         {PROCESSORS.map((p) => (
