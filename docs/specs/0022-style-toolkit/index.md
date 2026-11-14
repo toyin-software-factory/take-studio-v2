@@ -43,7 +43,7 @@ A style is a ready made look for the finished video: how strongly the picture zo
 | `punchy` | Punchy | 20 ms | 1.12 | 0.06 | contrast 1.06, saturation 1.10 |
 | `warm` | Warm | 30 ms | 1.08 | 0.04 | warm balance, saturation 1.05 |
 
-`natural` is exactly the `SMOOTH` constants of spec 0020, which move into the registry as that recipe's numbers.
+`natural` uses the same numbers as spec 0020's `SMOOTH`: its `audioFadeMs`, `zoomScale` and `pushScale` move into the registry as that recipe's numbers. Two values stay out of the recipe, because every style shares them: `wordEdgeMaxMs` (how far a word cut edge may move, read by `src/lib/ai-edit.ts`) and `zoomMinPieceMs` (the shortest piece that gets a zoom change or push, read by `src/lib/trim.ts`). They stay in `SMOOTH` in `src/lib/trim.ts`, so `ai-edit.ts` and the zoom and push gating keep importing them and nothing about them changes.
 
 **Format** (`StyleRecipe`, zod, `version: 1`):
 
@@ -117,7 +117,7 @@ Fields for later steps (`captions`, `music`, `pace`) are not in version 1. A lat
 
 Tracer Bullet: one thin thread through every layer first (registry, storage, job, render), then the picker, then the other recipes.
 
-1. **Jim, thread**: `src/lib/styles.ts` (schema, registry with `natural` only, `resolveStyle`), migration for `take.style_id` and `render.style_id`, `renderFilterScript(keeps, options, recipe)` with the golden test, `SMOOTH` moved into `natural`. Satisfies **AC-1**, **AC-2**, **AC-3**, **AC-13**.
+1. **Jim, thread**: `src/lib/styles.ts` (schema, registry with `natural` only, `resolveStyle`), migration for `take.style_id` and `render.style_id`, `renderFilterScript(keeps, options, recipe)` with the golden test, the recipe numbers (`audioFadeMs`, `zoomScale`, `pushScale`) moved from `SMOOTH` into `natural`, while `wordEdgeMaxMs` and `zoomMinPieceMs` stay in `SMOOTH`. Satisfies **AC-1**, **AC-2**, **AC-3**, **AC-13**.
 2. **Jim, thread end to end**: add `calm`, accept `styleId` on the re render route, the job resolves and applies it, the render records it, `pnpm test:pipeline` renders a synthetic take in `calm`. Satisfies **AC-2**, **AC-3**, **AC-7**, **AC-10**.
 3. **Dwight, picker**: Style tab, tiles, pending bar entry, `Edits.style`, Mobbin references, accessibility and tests. Needs task 2. Satisfies **AC-4**, **AC-5**, **AC-7**.
 4. **Jim, more recipes**: `punchy`, `warm`, the colour look, bounds tests, render time check on the 60 s synthetic take. Satisfies **AC-3**, **AC-8**, **AC-9**.
@@ -139,7 +139,7 @@ Tasks 3 and 4 can run in parallel after task 2.
 - Every style change is a full re render (same cost as a background change).
 
 **Neutral**:
-- Spec 0020's `SMOOTH` constants become the `natural` recipe, and its "Cut style" follow up is replaced by this spec.
+- Spec 0020's `audioFadeMs`, `zoomScale` and `pushScale` become the `natural` recipe (`wordEdgeMaxMs` and `zoomMinPieceMs` stay in `SMOOTH`), and its "Cut style" follow up is replaced by this spec.
 
 ## Rationale
 
