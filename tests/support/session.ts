@@ -35,6 +35,12 @@ export function localDatabaseUrl(): string {
   return url;
 }
 
+/**
+ * A made up user id the CI `.env` names as INSIGHTS_VIEWER_USER_ID, so a test can sign in as the
+ * insights viewer. Never the real viewer's id (C-35): that exists only as a production secret.
+ */
+export const INSIGHTS_TEST_VIEWER_ID = "00000000-0000-4000-8000-00000000e2e1";
+
 export type TestUser = { readonly id: string; readonly name: string; readonly email: string };
 
 /** Signs a fresh test user in for `context`. Call the returned cleanup after the test. */
@@ -42,11 +48,12 @@ export async function signIn(
   context: BrowserContext,
   baseURL: string,
   name = "Ada Lovelace",
+  id: string = randomUUID(),
 ): Promise<{ readonly user: TestUser; readonly cleanup: () => Promise<void> }> {
   const secret = setting("BETTER_AUTH_SECRET");
   if (!secret) throw new Error("BETTER_AUTH_SECRET is not set (CI writes it to .env).");
   const sql = postgres(localDatabaseUrl(), { max: 1 });
-  const user = { id: randomUUID(), name, email: `e2e-${randomUUID()}@example.test` };
+  const user = { id, name, email: `e2e-${randomUUID()}@example.test` };
   const token = randomBytes(32).toString("base64url");
   const now = new Date();
 
