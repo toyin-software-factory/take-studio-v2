@@ -130,6 +130,7 @@ jobs:
           R2_SECRET_ACCESS_KEY=ci
           R2_BUCKET=ci
           TRIGGER_SECRET_KEY=ci
+          USAGE_HASH_SECRET=ci-only-placeholder-usage-secret-0123456789
           ENV
 
       - name: Build the Worker

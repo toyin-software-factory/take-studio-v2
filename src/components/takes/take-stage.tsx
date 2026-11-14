@@ -6,12 +6,8 @@ import { Stage, StageLetterbox } from "@/components/stage";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import type { TakeDetail } from "@/lib/take-api";
-import {
-  RETENTION_NOTE,
-  TRANSCRIPT_KEPT,
-  failureMessage,
-  videoRemovedNote,
-} from "@/lib/take-display";
+import { RETENTION_NOTE, TRANSCRIPT_KEPT, videoRemovedNote } from "@/lib/take-display";
+import { failedMessage } from "./failed-message";
 import type { PlayerBridge } from "./player-bridge";
 import { ProcessingSteps } from "./processing-steps";
 import { CutTimeline } from "./cut-timeline";
@@ -51,7 +47,7 @@ function Failed({
   return (
     <StageMessage icon={CircleAlert} title="This take didn't finish">
       <p role="alert" className="max-w-prose text-stage-text-muted">
-        {failureMessage(take, take.retryable)}
+        {failedMessage(take, take.retryable, new Date())}
       </p>
       {take.retryable ? (
         <Button loading={pending} onClick={() => void retry()}>
