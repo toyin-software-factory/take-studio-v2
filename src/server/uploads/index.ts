@@ -5,8 +5,13 @@ import { touchUploading, transitionTake } from "@/db/data/takes";
 import { background, take, user } from "@/db/schema";
 import { runTx } from "@/db/tx";
 import type { Db, Take } from "@/db/types";
+import {
+  uploadCompleteSchema,
+  uploadCreateSchema,
+  uploadPartsSchema,
+} from "@/lib/api-schemas/requests";
 import { CLEANUP } from "@/lib/cleanup-rules";
-import { CONTAINERS, SCRIPT_MAX_CHARS, TAKE_SOURCES } from "@/lib/processing";
+import { SCRIPT_MAX_CHARS } from "@/lib/processing";
 import { R2CompleteError, type R2 } from "@/lib/r2";
 import { type Result, err, ok } from "@/lib/result";
 import { MEDIA_LIMITS } from "@/lib/take-rules";
@@ -51,18 +56,6 @@ export type UploadError =
   | "background_not_found"
   | "background_not_ready";
 
-const createSchema = z.object({
-  fileName: z.string().min(1).max(1000),
-  sizeBytes: z.number().int().positive(),
-  container: z.enum(CONTAINERS),
-  /** Spec 0008, AC-1: a background ID or `original`; left out means no choice was made. */
-  backgroundId: z.union([z.literal("original"), z.uuid()]).optional(),
-  /** Spec 0021: `file` (default) or `recording`. */
-  source: z.enum(TAKE_SOURCES).optional(),
-  /** Spec 0021: the creator's script. Length is checked first (`script_too_long`), then stored trimmed. */
-  script: z.string().optional(),
-});
-
 /** True when a body's script is a string over the limit once trimmed (checked before zod, so no error ever holds it). */
 function scriptTooLong(input: unknown): boolean {
   if (typeof input !== "object" || input === null || !("script" in input)) return false;
@@ -86,7 +79,7 @@ export async function createUpload(
   input: unknown,
 ): Promise<Result<CreatedUpload, UploadError>> {
   if (scriptTooLong(input)) return err("script_too_long");
-  const parsed = createSchema.safeParse(input);
+  const parsed = uploadCreateSchema.safeParse(input);
   if (!parsed.success) return err("invalid");
   const { fileName, sizeBytes, container, backgroundId: chosen, source, script } = parsed.data;
   if (sizeBytes > MEDIA_LIMITS.maxBytes) return err("too_large");
@@ -165,14 +158,6 @@ async function ownedTake(db: Db, creatorId: string, takeId: string): Promise<Tak
   return found ?? null;
 }
 
-const partsRequestSchema = z.object({
-  partNumbers: z
-    .array(z.number().int().positive())
-    .min(1)
-    .max(UPLOAD.maxPartsPerRequest)
-    .refine((list) => new Set(list).size === list.length, "duplicate part numbers"),
-});
-
 /**
  * `POST /api/uploads/{takeId}/parts`: presigned PUT links (15 minutes) for part numbers within
  * the take's part count, only while it is still uploading.
@@ -194,7 +179,7 @@ export async function presignParts(
   const t = await ownedTake(deps.db, creatorId, takeId);
   if (!t) return err("not_found");
   if (t.status !== "uploading" || !t.uploadId) return err("not_uploading");
-  const parsed = partsRequestSchema.safeParse(input);
+  const parsed = uploadPartsSchema.safeParse(input);
   if (!parsed.success) return err("bad_parts");
   const total = partCount(t.originalBytes);
   if (parsed.data.partNumbers.some((n) => n > total)) return err("bad_parts");
@@ -215,13 +200,6 @@ export async function presignParts(
   );
   return ok({ parts, expiresInSeconds: UPLOAD.partLinkSeconds });
 }
-
-const completeSchema = z.object({
-  parts: z
-    .array(z.object({ partNumber: z.number().int().positive(), etag: z.string() }))
-    .min(1)
-    .max(10_000),
-});
 
 /** Statuses a take reaches only after its upload completed. */
 const AFTER_UPLOAD = new Set(["uploaded", "processing", "ready", "expired"]);
@@ -244,7 +222,7 @@ export async function completeUpload(
   if (AFTER_UPLOAD.has(t.status)) return ok({ takeId: t.id, status: t.status });
   if (t.status !== "uploading" || !t.uploadId) return err("not_uploading");
 
-  const parsed = completeSchema.safeParse(input);
+  const parsed = uploadCompleteSchema.safeParse(input);
   if (!parsed.success) return err("bad_parts");
   const parts = parsed.data.parts.map((p) => ({
     partNumber: p.partNumber,

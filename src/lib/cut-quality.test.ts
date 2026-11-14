@@ -126,13 +126,37 @@ describe("the written cut quality test set", () => {
     expect(cases.some((c) => c.parsed.success && c.parsed.data.expected.length === 0)).toBe(true);
   });
 
+  it("has the script cases, and the heavy retakes case needs the script share (spec 0021, AC-13)", () => {
+    const withScript = cases.flatMap((c) =>
+      c.parsed.success && c.parsed.data.script ? [c.parsed.data.id] : [],
+    );
+    for (const id of [
+      "script-line-twice",
+      "script-line-three-times",
+      "script-fluffed-then-clean",
+      "script-heavy-retakes",
+      "script-ad-lib",
+      "script-skipped-line",
+    ])
+      expect(withScript, id).toContain(id);
+    const heavy = cases.find(
+      (c) => c.parsed.success && c.parsed.data.id === "script-heavy-retakes",
+    );
+    if (!heavy || !heavy.parsed.success) throw new Error("script-heavy-retakes is missing");
+    const c = heavy.parsed.data;
+    const candidates = c.pauses.map((p) => ({ ...p, reason: "Pause" }));
+    const answer = aiEditAnswerSchema.parse(heavy.answer);
+    expect(validateAiEdit(answer, c.words, candidates, c.durationMs).ok).toBe(false);
+    expect(validateAiEdit(answer, c.words, candidates, c.durationMs, [], true).ok).toBe(true);
+  });
+
   /** The cuts the pipeline would apply for a case: the rules' pauses, plus the recorded answer if `useAi`. */
   function appliedCuts(c: CutCase, answerRaw: unknown, useAi: boolean): ScoredCut[] {
     const candidates = c.pauses.map((p) => ({ ...p, reason: "Pause" }));
     const rules: ScoredCut[] = candidates.map((p) => ({ ...p, kind: "pause" }));
     if (!useAi) return rules;
     const answer = aiEditAnswerSchema.parse(answerRaw);
-    const valid = validateAiEdit(answer, c.words, candidates, c.durationMs);
+    const valid = validateAiEdit(answer, c.words, candidates, c.durationMs, [], Boolean(c.script));
     expect(valid.ok, `${c.id}: answer refused`).toBe(true);
     if (!valid.ok) throw new Error("unreachable");
     expect(valid.data.dropped, `${c.id}: items dropped`).toBe(0);

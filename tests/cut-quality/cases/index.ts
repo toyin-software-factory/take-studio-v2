@@ -34,6 +34,18 @@ import a_earlier_attempt from "../answers/earlier-attempt.json";
 import a_like_and_trailing_filler from "../answers/like-and-trailing-filler.json";
 import a_tag_question from "../answers/tag-question.json";
 import a_tics_sort_of from "../answers/tics-sort-of.json";
+import c_script_line_twice from "./script-line-twice.json";
+import a_script_line_twice from "../answers/script-line-twice.json";
+import c_script_line_three_times from "./script-line-three-times.json";
+import a_script_line_three_times from "../answers/script-line-three-times.json";
+import c_script_fluffed_then_clean from "./script-fluffed-then-clean.json";
+import a_script_fluffed_then_clean from "../answers/script-fluffed-then-clean.json";
+import c_script_heavy_retakes from "./script-heavy-retakes.json";
+import a_script_heavy_retakes from "../answers/script-heavy-retakes.json";
+import h_script_ad_lib from "./holdout/script-ad-lib.json";
+import a_script_ad_lib from "../answers/script-ad-lib.json";
+import h_script_skipped_line from "./holdout/script-skipped-line.json";
+import a_script_skipped_line from "../answers/script-skipped-line.json";
 
 export type RecordedAnswer = unknown;
 export type CaseEntry = {
@@ -61,4 +73,10 @@ export const CASE_ENTRIES: readonly CaseEntry[] = [
   { holdout: true, raw: h_like_and_trailing_filler, answer: a_like_and_trailing_filler },
   { holdout: true, raw: h_tag_question, answer: a_tag_question },
   { holdout: true, raw: h_tics_sort_of, answer: a_tics_sort_of },
+  { holdout: false, raw: c_script_line_twice, answer: a_script_line_twice },
+  { holdout: false, raw: c_script_line_three_times, answer: a_script_line_three_times },
+  { holdout: false, raw: c_script_fluffed_then_clean, answer: a_script_fluffed_then_clean },
+  { holdout: false, raw: c_script_heavy_retakes, answer: a_script_heavy_retakes },
+  { holdout: true, raw: h_script_ad_lib, answer: a_script_ad_lib },
+  { holdout: true, raw: h_script_skipped_line, answer: a_script_skipped_line },
 ];

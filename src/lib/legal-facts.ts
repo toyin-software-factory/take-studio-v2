@@ -157,10 +157,10 @@ export const PROCESSORS: readonly Processor[] = [
     role: "Turns your audio into a transcript.",
     receives: "The audio of your take.",
     doesNotReceive:
-      "Your video, your name or your email. We ask Deepgram not to use your audio to train its models.",
+      "Your video, your name or your email. We ask Deepgram not to use your audio to train its models. The short lived access token we ask Deepgram for, so your browser can connect while you record, carries no personal data.",
     location: "Deepgram cloud.",
     trainsOnContent: false,
-    envNames: ["DEEPGRAM_API_KEY"],
+    envNames: ["DEEPGRAM_API_KEY", "DEEPGRAM_REALTIME_API_KEY"],
     packages: [],
   },
   {
@@ -169,7 +169,8 @@ export const PROCESSORS: readonly Processor[] = [
     role: "Suggests which words to fix and which pauses to cut (the AI edit).",
     receives:
       "Transcript words, which words the transcriber was unsure of, where the pauses are, and the script you typed or pasted when the take has one.",
-    doesNotReceive: "Video or audio. Your name or your email, except any you type into a script.",
+    doesNotReceive:
+      "Video or audio files, or your account name or email. Words you say or type into a script still reach it, including any name or email among them.",
     location: "Anthropic cloud.",
     trainsOnContent: false,
     envNames: ["ANTHROPIC_API_KEY"],

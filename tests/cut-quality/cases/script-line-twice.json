@@ -1,0 +1,95 @@
+{
+  "id": "script-line-twice",
+  "note": "A scripted line said twice; the earlier attempt is cut, the last one is kept.",
+  "script": "Open the left drawer.\nTake out the blue folder.",
+  "durationMs": 6000,
+  "words": [
+    {
+      "w": "Open",
+      "startMs": 400,
+      "endMs": 720,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 800,
+      "endMs": 1120,
+      "filler": false
+    },
+    {
+      "w": "left",
+      "startMs": 1200,
+      "endMs": 1520,
+      "filler": false
+    },
+    {
+      "w": "drawer",
+      "startMs": 1600,
+      "endMs": 1920,
+      "filler": false
+    },
+    {
+      "w": "Open",
+      "startMs": 2000,
+      "endMs": 2320,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 2400,
+      "endMs": 2720,
+      "filler": false
+    },
+    {
+      "w": "left",
+      "startMs": 2800,
+      "endMs": 3120,
+      "filler": false
+    },
+    {
+      "w": "drawer",
+      "startMs": 3200,
+      "endMs": 3520,
+      "filler": false
+    },
+    {
+      "w": "Take",
+      "startMs": 3600,
+      "endMs": 3920,
+      "filler": false
+    },
+    {
+      "w": "out",
+      "startMs": 4000,
+      "endMs": 4320,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 4400,
+      "endMs": 4720,
+      "filler": false
+    },
+    {
+      "w": "blue",
+      "startMs": 4800,
+      "endMs": 5120,
+      "filler": false
+    },
+    {
+      "w": "folder",
+      "startMs": 5200,
+      "endMs": 5520,
+      "filler": false
+    }
+  ],
+  "pauses": [],
+  "expected": [
+    {
+      "startMs": 400,
+      "endMs": 2000,
+      "kind": "false_start",
+      "verdict": "cut"
+    }
+  ]
+}

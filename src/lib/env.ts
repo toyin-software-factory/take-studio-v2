@@ -70,8 +70,18 @@ export const aiEditEnvSchema = z.object({
   ANTHROPIC_API_KEY: z.string().min(1),
 });
 
+/**
+ * Voice following (spec 0021 step 2): the separate, spend capped Deepgram key the Worker uses to
+ * mint browser tokens. It is never the transcription key (`DEEPGRAM_API_KEY`, jobs only). Parsed
+ * with `safeParse` inside the route, so a missing key gives a friendly 503, never a 500.
+ */
+export const realtimeEnvSchema = z.object({
+  DEEPGRAM_REALTIME_API_KEY: z.string().min(1),
+});
+
 export type AiEditEnv = z.infer<typeof aiEditEnvSchema>;
 export type TranscriptEnv = z.infer<typeof transcriptEnvSchema>;
+export type RealtimeEnv = z.infer<typeof realtimeEnvSchema>;
 export type EmailEnv = z.infer<typeof emailEnvSchema>;
 export type WebEnv = z.infer<typeof webEnvSchema>;
 export type JobEnv = z.infer<typeof jobEnvSchema>;

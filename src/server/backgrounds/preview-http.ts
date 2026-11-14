@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { backgroundPreviewSchema } from "@/lib/api-schemas/requests";
 import { getPreview } from "@/db/data/previews";
 import type { BackgroundPreview } from "@/db/types";
 import { type TakeHttpDeps, errorResponse, guard, json } from "../takes/http";
@@ -36,8 +36,6 @@ export const PREVIEW_MESSAGES: Readonly<Record<PreviewError | "invalid", string>
   dispatch_failed: "The preview didn't start. Please try again.",
 };
 
-const idSchema = z.object({ backgroundId: z.uuid() });
-
 /**
  * POST /api/takes/{id}/background/preview `{ backgroundId }`: starts (or reuses) the still of
  * the take on that background. Origin 403, session 401, body 422, then 404 and 409. 200 with
@@ -51,7 +49,7 @@ export async function handlePostPreview(
 ): Promise<Response> {
   const creator = await guard(request, deps, { checkOrigin: true });
   if (creator instanceof Response) return creator;
-  const parsed = idSchema.safeParse(await request.json().catch(() => null));
+  const parsed = backgroundPreviewSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return json({ error: "invalid", message: PREVIEW_MESSAGES.invalid }, 422);
   const started = await startPreview(
     creator.db,
@@ -82,7 +80,7 @@ export async function handleGetPreview(
 ): Promise<Response> {
   const creator = await guard(request, deps, { checkOrigin: false });
   if (creator instanceof Response) return creator;
-  const parsed = idSchema.safeParse({
+  const parsed = backgroundPreviewSchema.safeParse({
     backgroundId: new URL(request.url).searchParams.get("backgroundId"),
   });
   if (!parsed.success) return json({ error: "invalid", message: PREVIEW_MESSAGES.invalid }, 422);
