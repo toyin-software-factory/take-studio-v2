@@ -209,6 +209,32 @@ test("the whole flow works from the keyboard, with a visible focus ring and no t
   await expect(page.getByRole("button", { name: "Record again" })).not.toBeFocused();
 });
 
+test("the device pickers and level meter work from the keyboard and lock at the countdown (AC-9)", async ({
+  page,
+  baseURL,
+}) => {
+  await signedIn(page, baseURL!);
+  await page.goto("/record");
+  await page.getByRole("button", { name: "Turn on camera" }).click();
+  await expect(page.getByRole("button", { name: "Record", exact: true })).toBeVisible();
+
+  const meter = page.getByRole("img", { name: /Microphone level:/ });
+  await expect(meter).toBeVisible();
+  // The meter is also words, so a screen reader hears the level without the bars.
+  await expect(page.getByRole("status").filter({ hasText: /\S/ }).first()).toBeVisible();
+
+  const camera = page.getByLabel("Camera", { exact: true });
+  const mic = page.getByLabel("Microphone", { exact: true });
+  await tabTo(page, camera);
+  await expectVisibleFocus(page);
+  await tabTo(page, mic);
+  await expectVisibleFocus(page);
+
+  await page.getByRole("button", { name: "Record", exact: true }).click();
+  await expect(camera).toBeDisabled();
+  await expect(mic).toBeDisabled();
+});
+
 test("on a Pixel 7 the prompter is at the top, controls are in reach and nothing scrolls sideways (AC-10)", async ({
   browser,
   baseURL,
