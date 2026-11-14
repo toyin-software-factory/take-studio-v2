@@ -1,6 +1,6 @@
 # Verify: cut quality measurement, spec 0017
 
-**Verdict: PASS locally, two items open. Every AC is met by the code and mapped to a passing test or a recorded check below, except AC-10's cloud run ("pending Toyin's run") and the production checks (the deploy of `3f54f77` had not run when this was written).**
+**Verdict: PASS locally and in e2e, two items pending outside the code. Every AC is met by the code and mapped to a passing test or a recorded check below. Pending: AC-10's cloud run ("pending Toyin's run") and the prod Missed-button check ("pending a test sign-in").**
 
 Run on 2026-11-14 on branch `b2-t39-verify-cut-quality` (main at `3f54f77`), against `next dev` with the local Postgres. Only synthetic accounts and seeded takes (`tests/support/session.ts`, `tests/support/takes.ts`, a fixed viewer id for `/insights`). No creator take was used.
 
@@ -28,8 +28,8 @@ Run on 2026-11-14 on branch `b2-t39-verify-cut-quality` (main at `3f54f77`), aga
 
 ## Notes
 
-1. **Production checks pending.** The deploy of `3f54f77` was still behind CI on main. `/insights` cannot be viewed on prod (`INSIGHTS_VIEWER_USER_ID` is not ours), so it was checked locally with a seeded viewer. The prod check left is the "Missed something?" button on a synthetic test take; it will be done when the deploy is live.
-2. **AC-10 cloud run:** record as "pending Toyin's run"; the lead folds it into the run already requested.
+1. **Prod Missed-button check: pending a test sign-in.** Prod is https://take-studio.jnr4u2.workers.dev; a sign-in link comes only from Toyin when they say ready (C-31). The lead will hand one over for this check and the B2-T03 check together. Not blocking: the route, event and button are proven by `missed.test.ts` and `missed-button.spec.ts`. `/insights` cannot be viewed on prod (`INSIGHTS_VIEWER_USER_ID` is not ours), so it was checked locally with a seeded viewer.
+2. **AC-10 cloud run: pending Toyin's run.** The lead folds it into the `ai-eval` run already requested.
 3. **No permanent `/insights` e2e.** The browser check used a throwaway spec (deleted). CI's web server has no viewer id, so a permanent spec needs that env first; the new unit tests cover the data path.
 4. **Sandbox limits.** Local `pnpm typecheck` runs out of memory and the Worker build crashes here, so CI is the proof for both. The browser checks ran on `next dev`, not a built Worker. `next dev` leaks Postgres connections; the local database was restarted between runs.
 5. First seeding attempt showed "0 reviewed takes": it was my seed (counts stored without the `counts` wrapper that the strict schema requires), not a code fault.
