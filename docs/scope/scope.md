@@ -41,7 +41,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 17 | Product analytics | Launch | done |
 | 18 | Email sign in and take ready email | Slice 1 | done |
 | 19 | Cut quality measurement | Launch | done |
-| 20 | Record with script | Slice 8 | planned |
+| 20 | Record with script | Slice 8 | in-progress |
 
 ## Foundations
 
@@ -324,16 +324,16 @@ Spec [0017](../specs/0017-cut-quality-measurement.md)
 
 ## Slice 8: Record with a script
 
-### 20. Record with script · planned
+### 20. Record with script · in-progress
 Record a take inside Take Studio (phone or laptop camera and mic) while a teleprompter shows the creator's script near the lens, then send it straight into the normal upload and processing. Toyin approved it from creator feedback (C-46); it replaces the "Record in the browser" growth idea.
 **Done when:** a creator can paste a script, record with a teleprompter they control (speed, pause, text size), stop, and watch the take go through the normal pipeline; the voice follows the script by itself; and the AI keeps the best attempt of a repeated or fluffed line.
 - [x] Design it (spec): `/architect Record with script`
-- [ ] Build it: `/develop Record with script`
-   - [ ] Record, review and upload thread, then the teleprompter controls (tasks 1 and 2)
-   - [ ] Permissions, devices, phone behaviour, length and usage, accessibility pass (tasks 3 to 5)
-   - [ ] Legal copy for stored scripts (task 6)
+- [x] Build it: `/develop Record with script`
+   - [x] Record, review and upload thread, then the teleprompter controls (tasks 1 and 2)
+   - [x] Permissions, devices, phone behaviour, length and usage, accessibility pass (tasks 3 to 5)
+   - [x] Legal copy for stored scripts (task 6)
    - [x] Voice following with live audio, then its legal copy (tasks 7 to 9)
-   - [ ] Script aware cuts, cut quality cases and legal copy (tasks 10 to 12)
+   - [x] Script aware cuts, cut quality cases and legal copy (tasks 10 to 12)
 - [ ] Verify it: `/check verify Record with script`
 - [ ] Test it: `/test Record with script`
 Spec [0021](../specs/0021-record-with-script/index.md)
