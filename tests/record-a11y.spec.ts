@@ -1,4 +1,4 @@
-import { devices, expect as baseExpect, test, type Page } from "@playwright/test";
+import { devices, expect as baseExpect, test, type Locator, type Page } from "@playwright/test";
 import { expectNoSeriousAxeIssues } from "./support/axe";
 import { signIn } from "./support/session";
 import { setUsage } from "./support/usage";
@@ -6,7 +6,8 @@ import { setUsage } from "./support/usage";
 // The accessibility and phone pass on /record and its /design entry (spec 0021 task 5: AC-9,
 // AC-10). axe on every recorder state in both themes, a keyboard only run through the flow, and
 // a Pixel 7 run. Chromium's fake camera and microphone stand in for a device; the upload API is
-// stubbed. Usage is written to the database, so the whole file runs in order on one worker.
+// stubbed. Usage is written to the database, so the file runs in order, and the Playwright config runs
+// it in its own phase after the other suites (no other test changes those settings meanwhile).
 const expect = baseExpect.configure({ timeout: 30_000 });
 test.describe.configure({ timeout: 120_000, mode: "serial" });
 test.use({
@@ -139,17 +140,18 @@ for (const scheme of SCHEMES) {
   });
 }
 
-/** Tabs forward until the focused control has this name; fails if it is never reached. */
-async function tabTo(page: Page, name: string) {
+/**
+ * Tabs forward until this control holds the focus; fails if it is never reached. The control
+ * is matched as an element (so a field named by a `<label for>` works too), and focus only ever
+ * moves by the Tab key.
+ */
+async function tabTo(page: Page, target: Locator) {
   for (let i = 0; i < 25; i++) {
     await page.keyboard.press("Tab");
-    const label = await page.evaluate(() => {
-      const el = document.activeElement as HTMLElement | null;
-      return el ? (el.getAttribute("aria-label") ?? el.textContent ?? "").trim() : "";
-    });
-    if (label.startsWith(name)) return;
+    const focused = await target.evaluate((el) => el === document.activeElement).catch(() => false);
+    if (focused) return;
   }
-  throw new Error(`Tab never reached "${name}"`);
+  throw new Error("Tab never reached the control");
 }
 
 async function expectVisibleFocus(page: Page) {
@@ -170,18 +172,18 @@ test("the whole flow works from the keyboard, with a visible focus ring and no t
   await page.goto("/record");
   await expect(page.getByRole("heading", { name: "Record a take" })).toBeVisible();
 
-  await tabTo(page, "Script");
+  await tabTo(page, page.getByLabel("Script (optional)"));
   await expect(page.getByLabel("Script (optional)")).toBeFocused();
   await page.keyboard.type("Keys stay in the field: - + p");
   await expect(page.getByLabel("Script (optional)")).toHaveValue("Keys stay in the field: - + p");
-  await tabTo(page, "Turn on camera");
+  await tabTo(page, page.getByRole("button", { name: "Turn on camera", exact: true }));
   await expectVisibleFocus(page);
   await page.keyboard.press("Enter");
 
   await expect(page.getByRole("button", { name: "Record" })).toBeVisible();
-  await tabTo(page, "Pause script");
+  await tabTo(page, page.getByRole("button", { name: "Pause script", exact: true }));
   await expectVisibleFocus(page);
-  await tabTo(page, "Record");
+  await tabTo(page, page.getByRole("button", { name: "Record", exact: true }));
   await expectVisibleFocus(page);
   // Shift+Tab goes back: nothing holds the focus.
   await page.keyboard.press("Shift+Tab");
@@ -194,14 +196,14 @@ test("the whole flow works from the keyboard, with a visible focus ring and no t
   await page.keyboard.press("p");
   await expect(page.getByRole("button", { name: "Resume script" })).toBeVisible();
   await page.waitForTimeout(1500);
-  await tabTo(page, "Stop");
+  await tabTo(page, page.getByRole("button", { name: "Stop", exact: true }));
   await expectVisibleFocus(page);
   await page.keyboard.press("Enter");
 
   await expect(page.getByRole("button", { name: "Use this take" })).toBeVisible();
-  await tabTo(page, "Use this take");
+  await tabTo(page, page.getByRole("button", { name: "Use this take", exact: true }));
   await expectVisibleFocus(page);
-  await tabTo(page, "Record again");
+  await tabTo(page, page.getByRole("button", { name: "Record again", exact: true }));
   await expectVisibleFocus(page);
   await page.keyboard.press("Shift+Tab");
   await expect(page.getByRole("button", { name: "Record again" })).not.toBeFocused();
@@ -255,8 +257,11 @@ test("on a Pixel 7 the prompter is at the top, controls are in reach and nothing
     const video = await page.getByLabel("Camera preview").boundingBox();
     expect(text!.y).toBeLessThan(video!.y + video!.height / 2);
     expect(text!.width).toBeLessThanOrEqual(video!.width);
+    // Tapping Record may have scrolled; measure Stop from the unscrolled first screen.
+    await page.evaluate(() => window.scrollTo(0, 0));
     const stop = await page.getByRole("button", { name: "Stop" }).boundingBox();
     const viewport = page.viewportSize()!;
+    expect(stop!.y).toBeGreaterThanOrEqual(0);
     expect(stop!.y + stop!.height).toBeLessThanOrEqual(viewport.height);
     await expectNoSeriousAxeIssues(page);
 

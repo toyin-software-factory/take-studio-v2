@@ -9,6 +9,8 @@ const port = 8787;
 const production = process.env.E2E_PRODUCTION === "1";
 const galleryVar = production ? "" : " --var DESIGN_GALLERY:1";
 
+const USAGE_SPECS = [/usage\.spec\.ts$/, /record-a11y\.spec\.ts$/];
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
@@ -19,7 +21,23 @@ export default defineConfig({
     baseURL: `http://${host}:${port}`,
     trace: "retain-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  // The two suites that write the shared monthly usage settings (tests/support/usage.ts) run one
+  // after the other, after everything else, so no other test sees limits switched on or off.
+  projects: [
+    { name: "chromium", testIgnore: USAGE_SPECS, use: { ...devices["Desktop Chrome"] } },
+    {
+      name: "usage",
+      testMatch: /usage\.spec\.ts$/,
+      dependencies: ["chromium"],
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "record-a11y",
+      testMatch: /record-a11y\.spec\.ts$/,
+      dependencies: ["usage"],
+      use: { ...devices["Desktop Chrome"] },
+    },
+  ],
   webServer: {
     command: `pnpm exec opennextjs-cloudflare preview --ip ${host} --port ${port}${galleryVar}`,
     url: `http://${host}:${port}`,
