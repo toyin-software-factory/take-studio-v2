@@ -38,6 +38,10 @@ export const processingJob = pgTable(
     /** Usage account hash the charge counts against; null if nothing was charged. */
     chargedAccountHash: text("charged_account_hash"),
     refunded: boolean("refunded").notNull().default(false),
+    /** Spec 0014 AC-11: this job's charge is in `usage_month` (set by the backfill and by `startJob`). */
+    usageCounted: boolean("usage_counted").notNull().default(false),
+    /** Spec 0014 AC-11: this job's refund was taken out of `usage_month`. */
+    usageReturned: boolean("usage_returned").notNull().default(false),
     /** Open set: validated against the failure code registry in code, no DB CHECK. */
     failureCode: text("failure_code"),
     startedAt: timestamp("started_at", { withTimezone: true }),

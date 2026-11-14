@@ -45,7 +45,9 @@ export type TakeError =
   | "dispatch_failed"
   | "unavailable"
   | "expired"
-  | "storage_error";
+  | "storage_error"
+  /** Spec 0014: the monthly allowance is used up (the message with the dates is step 4). */
+  | "limit_exceeded";
 
 const STATUS: Readonly<Record<TakeError, number>> = {
   unauthorized: 401,
@@ -60,6 +62,7 @@ const STATUS: Readonly<Record<TakeError, number>> = {
   unavailable: 503,
   expired: 410,
   storage_error: 503,
+  limit_exceeded: 403,
 };
 
 const MESSAGES: Readonly<Record<TakeError, string>> = {
@@ -75,6 +78,7 @@ const MESSAGES: Readonly<Record<TakeError, string>> = {
   unavailable: "Processing isn't available right now. Please try again later.",
   expired: "This video has expired. Videos are kept for 30 days.",
   storage_error: "Storage is having a problem right now. Please try again.",
+  limit_exceeded: "This month's allowance is used up. Try again when it resets.",
 };
 
 export function json(body: unknown, status = 200): Response {

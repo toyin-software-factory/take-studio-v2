@@ -22,6 +22,9 @@ export const FAILURE_CODES = {
   // Spec 0011: a change render's cut ranges did not match its cut plan; the job fails instead
   // of shipping a wrong video. Nothing was charged.
   render_mismatch: { refundable: false },
+  // Spec 0014: the first run would pass the monthly allowance. Nothing was charged, nothing
+  // to refund; the take is kept and can be retried after the reset.
+  limit_exceeded: { refundable: false },
   // Not refundable: the media was rejected, or the creator cancelled a running job.
   invalid_media: { refundable: false },
   too_long: { refundable: false },

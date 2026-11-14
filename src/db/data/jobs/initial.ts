@@ -1,20 +1,27 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { chargeSeconds, chargedMonth, refundSeconds } from "@/lib/billing";
 import { type FailureCode, isMediaFailure } from "@/lib/failure-codes";
 import { type JobKind, type TakeStatus, stepsFor } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
 import { usageAccountHash } from "@/lib/usage-hash";
+import { monthlyAllowanceSeconds } from "@/lib/usage-rules";
 import { isVideoExpired } from "@/lib/video-expiry";
 import { processingJob, render, take, user } from "../../schema";
 import type { Executor, ProcessingJob, Tx } from "../../types";
 import { transitionTake } from "../takes";
+import { chargeUsage, readUsageSettings, returnUsage } from "../usage";
 import { lockBackgroundShare } from "./locks";
 import { discardJobRenders, flipLatestRender } from "./render-files";
 import { runStart, startJobRow } from "./start-shared";
 import type { FinishResult, FinishError, FinishStatus, StartedJob } from "./types";
 
-export type StartError = "not_found" | "job_in_progress" | "invalid_transition";
+export type StartError =
+  | "not_found"
+  | "job_in_progress"
+  | "invalid_transition"
+  /** Spec 0014: the first run would pass the monthly allowance; nothing was written. */
+  | "limit_exceeded";
 
 /**
  * Whether a take may start a job: `uploaded` or `ready`, or `failed` when the failure was not
@@ -39,7 +46,10 @@ function canStart(t: {
  *    run was charged and not refunded, else 0, recording the UTC month and account hash;
  * 4. create the job (`queued`) and its ordered live steps;
  * 5. move the take to `processing` (compare and swap).
- * The usage limit check (`limit_exceeded`) arrives in slice 6; the charge is recorded now.
+ * The charge goes into `usage_month` in the same transaction with one atomic statement
+ * (spec 0014 AC-4): when the monthly allowance would be passed the start answers
+ * `limit_exceeded` and nothing changes. The check is skipped while `usage_limit_enabled` is
+ * false (the charge is still recorded).
  * `usageSecret` is USAGE_HASH_SECRET from `parseUsageEnv()`.
  */
 export async function startJob(
@@ -102,6 +112,19 @@ export async function startJob(
       kind === "initial" && !alreadyPaid ? chargeSeconds(current.durationMs) : 0;
     const charged = secondsCharged > 0;
 
+    const accountHash = charged ? await usageAccountHash(locked.email, input.usageSecret) : null;
+    if (charged && accountHash !== null) {
+      const settings = await readUsageSettings(tx);
+      const fits = await chargeUsage(tx, {
+        accountHash,
+        month: chargedMonth(now),
+        seconds: secondsCharged,
+        allowance: monthlyAllowanceSeconds(settings, { accountHash }),
+        enforce: settings.limitEnabled,
+      });
+      if (!fits) return err("limit_exceeded");
+    }
+
     const started = await startJobRow(tx, {
       job: {
         takeId: current.id,
@@ -110,9 +133,8 @@ export async function startJob(
         targetBackgroundId: current.backgroundId,
         secondsCharged,
         chargedMonth: charged ? chargedMonth(now) : null,
-        chargedAccountHash: charged
-          ? await usageAccountHash(locked.email, input.usageSecret)
-          : null,
+        chargedAccountHash: accountHash,
+        usageCounted: charged,
       },
       stepNames: stepsFor(kind, { hasBackground: current.backgroundId !== null }),
     });
@@ -175,12 +197,22 @@ export async function finishVideoJob(
   if (owed > 0) {
     const [refunded] = await tx
       .update(processingJob)
-      .set({ refunded: true })
+      // The same statement marks the usage as returned when it was counted (spec 0014 AC-11);
+      // a job the reconcile has not counted yet is never added once it is refunded.
+      .set({ refunded: true, usageReturned: sql`${processingJob.usageCounted}` })
       .where(and(eq(processingJob.id, job.id), eq(processingJob.refunded, false)))
       .returning();
     if (refunded) {
       refundedSeconds = owed;
       finalJob = refunded;
+      // AC-5: the seconds go back to the month that was charged, in this transaction.
+      if (refunded.usageCounted && refunded.chargedAccountHash && refunded.chargedMonth) {
+        await returnUsage(tx, {
+          accountHash: refunded.chargedAccountHash,
+          month: refunded.chargedMonth,
+          seconds: owed,
+        });
+      }
     }
   }
 

@@ -30,6 +30,8 @@ const NOT_REFUNDABLE = [
   "image_animated",
   // Spec 0011: a change render did not match its cut plan; the change job is free anyway.
   "render_mismatch",
+  // Spec 0014: refused at the monthly limit; nothing was charged.
+  "limit_exceeded",
 ];
 
 describe("failure code registry (AC-13)", () => {
