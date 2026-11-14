@@ -52,7 +52,8 @@ export async function reconcileUsage(db: Executor): Promise<ReconcileSummary> {
   let jobs = 0;
   let failed = 0;
   for (const { id } of pending) {
-    const delta = await runTx(db, async (tx) => {
+    // A thrown database error counts as failed too, and must not stop the sweep.
+    const delta = await runTx<number, "tx_failed">(db, async (tx) => {
       const [job] = await tx
         .select()
         .from(processingJob)
@@ -81,7 +82,7 @@ export async function reconcileUsage(db: Executor): Promise<ReconcileSummary> {
         return { ok: true as const, data: -job.secondsCharged };
       }
       return { ok: true as const, data: 0 };
-    });
+    }).catch(() => ({ ok: false as const, error: "tx_failed" as const }));
     if (!delta.ok) {
       failed += 1;
       continue;

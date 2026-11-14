@@ -243,6 +243,27 @@ describe("backfill and reconcile (AC-11)", () => {
     expect(await used(a.hash)).toBe(45);
   });
 
+  it("counts a job whose transaction throws as failed and leaves it owed", async () => {
+    await setSettings(false);
+    const a = await account();
+    const t = await a.makeTake(30);
+    await a.start(t.id);
+    await uncount(t.id, a.hash);
+    const broken = new Proxy(db, {
+      get: (target, key, receiver) =>
+        key === "transaction"
+          ? () => Promise.reject(new Error("connection lost"))
+          : Reflect.get(target, key, receiver),
+    });
+    const failedRun = await reconcileUsage(broken);
+    expect(failedRun.failed).toBeGreaterThanOrEqual(1);
+    expect(failedRun.jobs).toBe(0);
+    expect(await used(a.hash)).toBe(0);
+    const retry = await reconcileUsage(db);
+    expect(retry.failed).toBe(0);
+    expect(await used(a.hash)).toBe(30);
+  });
+
   it("never adds a refunded job, and subtracts one refunded after it was counted", async () => {
     await setSettings(false);
     const a = await account();
