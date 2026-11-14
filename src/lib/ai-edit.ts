@@ -24,7 +24,7 @@ export const AI_EDIT = {
   fixMaxChars: 40,
   wordCutMaxMs: 20_000,
   /** Word cuts may remove at most this share of the take. */
-  wordCutMaxShare: 0.25,
+  wordCutMaxShare: 0.4,
   maxFixes: 300,
   /**
    * `claude-opus-5-5` rejects `thinking: {type: "disabled"}` (400), so thinking is left at its
@@ -173,8 +173,13 @@ const SYSTEM_PROMPT = [
   "Answer with JSON only, matching the schema:",
   "- keepPauses: only the pauses worth keeping because they are deliberate (a beat before a",
   "  punchline, a dramatic stop). Every pause you do not name is cut. Most pauses are cut.",
-  "- wordCuts: false starts (a sentence abandoned and restarted) and filler words to remove,",
-  "  as inclusive word index ranges. Use kind filler only over filler words. Cut little.",
+  "- wordCuts: words to remove, as inclusive word index ranges. Judge from meaning, not from a",
+  "  list. kind filler: any word or run of words that carries no meaning: hesitation sounds,",
+  "  verbal tics, and placeholder or nonsense speech (blah blah blah, la la la, something",
+  "  something). The f flag is only a hint. kind false_start: any abandoned or repeated attempt;",
+  "  when a line is said more than once, cut the earlier attempts and keep the last complete one.",
+  "  This includes talk not meant for the audience (hold on, let me start again, is this",
+  "  recording). Never cut real content, even when it is long winded. When in doubt, keep it.",
   "- fixes: misheard words, names and punctuation only. Replace one word's text with 1 to",
   `  ${AI_EDIT.fixMaxChars} characters; \`old\` must equal the listed text exactly.`,
   "  Never add, remove or move words.",
@@ -283,9 +288,7 @@ function validWordCuts(
     const reason = cleanReason(c.reason);
     const first = words[c.fromWord];
     const inRange = c.fromWord >= 0 && c.fromWord <= c.toWord && c.toWord < words.length;
-    const fillerOk =
-      c.kind !== "filler" || (inRange && words.slice(c.fromWord, c.toWord + 1).every(isFiller));
-    if (!reason || !inRange || !first || !fillerOk) {
+    if (!reason || !inRange || !first) {
       count.dropped += 1;
       continue;
     }
@@ -368,7 +371,7 @@ function mergeCuts(
 /**
  * Checks the answer against the transcript and the candidates (spec 0012, Validation). Items that
  * break a rule are dropped and counted; the whole answer is refused (`invalid`, so the caller falls
- * back to the rules cuts) when word cuts total over a quarter of the take, or more than half of all
+ * back to the rules cuts) when word cuts total over 40% of the take, or more than half of all
  * items were dropped. The schema parse and the `max_tokens` stop are the caller's checks, before
  * this. Pure: no reason or word is logged.
  */
