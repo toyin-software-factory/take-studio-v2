@@ -31,6 +31,9 @@ const local = ["localhost", "127.0.0.1"].includes(new URL(base).hostname);
 if (!local && !args.includes("--allow-remote")) {
   throw new Error("--base is not localhost. Pass --allow-remote to run against another server.");
 }
+if (!local && new URL(base).protocol !== "https:") {
+  throw new Error("--base must use https:// unless it is localhost (the key is sent as a header).");
+}
 
 const log = (step: string, detail: unknown = "") =>
   console.log(
@@ -126,8 +129,10 @@ async function main() {
       container: "mp4",
     });
     if (started.isError) fail(`start_upload refused: ${String(started.body.error)}`);
+    // Record the take first, so cleanup deletes it even if the rest of the answer is unusable.
+    const created = z.object({ takeId: z.string().min(1) }).safeParse(started.body);
+    if (created.success) takeId = created.data.takeId;
     const plan = planSchema.parse(started.body);
-    takeId = plan.takeId;
     log("start_upload", { takeId, partCount: plan.partCount, links: plan.parts.length });
     if (plan.parts.length !== plan.partCount) fail("expected links for every part of a small file");
 
@@ -169,6 +174,7 @@ async function main() {
     if (media.isError) fail("get_media_link refused");
     log("get_media_link", { hasUrl: typeof media.body.url === "string" });
     const transcript = await tool("get_transcript", { takeId });
+    if (transcript.isError) fail("get_transcript refused");
     log("get_transcript", { state: transcript.body.status ?? transcript.body.state ?? "?" });
   } finally {
     rmSync(dir, { recursive: true, force: true });

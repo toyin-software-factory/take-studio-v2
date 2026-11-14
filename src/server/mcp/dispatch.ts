@@ -140,8 +140,13 @@ async function startUploadOutcome(
       headers,
       body: JSON.stringify({ partNumbers: firstBatch(created.partCount) }),
     });
-    const answer = await handler(request, { takeId: created.takeId });
-    if (answer.status >= 200 && answer.status <= 299) links = parseLinks(await answer.text());
+    try {
+      const answer = await handler(request, { takeId: created.takeId });
+      if (answer.status >= 200 && answer.status <= 299) links = parseLinks(await answer.text());
+    } catch {
+      // The links are optional: keep the take ID and the steps, which name get_upload_part_links.
+      links = null;
+    }
   }
   return {
     status,
