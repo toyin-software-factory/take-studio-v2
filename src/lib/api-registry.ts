@@ -282,6 +282,18 @@ export const API_EXCLUSIONS: readonly ApiExclusion[] = [
   ),
   exclusion("DELETE", "/api/keys/{id}", "session-only", "Revokes an API key. Session only."),
   exclusion(
+    "GET",
+    "/api/connected-apps",
+    "session-only",
+    "Lists the apps connected with sign in. An app's own token cannot list apps.",
+  ),
+  exclusion(
+    "DELETE",
+    "/api/connected-apps/{id}",
+    "session-only",
+    "Disconnects an app and ends its tokens. Session only.",
+  ),
+  exclusion(
     "POST",
     "/api/realtime/token",
     "session-only",

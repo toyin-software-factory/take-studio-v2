@@ -13,7 +13,7 @@ const SECRET = "x".repeat(40);
 
 export const testIdentity = (db: Db): ApiAuthDeps => ({
   getCreator: async () => null,
-  keyAuth: { getDb: async () => db, now: () => TEST_NOW },
+  keyAuth: { getDb: async () => db, now: () => TEST_NOW, oauthResource: `${TEST_ORIGIN}/mcp` },
 });
 
 export function testRouteDeps(db: Db): McpRouteDeps {

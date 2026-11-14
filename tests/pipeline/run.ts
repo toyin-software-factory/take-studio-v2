@@ -56,8 +56,9 @@ const media = (file: string) =>
 async function upload(
   creator: Creator,
   file: string,
-  container: "mp4" | "mov",
+  container: "mp4" | "mov" | "webm",
   backgroundId?: string,
+  source?: "recording",
 ): Promise<string> {
   const bytes = readFileSync(media(file));
   const created = await creator.api("POST", "/api/uploads", {
@@ -65,6 +66,7 @@ async function upload(
     sizeBytes: bytes.length,
     container,
     ...(backgroundId ? { backgroundId } : {}),
+    ...(source ? { source } : {}),
   });
   if (created.status !== 201)
     throw new Error(`create ${file}: ${created.status} ${JSON.stringify(created.json)}`);
@@ -164,9 +166,33 @@ type Expect = {
   readonly render?: { width: number; height: number; colorTransfer?: string };
   readonly sync?: boolean;
   readonly messageIncludes?: string;
+  /** A recorded take (spec 0021): created with `source: "recording"`, cuts checked by range. */
+  readonly recording?: { readonly cutMs: readonly [number, number] };
 };
 
-const FIXTURES: ReadonlyArray<readonly [string, string, "mp4" | "mov", Expect]> = [
+const FIXTURES: ReadonlyArray<readonly [string, string, "mp4" | "mov" | "webm", Expect]> = [
+  // Spec 0021 AC-4, AC-14: what a browser recording makes, created as `source: "recording"`
+  // through the same route. Each is 10 s of a synthetic tone with the 2.5 s pause 3.0 to 5.5 s, so one cut with the 250 ms margins is 3250 to 5250 ms.
+  [
+    "recorded WebM (Chrome, no duration in the header)",
+    "recorded-chrome.webm",
+    "webm",
+    {
+      status: "ready",
+      render: { width: 320, height: 180 },
+      recording: { cutMs: [3_250, 5_250] },
+    },
+  ],
+  [
+    "recorded MP4 (Safari, fragmented)",
+    "recorded-safari.mp4",
+    "mp4",
+    {
+      status: "ready",
+      render: { width: 320, height: 180 },
+      recording: { cutMs: [3_250, 5_250] },
+    },
+  ],
   [
     "normal MP4 with a pause",
     "normal.mp4",
@@ -226,10 +252,16 @@ async function fixtureScenario(
   a: Creator,
   label: string,
   file: string,
-  container: "mp4" | "mov",
+  container: "mp4" | "mov" | "webm",
   want: Expect,
 ) {
-  const takeId = await upload(a, file, container);
+  const takeId = await upload(
+    a,
+    file,
+    container,
+    undefined,
+    want.recording ? "recording" : undefined,
+  );
   const t = await waitFinal(a, takeId);
   check(label, "final status", t.take.status === want.status, t.take.status);
   if (want.failureCode) {
@@ -248,7 +280,41 @@ async function fixtureScenario(
   }
 
   const cuts = await cutsOf(takeId);
-  check(label, "cuts and margins", JSON.stringify(cuts) === JSON.stringify(want.cuts), cuts);
+  if (want.recording) {
+    const [from, to] = want.recording.cutMs;
+    const [row] = await db.select().from(schema.take).where(eq(schema.take.id, takeId));
+    check(label, "stored as a recording (AC-14)", row?.source === "recording", row?.source);
+    check(
+      label,
+      "probe found the length (AC-4)",
+      Math.abs((t.take.durationMs ?? 0) - 10_000) <= 150,
+      t.take.durationMs,
+    );
+    check(
+      label,
+      "the pause is cut with its margins (one cut, 150 ms codec tolerance)",
+      cuts.length === 1 &&
+        cuts.every(([x, y]) => Math.abs(x - from) <= 150 && Math.abs(y - to) <= 150),
+      cuts,
+    );
+    const steps = new Map((t.latestJob?.steps ?? []).map((s) => [s.name, s.status]));
+    check(
+      label,
+      "probe, trim and render done",
+      ["trim", "render"].every((n) => steps.get(n) === "succeeded"),
+      [...steps],
+    );
+    // The tone has no words: with a Deepgram key the transcript step is skipped as no_speech.
+    if (process.env.DEEPGRAM_API_KEY)
+      check(
+        label,
+        "transcript step ran (no speech in a tone)",
+        steps.get("transcript") === "skipped" || steps.get("transcript") === "succeeded",
+        steps.get("transcript"),
+      );
+  } else {
+    check(label, "cuts and margins", JSON.stringify(cuts) === JSON.stringify(want.cuts), cuts);
+  }
   const removed = cuts.reduce((s, [x, y]) => s + (y - x), 0);
   check(label, "removedMs", Math.abs(t.removedMs - removed) <= 1, {
     api: t.removedMs,
@@ -327,6 +393,8 @@ async function main() {
   const t = await createCreator("transcripts");
   const bg = await createCreator("backgrounds");
   const u = await createCreator("usage");
+  // Recorded takes have their own creator: `a` is near the 10 uploads an hour limit already.
+  const r = await createCreator("recordings");
   // The built in studios are in the local database and R2 (idempotent, like the deploy step).
   await ensureBuiltInBackgrounds(db, r2, { local: true });
   const takes: Record<string, string> = {};
@@ -340,6 +408,14 @@ async function main() {
   // PIPELINE_ONLY=usage runs just the monthly usage limit checks (spec 0014).
   if (process.env.PIPELINE_ONLY === "usage") {
     await usageScenarios({ c: u, check, upload, waitFinal });
+    return;
+  }
+
+  // PIPELINE_ONLY=recorded runs just the recorded take fixtures (spec 0021 AC-4, AC-14).
+  if (process.env.PIPELINE_ONLY === "recorded") {
+    for (const [label, file, container, want] of FIXTURES) {
+      if (want.recording) await fixtureScenario(r, label, file, container, want);
+    }
     return;
   }
 
@@ -372,7 +448,7 @@ async function main() {
   // AC-4, AC-6, AC-7: every fixture end to end.
   for (const [label, file, container, want] of FIXTURES) {
     try {
-      takes[label] = await fixtureScenario(a, label, file, container, want);
+      takes[label] = await fixtureScenario(want.recording ? r : a, label, file, container, want);
     } catch (error) {
       check(label, "ran", false, String(error));
     }
