@@ -42,6 +42,7 @@ export default defineConfig({
       name: "record-limits",
       testMatch: /record-limits\.spec\.ts$/,
       dependencies: ["record-a11y"],
+      fullyParallel: false,
       use: { ...devices["Desktop Chrome"] },
     },
   ],
