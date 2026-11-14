@@ -43,7 +43,7 @@ export function RecordReview({
           controls
           playsInline
           aria-label="Your recording"
-          className="aspect-video w-full rounded-lg bg-black"
+          className="aspect-video w-full rounded-lg bg-dark"
         />
       ) : null}
       <p className="mono text-small text-muted-foreground">{formatClock(take.durationMs)}</p>

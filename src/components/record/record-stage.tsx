@@ -50,7 +50,7 @@ export function RecordStage({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="relative aspect-video overflow-hidden rounded-lg bg-black">
+      <div className="relative aspect-video overflow-hidden rounded-lg bg-dark">
         {/* Muted: no echo of your own voice. Mirrored for the creator only. */}
         <video
           ref={video}
@@ -66,7 +66,7 @@ export function RecordStage({
         {countdown && state.secondsLeft > 0 ? (
           <div
             aria-hidden="true"
-            className="absolute inset-0 grid place-items-center bg-black/40 text-[8rem] leading-none font-medium text-white"
+            className="absolute inset-0 grid place-items-center bg-glass text-[8rem] leading-none font-medium text-on-dark"
           >
             {state.secondsLeft}
           </div>
@@ -74,7 +74,7 @@ export function RecordStage({
         {recording ? (
           <span
             data-testid="record-timer"
-            className="mono absolute bottom-3 left-3 rounded-md bg-black/60 px-2 py-1 text-small text-white"
+            className="mono absolute bottom-3 left-3 rounded-md bg-nav-glass-dark px-2 py-1 text-small text-on-dark"
           >
             {formatClock(elapsedMs)} / {formatClock(limitMs)}
           </span>

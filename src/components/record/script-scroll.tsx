@@ -33,7 +33,7 @@ export function ScriptScroll({
       data-testid="script-scroll"
       tabIndex={0}
       aria-label="Your script"
-      className="max-h-[45%] overflow-y-auto rounded-md bg-black/60 px-4 py-3 text-center text-h3 leading-snug text-white"
+      className="max-h-[45%] overflow-y-auto rounded-md bg-nav-glass-dark px-4 py-3 text-center text-h3 leading-snug text-on-dark"
     >
       <p className="whitespace-pre-wrap">{script}</p>
     </div>
