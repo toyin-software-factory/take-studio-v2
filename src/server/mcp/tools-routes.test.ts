@@ -206,7 +206,8 @@ describe("upload and run over the tools (AC-5, AC-6)", () => {
     const a = await newCreator();
     const take = await seedTake(db, a.creatorId, { title: "Changes" });
     const refused = await run("apply_changes", { takeId: take.id, baseRenderId: null }, a);
-    expect(refused.isError || refused.status === 202).toBe(true);
-    expect(JSON.parse(refused.text)).toBeTypeOf("object");
+    expect(refused.isError).toBe(true);
+    expect(refused.status).toBe(409);
+    expect(JSON.parse(refused.text)).toMatchObject({ error: "invalid_transition" });
   });
 });

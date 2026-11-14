@@ -2,6 +2,7 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError, createAuthMiddleware } from "better-auth/api";
 import { magicLink } from "better-auth/plugins";
+import { oauthProvider } from "@better-auth/oauth-provider";
 import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "@/db/schema";
 import type { WebEnv } from "@/lib/env";
@@ -10,6 +11,8 @@ import { ACCOUNT_DELETE_FRESH_SECONDS } from "./account/policy";
 import type { EmailSender } from "@/lib/email/send";
 import { signInEmail } from "@/lib/email/templates";
 import { takeSignInEmailSlot } from "./email/sign-in-limits";
+import { revokeGrantOnRefreshReuse } from "@/db/data/oauth";
+import { basicClientId, hashOauthToken, redirectUriAllowed } from "@/lib/oauth-rules";
 import { recordEvent } from "./analytics/record";
 
 type AuthEnv = Pick<
@@ -19,6 +22,13 @@ type AuthEnv = Pick<
 
 /** Sign in link lifetime (spec 0006, AC-2): 15 minutes, single use. */
 export const MAGIC_LINK_EXPIRES_SECONDS = 15 * 60;
+
+/** AC-13: client registrations allowed per IP per hour. */
+export const OAUTH_REGISTER_PER_HOUR = 20;
+
+/** The protected resource the OAuth tokens are issued for (spec 0019 AC-13). */
+export const mcpResource = (env: Pick<WebEnv, "BETTER_AUTH_URL">): string =>
+  `${env.BETTER_AUTH_URL.replace(/\/$/, "")}/mcp`;
 
 /** What auth needs to send mail: the sender, or none (the CLI and tests without email). */
 export type AuthDeps = {
@@ -74,6 +84,44 @@ export function createAuth(
     hooks: {
       // AC-4: 3 sign in link requests per email per 15 minutes (the IP limit is above).
       before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path === "/oauth2/token") {
+          // AC-13: reuse of a rotated refresh token revokes the whole grant, consent included.
+          const body = ctx.body as Record<string, unknown> | undefined;
+          const clientId =
+            typeof body?.client_id === "string"
+              ? body.client_id
+              : basicClientId(ctx.headers?.get("authorization") ?? null);
+          if (
+            body?.grant_type === "refresh_token" &&
+            typeof body.refresh_token === "string" &&
+            clientId !== null
+          ) {
+            await revokeGrantOnRefreshReuse(db, await hashOauthToken(body.refresh_token), clientId);
+          }
+          return;
+        }
+        if (ctx.path === "/oauth2/register") {
+          // AC-13: https or loopback only, no wildcards (the plugin also allows custom schemes).
+          const uris = (ctx.body as { redirect_uris?: unknown } | undefined)?.redirect_uris;
+          if (
+            Array.isArray(uris) &&
+            uris.some((u) => typeof u !== "string" || !redirectUriAllowed(u))
+          ) {
+            throw new APIError("BAD_REQUEST", {
+              error: "invalid_redirect_uri",
+              error_description:
+                "Redirect URIs must be https, or http on localhost, with no wildcard.",
+            });
+          }
+          // MCP clients are public clients (PKCE, no secret): a registration that says nothing
+          // about its auth method would otherwise become confidential and get a secret it
+          // never uses, and its secretless code exchange would fail with invalid_client.
+          const body = ctx.body as Record<string, unknown> | undefined;
+          if (body && body.token_endpoint_auth_method === undefined) {
+            return { context: { ...ctx, body: { ...body, token_endpoint_auth_method: "none" } } };
+          }
+          return;
+        }
         if (ctx.path !== "/sign-in/magic-link") return;
         const email = (ctx.body as { email?: unknown } | undefined)?.email;
         if (typeof email !== "string" || email.length === 0) return;
@@ -86,6 +134,26 @@ export function createAuth(
       }),
     },
     plugins: [
+      oauthProvider({
+        // Opaque access tokens kept as SHA-256 hashes: with the jwt plugin a token for a resource
+        // is a signed JWT that is never stored, so it could not be looked up or revoked (a
+        // disconnect must work on the next request, AC-14). Spike note in spec 0019 Follow-up.
+        disableJwtPlugin: true,
+        // AC-13: an authorization code lives 60 seconds (the plugin's default is 600).
+        codeExpiresIn: 60,
+        loginPage: "/sign-in",
+        consentPage: "/oauth/consent",
+        allowDynamicClientRegistration: true,
+        // A registration without application_type and with a loopback redirect is a native app.
+        clientRegistrationDefaultApplicationType: "infer",
+        allowUnauthenticatedClientRegistration: true,
+        resources: [mcpResource(env)],
+        // Every dynamically registered client may ask for the /mcp resource, or the token
+        // request is refused with invalid_target (spike, spec 0019 step 6).
+        clientRegistrationDefaultResources: [mcpResource(env)],
+        // AC-13: 20 client registrations per IP per hour (the plugin default is 5 a minute).
+        rateLimit: { register: { window: 60 * 60, max: OAUTH_REGISTER_PER_HOUR } },
+      }),
       magicLink({
         expiresIn: MAGIC_LINK_EXPIRES_SECONDS,
         // Always the same answer for any address (AC-1): unknown emails get a link too.

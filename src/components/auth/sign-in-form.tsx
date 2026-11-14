@@ -36,12 +36,16 @@ type State =
 export function SignInForm({
   notice,
   reason,
+  resumePath,
 }: {
   readonly notice?: "link_expired";
   /** `delete-account`: a stale session came here to delete the account; sign in returns to the dialog. */
   readonly reason?: typeof DELETE_ACCOUNT_REASON;
+  /** An OAuth client sent the creator here: sign in returns to this authorize path (oauthResumePath). */
+  readonly resumePath?: string;
 }) {
-  const landing = reason === DELETE_ACCOUNT_REASON ? DELETE_ACCOUNT_RETURN : "/library";
+  const landing =
+    reason === DELETE_ACCOUNT_REASON ? DELETE_ACCOUNT_RETURN : (resumePath ?? "/library");
   const [state, setState] = useState<State>({ kind: "idle" });
   const [email, setEmail] = useState("");
   const [invalid, setInvalid] = useState(false);

@@ -86,8 +86,9 @@ export function TermsCopy({
           key secret: anyone who has it can act as you, so revoke it if it leaks. Requests with a
           key are limited per minute, use the same free allowance as the website, and you may not
           resell access to Take Studio through a key. You can also connect an AI assistant to your
-          account with a key. What it does there counts as done by you, so connect only assistants
-          you trust.
+          account with a key, or by signing in when the assistant asks to connect. What it does
+          there counts as done by you, so connect only assistants you trust. You can disconnect an
+          app at any time, and it stops working at once.
         </p>
       </LegalSection>
       <LegalSection id="service" title="Availability">
