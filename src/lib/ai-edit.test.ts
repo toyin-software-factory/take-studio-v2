@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { ProposedCut } from "./cut-rules";
 import {
   wordCutMaxShareFor,
   type AiCandidate,
@@ -10,6 +11,7 @@ import {
   aiEditAnswerSchema,
   buildAiRequest,
   estimateInputTokens,
+  smoothWordCutEdges,
   validateAiEdit,
 } from "./ai-edit";
 
@@ -137,12 +139,47 @@ describe("validateAiEdit", () => {
     expect(d.dropped).toBe(2);
   });
 
+  it("keeps the unsmoothed word cut when smoothing would pass the share limit (spec 0020)", () => {
+    const words = [
+      { w: "a", startMs: 0, endMs: 100, filler: false },
+      { w: "uh", startMs: 200, endMs: 300, filler: true },
+      { w: "b", startMs: 800, endMs: 900, filler: false },
+    ];
+    const answer: AiEditAnswer = {
+      keepPauses: [],
+      wordCuts: [{ fromWord: 1, toWord: 1, kind: "filler", reason: "filler" }],
+      fixes: [],
+      background: null,
+    } as unknown as AiEditAnswer;
+    const r = validateAiEdit(answer, words, [], 1_000);
+    if (!r.ok) throw new Error("expected valid");
+    // 200 to 800 is 60%; smoothing would take the start to 150 and pass the limit.
+    expect(r.data.cuts[0]).toMatchObject({ startMs: 200, endMs: 800 });
+  });
+
+  it("keeps the unsmoothed word cut when smoothing would pass the per cut limit (spec 0020)", () => {
+    const words = [
+      { w: "a", startMs: 0, endMs: 800, filler: false },
+      { w: "x", startMs: 1_000, endMs: 20_900, filler: true },
+      { w: "b", startMs: 21_000, endMs: 22_000, filler: false },
+    ];
+    const answer = {
+      keepPauses: [],
+      wordCuts: [{ fromWord: 1, toWord: 1, kind: "filler", reason: "filler" }],
+      fixes: [],
+      background: null,
+    } as unknown as AiEditAnswer;
+    const r = validateAiEdit(answer, words, [], 60_000);
+    if (!r.ok) throw new Error("expected valid");
+    expect(r.data.cuts[0]).toMatchObject({ startMs: 1_000, endMs: 21_000 });
+  });
+
   it("places a word cut from the first word's start to the next word's start", () => {
     const d = data({
       wordCuts: [{ fromWord: 1, toWord: 1, kind: "filler", reason: "Filler word" }],
     });
     expect(d.cuts).toContainEqual(
-      expect.objectContaining({ startMs: 500, endMs: 800, kind: "filler", applied: true }),
+      expect.objectContaining({ startMs: 450, endMs: 800, kind: "filler", applied: true }),
     );
   });
 
@@ -155,7 +192,7 @@ describe("validateAiEdit", () => {
       10_000,
     );
     expect(r.ok && r.data.cuts).toEqual([
-      expect.objectContaining({ startMs: 9000, endMs: 10_000, kind: "false_start" }),
+      expect.objectContaining({ startMs: 8920, endMs: 10_000, kind: "false_start" }),
     ]);
   });
 
@@ -165,7 +202,8 @@ describe("validateAiEdit", () => {
       wordCuts: [{ fromWord: 5, toWord: 5, kind: "false_start", reason: "Restart" }],
     });
     const wc = d.cuts.find((c) => c.kind === "false_start");
-    expect(wc).toMatchObject({ startMs: 1700, endMs: 2100 });
+    // The start moves 50 ms into the gap after "is" (spec 0020); the end meets a kept pause.
+    expect(wc).toMatchObject({ startMs: 1650, endMs: 2100 });
     expect(d.cuts.find((c) => c.applied === false)).toMatchObject({ startMs: 2100 });
   });
 
@@ -174,7 +212,7 @@ describe("validateAiEdit", () => {
       wordCuts: [{ fromWord: 5, toWord: 5, kind: "false_start", reason: "Restart" }],
     });
     expect(d.cuts[0]).toMatchObject({
-      startMs: 1700,
+      startMs: 1650,
       endMs: 4000,
       kind: "false_start",
       reason: "Restart",
@@ -682,5 +720,52 @@ describe("script aware cuts (spec 0021, AC-13)", () => {
     expect(
       cuts.every((c) => c.applied && c.proposedBy === "ai" && (c.reason?.length ?? 0) > 0),
     ).toBe(true);
+  });
+});
+
+describe("smoothWordCutEdges (spec 0020, AC-2)", () => {
+  const word = (w: string, startMs: number, endMs: number) => ({
+    w,
+    startMs,
+    endMs,
+    filler: false,
+  });
+  const cut = (startMs: number, endMs: number, kind: ProposedCut["kind"] = "filler") => ({
+    startMs,
+    endMs,
+    kind,
+    proposedBy: "ai" as const,
+    reason: "r",
+    applied: true,
+  });
+
+  it("moves each edge to the middle of the gap, at most 80 ms", () => {
+    const words = [word("a", 0, 1_000), word("uh", 1_100, 1_300), word("b", 1_340, 2_000)];
+    const [moved] = smoothWordCutEdges([cut(1_100, 1_300)], words);
+    // Gap before is 100 ms (50 ms move); gap after is 40 ms (20 ms move).
+    expect(moved).toMatchObject({ startMs: 1_050, endMs: 1_320 });
+    const wide = [word("a", 0, 1_000), word("uh", 2_000, 2_200), word("b", 3_200, 4_000)];
+    const [capped] = smoothWordCutEdges([cut(2_000, 2_200)], wide);
+    expect(capped).toMatchObject({ startMs: 1_920, endMs: 2_280 });
+  });
+
+  it("keeps an edge with no gap, and edges at the take's start or end", () => {
+    const words = [word("a", 0, 1_000), word("uh", 1_000, 1_200), word("b", 1_200, 2_000)];
+    expect(smoothWordCutEdges([cut(1_000, 1_200)], words)[0]).toMatchObject({
+      startMs: 1_000,
+      endMs: 1_200,
+    });
+    const edges = [word("uh", 500, 700), word("b", 900, 2_000)];
+    expect(smoothWordCutEdges([cut(500, 700)], edges)[0]?.startMs).toBe(500);
+    const tail = [word("a", 0, 1_000), word("uh", 1_200, 1_400)];
+    expect(smoothWordCutEdges([cut(1_200, 1_400)], tail)[0]?.endMs).toBe(1_400);
+  });
+
+  it("does not move an edge next to a pause cut, and never moves a pause", () => {
+    const words = [word("a", 0, 1_000), word("uh", 1_300, 1_500), word("b", 2_000, 3_000)];
+    const pause = cut(1_000, 1_300, "pause");
+    const out = smoothWordCutEdges([pause, cut(1_300, 1_500)], words);
+    expect(out[0]).toEqual(pause);
+    expect(out[1]).toMatchObject({ startMs: 1_300, endMs: 1_580 });
   });
 });

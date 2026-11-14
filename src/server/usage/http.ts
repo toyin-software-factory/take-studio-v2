@@ -1,3 +1,4 @@
+import { type ApiAuthDeps, guard } from "../api-auth";
 import type { Db } from "@/db/types";
 import { usageForCreator, usageNumbers, PRIVATE_NO_STORE } from ".";
 
@@ -9,6 +10,7 @@ export type UsageHttpDeps = {
   readonly getCreator: (
     request: Request,
   ) => Promise<{ readonly db: Db; readonly creatorId: string } | null>;
+  readonly keyAuth?: ApiAuthDeps["keyAuth"];
   readonly usageSecret: () => string;
   readonly now?: () => Date;
 };
@@ -17,8 +19,8 @@ const reply = (body: unknown, status: number) =>
   Response.json(body, { status, headers: PRIVATE_NO_STORE });
 
 export async function handleUsage(request: Request, deps: UsageHttpDeps): Promise<Response> {
-  const creator = await deps.getCreator(request);
-  if (!creator) return reply({ error: "unauthorized", message: "Please sign in again." }, 401);
+  const creator = await guard(request, deps, { checkOrigin: false });
+  if (creator instanceof Response) return creator;
   let secret: string;
   try {
     secret = deps.usageSecret();

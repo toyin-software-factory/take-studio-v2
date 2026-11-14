@@ -18,6 +18,7 @@ export type RenderPlan = {
   readonly facts: {
     readonly width: number;
     readonly height: number;
+    readonly durationMs: number;
     readonly fps: number | null;
     readonly hdrTransfer: HdrTransfer | null;
     readonly hasAudio: boolean;
@@ -47,6 +48,9 @@ export async function encodeRender(
     renderFilterScript(plan.keep, {
       hdr: facts.hdrTransfer,
       hasAudio: facts.hasAudio,
+      size: { width: facts.width, height: facts.height },
+      durationMs: facts.durationMs,
+      fps: facts.fps,
       background: background
         ? { keyColor: background.keyColor, width: facts.width, height: facts.height }
         : undefined,
