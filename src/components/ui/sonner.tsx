@@ -17,7 +17,15 @@ export const Toaster = dynamic(() => import("./sonner-impl").then((m) => m.Toast
   ssr: false,
 });
 
-/** Shows a toast. */
+const loadImpl = () => import("./sonner-impl");
+
+/**
+ * Shows a toast. If the toast chunk fails to load (offline, a deploy replaced it), it tries
+ * once more, then falls back to the browser's own alert, so the message is never lost silently.
+ */
 export function notify(variant: ToastVariant, options: ToastOptions): void {
-  void import("./sonner-impl").then((m) => m.notifyNow(variant, options));
+  void loadImpl()
+    .catch(() => loadImpl())
+    .then((m) => m.notifyNow(variant, options))
+    .catch(() => window.alert(options.title));
 }
