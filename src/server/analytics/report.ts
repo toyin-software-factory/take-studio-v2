@@ -1,10 +1,12 @@
 import type { Executor } from "@/db/types";
 import type { InsightsWindow } from "@/lib/analytics-events";
+import { type CutQuality, summariseCutQuality } from "@/lib/cut-quality";
 import {
   aiEditShare,
   creatorCount,
   eventCount,
   failuresByCode,
+  latestCutSnapshots,
   secondTakeCount,
 } from "./report-queries";
 
@@ -82,4 +84,21 @@ export async function funnel(
 /** Founding members: creators with at least two uploaded takes, all time (AC-7). */
 export async function foundingMembers(db: Executor): Promise<number> {
   return secondTakeCount(db, null);
+}
+
+/**
+ * The "Cut quality" numbers for a window (spec 0017 AC-5): the latest snapshot per take, summed
+ * by proposer and kind, and the `cut_missed` marks in the window. Counts only.
+ */
+export async function cutQuality(
+  db: Executor,
+  window: InsightsWindow,
+  now: Date = new Date(),
+): Promise<CutQuality> {
+  const since = windowStart(window, now);
+  const [snapshots, missed] = await Promise.all([
+    latestCutSnapshots(db, since),
+    eventCount(db, "cut_missed", since),
+  ]);
+  return summariseCutQuality(snapshots, missed);
 }

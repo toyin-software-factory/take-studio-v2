@@ -513,11 +513,22 @@ describe("GET /api/takes/{id}/media (AC-9, AC-12)", () => {
     const rows = await db
       .select()
       .from(analyticsEvent)
-      .where(and(eq(analyticsEvent.creatorId, creator.id), eq(analyticsEvent.takeId, t.id)));
+      .where(
+        and(
+          eq(analyticsEvent.creatorId, creator.id),
+          eq(analyticsEvent.takeId, t.id),
+          eq(analyticsEvent.name, "take_downloaded"),
+        ),
+      );
     expect(rows.map((r) => [r.name, r.props])).toEqual([
       ["take_downloaded", { kind: "video" }],
       ["take_downloaded", { kind: "video" }],
     ]);
+    const reviewed = await db
+      .select()
+      .from(analyticsEvent)
+      .where(and(eq(analyticsEvent.takeId, t.id), eq(analyticsEvent.name, "cuts_reviewed")));
+    expect(reviewed).toHaveLength(2);
   });
 
   it("downloads the original when a ready take has no render (AC-7), named take-… for a non ASCII title", async () => {

@@ -1,0 +1,2 @@
+ALTER TABLE "analytics_event" DROP CONSTRAINT "analytics_event_name_check";--> statement-breakpoint
+ALTER TABLE "analytics_event" ADD CONSTRAINT "analytics_event_name_check" CHECK ("analytics_event"."name" IN ('signup', 'take_uploaded', 'take_ready', 'ai_edit_used', 'change_requested', 'take_downloaded', 'transcript_downloaded', 'take_failed', 'cuts_reviewed', 'cut_missed', 'limit_hit'));

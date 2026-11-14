@@ -1,7 +1,12 @@
-import { and, count, countDistinct, eq, gte, sql } from "drizzle-orm";
+import { and, count, countDistinct, desc, eq, gte, isNotNull, sql } from "drizzle-orm";
 import { analyticsEvent } from "@/db/schema";
 import type { Executor } from "@/db/types";
-import { FOUNDING_MEMBER_MIN_TAKES, type AnalyticsEventName } from "@/lib/analytics-events";
+import {
+  FOUNDING_MEMBER_MIN_TAKES,
+  parseEventProps,
+  type AnalyticsEventName,
+} from "@/lib/analytics-events";
+import type { CutCounts } from "@/lib/cut-quality";
 
 /** Aggregate queries for /insights. Every one returns numbers only, never a creator row. */
 
@@ -82,4 +87,23 @@ export async function failuresByCode(db: Executor, since: Date | null) {
     .groupBy(code)
     .orderBy(sql`count(*) desc`, code);
   return rows.map((r) => ({ code: r.code, count: r.n }));
+}
+
+/** The latest `cuts_reviewed` counts of each take in the window: repeat downloads count once. */
+export async function latestCutSnapshots(db: Executor, since: Date | null) {
+  const rows = await db
+    .selectDistinctOn([analyticsEvent.takeId], { props: analyticsEvent.props })
+    .from(analyticsEvent)
+    .where(
+      and(
+        eq(analyticsEvent.name, "cuts_reviewed"),
+        inWindow(since),
+        isNotNull(analyticsEvent.takeId),
+      ),
+    )
+    .orderBy(analyticsEvent.takeId, desc(analyticsEvent.occurredAt));
+  return rows.flatMap((row) => {
+    const parsed = parseEventProps("cuts_reviewed", row.props);
+    return parsed ? [parsed.counts as CutCounts] : [];
+  });
 }

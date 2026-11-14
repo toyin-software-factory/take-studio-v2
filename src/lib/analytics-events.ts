@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { CUT_KINDS, CUT_PROPOSERS } from "./cuts";
 import { FAILURE_CODE_VALUES } from "./failure-codes";
 
 /**
@@ -11,6 +12,38 @@ const smallInt = z.number().int().min(0).max(1000);
 const AI_EDIT_OUTCOMES = ["done", "unavailable", "none"] as const;
 const DOWNLOAD_KINDS = ["video", "transcript_txt", "transcript_srt", "transcript_vtt"] as const;
 const LIMIT_PLACES = ["upload_start", "upload_complete"] as const;
+
+/** Counts of one cut kind for one proposer (spec 0017 AC-1): integers only. */
+const cutCount = z.number().int().min(0).max(10_000);
+const cutCounts = z
+  .object({
+    proposed: cutCount,
+    undone: cutCount,
+    restored: cutCount,
+    kept: cutCount,
+    added: cutCount,
+  })
+  .strict();
+const countsByKind = z.object(
+  Object.fromEntries(CUT_KINDS.map((k) => [k, cutCounts])) as Record<
+    (typeof CUT_KINDS)[number],
+    typeof cutCounts
+  >,
+);
+export const cutsReviewedProps = z
+  .object({
+    counts: z
+      .object(
+        Object.fromEntries(CUT_PROPOSERS.map((p) => [p, countsByKind])) as Record<
+          (typeof CUT_PROPOSERS)[number],
+          typeof countsByKind
+        >,
+      )
+      .strict(),
+  })
+  .strict();
+
+const timeMs = z.number().int().min(0).max(7_200_000);
 
 /** Property keys no schema may use (AC-3). A test checks every schema against this list. */
 export const BLOCKED_PROP_KEYS = [
@@ -45,6 +78,11 @@ export const ANALYTICS_EVENTS = {
   },
   take_failed: {
     props: z.object({ code: z.enum(FAILURE_CODE_VALUES as [string, ...string[]]) }).strict(),
+    oncePer: null,
+  },
+  cuts_reviewed: { props: cutsReviewedProps, oncePer: null },
+  cut_missed: {
+    props: z.object({ atMs: timeMs, durationMs: timeMs }).strict(),
     oncePer: null,
   },
   limit_hit: { props: z.object({ place: z.enum(LIMIT_PLACES) }).strict(), oncePer: null },
