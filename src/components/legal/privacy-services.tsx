@@ -12,7 +12,7 @@ export function ServicesSection() {
           ? " We tell Deepgram not to use your audio to train its models."
           : ""}{" "}
         The AI step sees transcript words, which words the transcriber was unsure of, and where the
-        pauses are, never your video or your audio.
+        pauses are, and your script when the take has one, never your video or your audio.
       </p>
       <dl className="flex flex-col gap-4">
         {PROCESSORS.map((p) => (

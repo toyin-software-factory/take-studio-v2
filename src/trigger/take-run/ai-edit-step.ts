@@ -235,7 +235,13 @@ async function tryAi(
   const durationMs = ctx.facts.durationMs;
 
   const catalog: readonly CatalogEntry[] = await listBuiltInCatalog(ctx.client);
-  const request = buildAiRequest({ words, candidates, durationMs, catalog });
+  const request = buildAiRequest({
+    words,
+    candidates,
+    durationMs,
+    catalog,
+    script: ctx.take.script,
+  });
   if (request.estimatedInputTokens > AI_EDIT.maxInputTokens) {
     return { kind: "fallback", cause: "too_large" };
   }
@@ -259,7 +265,14 @@ async function tryAi(
   if (result.stopReason === "refusal") return { kind: "fallback", cause: "provider_rejected" };
   const parsed = parseAnswer(result.text);
   if (!parsed) return { kind: "fallback", cause: "invalid" };
-  const checked = validateAiEdit(parsed, words, candidates, durationMs, catalog);
+  const checked = validateAiEdit(
+    parsed,
+    words,
+    candidates,
+    durationMs,
+    catalog,
+    Boolean(ctx.take.script?.trim()),
+  );
   return checked.ok
     ? { kind: "valid", edit: checked.data }
     : { kind: "fallback", cause: "invalid" };

@@ -159,6 +159,24 @@ async function expectRulesCuts(takeId: string) {
 }
 
 describe("aiEditStep", () => {
+  it("sends the take's script to Claude, and sends none for a take without one (spec 0021 AC-13)", async () => {
+    const withScript = await seedRun();
+    const a = io();
+    await run(
+      { ...withScript.ctx, take: { ...withScript.take, script: "Hello my name is Jon." } },
+      a.value,
+    );
+    const sent = a.call.mock.calls[0]?.[0] as { user: string; system: string };
+    expect(sent.user).toContain("SCRIPT\nHello my name is Jon.\nEND_SCRIPT");
+
+    const without = await seedRun();
+    const b = io();
+    await run(without.ctx, b.value);
+    const plain = b.call.mock.calls[0]?.[0] as { user: string; system: string };
+    expect(plain.user).not.toContain("SCRIPT");
+    expect(plain.system).not.toContain("SCRIPT");
+  });
+
   it("happy path: AI cuts with reasons, a kept pause unapplied, one call (AC-2, AC-9)", async () => {
     const { ctx, take, job } = await seedRun();
     const { value, call, report } = io();
