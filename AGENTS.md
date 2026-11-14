@@ -47,6 +47,7 @@ Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md` or `docs/specs/NNNN-
 - **Named exports only**, except where Next.js requires a default export (`page`, `layout`, `route`, `loading`, `error`, `not-found`).
 - **Accessibility, WCAG AA**: semantic HTML, full keyboard use, visible focus, AA contrast, alt text, captions for video.
 - **Tooling**: ESLint (flat config) + Prettier, Vitest (unit), Playwright (browser); CI runs lint, typecheck, test, build and e2e on every PR. A pre commit hook formats and lints only the staged files (fast); typecheck and tests stay in CI and the before push rule.
+- **Legal facts**: a change that adds a service, a dependency, an env secret, a cookie, a stored personal field, a retention change, an analytics event or a payment step updates `src/lib/legal-facts.ts`, the Privacy and Terms copy and the `LEGAL_VERSION` date in the same PR (checklist in [src/lib/AGENTS.md](src/lib/AGENTS.md)). Run `pnpm legal:drift` before opening the PR; /sync runs it too and flags a hit. `pnpm test:legal-launch` is the launch gate and fails until Toyin's facts and the lawyer's review are recorded.
 - **Git**: one task = one branch = one PR titled `[TASK-ID] …`; the lead merges (squash). Tests where they matter: risky logic, data writes, regressions, shared code.
 
 ## Agent skills
