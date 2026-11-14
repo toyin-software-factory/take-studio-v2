@@ -92,7 +92,7 @@ describe("processor registry and env schemas", () => {
   it("says Anthropic gets words and positions, never video or audio", () => {
     const anthropic = PROCESSORS.find((p) => p.id === "anthropic")!;
     expect(anthropic.receives).toMatch(/words/i);
-    expect(anthropic.doesNotReceive).toMatch(/video, audio/i);
+    expect(anthropic.doesNotReceive).toMatch(/video or audio/i);
   });
 });
 
