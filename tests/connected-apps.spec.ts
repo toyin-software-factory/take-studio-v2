@@ -89,12 +89,9 @@ test("a failed disconnect keeps the dialog open with an alert", async ({ page, b
   );
   await page.getByRole("button", { name: "Disconnect Synthetic Assistant" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Disconnect" }).click();
-  await expect(
-    page.getByRole("region", { name: "Connected apps" }).getByRole("alert"),
-  ).toContainText("couldn't disconnect");
-  await expect(
-    page.getByRole("region", { name: "Connected apps" }).getByRole("alert"),
-  ).toBeFocused();
+  const alert = page.getByRole("dialog").getByRole("alert");
+  await expect(alert).toContainText("couldn't disconnect");
+  await expect(alert).toBeFocused();
 });
 
 test("a failed load shows a message and Try again works", async ({ page, baseURL }) => {

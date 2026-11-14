@@ -87,7 +87,9 @@ test("a failed answer keeps both buttons and tells you what to do (AC-15)", asyn
     route.fulfill({ status: 400, json: { error: "expired" } }),
   );
   await page.getByRole("button", { name: "Allow" }).click();
-  const alert = page.getByRole("alert");
+  const alert = page
+    .getByRole("region", { name: "Allow this app to use your Take Studio?" })
+    .getByRole("alert");
   await expect(alert).toContainText("start again from the app");
   await expect(alert).toBeFocused();
   await expect(page.getByRole("button", { name: "Allow" })).toBeEnabled();
