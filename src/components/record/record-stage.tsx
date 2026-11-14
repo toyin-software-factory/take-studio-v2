@@ -71,6 +71,7 @@ export function RecordStage({
     stream,
     enabled: prompter.settings.follow && prompter.total > 0,
     recording,
+    startWord: () => prompter.position.current,
   });
   const leftMs = Math.max(0, limitMs - elapsedMs);
   const warn = recording && shouldWarn(elapsedMs, limitMs);

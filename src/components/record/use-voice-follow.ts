@@ -59,8 +59,14 @@ export function useVoiceFollow(args: {
   readonly stream: MediaStream | null;
   readonly enabled: boolean;
   readonly recording: boolean;
+  /** The prompter's current position in words, read once when following starts (0 for a new take). */
+  readonly startWord: () => number;
 }): VoiceFollow {
   const { script, stream, enabled, recording } = args;
+  const startWord = useRef(args.startWord);
+  useEffect(() => {
+    startWord.current = args.startWord;
+  }, [args.startWord]);
   const [state, dispatch] = useReducer(followReducer, FOLLOW_OFF);
   const scriptWords = useRef<readonly string[]>([]);
   const last = useRef(-1);
@@ -74,7 +80,9 @@ export function useVoiceFollow(args: {
     let cancelled = false;
     let conn: RealtimeConnection | null = null;
     let audio: Audio | null = null;
-    last.current = -1;
+    // Start matching where the prompter already is, so following turned on mid script can match
+    // the words ahead instead of searching from the top.
+    last.current = Math.max(-1, Math.floor(startWord.current()) - 1);
     dispatch({ type: "start", now: Date.now() });
     const timer = setInterval(() => dispatch({ type: "tick", now: Date.now() }), 1000);
 
