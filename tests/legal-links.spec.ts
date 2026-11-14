@@ -64,7 +64,9 @@ test.describe("signed in", () => {
     test("the notice and menu links are 44 px targets", async ({ page }) => {
       await page.goto("/library");
       const link = page.getByTestId("upload-legal-note").getByRole("link");
-      expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(44);
+      const box = await link.boundingBox();
+      expect(box?.height).toBeGreaterThanOrEqual(44);
+      expect(box?.width).toBeGreaterThanOrEqual(44);
     });
   });
 });

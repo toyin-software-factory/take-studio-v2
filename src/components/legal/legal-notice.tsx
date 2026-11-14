@@ -3,7 +3,7 @@ import { LEGAL_LINKS } from "@/lib/legal-links";
 import { VIDEO_RETENTION_DAYS } from "@/lib/take-rules";
 
 const LINK_CLASS =
-  "-my-3.5 inline rounded-sm py-3.5 underline underline-offset-2 outline-hidden hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-solid focus-visible:outline-ring";
+  "-mx-2 -my-3.5 inline rounded-sm px-2 py-3.5 underline underline-offset-2 outline-hidden hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-solid focus-visible:outline-ring";
 
 /** The notice under the sign in form (spec 0015 AC-2, C-30): links, no checkbox, nothing stored. */
 export function SignInNotice() {
