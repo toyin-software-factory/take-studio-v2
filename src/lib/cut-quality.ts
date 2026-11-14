@@ -341,3 +341,6 @@ export function summariseCutQuality(snapshots: readonly CutCounts[], missed: num
 export function cutRate(part: number, whole: number, takes: number): number | null {
   return takes < CUT_QUALITY_MIN_TAKES || whole === 0 ? null : Math.round((part / whole) * 100);
 }
+
+/** The "Missed something?" mark (spec 0017 AC-3): at most this many are recorded per take per UTC day. */
+export const MISSED_MARK = { perTakePerDay: 20 } as const;
