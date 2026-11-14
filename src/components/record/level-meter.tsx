@@ -17,7 +17,9 @@ export function LevelMeter({ level }: { readonly level: Level }) {
           />
         ))}
       </div>
-      <span className="w-24 text-small text-muted-foreground">{level.label}</span>
+      <span role="status" className="w-24 text-small text-muted-foreground">
+        {level.label}
+      </span>
     </div>
   );
 }

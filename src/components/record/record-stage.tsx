@@ -29,6 +29,7 @@ export function RecordStage({
   onRecord,
   onStop,
   devices,
+  deviceNote,
   cameraId,
   micId,
   onCamera,
@@ -43,6 +44,7 @@ export function RecordStage({
   readonly onRecord: () => void;
   readonly onStop: () => void;
   readonly devices: DeviceChoices;
+  readonly deviceNote: string | null;
   readonly cameraId: string | null;
   readonly micId: string | null;
   readonly onCamera: (id: string) => void;
@@ -109,6 +111,11 @@ export function RecordStage({
         </p>
       ) : null}
       <LevelMeter level={level} />
+      {deviceNote ? (
+        <p role="alert" className="text-small font-medium text-destructive">
+          {deviceNote}
+        </p>
+      ) : null}
       <DevicePickers
         choices={devices}
         cameraId={cameraId}

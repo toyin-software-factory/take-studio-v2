@@ -81,6 +81,7 @@ export function useRecorder(limitSeconds: number | null = null) {
   const stoppedByPerson = useRef(false);
   const hiddenDuring = useRef(false);
   const trackEnded = useRef(false);
+  const live = useRef<MediaStream | null>(null);
   const devices = useDevices(stream);
   const limitMs = recordingLimitMs(limitSeconds);
 
@@ -91,61 +92,115 @@ export function useRecorder(limitSeconds: number | null = null) {
     });
   }, []);
 
-  const acquire = useCallback(async (camera: string | null = null, mic: string | null = null) => {
-    const { picked: type, problem } = checkBrowser();
-    picked.current = type;
-    if (problem) {
-      dispatch({ type: "failed", failure: problem });
-      return;
-    }
-    try {
-      const media = await openMedia(camera, mic);
-      if (!mounted.current) {
-        // The page was left while the browser was asking: nothing may keep the camera on.
-        media.getTracks().forEach((track) => track.stop());
+  /** The ids of the devices a stream actually uses (the browser may have chosen them). */
+  const idsOf = (media: MediaStream) => ({
+    camera: media.getVideoTracks()[0]?.getSettings().deviceId ?? null,
+    mic: media.getAudioTracks()[0]?.getSettings().deviceId ?? null,
+  });
+
+  const commit = useCallback((media: MediaStream) => {
+    const ids = idsOf(media);
+    setCameraId(ids.camera);
+    setMicId(ids.mic);
+    setStream((now) => {
+      now?.getTracks().forEach((track) => track.stop());
+      return media;
+    });
+  }, []);
+
+  const acquire = useCallback(
+    async (camera: string | null = null, mic: string | null = null) => {
+      const { picked: type, problem } = checkBrowser();
+      picked.current = type;
+      if (problem) {
+        dispatch({ type: "failed", failure: problem });
         return;
       }
-      setCameraId(camera);
-      setMicId(mic);
-      setStream((now) => {
-        now?.getTracks().forEach((track) => track.stop());
-        return media;
-      });
-      dispatch({ type: "granted" });
-    } catch (error) {
-      if (!mounted.current) return;
-      const name = error instanceof Error ? error.name : "";
-      dispatch({ type: "failed", failure: classifyMediaError(name) });
-    }
-  }, []);
+      try {
+        let media: MediaStream;
+        try {
+          media = await openMedia(camera, mic);
+        } catch (error) {
+          // A remembered device that is gone (an unplugged microphone) must not block the
+          // camera for good: ask again with the browser's defaults.
+          const name = error instanceof Error ? error.name : "";
+          const gone = name === "OverconstrainedError" || name === "NotFoundError";
+          if (!gone || (!camera && !mic)) throw error;
+          media = await openMedia(null, null);
+        }
+        if (!mounted.current) {
+          // The page was left while the browser was asking: nothing may keep the camera on.
+          media.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        commit(media);
+        dispatch({ type: "granted" });
+      } catch (error) {
+        if (!mounted.current) return;
+        const name = error instanceof Error ? error.name : "";
+        dispatch({ type: "failed", failure: classifyMediaError(name) });
+      }
+    },
+    [commit],
+  );
+
+  const kindNow = useRef(state.kind);
+  useEffect(() => {
+    kindNow.current = state.kind;
+  }, [state.kind]);
+  /** Counts device changes, so only the newest answer is used. */
+  const selection = useRef(0);
+  const [deviceNote, setDeviceNote] = useState<string | null>(null);
 
   /**
    * Switch camera or microphone while the preview is on. A device that has gone away falls
-   * back to the browser's default instead of leaving the creator with a dead preview.
+   * back to the browser's default. Some phones open one camera at a time: if the new one is
+   * refused, the current one is let go and the request is tried again, and if that also
+   * fails the old devices come back with a message (never a silent nothing).
    */
   const choose = useCallback(
     async (camera: string | null, mic: string | null) => {
+      const mine = ++selection.current;
       const next = {
         camera: stillAvailable(devices.cameras, camera),
         mic: stillAvailable(devices.microphones, mic),
       };
-      try {
-        const media = await openMedia(next.camera, next.mic);
-        if (!mounted.current) {
+      const previous = { camera: cameraId, mic: micId };
+      // A result that arrives after Record was pressed (or after a newer change) is dropped.
+      const current = () =>
+        mounted.current && selection.current === mine && kindNow.current === "ready";
+      const settle = (media: MediaStream): boolean => {
+        if (!current()) {
           media.getTracks().forEach((track) => track.stop());
-          return;
+          return false;
         }
-        setCameraId(next.camera);
-        setMicId(next.mic);
-        setStream((now) => {
-          now?.getTracks().forEach((track) => track.stop());
-          return media;
-        });
+        commit(media);
+        return true;
+      };
+      setDeviceNote(null);
+      try {
+        settle(await openMedia(next.camera, next.mic));
+        return;
       } catch {
-        // The old stream is still running; keep it.
+        if (!current()) return;
+      }
+      try {
+        live.current?.getTracks().forEach((track) => track.stop());
+        settle(await openMedia(next.camera, next.mic));
+        return;
+      } catch {
+        if (!current()) return;
+      }
+      try {
+        settle(await openMedia(previous.camera, previous.mic));
+        if (current()) setDeviceNote("That camera or microphone could not be turned on.");
+      } catch (error) {
+        if (!current()) return;
+        const name = error instanceof Error ? error.name : "";
+        dispatch({ type: "failed", failure: classifyMediaError(name) });
       }
     },
-    [devices],
+    [devices, cameraId, micId, commit],
   );
 
   const flip = useCallback(() => {
@@ -294,7 +349,6 @@ export function useRecorder(limitSeconds: number | null = null) {
   }, [state]);
 
   // Leaving the page turns everything off.
-  const live = useRef<MediaStream | null>(null);
   useEffect(() => {
     live.current = stream;
   }, [stream]);
@@ -322,6 +376,7 @@ export function useRecorder(limitSeconds: number | null = null) {
     begin,
     stop,
     devices,
+    deviceNote,
     cameraId,
     micId,
     chooseCamera: (id: string) => void choose(id, micId),

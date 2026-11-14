@@ -21,6 +21,7 @@ export function RecordSetup({
   failure,
   busy,
   usedUp,
+  uploadNote,
   touch,
   onStart,
   onNativeFile,
@@ -33,6 +34,8 @@ export function RecordSetup({
   readonly usedUp: string | null;
   /** A phone or tablet (a touch screen), where the native camera is a way forward. */
   readonly touch: boolean;
+  /** Why the phone camera file was not uploaded; choose it again to retry. */
+  readonly uploadNote: string | null;
   readonly onStart: () => void;
   readonly onNativeFile: (file: File) => void;
 }) {
@@ -45,6 +48,11 @@ export function RecordSetup({
           <Link href="/library" className="underline">
             Back to your library
           </Link>
+        </Alert>
+      ) : null}
+      {uploadNote ? (
+        <Alert variant="danger" title="That file was not uploaded">
+          {uploadNote} Choose the file again to retry.
         </Alert>
       ) : null}
       {message ? (

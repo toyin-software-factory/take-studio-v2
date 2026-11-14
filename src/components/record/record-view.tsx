@@ -103,6 +103,7 @@ export function RecordView({
         onRecord={recorder.begin}
         onStop={recorder.stop}
         devices={recorder.devices}
+        deviceNote={recorder.deviceNote}
         cameraId={recorder.cameraId}
         micId={recorder.micId}
         onCamera={recorder.chooseCamera}
@@ -111,8 +112,17 @@ export function RecordView({
       />
     );
   }
+  // A photo or video from the phone's own camera goes through the same upload.
+  if (upload.busy) return <UploadProgress state={upload.state} onCancel={upload.cancel} />;
   return (
     <RecordSetup
+      uploadNote={
+        upload.state.kind === "rejected"
+          ? upload.state.message
+          : upload.state.kind === "cancelled"
+            ? "The upload was cancelled."
+            : null
+      }
       usedUp={usage && isUsedUp(usage) ? usedUpMessage(usage) : null}
       script={script}
       onScript={editScript}
