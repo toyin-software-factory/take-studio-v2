@@ -23,8 +23,11 @@ export const AI_EDIT = {
   promptReasonMax: 120,
   fixMaxChars: 40,
   wordCutMaxMs: 20_000,
-  /** Word cuts may remove at most this share of the take. */
+  /** Word cuts may remove at most this share of a take of `shortTakeMs` or longer. */
   wordCutMaxShare: 0.4,
+  /** A take shorter than this gets the higher share below (C-42). */
+  shortTakeMs: 30_000,
+  shortTakeWordCutMaxShare: 0.6,
   maxFixes: 300,
   /**
    * `claude-opus-5-5` rejects `thinking: {type: "disabled"}` (400), so thinking is left at its
@@ -35,6 +38,17 @@ export const AI_EDIT = {
   sdkMaxRetries: 0,
   keptPauseReason: "Kept: deliberate pause",
 } as const;
+
+/**
+ * The most the word cuts may remove, as a share of the take (C-42): 60% under 30 s, because a
+ * short clip with a few retakes and filler can honestly lose more than 40%; 40% from 30 s on.
+ * Pure.
+ */
+export function wordCutMaxShareFor(durationMs: number): number {
+  return durationMs < AI_EDIT.shortTakeMs
+    ? AI_EDIT.shortTakeWordCutMaxShare
+    : AI_EDIT.wordCutMaxShare;
+}
 
 /** Why the AI edit fell back to the rules cuts (the Sentry `cause` tag). */
 export const AI_CAUSES = [
@@ -382,7 +396,7 @@ function mergeCuts(
 /**
  * Checks the answer against the transcript and the candidates (spec 0012, Validation). Items that
  * break a rule are dropped and counted; the whole answer is refused (`invalid`, so the caller falls
- * back to the rules cuts) when word cuts total over 40% of the take, or more than half of all
+ * back to the rules cuts) when word cuts total over 40% of the take (60% for a take under 30 s), or more than half of all
  * items were dropped. The schema parse and the `max_tokens` stop are the caller's checks, before
  * this. Pure: no reason or word is logged.
  */
@@ -402,7 +416,7 @@ export function validateAiEdit(
 
   const wordCuts = validWordCuts(answer, words, durationMs, keptSpans, count);
   const wordCutMs = wordCuts.reduce((sum, c) => sum + (c.endMs - c.startMs), 0);
-  if (wordCutMs > durationMs * AI_EDIT.wordCutMaxShare) return err("invalid");
+  if (wordCutMs > durationMs * wordCutMaxShareFor(durationMs)) return err("invalid");
 
   const fixes = validFixes(answer, words, count);
 

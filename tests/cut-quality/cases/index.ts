@@ -7,6 +7,7 @@ import c_meaningful_like from "./meaningful-like.json";
 import c_placeholder_words from "./placeholder-words.json";
 import c_plain_fillers from "./plain-fillers.json";
 import c_restart from "./restart.json";
+import c_short_take_heavy_cuts from "./holdout/short-take-heavy-cuts.json";
 import c_stammered_repeat from "./stammered-repeat.json";
 import c_toyin3_pattern from "./toyin3-pattern.json";
 import c_toyin4_nothing_to_say from "./toyin4-nothing-to-say.json";
@@ -22,6 +23,7 @@ import a_meaningful_like from "../answers/meaningful-like.json";
 import a_placeholder_words from "../answers/placeholder-words.json";
 import a_plain_fillers from "../answers/plain-fillers.json";
 import a_restart from "../answers/restart.json";
+import a_short_take_heavy_cuts from "../answers/short-take-heavy-cuts.json";
 import a_stammered_repeat from "../answers/stammered-repeat.json";
 import a_toyin3_pattern from "../answers/toyin3-pattern.json";
 import a_toyin4_nothing_to_say from "../answers/toyin4-nothing-to-say.json";
@@ -47,6 +49,7 @@ export const CASE_ENTRIES: readonly CaseEntry[] = [
   { holdout: false, raw: c_placeholder_words, answer: a_placeholder_words },
   { holdout: false, raw: c_plain_fillers, answer: a_plain_fillers },
   { holdout: false, raw: c_restart, answer: a_restart },
+  { holdout: true, raw: c_short_take_heavy_cuts, answer: a_short_take_heavy_cuts },
   { holdout: false, raw: c_stammered_repeat, answer: a_stammered_repeat },
   { holdout: false, raw: c_toyin3_pattern, answer: a_toyin3_pattern },
   { holdout: false, raw: c_toyin4_nothing_to_say, answer: a_toyin4_nothing_to_say },

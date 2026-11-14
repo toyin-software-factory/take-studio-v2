@@ -2,7 +2,7 @@
 
 **Date**: 2026-11-13
 **Status**: In Progress
-**Updated**: 2026-11-14: word cuts now judged from meaning, with no fixed filler list (Toyin, C-33). See AC-2, Word cut guidance, Validation and build step 9.
+**Updated**: 2026-11-14: word cuts now judged from meaning, with no fixed filler list (Toyin, C-33). See AC-2, Word cut guidance, Validation and build step 9. The word cut cap is 60% for takes under 30 s and 40% from 30 s (Toyin, C-42). See Validation.
 
 ## Summary
 
@@ -118,7 +118,7 @@ Settled calls (RECOMMEND items):
 | `ProposedCut` (`src/lib/cut-rules.ts`) and `proposedSchema` in `src/db/data/cuts.ts` | add `applied?: boolean` (default true) | insert writes it |
 | `SKIP_REASONS` (`src/lib/processing.ts`) | add `ai_unavailable` | open set, add only |
 | `STEPS_BY_KIND` | `initial` and `rerender`: `trim`, `transcript`, `ai_edit`, `background` (when a target), `render` | `LIVE_SLICE` raised to 5 when the AI path ships |
-| `AI_EDIT` config (`src/lib/ai-edit.ts`) | `{ model: "claude-opus-5-5", maxTokens: 8000, maxInputTokens: 60000, deadlineMs: 120000, reasonMax: 280, promptReasonMax: 120, fixMaxChars: 40, wordCutMaxMs: 20000, wordCutMaxShare: 0.4, maxFixes: 300, effort: "low", stream: false, sdkMaxRetries: 0, keptPauseReason: "Kept: deliberate pause" }` | the one model constant (spec 0001); confirm the structured output request shape for this model with the `claude-api` skill before task 2 |
+| `AI_EDIT` config (`src/lib/ai-edit.ts`) | `{ model: "claude-opus-5-5", maxTokens: 8000, maxInputTokens: 60000, deadlineMs: 120000, reasonMax: 280, promptReasonMax: 120, fixMaxChars: 40, wordCutMaxMs: 20000, wordCutMaxShare: 0.4, shortTakeMs: 30000, shortTakeWordCutMaxShare: 0.6, maxFixes: 300, effort: "low", stream: false, sdkMaxRetries: 0, keptPauseReason: "Kept: deliberate pause" }` | the one model constant (spec 0001); confirm the structured output request shape for this model with the `claude-api` skill before task 2 |
 | `TrimmedWord` (`src/lib/transcript-timeline.ts`) | add `index` (into `transcript.words`) | lets the panel mark fixed words and match fixes to visible words |
 | `STEP_WEIGHTS` (`src/lib/take-display.ts`) | `trim 10, transcript 5, ai_edit 5, background 5, render 75` | progress bar |
 | `setStep` (`src/trigger/take-run/context.ts`) | also accepts `failed` with a failure code | for the non fatal `transcript` step |
@@ -152,7 +152,7 @@ type AiEditAnswer = {
 
 **Validation** (`validateAiEdit(answer, words, candidates, durationMs)`, pure, in `src/lib/ai-edit.ts`):
 - Item level (the item is dropped, counted): kept pause `candidate` out of range or repeated (a kept pause with an empty or unusable reason keeps the default reason "Kept: deliberate pause"); word cut with `fromWord > toWord`, out of range, or longer than 20 s (no check against a filler word list: the kind is the AI's judgement, Word cut guidance); fix whose `old` is not exactly `words[index].w`, whose `new` is empty, equal to `old`, over 40 characters or on a filler word, or a repeated index; any empty reason; a background ID not in the catalog (no suggestion).
-- Answer level (whole answer falls back): schema parse fails; `stop_reason` is `max_tokens`; word cuts total more than 40 % of the take (raised from 25 % so a take with several retakes still gets its cuts); more than half of all items dropped.
+- Answer level (whole answer falls back): schema parse fails; `stop_reason` is `max_tokens`; word cuts total more than 40 % of the take, or more than 60 % when the take is shorter than 30 s (the cap was raised from 25 % to 40 % so a take with several retakes still gets its cuts; Toyin chose the higher short take cap on 2026-11-14, decision C-42, because a short clip can honestly lose about half of its words, and `wordCutMaxShareFor(durationMs)` in `src/lib/ai-edit.ts` is the one place that picks it: 29.999 s gets 60 %, 30 s gets 40 %); more than half of all items dropped.
 - Positions: a pause candidate keeps its rules range; a word cut runs from `words[fromWord].startMs` to `words[toWord + 1].startMs` (or the take's end), except that when a kept pause candidate starts inside that range, the word cut ends at that candidate's `startMs`, so a kept pause is never swallowed. A candidate the AI did not name is cut (applied, rules reason, `proposed_by = 'ai'`). Only applied cuts merge with applied cuts: an overlap of a word cut and a cut pause becomes one cut with the word cut's kind and reason; the 20 s word cut limit is checked again after merging (over it, the merged item is dropped and the pause stays alone). An unapplied kept pause never merges. Reasons go through `cleanReason` (280 max).
 
 **API surface**:
@@ -203,7 +203,7 @@ type AiEditAnswer = {
 **Critical test scenarios**:
 - Happy path: a fixture take with a false start, a filler, a deliberate pause and a misheard name, with a fake Claude answer: AI cuts stored with reasons (kept pause unapplied), fixes stored, suggestion stored, one render, transcript not made again after Ready, verifies **AC-1**, **AC-2**, **AC-4**, **AC-5**.
 - Meaning cuts: a fake answer with a `filler` cut over "blah blah blah" (no Deepgram filler flag) and a `false_start` cut over an earlier attempt at a repeated line: both stored applied with their reasons; a `filler` cut over plain words is no longer dropped, verifies **AC-2**.
-- Failure case: fake Claude times out, returns invalid JSON, returns `max_tokens`, returns 40 % plus of word cuts, returns a fix whose `old` does not match: the take ends Ready with the rules cuts, step `skipped ai_unavailable`, one Sentry message with IDs only, verifies **AC-6**, **AC-7**, **AC-9**.
+- Failure case: fake Claude times out, returns invalid JSON, returns `max_tokens`, returns word cuts over the cap (over 40 % of a take of 30 s or longer, over 60 % of a shorter one), returns a fix whose `old` does not match: the take ends Ready with the rules cuts, step `skipped ai_unavailable`, one Sentry message with IDs only, verifies **AC-6**, **AC-7**, **AC-9**.
 - Failure case: Deepgram fails inside the run: rules cuts, Ready, separate transcribe job started, verifies **AC-7**.
 - Request content: the built request contains no title, name, email, take ID or URL, verifies **AC-8**.
 - Re render: a change render after AI edits makes no Claude call and keeps fixes and suggestion, verifies **AC-10**.
