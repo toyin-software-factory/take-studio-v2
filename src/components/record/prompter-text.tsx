@@ -28,6 +28,8 @@ export function PrompterText({
   const follow = useRef<number | null>(null);
   // The first voice target since following (re)started or resumed, and whether a newer one has arrived.
   const firstTarget = useRef<number | null>(null);
+  // The clamped position when the first target arrived; held until a newer target.
+  const heldPosition = useRef(0);
   const engaged = useRef(false);
   useEffect(() => {
     follow.current = followWordIndex;
@@ -43,11 +45,12 @@ export function PrompterText({
         // The first voice target after fallback or a pause never moves the script back from a later
         // reading position, however many frames pass. Once a new target arrives, the voice is the
         // truth about where the creator is.
-        if (firstTarget.current === null) firstTarget.current = follow.current;
+        if (firstTarget.current === null) {
+          firstTarget.current = follow.current;
+          heldPosition.current = Math.max(position.current, follow.current);
+        }
         if (follow.current !== firstTarget.current) engaged.current = true;
-        position.current = engaged.current
-          ? follow.current
-          : Math.max(position.current, follow.current);
+        position.current = engaged.current ? follow.current : heldPosition.current;
       } else {
         firstTarget.current = null;
         engaged.current = false;
