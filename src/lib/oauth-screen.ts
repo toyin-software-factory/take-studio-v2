@@ -66,9 +66,19 @@ export function redirectHosts(uris: readonly string[]): readonly string[] {
 
 /** The name to show: trimmed, and a fixed line when the app gave none. */
 export function clientLabel(name: string | null | undefined): string {
-  const trimmed = name?.trim() ?? "";
-  return trimmed === "" ? CONSENT_COPY.unnamed : trimmed;
+  // Anyone can register a client (no sign in), so the name is untrusted text: control and
+  // direction characters go, runs of space become one, and a long name is cut, so a page of
+  // text or a line that flips the layout cannot stand in for the app's name.
+  const cleaned = (name ?? "")
+    .replace(/[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (cleaned === "") return CONSENT_COPY.unnamed;
+  return cleaned.length > CLIENT_NAME_MAX ? `${cleaned.slice(0, CLIENT_NAME_MAX - 1)}…` : cleaned;
 }
+
+/** The longest app name the consent page and the connected apps list show. */
+export const CLIENT_NAME_MAX = 60;
 
 /** The answer of POST /api/auth/oauth2/consent: where to send the browser next. */
 export const consentAnswerSchema = z.object({ url: z.string().min(1) });

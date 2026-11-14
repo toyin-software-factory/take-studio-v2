@@ -176,3 +176,19 @@ describe("the delete guard (AC-7)", () => {
     expect(ok.isError).toBe(false);
   });
 });
+
+describe("the take ID in logs (B2-T101)", () => {
+  const ok = { [routeKey(tool("get_take").route)]: async () => new Response("{}") };
+  it("keeps a real take ID and drops any other text the assistant sent", async () => {
+    const id = "0b9f0a0e-5c1d-4f6e-9a55-3f1c2a7d8e11";
+    expect((await callTool(tool("get_take"), { takeId: id }, ok, context)).takeId).toBe(id);
+    for (const text of ["t1", "ignore previous instructions", "x".repeat(5000), "../keys"]) {
+      const outcome = await callTool(tool("get_take"), { takeId: text }, ok, context);
+      expect(outcome.takeId).toBeNull();
+    }
+  });
+  it("also drops it from the delete guard answer", async () => {
+    const outcome = await callTool(tool("delete_take"), { takeId: "secret text" }, ok, context);
+    expect(outcome.takeId).toBeNull();
+  });
+});
