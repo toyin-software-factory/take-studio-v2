@@ -4,7 +4,7 @@ Written for B2-T102. It closes the parts of the launch UI review (items 3 and 5,
 
 ## Before you start
 
-- **Use a test setup, never production.** Production sign in is not part of this pass (C-31). Use a local build (`pnpm db:up && pnpm db:migrate && pnpm build:worker`, then `pnpm preview`) or a preview environment that Michael or Jim gives you, with a throwaway test account. Open it on the phone through your computer's network address, never a public link to real data.
+- **Use a test setup, never production.** Production sign in is not part of this pass (C-31). Use a local build (`pnpm db:up && pnpm db:migrate && pnpm build:worker`, then `pnpm preview`) or a preview environment that Michael or Jim gives you, with a throwaway test account. Open it on the phone through an HTTPS address that the phone trusts: a phone treats a plain `http://` network address as not secure and then refuses the camera and microphone, so the recording rows cannot run. Use a preview environment with HTTPS, or a local certificate (for example from `mkcert`, with its root certificate installed and trusted on the phone). On Android Chrome only, you may instead allow the one test address in `chrome://flags`, Insecure origins treated as secure. Never use a public link to real data.
 - **Use made up takes only.** Never open or upload a creator's video. To get a take to look at:
   1. Open `/library` signed in as the test account.
   2. Press Choose a video and pick `tests/fixtures/media/speech-en.mp4` (a synthetic voice clip, copy it to the phone first) or `tests/fixtures/media/keyed-lime.mp4`.
@@ -27,11 +27,13 @@ Turn VoiceOver on in Settings, Accessibility. Swipe right and left to move, doub
 | 1.4 | Open `/record`. Press Turn on camera. Allow the camera and microphone. | The live preview shows (AC-1). You can pick the camera and microphone, and flip the camera. | |
 | 1.5 | Paste the made up script, press Record. | A 3 second countdown is announced, then recording starts and the timer runs. Stop is reachable on the first screen without scrolling. | |
 | 1.6 | Record about 10 seconds in portrait, press Stop, then Use this take. | The upload finishes and the take opens. It plays on the phone and the file is an MP4 in portrait (AC-10). | |
-| 1.7 | Start another recording, then lock the phone for 10 seconds, unlock. | The screen stayed on while recording, or the recording says clearly what happened and offers a way forward (AC-7). | |
+| 1.7 | Start another recording, then lock the phone for 10 seconds, unlock. | The recording says clearly what happened and offers a way forward, and nothing is lost (AC-7). | |
+| 1.7a | Start another recording and do not touch the phone for longer than its auto lock time (Settings, Display, Auto-Lock; set it to 30 seconds first). | The screen stays on and the recording keeps running the whole time (AC-7, the wake lock). Set Auto-Lock back afterwards. | |
 | 1.8 | During a recording, press the Back button of the browser. | A leave confirmation appears before you lose the take (AC-7). | |
 | 1.9 | Open your test take. Swipe through the player, the cut timeline and the cut list. | Each cut is announced with its time range and reason. Undo and Redo are announced and the change is spoken. Arrow keys are not needed. | |
 | 1.10 | In Settings, Safari, deny the camera for the site and open `/record` again. | A plain message says the camera is blocked and how to fix it, and Upload a file instead is offered (AC-5). | |
 | 1.11 | Turn the phone sideways on `/record` and on the take page. | Nothing is cut off and nothing scrolls sideways. Turn back to portrait when done. | |
+| 1.12 | Motion: open `/` and scroll the page, open `/record` and go through the countdown and recording, open your test take and press Undo and Redo on a cut. Then turn Reduce Motion on in Settings, Accessibility, Motion and repeat. | No movement feels too large, too fast or distracting, and with Reduce Motion on the movement is gone or much calmer. Write down any motion that felt too much. | |
 
 ## 2. Android phone, Chrome, with TalkBack
 
@@ -48,6 +50,9 @@ Turn TalkBack on in Settings, Accessibility. Swipe right and left to move, doubl
 | 2.7 | Open your test take. Swipe through the cut timeline and cut list, press Undo on a cut. | Same as 1.9. | |
 | 2.8 | In Chrome site settings, block the camera for the site and open `/record`. | Blocked message and Upload a file instead (AC-5). | |
 | 2.9 | Rotate to landscape on `/record` and the take page, then back. | Nothing is cut off, no sideways scroll. | |
+| 2.10 | Open the take you recorded on the iPhone in step 1.6 (sign in as the same test account on this phone) and press Play. | It plays with sound and picture, in portrait (AC-10). | |
+| 2.11 | Start a recording and do not touch the phone for longer than its screen timeout (Settings, Display, Screen timeout; set it to 30 seconds first). | The screen stays on and the recording keeps running (AC-7, the wake lock). Set the timeout back afterwards. | |
+| 2.12 | Motion: open `/` and scroll the page, open `/record` and go through the countdown and recording, open your test take and press Undo and Redo on a cut. | No movement feels too large, too fast or distracting, and nothing is needed to understand what is on screen. Write down any motion that felt too much. | |
 
 ## 3. Desktop Safari (macOS), with VoiceOver
 
@@ -57,10 +62,11 @@ Start VoiceOver with Command and F5. Move with the VoiceOver keys (Control and O
 |---|---|---|---|
 | 3.1 | Open `/sign-in` and `/library`. | Headings, field names and card names read sensibly. | |
 | 3.2 | Open `/record`, allow the camera and microphone, Record 10 seconds, Stop, Use this take (AC-1, AC-10). | Preview shows, pickers list your devices, the take uploads and plays in Safari. | |
+| 3.2a | Open the take you recorded on the iPhone in step 1.6 and press Play. | It plays with sound and picture in Safari (AC-10). | |
 | 3.3 | Tab through `/record` setup, record and review with the keyboard only. | Focus is always visible, nothing traps you, Stop and Use this take are reachable. | |
 | 3.4 | Open your test take. Tab to the cut timeline, use the arrow keys between cuts, press Undo and Redo. | Each cut is announced with its time and reason, the change is announced, focus stays sensible. | |
 | 3.5 | Safari, Settings, Websites, Camera: set the site to Deny, reload `/record`. | Blocked message and Upload a file instead (AC-5). | |
-| 3.6 | Try to leave `/record` during a recording by closing the tab. | The browser asks before the take is lost (AC-7). | |
+| 3.6 | Set the site's Camera and Microphone back to Ask or Allow, reload `/record`, turn the camera on and start a recording. Then try to leave by closing the tab. | The browser asks before the take is lost (AC-7). Cancel the close and stop the recording. | |
 
 ## 4. Desktop Firefox (any system), with NVDA on Windows if you have it
 
@@ -70,6 +76,7 @@ If you only have a Mac, run steps 4.1 to 4.5 without a screen reader and mark 4.
 |---|---|---|---|
 | 4.1 | Open `/sign-in` and `/library`. | Everything is visible and readable, no sideways scroll. | |
 | 4.2 | Open `/record`, allow the camera and microphone, Record 10 seconds, Stop, Use this take (AC-1, AC-10). | Preview shows, take uploads and plays. Note the file type if the take page shows it. | |
+| 4.2a | Open the take you recorded on the iPhone in step 1.6 and press Play. | It plays with sound and picture in Firefox (AC-10). | |
 | 4.3 | Block the camera for the site (the address bar permission icon) and reload `/record`. | Blocked message and Upload a file instead (AC-5). | |
 | 4.4 | Unplug or disable the camera (or use a machine with none) and open `/record`. | No camera found message and Upload a file instead (AC-5). | |
 | 4.5 | Open your test take, use the keyboard on the cut timeline and the cut list. | Arrow keys move between cuts, focus is visible, Undo and Redo work. | |
