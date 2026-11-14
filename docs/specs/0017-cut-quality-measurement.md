@@ -1,7 +1,7 @@
 # 0017. Cut quality measurement without watching videos
 
 **Date**: 2026-11-14
-**Status**: Proposed
+**Status**: Accepted
 
 ## Summary
 

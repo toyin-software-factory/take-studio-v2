@@ -29,7 +29,7 @@ export function CutQualityTable({ quality }: { readonly quality: CutQuality }) {
         {quality.reviewedTakes} reviewed takes, {quality.missed} missed marks (
         {perTake(quality.missed)} per take).
       </p>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" role="region" aria-label="Cut quality table" tabIndex={0}>
         <table className="w-full max-w-2xl text-left">
           <caption className="sr-only">Cut quality by who proposed the cut and its kind</caption>
           <thead>

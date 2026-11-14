@@ -40,7 +40,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 16 | Privacy & terms pages | Launch | in-progress |
 | 17 | Product analytics | Launch | in-progress |
 | 18 | Email sign in and take ready email | Slice 1 | done |
-| 19 | Cut quality measurement | Launch | in-progress |
+| 19 | Cut quality measurement | Launch | done |
 
 ## Foundations
 
@@ -284,17 +284,17 @@ Three events that show whether the core loop works: signup, take uploaded, take 
 - [ ] Verify it: `/check verify product analytics`
 Spec [0016](../specs/0016-product-analytics.md) · Toyin answered the open questions on 2026-11-14 (C-30): our own events in our database, recommended options otherwise
 
-### 19. Cut quality measurement · in-progress
+### 19. Cut quality measurement · done
 Know whether AI cuts are good without watching creators' videos (C-37, from spec 0017).
 **Done when:** undo rates per cut kind and the overall missed rate show on /insights, and every AI edit change is scored against a fixed written test set.
 - [x] Design it (spec): `/architect cut quality measurement`
-- [ ] Build it: `/develop cut quality measurement`
-   - [ ] Scorer, written test set, baseline floor in CI (AC-7, AC-8, AC-9, AC-11)
-   - [ ] Token gated `ai-eval` cloud task (AC-10)
-   - [ ] `cuts_reviewed` at download, legal facts and copy, /insights cut quality section (AC-1, AC-5, AC-6)
-   - [ ] "Missed something?" button, route and `cut_missed` event (AC-2, AC-3, AC-4, AC-6)
-- [ ] Verify it: `/check verify cut quality measurement`
-- [ ] Test it: `/test cut quality measurement`
+- [x] Build it: `/develop cut quality measurement`
+   - [x] Scorer, written test set, baseline floor in CI (AC-7, AC-8, AC-9, AC-11)
+   - [x] Token gated `ai-eval` cloud task (AC-10)
+   - [x] `cuts_reviewed` at download, legal facts and copy, /insights cut quality section (AC-1, AC-5, AC-6)
+   - [x] "Missed something?" button, route and `cut_missed` event (AC-2, AC-3, AC-4, AC-6)
+- [x] Verify it: `/check verify cut quality measurement`
+- [x] Test it: `/test cut quality measurement`
 Spec [0017](../specs/0017-cut-quality-measurement.md)
 
 ## Deferred
