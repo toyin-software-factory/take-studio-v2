@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BackgroundPreviewOverlay } from "./background-preview-overlay";
 import { previewStatusText } from "@/lib/take-display";
 import { type PlayerBridge, usePreviewOverlay } from "./player-bridge";
+import { MissedButton } from "./missed-button";
 import { PlayerControls } from "./player-controls";
 import { playerNotice } from "./player-notice";
 import type { CutReview } from "./use-cut-review";
@@ -226,6 +227,15 @@ export function TakePlayer({
           }}
           onFullscreen={() => void enterFullscreen(video.current)}
         />
+        {/* Only on the finished video: on the original preview the time is not the edited time. */}
+        {source.active === "render" ? (
+          <div className="mt-3">
+            <MissedButton
+              takeId={takeId}
+              playheadMs={() => (video.current?.currentTime ?? 0) * 1000}
+            />
+          </div>
+        ) : null}
       </div>
     </div>
   );

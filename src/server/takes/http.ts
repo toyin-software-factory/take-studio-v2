@@ -49,6 +49,8 @@ export type TakeError =
   | "unavailable"
   | "expired"
   | "storage_error"
+  /** Spec 0017: a "Missed something?" mark on a take that is not ready or has expired. */
+  | "not_markable"
   /** Spec 0014: the monthly allowance is used up (the retry route sends the dated message). */
   | "limit_exceeded";
 
@@ -65,6 +67,7 @@ const STATUS: Readonly<Record<TakeError, number>> = {
   unavailable: 503,
   expired: 410,
   storage_error: 503,
+  not_markable: 409,
   limit_exceeded: 403,
 };
 
@@ -81,6 +84,7 @@ const MESSAGES: Readonly<Record<TakeError, string>> = {
   unavailable: "Processing isn't available right now. Please try again later.",
   expired: "This video has expired. Videos are kept for 30 days.",
   storage_error: "Storage is having a problem right now. Please try again.",
+  not_markable: "This video is no longer available, so we can't note that.",
   limit_exceeded: "This month's allowance is used up. Try again when it resets.",
 };
 
@@ -303,7 +307,7 @@ function limitFallback(): Response {
 }
 
 /** The request's JSON body, or undefined when it isn't JSON (the schema then rejects it). */
-async function readBody(request: Request): Promise<unknown> {
+export async function readBody(request: Request): Promise<unknown> {
   try {
     return await request.json();
   } catch {
