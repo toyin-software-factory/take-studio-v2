@@ -178,6 +178,8 @@ export const SMOOTH = {
   wordEdgeMaxMs: 80,
   zoomScale: 1.08,
   zoomMinPieceMs: 1000,
+  /** How far before the take's end the last piece may stop after frame alignment and still be the end. */
+  frameAlignSlackMs: 50,
 } as const;
 
 /**
@@ -232,7 +234,7 @@ export function renderFilterScript(keep: readonly Range[], options: RenderGraphO
     const fadeMs = Math.min(SMOOTH.audioFadeMs, len / 2);
     const cutAtStart = !(i === 0 && r.startMs <= 0);
     const cutAtEnd = !(i === lastIndex && options.durationMs !== undefined
-      ? r.endMs >= options.durationMs
+      ? r.endMs >= options.durationMs - SMOOTH.frameAlignSlackMs
       : i === lastIndex && options.durationMs === undefined);
     return [
       cutAtStart ? `,afade=t=in:st=0:d=${seconds(fadeMs)}` : "",

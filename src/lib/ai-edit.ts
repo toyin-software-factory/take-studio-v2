@@ -506,7 +506,16 @@ export function validateAiEdit(
     const before = merged[i];
     return sum + (before ? c.endMs - c.startMs - (before.endMs - before.startMs) : 0);
   }, 0);
-  const withinLimit = wordCutMs + grown <= durationMs * wordCutMaxShareFor(durationMs);
+  // A cut that smoothing grew past the per cut limit also keeps its unsmoothed edges.
+  const pastCutLimit = smoothed.some((c, i) => {
+    const before = merged[i];
+    const len = c.endMs - c.startMs;
+    return (
+      before !== undefined && len > before.endMs - before.startMs && len > AI_EDIT.wordCutMaxMs
+    );
+  });
+  const withinLimit =
+    !pastCutLimit && wordCutMs + grown <= durationMs * wordCutMaxShareFor(durationMs);
   const cuts = (withinLimit ? smoothed : merged).sort((a, b) => a.startMs - b.startMs);
   // Last, so the merge's drops count too.
   if (count.dropped * 2 > total) return err("invalid");

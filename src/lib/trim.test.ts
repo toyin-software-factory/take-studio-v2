@@ -245,6 +245,14 @@ describe("keepRanges and the render graph (AC-6)", () => {
     expect(script).not.toContain("crop=");
   });
 
+  it("does not fade an uncut take whose end was rounded down by frame alignment", () => {
+    const script = renderFilterScript([{ startMs: 0, endMs: 10_000 }], {
+      hdr: null,
+      durationMs: 10_010,
+    });
+    expect(script).not.toContain("afade");
+  });
+
   it("has no audio branch for a take with no sound", () => {
     const script = renderFilterScript(
       [

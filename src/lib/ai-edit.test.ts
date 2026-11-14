@@ -157,6 +157,23 @@ describe("validateAiEdit", () => {
     expect(r.data.cuts[0]).toMatchObject({ startMs: 200, endMs: 800 });
   });
 
+  it("keeps the unsmoothed word cut when smoothing would pass the per cut limit (spec 0020)", () => {
+    const words = [
+      { w: "a", startMs: 0, endMs: 800, filler: false },
+      { w: "x", startMs: 1_000, endMs: 20_900, filler: true },
+      { w: "b", startMs: 21_000, endMs: 22_000, filler: false },
+    ];
+    const answer = {
+      keepPauses: [],
+      wordCuts: [{ fromWord: 1, toWord: 1, kind: "filler", reason: "filler" }],
+      fixes: [],
+      background: null,
+    } as unknown as AiEditAnswer;
+    const r = validateAiEdit(answer, words, [], 60_000);
+    if (!r.ok) throw new Error("expected valid");
+    expect(r.data.cuts[0]).toMatchObject({ startMs: 1_000, endMs: 21_000 });
+  });
+
   it("places a word cut from the first word's start to the next word's start", () => {
     const d = data({
       wordCuts: [{ fromWord: 1, toWord: 1, kind: "filler", reason: "Filler word" }],
