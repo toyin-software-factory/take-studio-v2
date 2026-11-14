@@ -1,6 +1,6 @@
 # Verify: product analytics, spec 0016
 
-**Verdict: PASS locally. Every AC is met by the code and mapped to a passing test or a recorded check below. Pending outside the code: the prod `/insights` view ("checked by Toyin": the viewer id is not ours) and the prod response headers ("pending a test sign-in").**
+**Verdict: PASS locally. Every AC is met by the code and mapped to a passing test or a recorded check below. Pending outside the code: the prod `/insights` view ("pending Toyin's check": the viewer id is not ours) and the prod response headers ("pending a test sign-in").**
 
 Run on 2026-11-14 on branch `b2-t40-verify-analytics` (main at `9448e7d`), against `next dev` with the local Postgres. Only synthetic accounts and seeded takes (`tests/support/session.ts`, `tests/support/takes.ts`, a fixed viewer id). No creator take or data was used. This report holds no IDs beyond the take and job IDs the tests use.
 
@@ -29,6 +29,6 @@ Run on 2026-11-14 on branch `b2-t40-verify-analytics` (main at `9448e7d`), again
 ## Notes
 
 1. **Spec drift:** AC-2 lists nine event names; the code has eleven (`cuts_reviewed` and `cut_missed` came with spec 0017). The code and the tests are right; the spec text is behind. No other behavior differs.
-2. **Prod `/insights` and headers: not checked here.** `INSIGHTS_VIEWER_USER_ID` is not ours to set or look up, so the page cannot be opened on prod. Record "prod `/insights` checked by Toyin" if a criterion needs it. The `private, no-store` header read from the Worker is pending a test sign-in, with the other prod checks the lead will hand over.
+2. **Prod `/insights` and headers: not checked here.** `INSIGHTS_VIEWER_USER_ID` is not ours to set or look up, so the page cannot be opened on prod. The viewer secret may not be set yet (C-35); record prod `/insights` as "pending Toyin's check". The `private, no-store` header read from the Worker is pending a test sign-in, with the other prod checks the lead will hand over.
 3. `/insights` is not in `PRIVATE_PATHS` for `robots.txt`; it is `noindex, nofollow` and not in the sitemap. AC-8 does not ask for more.
 4. **Sandbox limits.** Local `pnpm typecheck` runs out of memory and the Worker build crashes here, so CI is the proof for both. Browser checks ran on `next dev`, not a built Worker.
