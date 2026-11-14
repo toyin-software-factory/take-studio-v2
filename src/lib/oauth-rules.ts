@@ -20,9 +20,23 @@ export function bearerToken(header: string): string | null {
 
 const SIGNED_QUERY_PARAMS = ["sig", "exp", "ba_iat", "ba_pl"] as const;
 
-/** True when the client asked for a fresh login (`prompt` holds `login`). */
-export function oauthWantsFreshLogin(search: URLSearchParams): boolean {
-  return (search.get("prompt") ?? "").split(/\s+/).includes("login");
+/**
+ * True when the creator must sign in again: the client asked for it (`prompt` holds `login`), or
+ * sent an OIDC `max_age` that the session no longer meets (`0` always asks; otherwise the session
+ * is older than `max_age` seconds). Better Auth sends that second case to sign in without any
+ * `prompt`, so the page must check it, or a stale session would bounce between the two.
+ */
+export function oauthWantsFreshLogin(
+  search: URLSearchParams,
+  sessionCreatedAt: Date | null = null,
+  now: Date = new Date(),
+): boolean {
+  if ((search.get("prompt") ?? "").split(/\s+/).includes("login")) return true;
+  const raw = search.get("max_age");
+  if (raw === null || !/^\d+$/.test(raw)) return false;
+  const maxAge = Number(raw);
+  if (maxAge === 0) return true;
+  return sessionCreatedAt !== null && now.getTime() - sessionCreatedAt.getTime() > maxAge * 1000;
 }
 
 /**
@@ -39,6 +53,8 @@ export function oauthResumePath(search: URLSearchParams): string | null {
   if (!search.has("client_id") || !search.has("sig")) return null;
   const params = new URLSearchParams(search);
   for (const name of SIGNED_QUERY_PARAMS) params.delete(name);
+  // Signing in is the fresh authentication `max_age` asks for; kept, `max_age=0` would loop.
+  params.delete("max_age");
   const prompt = (params.get("prompt") ?? "").split(/\s+/).filter((p) => p !== "" && p !== "login");
   if (prompt.length > 0) params.set("prompt", prompt.join(" "));
   else params.delete("prompt");

@@ -34,9 +34,13 @@ export default async function SignInPage({
   const search = toSearchParams(query);
   const resume = oauthResumePath(search);
   const landing = deleting ? DELETE_ACCOUNT_RETURN : (resume ?? "/library");
-  // A client that asked for a fresh login (prompt=login) gets the form even when signed in.
-  const freshLogin = resume !== null && oauthWantsFreshLogin(search);
-  if (!freshLogin && (await getSession(await headers()))) redirect(landing);
+  // A client that asked for a fresh login (prompt=login, or a max_age the session no longer
+  // meets) gets the form even when signed in.
+  const session = await getSession(await headers());
+  const freshLogin =
+    resume !== null &&
+    oauthWantsFreshLogin(search, session ? new Date(session.session.createdAt) : null);
+  if (!freshLogin && session) redirect(landing);
   return (
     <>
       <SkipLink />
