@@ -8,7 +8,10 @@ const TOKEN = "eval-token-0123456789";
 const KEY = "sk-test-key-0123456789";
 const ENV = { AI_EVAL_TOKEN: TOKEN, ANTHROPIC_API_KEY: KEY };
 
-type Line = { message: string; fields: Record<string, string | number | boolean> };
+type Line = {
+  message: string;
+  fields: Readonly<Record<string, string | number | boolean | readonly string[]>>;
+};
 
 function harness(call: EvalIo["call"]) {
   const lines: Line[] = [];
@@ -104,6 +107,22 @@ describe("runAiEval run", () => {
     }
   });
 
+  it("puts the missed spans, wrong keeps and cuts (times and kinds) on each case line", async () => {
+    const call = vi.fn(async () => answerFor(emptyAnswer));
+    const { io, lines } = harness(call);
+    await runAiEval({ token: TOKEN }, ENV, io);
+    const cases = lines.filter((l) => l.message === "ai-eval: case");
+    for (const l of cases) {
+      for (const key of ["missed", "wrongKeepSpans", "cuts"]) {
+        const list = l.fields[key] as unknown;
+        expect(Array.isArray(list)).toBe(true);
+        for (const item of list as string[]) expect(item).toMatch(/^\d+-\d+ [a-z_]+$/);
+      }
+    }
+    // An empty answer misses at least one must cut span somewhere in the set.
+    expect(cases.some((l) => (l.fields.missed as unknown as string[]).length > 0)).toBe(true);
+  });
+
   it("scores the rules cuts and names a cause when the answer is unusable", async () => {
     const answers = [
       answerFor("not json"),
@@ -163,9 +182,10 @@ describe("runAiEval run", () => {
     expect(text).not.toContain(reason);
     expect(text).not.toContain(TOKEN);
     expect(text).not.toContain(KEY);
-    // Only numbers, flags and short names appear as values.
+    // Only numbers, flags, short names and "start-end kind" time ranges appear as values.
     for (const l of lines)
-      for (const v of Object.values(l.fields)) expect(String(v).length).toBeLessThan(40);
+      for (const v of Object.values(l.fields))
+        for (const item of Array.isArray(v) ? v : [v]) expect(String(item).length).toBeLessThan(40);
   });
 });
 

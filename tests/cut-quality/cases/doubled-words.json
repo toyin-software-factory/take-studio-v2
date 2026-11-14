@@ -1,6 +1,6 @@
 {
   "id": "doubled-words",
-  "note": "A word said twice in a row; one clean copy stays.",
+  "note": "A word said twice in a row; one clean copy stays (cutting either copy is right).",
   "durationMs": 4920,
   "words": [
     {
@@ -70,13 +70,21 @@
       "startMs": 1200,
       "endMs": 1600,
       "kind": "false_start",
-      "verdict": "cut"
+      "verdict": "cut",
+      "either": {
+        "startMs": 800,
+        "endMs": 1200
+      }
     },
     {
       "startMs": 2400,
       "endMs": 2800,
       "kind": "false_start",
-      "verdict": "cut"
+      "verdict": "cut",
+      "either": {
+        "startMs": 2000,
+        "endMs": 2400
+      }
     }
   ]
 }
