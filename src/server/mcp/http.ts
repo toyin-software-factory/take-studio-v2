@@ -9,7 +9,8 @@ import {
   wwwAuthenticate,
 } from "@/lib/mcp-rules";
 import { type ApiAuthDeps, guard } from "../api-auth";
-import { type McpHandlers, TOOLS, type ToolDef, callTool } from "./dispatch";
+import { type McpHandlers, callTool } from "./dispatch";
+import { TOOLS, type ToolDef } from "./tools";
 
 /**
  * `POST /mcp` (spec 0019 AC-1, AC-2, AC-10, AC-11): MCP over Streamable HTTP, stateless, one JSON

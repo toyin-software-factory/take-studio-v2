@@ -21,10 +21,36 @@ export const MCP_INSTRUCTIONS = [
 ].join(" ");
 
 /**
- * The tools of this server, named as verbs. Step 2 of the build plan ships the first two; every
- * tool added later is listed here too, and a test keeps this list and the registered tools equal.
+ * The tools of this server, named as verbs (spec 0019 AC-4). Each one stands for one route of the
+ * API registry, flagged there (`mcp` in `api-registry.ts`); a test keeps this list, the flags and
+ * the wired handlers equal, so a tool cannot ship without a route and a route cannot be flagged
+ * without a tool.
  */
-export const MCP_TOOL_NAMES = ["get_usage", "list_takes"] as const;
+export const MCP_TOOL_NAMES = [
+  "get_usage",
+  "list_takes",
+  "get_take",
+  "rename_take",
+  "delete_take",
+  "start_upload",
+  "get_upload_part_links",
+  "complete_upload",
+  "abort_upload",
+  "retry_take",
+  "get_job",
+  "get_media_link",
+  "get_transcript",
+  "make_transcript",
+  "get_transcript_file",
+  "undo_ai_fix",
+  "list_backgrounds",
+  "change_background",
+  "preview_background",
+  "get_background_preview",
+  "apply_changes",
+  "get_waveform",
+  "mark_missed",
+] as const;
 export type McpToolName = (typeof MCP_TOOL_NAMES)[number];
 
 /** JSON-RPC error codes this server answers with. */

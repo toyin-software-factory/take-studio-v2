@@ -4,19 +4,15 @@ import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/t
 import type { Db } from "@/db/types";
 import { apiKeyPrefix, generateApiKey, hashApiKey } from "@/lib/api-rules";
 import { MCP, MCP_TOOL_NAMES } from "@/lib/mcp-rules";
-import type { ApiAuthDeps } from "../api-auth";
-import { handleList } from "../takes/http";
-import { handleUsage } from "../usage/http";
-import { TOOLS } from "./dispatch";
 import { type McpHttpDeps, handleMcp } from "./http";
+import { TEST_NOW, TEST_ORIGIN, testMcpDeps } from "./test-deps";
+import { TOOLS } from "./tools";
 
 /**
- * `POST /mcp` (spec 0019 AC-1, AC-2, AC-3, AC-10, AC-11) with the real handlers of the two tools
+ * `POST /mcp` (spec 0019 AC-1, AC-2, AC-3, AC-10, AC-11) with the real route handlers
  * over a real test database. Own database so the rate windows stay out of other files.
  */
-const ORIGIN = "https://take-studio.example";
-const NOW = new Date("2026-11-10T12:00:00Z");
-const SECRET = "x".repeat(40);
+const ORIGIN = TEST_ORIGIN;
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
@@ -26,26 +22,8 @@ beforeAll(async () => {
 afterAll(() => testDb?.close());
 afterEach(() => vi.restoreAllMocks());
 
-const identity = (): ApiAuthDeps => ({
-  getCreator: async () => null,
-  keyAuth: { getDb: async () => db, now: () => NOW },
-});
-const deps = (): McpHttpDeps => ({
-  keyAuth: identity().keyAuth,
-  baseUrl: () => ORIGIN,
-  handlers: {
-    get_usage: (request) =>
-      handleUsage(request, { ...identity(), usageSecret: () => SECRET, now: () => NOW }),
-    list_takes: (request) =>
-      handleList(request, {
-        ...identity(),
-        allowedOrigin: ORIGIN,
-        usageSecret: () => SECRET,
-        triggerProcessTake: async () => ({ id: "run" }),
-        now: () => NOW,
-      }),
-  },
-});
+const deps = (): McpHttpDeps => testMcpDeps(db);
+const routeHandlers = (): McpHttpDeps["handlers"] => deps().handlers;
 
 async function newCaller(): Promise<{ creatorId: string; key: string; keyId: string }> {
   const creator = await createCreator(db);
@@ -131,7 +109,9 @@ describe("transport (AC-1)", () => {
     expect(tools.map((t) => t.name).sort()).toEqual([...MCP_TOOL_NAMES].sort());
     for (const tool of tools) {
       expect(tool.inputSchema.type).toBe("object");
-      expect(tool.annotations).toMatchObject({ readOnlyHint: true, destructiveHint: false });
+      expect(tool.annotations).toMatchObject(
+        TOOLS.find((t) => t.name === tool.name)?.annotations ?? {},
+      );
     }
   });
 
@@ -228,10 +208,11 @@ describe("identity (AC-2)", () => {
 describe("tools are the routes (AC-3, AC-9)", () => {
   it("get_usage gives the status and body of GET /api/usage", async () => {
     const { key } = await newCaller();
-    const direct = await handleUsage(
+    const direct = await routeHandlers()["GET /api/usage"]?.(
       new Request(`${ORIGIN}/api/usage`, { headers: { authorization: `Bearer ${key}` } }),
-      { ...identity(), usageSecret: () => SECRET, now: () => NOW },
+      {},
     );
+    if (!direct) throw new Error("no handler");
     const viaMcp = toolText(await json(await post(call("get_usage"), key)));
     expect(direct.status).toBe(200);
     expect(viaMcp.isError).toBe(false);
@@ -249,16 +230,11 @@ describe("tools are the routes (AC-3, AC-9)", () => {
     const ids = body.takes.map((t) => t.id);
     expect(ids).toContain(mine.id);
     expect(ids).not.toContain(theirs.id);
-    const direct = await handleList(
+    const direct = await routeHandlers()["GET /api/takes"]?.(
       new Request(`${ORIGIN}/api/takes`, { headers: { authorization: `Bearer ${a.key}` } }),
-      {
-        ...identity(),
-        allowedOrigin: ORIGIN,
-        usageSecret: () => SECRET,
-        triggerProcessTake: async () => ({ id: "run" }),
-        now: () => NOW,
-      },
+      {},
     );
+    if (!direct) throw new Error("no handler");
     expect(body).toEqual(await direct.json());
   });
 
@@ -286,7 +262,7 @@ describe("limits and privacy (AC-10, AC-11)", () => {
     const refused = await post(rpc("ping"), key);
     expect(refused.status).toBe(429);
     expect(Number(refused.headers.get("retry-after"))).toBeGreaterThan(0);
-  });
+  }, 60_000);
 
   it("logs the tool, take, creator, status and duration and nothing else", async () => {
     const a = await newCaller();

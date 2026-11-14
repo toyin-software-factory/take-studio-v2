@@ -35,7 +35,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 11 | Take library, delete & retention | Slice 6 | done |
 | 12 | Monthly usage limit | Slice 6 | done |
 | 13 | Public API | Slice 7 | planned |
-| 14 | MCP server for AI agents | Slice 7 | planned |
+| 14 | MCP server for AI agents | Slice 7 | in-progress |
 | 15 | Landing page & SEO | Launch | done |
 | 16 | Privacy & terms pages | Launch | in-progress |
 | 17 | Product analytics | Launch | done |
@@ -244,13 +244,13 @@ A documented API so programs and agents can do everything the web app does for a
 - [ ] Document it: `/document public API`
 Spec [0018](../specs/0018-public-api.md)
 
-### 14. MCP server for AI agents · planned · GA
+### 14. MCP server for AI agents · in-progress · GA
 An MCP server so AI assistants (Claude, ChatGPT and agent tools) can use Take Studio directly on a creator's behalf, built on the public API.
 **Done when:** an AI assistant connected to the MCP server can upload a take, run it, review the cuts and fetch the results for a signed in creator, and can only reach that creator's takes.
 - [x] Design it (spec): `/architect MCP server for AI agents`
 - [ ] Build it: `/develop MCP server for AI agents`
-   - [ ] Key based server: spike (SDK or hand written), `src/lib/mcp-rules.ts`, `POST /mcp` tracer with `get_usage` and `list_takes` (AC-1, AC-2, AC-3, AC-10, AC-11)
-   - [ ] Every tool over the public registry, the delete guard, parity, ownership and coverage tests, upload and run by presigned links (AC-3 to AC-9)
+   - [x] Key based server: spike (SDK or hand written), `src/lib/mcp-rules.ts`, `POST /mcp` tracer with `get_usage` and `list_takes` (AC-1, AC-2, AC-3, AC-10, AC-11)
+   - [x] Every tool over the public registry, the delete guard, parity, ownership and coverage tests, upload and run by presigned links (AC-3 to AC-9)
    - [ ] `/docs/mcp` setup page (AC-12)
    - [ ] OAuth: spike, data and endpoints, consent page and connected apps list (AC-13, AC-14, AC-15)
    - [ ] Legal facts, Privacy and Terms copy, version and hash line, then the live check with Inspector, Claude Code and Claude.ai (AC-16, AC-17)
