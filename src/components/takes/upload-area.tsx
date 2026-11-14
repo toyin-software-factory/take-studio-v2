@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Upload } from "lucide-react";
+import Link from "next/link";
+import { Upload, Video } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { UploadNote } from "@/components/legal/legal-notice";
@@ -97,14 +98,21 @@ export function UploadArea({ usage: firstUsage = null }: { readonly usage?: Usag
                 ? "Drop to upload"
                 : "Drop a video here, or"}
           </p>
-          <Button
-            size="lg"
-            disabled={blocked}
-            aria-describedby={blocked ? "upload-prompt" : undefined}
-            onClick={() => input.current?.click()}
-          >
-            Choose a video
-          </Button>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Button
+              size="lg"
+              disabled={blocked}
+              aria-describedby={blocked ? "upload-prompt" : undefined}
+              onClick={() => input.current?.click()}
+            >
+              Choose a video
+            </Button>
+            <Button size="lg" variant="secondary" asChild>
+              <Link href="/record">
+                <Icon icon={Video} /> Record
+              </Link>
+            </Button>
+          </div>
           <p className="text-small text-muted-foreground">{LIMITS}</p>
           <UploadNote />
           <BackgroundSelect

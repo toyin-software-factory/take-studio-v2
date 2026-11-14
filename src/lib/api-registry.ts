@@ -133,6 +133,12 @@ export const API_EXCLUSIONS: readonly ApiExclusion[] = [
   ),
   exclusion("DELETE", "/api/keys/{id}", "session-only", "Revokes an API key. Session only."),
   exclusion(
+    "POST",
+    "/api/realtime/token",
+    "session-only",
+    "Mints a short lived Deepgram token for the recorder's voice following. Session only.",
+  ),
+  exclusion(
     "GET",
     "/api/openapi.json",
     "documentation",

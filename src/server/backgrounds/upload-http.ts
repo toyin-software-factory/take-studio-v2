@@ -11,7 +11,7 @@ import {
  * HTTP handlers for uploading and deleting backgrounds (spec 0008, API surface): session
  * required, `Origin` checked on every one (they all change something), friendly errors.
  */
-export type UploadHttpDeps = Pick<TakeHttpDeps, "getCreator" | "allowedOrigin"> & {
+export type UploadHttpDeps = Pick<TakeHttpDeps, "getCreator" | "allowedOrigin" | "keyAuth"> & {
   readonly ports: (db: UploadPorts["db"]) => UploadPorts;
   /** Starts a storage queue drain, best effort. */
   readonly requestDrain: () => Promise<void>;

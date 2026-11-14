@@ -6,7 +6,7 @@ import { jobStatusForCreator, startChanges, waveformForCreator } from ".";
 
 export type ChangesHttpDeps = Pick<
   TakeHttpDeps,
-  "getCreator" | "allowedOrigin" | "triggerProcessTake" | "now"
+  "getCreator" | "allowedOrigin" | "keyAuth" | "triggerProcessTake" | "now"
 >;
 
 const STATUS: Readonly<Record<ChangeErrorCode, number>> = {

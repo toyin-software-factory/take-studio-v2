@@ -46,6 +46,11 @@ export const LEGAL_TEXT_HASHES: Readonly<Record<"privacy" | "terms", readonly Re
       hash: "970f6abe00b0c58cfacb5c03e82673e2bd57cb0edb8bcd6920182f9d05dc1dfc",
       after: "41233760000262cfc4d03814f33c0889377991dee307ffffdec733de54cbc79d",
     },
+    {
+      date: "2026-11-14",
+      hash: "36e01d09622233cd695d4b6b123f5109874029591ef51f3baf0b3c713075daf6",
+      after: "d2a0534ec076cbb1bc9ee422b14cf68d800313f32c68c9bc72b99d4fc138cb74",
+    },
   ],
   terms: [
     {
