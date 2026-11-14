@@ -131,7 +131,7 @@ jobs:
       matrix:
         # 1 to 4 split the chromium project; `usage` runs the suites that write the shared monthly
         # usage settings, one after another.
-        shard: [1, 2, 3, 4, usage]
+        shard: [1, 2, 3, 4, usage, browsers]
     services:
       postgres:
         image: postgres:17-alpine
@@ -218,7 +218,7 @@ jobs:
             -e CI -e E2E_SPLIT=1 -e SHARD -e SHARDS -e PNPM_HOME -e NODE_DIR="$node_dir" -e DATABASE_URL -e DATABASE_URL_DIRECT \
             -e CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE -e NEXT_TELEMETRY_DISABLED \
             -v "$GITHUB_WORKSPACE":/work -v "$pnpm_dir":"$pnpm_dir":ro -v "$node_dir":"$node_dir":ro -w /work \
-            "$PLAYWRIGHT_IMAGE" bash -c 'export PATH="$NODE_DIR/bin:$PNPM_HOME:$PATH" && node --version && if [ "$SHARD" = usage ]; then for p in usage record-a11y record-limits; do pnpm exec playwright test --project=$p || exit 1; done; else pnpm exec playwright test --project=chromium --shard=$SHARD/$SHARDS; fi'
+            "$PLAYWRIGHT_IMAGE" bash -c 'export PATH="$NODE_DIR/bin:$PNPM_HOME:$PATH" && node --version && if [ "$SHARD" = usage ]; then for p in usage record-a11y record-limits; do pnpm exec playwright test --project=$p || exit 1; done; elif [ "$SHARD" = browsers ]; then pnpm exec playwright test --project=webkit --project=firefox; else pnpm exec playwright test --project=chromium --shard=$SHARD/$SHARDS; fi'
 
       # The production check: the same built Worker, served as production serves it (no
       # `--var DESIGN_GALLERY:1`, which the normal run adds; the build is the same, the gallery is
