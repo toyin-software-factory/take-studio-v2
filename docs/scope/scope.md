@@ -345,8 +345,7 @@ Ready made named styles for the finished video (zoom and push at cuts, sound fad
 **Done when:** a creator can pick Natural, Calm, Punchy or Warm on the take page, render, and get that look, with Natural identical to today and no style adding a second render pass.
 - [x] Design it (spec): `/architect Style toolkit`
 - [ ] Build it: `/develop Style toolkit`
-   - [ ] Registry, storage and filter script thread (task 1)
-   - [ ] Calm through the re render route and job (task 2)
+   - [ ] Registry, storage and filter script thread, then Calm through the re render route and job (tasks 1 and 2)
    - [ ] Style picker on the take page (task 3)
    - [ ] Punchy, Warm and the colour look, render time check (task 4)
    - [ ] Look preview and end to end check (task 5)
