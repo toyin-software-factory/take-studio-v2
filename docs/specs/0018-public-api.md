@@ -1,7 +1,7 @@
 # 0018. Public API
 
 **Date**: 2026-11-14
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 

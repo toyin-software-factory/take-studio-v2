@@ -284,6 +284,97 @@ describe("rate limit (AC-9)", () => {
   });
 });
 
+describe("Origin edge cases (AC-6, B2-T90)", () => {
+  it("accepts only the exact origin: a trailing slash, a null origin and a look alike host are 403", async () => {
+    const c = await createCreator(db);
+    const deps = authDeps({ sessionOf: c.id, calls: 0 });
+    for (const origin of [
+      `${ORIGIN}/`,
+      "null",
+      "",
+      `${ORIGIN}.evil.example`,
+      "http://take-studio.example",
+      ORIGIN.toUpperCase(),
+    ]) {
+      expect((await uploadBad(deps, { origin })).status).toBe(403);
+    }
+  });
+
+  it("a wrong Origin is refused before the session is read", async () => {
+    const c = await createCreator(db);
+    const session: Session = { sessionOf: c.id, calls: 0 };
+    expect((await uploadBad(authDeps(session), { origin: "https://evil.example" })).status).toBe(
+      403,
+    );
+    expect(session.calls).toBe(0);
+  });
+});
+
+describe("revoke in depth (AC-3, B2-T90)", () => {
+  it("leaves the creator's other keys working", async () => {
+    const c = await createCreator(db);
+    const first = await makeKey(c.id);
+    const second = await makeKey(c.id);
+    const deps = authDeps(noSession());
+    expect((await revokeApiKey(db, c.id, first.id)).ok).toBe(true);
+    expect((await usage(deps, bearer(first.key))).status).toBe(401);
+    expect((await usage(deps, bearer(second.key))).status).toBe(200);
+  });
+
+  it("a revoke by another creator changes nothing", async () => {
+    const owner = await createCreator(db);
+    const stranger = await createCreator(db);
+    const { key, id } = await makeKey(owner.id);
+    const result = await revokeApiKey(db, stranger.id, id);
+    expect(result.ok).toBe(false);
+    expect((await usage(authDeps(noSession()), bearer(key))).status).toBe(200);
+  });
+
+  it("a revoked key is refused and never reads the cookie", async () => {
+    const c = await createCreator(db);
+    const { key, id } = await makeKey(c.id);
+    await revokeApiKey(db, c.id, id);
+    const session: Session = { sessionOf: c.id, calls: 0 };
+    const at = new Date("2026-11-14T11:00:10.000Z");
+    expect(
+      (
+        await usage(
+          authDeps(session, () => at),
+          bearer(key),
+        )
+      ).status,
+    ).toBe(401);
+    expect(session.calls).toBe(0);
+  });
+});
+
+describe("rate window edges (AC-9, B2-T90)", () => {
+  it("a key at its limit in one minute is fine in the first second of the next", async () => {
+    const c = await createCreator(db);
+    const { key } = await makeKey(c.id);
+    const end = new Date("2026-11-14T12:00:59.999Z");
+    const endDeps = authDeps(noSession(), () => end);
+    for (let i = 0; i < 120; i++) await usage(endDeps, bearer(key));
+    const over = await usage(endDeps, bearer(key));
+    expect(over.status).toBe(429);
+    expect(over.headers.get("retry-after")).toBe("1");
+    const next = authDeps(noSession(), () => new Date("2026-11-14T12:01:00.000Z"));
+    expect((await usage(next, bearer(key))).status).toBe(200);
+  });
+
+  it("a refused request carries the private no store header and never reads the cookie", async () => {
+    const c = await createCreator(db);
+    const { key } = await makeKey(c.id);
+    const session: Session = { sessionOf: c.id, calls: 0 };
+    const deps = authDeps(session, () => new Date("2026-11-14T13:00:30.000Z"));
+    for (let i = 0; i < 120; i++) await usage(deps, bearer(key));
+    const over = await usage(deps, bearer(key));
+    expect(over.status).toBe(429);
+    expect(over.headers.get("cache-control")).toBe("private, no-store");
+    expect(session.calls).toBe(0);
+  });
+});
+
 describe("last used (AC-10)", () => {
   const lastUsed = async (id: string) =>
     (await db.select().from(apiKey).where(eq(apiKey.id, id)))[0]?.lastUsedAt ?? null;

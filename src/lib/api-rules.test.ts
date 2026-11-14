@@ -11,6 +11,7 @@ import {
   normalizeKeyName,
   parseApiKey,
   rateWindowStart,
+  retryAfterFromSecond,
   retryAfterSeconds,
 } from "./api-rules";
 
@@ -102,6 +103,43 @@ describe("bearer header (AC-5)", () => {
     ]) {
       expect(bearerKey(bad)).toBeNull();
     }
+  });
+});
+
+describe("bearer header edge cases (AC-5, B2-T90)", () => {
+  it("returns null for tabs, line breaks, a second token and look alike characters", () => {
+    for (const bad of [
+      `Bearer\t${FIXED}`,
+      `Bearer ${FIXED}\nBearer ${FIXED}`,
+      `Bearer ${FIXED}\t${FIXED}`,
+      `Bearer ${FIXED.slice(0, -1)}а`,
+      `Bearer ${FIXED.slice(0, -1)}\0`,
+      `Bearer: ${FIXED}`,
+      `Token ${FIXED}`,
+      `Bearer ${FIXED.toUpperCase()}`,
+    ]) {
+      expect(bearerKey(bad)).toBeNull();
+    }
+  });
+});
+
+describe("rate window edges (AC-9, B2-T90)", () => {
+  it("the last millisecond of a minute and the first of the next are different windows", () => {
+    const end = rateWindowStart(new Date("2026-11-14T10:05:59.999Z"));
+    const start = rateWindowStart(new Date("2026-11-14T10:06:00.000Z"));
+    expect(end.toISOString()).toBe("2026-11-14T10:05:00.000Z");
+    expect(start.toISOString()).toBe("2026-11-14T10:06:00.000Z");
+  });
+
+  it("Retry-After from the database clock second is 60 at the start, 1 at the end, never below 1", () => {
+    expect(retryAfterFromSecond(0)).toBe(60);
+    expect(retryAfterFromSecond(59)).toBe(1);
+    expect(retryAfterFromSecond(60)).toBe(1);
+    expect(retryAfterFromSecond(75)).toBe(1);
+  });
+
+  it("keeps old windows for one hour, the time the privacy copy promises", () => {
+    expect(API_RATE.keepMs).toBe(60 * 60 * 1000);
   });
 });
 
