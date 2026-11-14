@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative, sep } from "node:path";
+import ts from "typescript";
 import { describe, expect, it } from "vitest";
 import {
   API_EXCLUSIONS,
@@ -39,20 +40,29 @@ function routePath(file: string): string {
   return `/api/${folders.map((f) => f.replace(/^\[(.+)\]$/, "{$1}")).join("/")}`.replace(/\/$/, "");
 }
 
-/** Every HTTP method a route file exports: declarations, consts and `export { x as GET }`. */
+/**
+ * Every HTTP method a route file exports, read from the syntax tree so comments and strings are
+ * ignored: functions, every declarator of a `const`/`let`, and `export { x as GET }` (with or
+ * without a `from`). `export *` hides its names, so it is refused rather than guessed.
+ */
 export function exportedMethods(source: string): readonly ApiMethod[] {
+  const file = ts.createSourceFile("route.ts", source, ts.ScriptTarget.Latest, true);
   const found = new Set<string>();
-  for (const m of source.matchAll(/export\s+(?:async\s+)?(?:function|const)\s+([A-Z]+)\b/g)) {
-    found.add(m[1] ?? "");
-  }
-  for (const m of source.matchAll(/export\s*\{([^}]*)\}/g)) {
-    for (const part of (m[1] ?? "").split(",")) {
-      const name = part
-        .trim()
-        .split(/\s+as\s+/)
-        .pop()
-        ?.trim();
-      if (name) found.add(name);
+  const exported = (node: ts.Node) =>
+    ts.canHaveModifiers(node) &&
+    (ts.getModifiers(node) ?? []).some((m) => m.kind === ts.SyntaxKind.ExportKeyword);
+  for (const node of file.statements) {
+    if (ts.isFunctionDeclaration(node) && exported(node) && node.name) {
+      found.add(node.name.text);
+    } else if (ts.isVariableStatement(node) && exported(node)) {
+      for (const d of node.declarationList.declarations) {
+        if (ts.isIdentifier(d.name)) found.add(d.name.text);
+      }
+    } else if (ts.isExportDeclaration(node)) {
+      if (!node.exportClause) throw new Error("export * in a route file hides its methods");
+      if (ts.isNamedExports(node.exportClause)) {
+        for (const el of node.exportClause.elements) found.add(el.name.text);
+      }
     }
   }
   return API_METHODS.filter((method) => found.has(method));
@@ -78,6 +88,28 @@ describe("exportedMethods", () => {
     );
     expect(exportedMethods("export { handle as GET, handle as POST };")).toEqual(["GET", "POST"]);
     expect(exportedMethods("function GET() {}\nexport const runtime = 'edge';")).toEqual([]);
+  });
+
+  it("reads every declarator of one const, HEAD and OPTIONS, and re-exports", () => {
+    expect(exportedMethods("export const GET = a, POST = b;")).toEqual(["GET", "POST"]);
+    expect(
+      exportedMethods("export function HEAD() {}\nexport async function OPTIONS() {}"),
+    ).toEqual(["HEAD", "OPTIONS"]);
+    expect(exportedMethods("export { GET, PUT as PATCH } from './x';")).toEqual(["GET", "PATCH"]);
+  });
+
+  it("ignores commented out and quoted exports", () => {
+    const source = [
+      "// export const POST = handler;",
+      "/* export function DELETE() {} */",
+      "const text = 'export const PUT = 1';",
+      "export function GET() {}",
+    ].join("\n");
+    expect(exportedMethods(source)).toEqual(["GET"]);
+  });
+
+  it("refuses export * because it hides the methods", () => {
+    expect(() => exportedMethods("export * from './handlers';")).toThrow(/export \*/);
   });
 });
 

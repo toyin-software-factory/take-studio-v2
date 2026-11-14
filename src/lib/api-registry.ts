@@ -8,7 +8,7 @@
  * parity test read them). The docs page, `/api/openapi.json` and the MCP server read this list.
  */
 
-export const API_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"] as const;
+export const API_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] as const;
 export type ApiMethod = (typeof API_METHODS)[number];
 
 /** Which credentials a public route takes: every public route takes the session or a key. */
