@@ -400,6 +400,12 @@ describe("authorize and token (AC-13)", () => {
       client_id: grant.clientId,
     });
     expect(newer.body.error).toBe("invalid_grant");
+    // The consent goes with the grant, so the app has to ask the creator again.
+    const consents = await db
+      .select({ id: oauthConsent.id })
+      .from(oauthConsent)
+      .where(eq(oauthConsent.clientId, grant.clientId));
+    expect(consents).toHaveLength(0);
   });
 });
 

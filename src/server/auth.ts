@@ -11,7 +11,8 @@ import { ACCOUNT_DELETE_FRESH_SECONDS } from "./account/policy";
 import type { EmailSender } from "@/lib/email/send";
 import { signInEmail } from "@/lib/email/templates";
 import { takeSignInEmailSlot } from "./email/sign-in-limits";
-import { redirectUriAllowed } from "@/lib/oauth-rules";
+import { revokeGrantOnRefreshReuse } from "@/db/data/oauth";
+import { hashOauthToken, redirectUriAllowed } from "@/lib/oauth-rules";
 import { recordEvent } from "./analytics/record";
 
 type AuthEnv = Pick<
@@ -83,6 +84,22 @@ export function createAuth(
     hooks: {
       // AC-4: 3 sign in link requests per email per 15 minutes (the IP limit is above).
       before: createAuthMiddleware(async (ctx) => {
+        if (ctx.path === "/oauth2/token") {
+          // AC-13: reuse of a rotated refresh token revokes the whole grant, consent included.
+          const body = ctx.body as Record<string, unknown> | undefined;
+          if (
+            body?.grant_type === "refresh_token" &&
+            typeof body.refresh_token === "string" &&
+            typeof body.client_id === "string"
+          ) {
+            await revokeGrantOnRefreshReuse(
+              db,
+              await hashOauthToken(body.refresh_token),
+              body.client_id,
+            );
+          }
+          return;
+        }
         if (ctx.path === "/oauth2/register") {
           // AC-13: https or loopback only, no wildcards (the plugin also allows custom schemes).
           const uris = (ctx.body as { redirect_uris?: unknown } | undefined)?.redirect_uris;

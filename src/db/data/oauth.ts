@@ -95,6 +95,34 @@ export async function disconnectApp(
 }
 
 /**
+ * A refresh token that was already rotated and is presented again was stolen or copied: the whole
+ * grant goes, consent included, so the app must ask the creator again (AC-13). Better Auth's own
+ * reuse handling deletes the tokens but leaves the consent row, which would let the next
+ * authorize skip the consent page. Looked up by the hash and client; returns whether it was a
+ * reuse. Nothing here sees the raw token.
+ */
+export async function revokeGrantOnRefreshReuse(
+  db: Executor,
+  refreshHash: string,
+  clientId: string,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ userId: oauthRefreshToken.userId })
+    .from(oauthRefreshToken)
+    .where(
+      and(
+        eq(oauthRefreshToken.token, refreshHash),
+        eq(oauthRefreshToken.clientId, clientId),
+        sql`${oauthRefreshToken.revoked} is not null`,
+      ),
+    )
+    .limit(1);
+  if (!row) return false;
+  await disconnectApp(db, row.userId, clientId);
+  return true;
+}
+
+/**
  * Cleanup sweep: deletes access and refresh tokens that expired or were revoked more than a day
  * ago (the day keeps a reused refresh token detectable). Returns the counts.
  */
