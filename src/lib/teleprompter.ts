@@ -18,11 +18,17 @@ export const TELEPROMPTER = {
 export type PrompterSettings = {
   readonly wpm: number;
   readonly size: number;
+  /** Follow my voice is on (spec 0021 task 4). Off until the person turns it on. */
+  readonly follow: boolean;
+  /** The first use explanation of follow my voice has been seen. */
+  readonly followDisclosed: boolean;
 };
 
 export const DEFAULT_SETTINGS: PrompterSettings = {
   wpm: TELEPROMPTER.wpmDefault,
   size: TELEPROMPTER.sizeDefault,
+  follow: false,
+  followDisclosed: false,
 };
 
 /** Words in a script. */

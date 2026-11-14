@@ -113,7 +113,20 @@ export function usePrompter(script: string, creatorId: string, active: boolean) 
     return () => cancelAnimationFrame(frame);
   }, [running, total]);
 
+  const setFollow = useCallback(
+    (on: boolean) =>
+      change({ ...settings, follow: on }, on ? "Follow my voice on" : "Follow my voice off"),
+    [settings, change],
+  );
+  const markFollowDisclosed = useCallback(() => {
+    const next = { ...settings, followDisclosed: true };
+    setSettings(next);
+    saveSettings(deviceStore(), creatorId, next);
+  }, [settings, creatorId]);
+
   return {
+    setFollow,
+    markFollowDisclosed,
     lines,
     total,
     settings,
