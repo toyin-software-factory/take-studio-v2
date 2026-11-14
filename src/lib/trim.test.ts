@@ -216,7 +216,10 @@ describe("keepRanges and the render graph (AC-6)", () => {
     expect(video[0]).not.toContain("crop=");
     // A 2 s piece after a cut zooms to 1.08 and pushes to 1.12 (spec 0020 step 4).
     expect(video[1]).toContain("(1.08+0.04*t/2.000000)");
-    expect(video[1]).toContain(":eval=frame,crop=1920:1080,setsar=1[v1]");
+    // crop's own centring reads the size once, so x and y spell out the centre per frame.
+    expect(video[1]).toContain(
+      ":eval=frame,crop=1920:1080:x='(ceil(1920*(1.08+0.04*t/2.000000)/2)*2-1920)/2':y='(ceil(1080*(1.08+0.04*t/2.000000)/2)*2-1080)/2',setsar=1[v1]",
+    );
     // A short zoomed piece (no push) keeps the plain crop and scale back.
     const short = renderFilterScript([r(0, 2_000), r(3_000, 2_000), r(6_000, 500)], {
       hdr: null,

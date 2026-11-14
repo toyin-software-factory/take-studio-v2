@@ -207,7 +207,11 @@ function pieceMotion(
   if (piece.index > 0 && piece.lenMs >= SMOOTH.zoomMinPieceMs) {
     const factor = `(${base}+${SMOOTH.pushScale}*t/${(piece.lenMs / 1000).toFixed(6)})`;
     const even = (n: number) => `ceil(${n}*${factor}/2)*2`;
-    return `,scale=w='${even(size.width)}':h='${even(size.height)}':eval=frame,crop=${size.width}:${size.height},setsar=1`;
+    // crop reads in_w and in_h once, at configuration, so its default centring would use the
+    // first frame's size; x and y are evaluated per frame, so spell the centre out from the
+    // same scaled size.
+    const centre = (n: number) => `(${even(n)}-${n})/2`;
+    return `,scale=w='${even(size.width)}':h='${even(size.height)}':eval=frame,crop=${size.width}:${size.height}:x='${centre(size.width)}':y='${centre(size.height)}',setsar=1`;
   }
   return piece.zoomed
     ? `,crop=${crop.w}:${crop.h},scale=${size.width}:${size.height},setsar=1`
