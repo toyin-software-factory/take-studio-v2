@@ -251,7 +251,7 @@ An MCP server so AI assistants (Claude, ChatGPT and agent tools) can use Take St
 - [ ] Build it: `/develop MCP server for AI agents`
    - [x] Key based server: spike (SDK or hand written), `src/lib/mcp-rules.ts`, `POST /mcp` tracer with `get_usage` and `list_takes` (AC-1, AC-2, AC-3, AC-10, AC-11)
    - [x] Every tool over the public registry, the delete guard, parity, ownership and coverage tests, upload and run by presigned links (AC-3 to AC-9)
-   - [ ] `/docs/mcp` setup page (AC-12)
+   - [x] `/docs/mcp` setup page (AC-12) (B2-T79)
    - [ ] OAuth: spike, data and endpoints, consent page and connected apps list (AC-13, AC-14, AC-15)
    - [ ] Legal facts, Privacy and Terms copy, version and hash line, then the live check with Inspector, Claude Code and Claude.ai (AC-16, AC-17)
 - [ ] Verify it: `/check verify MCP server for AI agents`
@@ -332,7 +332,7 @@ Record a take inside Take Studio (phone or laptop camera and mic) while a telepr
    - [ ] Record, review and upload thread, then the teleprompter controls (tasks 1 and 2)
    - [ ] Permissions, devices, phone behaviour, length and usage, accessibility pass (tasks 3 to 5)
    - [ ] Legal copy for stored scripts (task 6)
-   - [ ] Voice following with live audio, then its legal copy (tasks 7 to 9)
+   - [x] Voice following with live audio, then its legal copy (tasks 7 to 9)
    - [ ] Script aware cuts, cut quality cases and legal copy (tasks 10 to 12)
 - [ ] Verify it: `/check verify Record with script`
 - [ ] Test it: `/test Record with script`

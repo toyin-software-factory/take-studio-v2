@@ -14,16 +14,40 @@ const ROW_HEIGHT = 1.375;
  * position, or, when the device asks for reduced motion, steps one line at a time with the
  * current line highlighted and no smooth scrolling.
  */
-export function PrompterText({ prompter }: { readonly prompter: Prompter }) {
+export function PrompterText({
+  prompter,
+  followWordIndex = null,
+}: {
+  readonly prompter: Prompter;
+  /** The next word to say, from voice following; null keeps the timed scroll. */
+  readonly followWordIndex?: number | null;
+}) {
   const { lines, settings, reducedMotion, position, active, paused, setLineIndex } = prompter;
   const box = useRef<HTMLDivElement>(null);
   const current = useRef(0);
+  const follow = useRef<number | null>(null);
+  // False until the voice target has been applied once since following (re)started or resumed.
+  const engaged = useRef(false);
+  useEffect(() => {
+    follow.current = followWordIndex;
+  }, [followWordIndex]);
 
   useEffect(() => {
     const el = box.current;
     if (!el) return;
     let frame = 0;
     const place = () => {
+      // Voice following moves the script to the matched word (not while paused); the timed position is only a fallback.
+      if (follow.current !== null && !paused) {
+        // The first voice target after fallback or a pause never moves the script back from a later
+        // reading position; after that the voice is the truth about where the creator is.
+        position.current = engaged.current
+          ? follow.current
+          : Math.max(position.current, follow.current);
+        engaged.current = true;
+      } else {
+        engaged.current = false;
+      }
       const index = lineAt(lines, position.current);
       const line = lines[index];
       const node = el.children[index] as HTMLElement | undefined;
@@ -44,7 +68,7 @@ export function PrompterText({ prompter }: { readonly prompter: Prompter }) {
     };
     place();
     return () => cancelAnimationFrame(frame);
-  }, [lines, reducedMotion, position, setLineIndex, settings.size]);
+  }, [lines, reducedMotion, paused, position, setLineIndex, settings.size]);
 
   if (lines.length === 0) return null;
   const showHighlight = reducedMotion && active;

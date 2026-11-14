@@ -128,6 +128,7 @@ test("robots.txt and sitemap.xml list / and keep the app out (AC-3)", async ({ r
   // The public API docs page (/docs/api) is listed on purpose; the app and the API itself are not.
   expect(sitemap).not.toMatch(/\/takes|\/design|\/api\//);
   expect(sitemap).toContain("/docs/api");
+  expect(sitemap).toContain("/docs/mcp");
 });
 
 test("signed in, / is a 307 to /library, which shows the takes library (AC-1)", async ({

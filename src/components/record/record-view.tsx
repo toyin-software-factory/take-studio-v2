@@ -97,6 +97,7 @@ export function RecordView({
     return (
       <RecordStage
         state={state}
+        script={script}
         stream={recorder.stream}
         prompter={prompter}
         elapsedMs={recorder.elapsedMs}
