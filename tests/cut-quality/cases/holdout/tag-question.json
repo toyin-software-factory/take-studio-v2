@@ -1,0 +1,82 @@
+{
+  "id": "tag-question",
+  "note": "A tag question (right?) is meaning; a hesitation is not.",
+  "durationMs": 4920,
+  "words": [
+    {
+      "w": "The",
+      "startMs": 400,
+      "endMs": 720,
+      "filler": false
+    },
+    {
+      "w": "pier",
+      "startMs": 800,
+      "endMs": 1120,
+      "filler": false
+    },
+    {
+      "w": "is",
+      "startMs": 1200,
+      "endMs": 1520,
+      "filler": false
+    },
+    {
+      "w": "closed",
+      "startMs": 1600,
+      "endMs": 1920,
+      "filler": false
+    },
+    {
+      "w": "right",
+      "startMs": 2000,
+      "endMs": 2320,
+      "filler": false
+    },
+    {
+      "w": "uh",
+      "startMs": 2400,
+      "endMs": 2720,
+      "filler": true
+    },
+    {
+      "w": "so",
+      "startMs": 2800,
+      "endMs": 3120,
+      "filler": false
+    },
+    {
+      "w": "we",
+      "startMs": 3200,
+      "endMs": 3520,
+      "filler": false
+    },
+    {
+      "w": "walk",
+      "startMs": 3600,
+      "endMs": 3920,
+      "filler": false
+    },
+    {
+      "w": "round",
+      "startMs": 4000,
+      "endMs": 4320,
+      "filler": false
+    }
+  ],
+  "pauses": [],
+  "expected": [
+    {
+      "startMs": 2000,
+      "endMs": 2400,
+      "kind": "filler",
+      "verdict": "keep"
+    },
+    {
+      "startMs": 2400,
+      "endMs": 2800,
+      "kind": "filler",
+      "verdict": "cut"
+    }
+  ]
+}

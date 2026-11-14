@@ -1,0 +1,15 @@
+{
+  "notes": "Floors for total precision and recall. The recorded answers in answers/ are hand written (no real model run yet) and follow the AI edit prompt; the floors are the current scores, so losing a must cut span fails CI. Refresh with the real model through ai-eval (spec 0017 step 3) and update the numbers in the same PR.",
+  "all": {
+    "precision": 0.976,
+    "recall": 0.976
+  },
+  "holdout": {
+    "precision": 0.9388,
+    "recall": 0.9388
+  },
+  "rules": {
+    "precision": 0.5208,
+    "recall": 0.1498
+  }
+}

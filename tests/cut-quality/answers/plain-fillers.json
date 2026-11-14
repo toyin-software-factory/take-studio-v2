@@ -1,0 +1,25 @@
+{
+  "keepPauses": [],
+  "wordCuts": [
+    {
+      "fromWord": 3,
+      "toWord": 3,
+      "kind": "filler",
+      "reason": "Hesitation sound or filler with no meaning"
+    },
+    {
+      "fromWord": 8,
+      "toWord": 8,
+      "kind": "filler",
+      "reason": "Hesitation sound or filler with no meaning"
+    },
+    {
+      "fromWord": 12,
+      "toWord": 12,
+      "kind": "filler",
+      "reason": "Hesitation sound or filler with no meaning"
+    }
+  ],
+  "fixes": [],
+  "background": null
+}

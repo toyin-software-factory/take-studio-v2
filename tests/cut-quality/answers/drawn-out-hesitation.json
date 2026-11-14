@@ -1,0 +1,13 @@
+{
+  "keepPauses": [],
+  "wordCuts": [
+    {
+      "fromWord": 4,
+      "toWord": 4,
+      "kind": "filler",
+      "reason": "Hesitation sound or filler with no meaning"
+    }
+  ],
+  "fixes": [],
+  "background": null
+}

@@ -1,0 +1,181 @@
+{
+  "id": "toyin3-pattern",
+  "note": "Rebuilt pattern: um with a pause, a stutter, blah blah, a repeated line, a kept pause and a meaningful like.",
+  "durationMs": 12260,
+  "words": [
+    {
+      "w": "So",
+      "startMs": 400,
+      "endMs": 720,
+      "filler": false
+    },
+    {
+      "w": "um",
+      "startMs": 800,
+      "endMs": 1120,
+      "filler": true
+    },
+    {
+      "w": "the",
+      "startMs": 2720,
+      "endMs": 3040,
+      "filler": false
+    },
+    {
+      "w": "moss",
+      "startMs": 3120,
+      "endMs": 3440,
+      "filler": false
+    },
+    {
+      "w": "moss",
+      "startMs": 3520,
+      "endMs": 3840,
+      "filler": false
+    },
+    {
+      "w": "moss",
+      "startMs": 3920,
+      "endMs": 4240,
+      "filler": false
+    },
+    {
+      "w": "grows",
+      "startMs": 4320,
+      "endMs": 4640,
+      "filler": false
+    },
+    {
+      "w": "blah",
+      "startMs": 4720,
+      "endMs": 5040,
+      "filler": false
+    },
+    {
+      "w": "blah",
+      "startMs": 5120,
+      "endMs": 5440,
+      "filler": false
+    },
+    {
+      "w": "on",
+      "startMs": 5520,
+      "endMs": 5840,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 5920,
+      "endMs": 6240,
+      "filler": false
+    },
+    {
+      "w": "north",
+      "startMs": 6320,
+      "endMs": 6640,
+      "filler": false
+    },
+    {
+      "w": "side",
+      "startMs": 6720,
+      "endMs": 7040,
+      "filler": false
+    },
+    {
+      "w": "I",
+      "startMs": 8540,
+      "endMs": 8860,
+      "filler": false
+    },
+    {
+      "w": "like",
+      "startMs": 8940,
+      "endMs": 9260,
+      "filler": false
+    },
+    {
+      "w": "that",
+      "startMs": 9340,
+      "endMs": 9660,
+      "filler": false
+    },
+    {
+      "w": "rule",
+      "startMs": 9740,
+      "endMs": 10060,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 10140,
+      "endMs": 10460,
+      "filler": false
+    },
+    {
+      "w": "rule",
+      "startMs": 10540,
+      "endMs": 10860,
+      "filler": false
+    },
+    {
+      "w": "is",
+      "startMs": 10940,
+      "endMs": 11260,
+      "filler": false
+    },
+    {
+      "w": "simple",
+      "startMs": 11340,
+      "endMs": 11660,
+      "filler": false
+    }
+  ],
+  "pauses": [
+    {
+      "startMs": 1370,
+      "endMs": 2470
+    },
+    {
+      "startMs": 7290,
+      "endMs": 8290
+    }
+  ],
+  "expected": [
+    {
+      "startMs": 800,
+      "endMs": 2720,
+      "kind": "filler",
+      "verdict": "cut"
+    },
+    {
+      "startMs": 3120,
+      "endMs": 3920,
+      "kind": "false_start",
+      "verdict": "cut"
+    },
+    {
+      "startMs": 4720,
+      "endMs": 5520,
+      "kind": "false_start",
+      "verdict": "cut"
+    },
+    {
+      "startMs": 7290,
+      "endMs": 8290,
+      "kind": "pause",
+      "verdict": "keep"
+    },
+    {
+      "startMs": 8940,
+      "endMs": 9340,
+      "kind": "filler",
+      "verdict": "keep"
+    },
+    {
+      "startMs": 10540,
+      "endMs": 10940,
+      "kind": "false_start",
+      "verdict": "cut"
+    }
+  ]
+}

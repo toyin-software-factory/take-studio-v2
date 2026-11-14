@@ -1,0 +1,64 @@
+{
+  "id": "stammered-repeat",
+  "note": "A stammer: the same word three times.",
+  "durationMs": 4120,
+  "words": [
+    {
+      "w": "I",
+      "startMs": 400,
+      "endMs": 720,
+      "filler": false
+    },
+    {
+      "w": "know",
+      "startMs": 800,
+      "endMs": 1120,
+      "filler": false
+    },
+    {
+      "w": "know",
+      "startMs": 1200,
+      "endMs": 1520,
+      "filler": false
+    },
+    {
+      "w": "know",
+      "startMs": 1600,
+      "endMs": 1920,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 2000,
+      "endMs": 2320,
+      "filler": false
+    },
+    {
+      "w": "bakery",
+      "startMs": 2400,
+      "endMs": 2720,
+      "filler": false
+    },
+    {
+      "w": "opens",
+      "startMs": 2800,
+      "endMs": 3120,
+      "filler": false
+    },
+    {
+      "w": "early",
+      "startMs": 3200,
+      "endMs": 3520,
+      "filler": false
+    }
+  ],
+  "pauses": [],
+  "expected": [
+    {
+      "startMs": 800,
+      "endMs": 1600,
+      "kind": "false_start",
+      "verdict": "cut"
+    }
+  ]
+}

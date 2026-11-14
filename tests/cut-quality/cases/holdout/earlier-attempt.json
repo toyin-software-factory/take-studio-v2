@@ -1,0 +1,100 @@
+{
+  "id": "earlier-attempt",
+  "note": "Two attempts at the same line; the earlier attempt is cut.",
+  "durationMs": 6120,
+  "words": [
+    {
+      "w": "Pack",
+      "startMs": 400,
+      "endMs": 720,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 800,
+      "endMs": 1120,
+      "filler": false
+    },
+    {
+      "w": "red",
+      "startMs": 1200,
+      "endMs": 1520,
+      "filler": false
+    },
+    {
+      "w": "crate",
+      "startMs": 1600,
+      "endMs": 1920,
+      "filler": false
+    },
+    {
+      "w": "Pack",
+      "startMs": 2000,
+      "endMs": 2320,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 2400,
+      "endMs": 2720,
+      "filler": false
+    },
+    {
+      "w": "red",
+      "startMs": 2800,
+      "endMs": 3120,
+      "filler": false
+    },
+    {
+      "w": "crate",
+      "startMs": 3200,
+      "endMs": 3520,
+      "filler": false
+    },
+    {
+      "w": "Pack",
+      "startMs": 3600,
+      "endMs": 3920,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 4000,
+      "endMs": 4320,
+      "filler": false
+    },
+    {
+      "w": "red",
+      "startMs": 4400,
+      "endMs": 4720,
+      "filler": false
+    },
+    {
+      "w": "crates",
+      "startMs": 4800,
+      "endMs": 5120,
+      "filler": false
+    },
+    {
+      "w": "first",
+      "startMs": 5200,
+      "endMs": 5520,
+      "filler": false
+    }
+  ],
+  "pauses": [],
+  "expected": [
+    {
+      "startMs": 2000,
+      "endMs": 2400,
+      "kind": "false_start",
+      "verdict": "cut"
+    },
+    {
+      "startMs": 2800,
+      "endMs": 4000,
+      "kind": "false_start",
+      "verdict": "cut"
+    }
+  ]
+}

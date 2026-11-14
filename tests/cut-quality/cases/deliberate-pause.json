@@ -1,0 +1,81 @@
+{
+  "id": "deliberate-pause",
+  "note": "A long pause before the point, kept on purpose.",
+  "durationMs": 6640,
+  "words": [
+    {
+      "w": "Here",
+      "startMs": 400,
+      "endMs": 720,
+      "filler": false
+    },
+    {
+      "w": "is",
+      "startMs": 800,
+      "endMs": 1120,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 1200,
+      "endMs": 1520,
+      "filler": false
+    },
+    {
+      "w": "secret",
+      "startMs": 1600,
+      "endMs": 1920,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 3720,
+      "endMs": 4040,
+      "filler": false
+    },
+    {
+      "w": "tide",
+      "startMs": 4120,
+      "endMs": 4440,
+      "filler": false
+    },
+    {
+      "w": "comes",
+      "startMs": 4520,
+      "endMs": 4840,
+      "filler": false
+    },
+    {
+      "w": "back",
+      "startMs": 4920,
+      "endMs": 5240,
+      "filler": false
+    },
+    {
+      "w": "every",
+      "startMs": 5320,
+      "endMs": 5640,
+      "filler": false
+    },
+    {
+      "w": "night",
+      "startMs": 5720,
+      "endMs": 6040,
+      "filler": false
+    }
+  ],
+  "pauses": [
+    {
+      "startMs": 2170,
+      "endMs": 3470
+    }
+  ],
+  "expected": [
+    {
+      "startMs": 2170,
+      "endMs": 3470,
+      "kind": "pause",
+      "verdict": "keep"
+    }
+  ]
+}

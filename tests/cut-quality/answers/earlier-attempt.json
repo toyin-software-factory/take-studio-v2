@@ -1,0 +1,19 @@
+{
+  "keepPauses": [],
+  "wordCuts": [
+    {
+      "fromWord": 4,
+      "toWord": 4,
+      "kind": "false_start",
+      "reason": "Repeated or dropped words, one clean copy stays"
+    },
+    {
+      "fromWord": 6,
+      "toWord": 8,
+      "kind": "false_start",
+      "reason": "Repeated or dropped words, one clean copy stays"
+    }
+  ],
+  "fixes": [],
+  "background": null
+}

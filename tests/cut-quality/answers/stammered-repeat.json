@@ -1,0 +1,13 @@
+{
+  "keepPauses": [],
+  "wordCuts": [
+    {
+      "fromWord": 1,
+      "toWord": 2,
+      "kind": "false_start",
+      "reason": "Repeated or dropped words, one clean copy stays"
+    }
+  ],
+  "fixes": [],
+  "background": null
+}
