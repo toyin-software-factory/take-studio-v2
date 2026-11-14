@@ -274,7 +274,7 @@ export const COLLECTED: readonly Collected[] = [
   {
     what: "API keys: the name you give a key, a one way hash of the key, its first few characters, when it was made and last used, and a count of requests per key per minute. The key itself is shown once and never stored",
     why: "To let your own tools and agents use Take Studio as you, and to slow down misuse.",
-    kept: "A key is kept until you revoke it or delete the account. Request counts are kept about an hour.",
+    kept: "A key is kept until you revoke it or delete the account. Request counts are kept up to about 75 minutes.",
     deletedWith: "Revoking the key or deleting the account.",
   },
   {
@@ -346,7 +346,7 @@ export const COLLECTED: readonly Collected[] = [
   {
     what: "A hash of the network address of a request that sends a wrong API key or access token",
     why: "To slow down guessing and floods against the API.",
-    kept: "One hour.",
+    kept: "Up to about 75 minutes. The cleanup runs every 15 minutes and removes counts once their minute is an hour old.",
     deletedWith: "It expires by itself.",
   },
 ];

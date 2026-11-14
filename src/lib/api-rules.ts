@@ -102,9 +102,9 @@ export function isOverRateLimit(count: number): boolean {
   return count > API_RATE.perMinute;
 }
 
-/** True once an address has already used up its failed bearer attempts for this minute. */
-export function isOverFailLimit(failures: number): boolean {
-  return failures >= BEARER_FAIL.perMinute;
+/** True when `count` (after reserving this request's slot) is over the failed bearer budget. */
+export function isOverFailLimit(count: number): boolean {
+  return count > BEARER_FAIL.perMinute;
 }
 
 const IP_PATTERN = /^[0-9a-fA-F:.]{2,45}$/;

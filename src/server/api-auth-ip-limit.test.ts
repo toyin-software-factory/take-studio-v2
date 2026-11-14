@@ -1,7 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { eq } from "drizzle-orm";
 import { bearerFailWindow } from "@/db/schema";
-import { createApiKey, purgeOldBearerFailures } from "@/db/data/api-keys";
+import {
+  createApiKey,
+  purgeAllOldBearerFailures,
+  purgeOldBearerFailures,
+} from "@/db/data/api-keys";
 import { type TestDb, createCreator, openTestDb } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import {
@@ -55,6 +59,17 @@ describe("a flood of wrong bearers from one address", () => {
     if (blocked.ok) return;
     expect(blocked.error).toEqual({ kind: "rate_limited", retryAfter: 30 });
     // Blocked requests are not counted again: the table stops growing.
+    expect((await rows(ip))[0]?.count).toBe(BEARER_FAIL.perMinute);
+  });
+
+  it("admits only the budget when 100 wrong requests arrive at the same moment", async () => {
+    const ip = "203.0.113.13";
+    const outs = await Promise.all(
+      Array.from({ length: 100 }, (_, i) => call(`Bearer nope${i}`, ip)),
+    );
+    const kinds = outs.map((o) => (o.ok ? "ok" : o.error.kind));
+    expect(kinds.filter((k) => k === "invalid_api_key")).toHaveLength(BEARER_FAIL.perMinute);
+    expect(kinds.filter((k) => k === "rate_limited")).toHaveLength(100 - BEARER_FAIL.perMinute);
     expect((await rows(ip))[0]?.count).toBe(BEARER_FAIL.perMinute);
   });
 
@@ -156,5 +171,18 @@ describe("the purge", () => {
     expect(await purgeOldBearerFailures(db, NOW, 2)).toBe(1);
     expect(await purgeOldBearerFailures(db, NOW, 2)).toBe(0);
     expect((await db.select().from(bearerFailWindow)).length).toBeGreaterThan(0);
+  });
+
+  it("purgeAll keeps going past one batch until nothing old is left", async () => {
+    const old = new Date(NOW.getTime() - 3 * 60 * 60 * 1000);
+    await db.insert(bearerFailWindow).values(
+      Array.from({ length: 1500 }, (_, i) => ({
+        ipHash: `bulk${i}`,
+        windowStart: old,
+        count: 1,
+      })),
+    );
+    expect(await purgeAllOldBearerFailures(db, NOW)).toBe(1500);
+    expect(await purgeAllOldBearerFailures(db, NOW)).toBe(0);
   });
 });
