@@ -1,6 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { describe, expect, it } from "vitest";
+import { legalCopyHash } from "../../src/components/legal/legal-text";
 import { readUsageSettings } from "../../src/db/data/usage";
 import * as schema from "../../src/db/schema";
 import {
@@ -19,12 +20,15 @@ import { monthlyAllowanceSeconds } from "../../src/lib/usage-rules";
  * set, the reviewed versions, text hashes and allowance match the live ones, and the Draft banner
  * would be off. The allowance is read from the database `DATABASE_URL_DIRECT` points at (the
  * launch database); if it cannot be read the gate fails, it never passes on a guess. The page
- * text hashes come with the pages (step 2); until then they are `null` and the gate fails.
+ * text hashes are made from the live copy components.
  */
 
-/** Hashes of the live page text; `null` until the pages exist. */
-function pageHashes(): Pick<LegalNow, "privacyTextHash" | "termsTextHash"> {
-  return { privacyTextHash: null, termsTextHash: null };
+/** Hashes of the live page copy, made fresh from the components (the same ones AC-9 records). */
+async function pageHashes(): Promise<Pick<LegalNow, "privacyTextHash" | "termsTextHash">> {
+  return {
+    privacyTextHash: await legalCopyHash("privacy"),
+    termsTextHash: await legalCopyHash("terms"),
+  };
 }
 
 async function readAllowance(): Promise<LegalNow["allowance"]> {
@@ -50,7 +54,7 @@ async function readAllowance(): Promise<LegalNow["allowance"]> {
 
 describe("legal launch gate", () => {
   it("has nothing left to supply or review, and the Draft banner is off", async () => {
-    const now: LegalNow = { ...pageHashes(), allowance: await readAllowance() };
+    const now: LegalNow = { ...(await pageHashes()), allowance: await readAllowance() };
     const reasons = draftReasons({
       entity: LEGAL_ENTITY,
       review: REVIEW,
