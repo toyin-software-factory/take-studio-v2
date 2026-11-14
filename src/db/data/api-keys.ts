@@ -1,6 +1,6 @@
 import { and, count, desc, eq, lt, sql } from "drizzle-orm";
 import { z } from "zod";
-import { API_KEYS, API_RATE } from "@/lib/api-rules";
+import { API_KEYS, API_RATE, rateWindowStart } from "@/lib/api-rules";
 import { type Result, err, ok } from "@/lib/result";
 import { apiKey, apiRateWindow, user } from "../schema";
 import { runTx } from "../tx";
@@ -113,4 +113,54 @@ export async function purgeOldRateWindows(
     .where(sql`(${apiRateWindow.keyId}, ${apiRateWindow.windowStart}) in (${old})`)
     .returning({ keyId: apiRateWindow.keyId });
   return removed.length;
+}
+
+/**
+ * The key check (spec 0018 AC-3, AC-10): one `UPDATE ... RETURNING` by hash. It is a write, so
+ * Hyperdrive never caches it and a revoked key stops at once. `last_used_at` moves at most once
+ * an hour (database `now()`, so two requests at once write at most once). Null when no key has
+ * that hash.
+ */
+export async function authenticateApiKey(
+  db: Executor,
+  keyHash: string,
+): Promise<{ readonly keyId: string; readonly creatorId: string } | null> {
+  const [row] = await db
+    .update(apiKey)
+    .set({
+      lastUsedAt: sql`case when ${apiKey.lastUsedAt} is null
+        or ${apiKey.lastUsedAt} < now() - interval '1 hour' then now() else ${apiKey.lastUsedAt} end`,
+    })
+    .where(eq(apiKey.keyHash, keyHash))
+    .returning({ keyId: apiKey.id, creatorId: apiKey.creatorId });
+  return row ?? null;
+}
+
+/**
+ * Counts one request in the key's current UTC minute and returns the count and the second into
+ * the minute (spec 0018 AC-9). One atomic upsert, never a read then a write. `at` is for tests;
+ * left out, the window and the second come from the database clock.
+ */
+export async function countApiRequest(
+  db: Executor,
+  keyId: string,
+  at?: Date,
+): Promise<{ readonly count: number; readonly secondsIntoMinute: number }> {
+  const windowStart = at
+    ? rateWindowStart(at)
+    : sql<Date>`date_trunc('minute', now() at time zone 'utc') at time zone 'utc'`;
+  const [row] = await db
+    .insert(apiRateWindow)
+    .values({ keyId, windowStart, count: 1 })
+    .onConflictDoUpdate({
+      target: [apiRateWindow.keyId, apiRateWindow.windowStart],
+      set: { count: sql`${apiRateWindow.count} + 1` },
+    })
+    .returning({
+      count: apiRateWindow.count,
+      secondsIntoMinute: at
+        ? sql<number>`${at.getUTCSeconds()}::int`
+        : sql<number>`floor(extract(second from now()))::int`,
+    });
+  return row ?? { count: 1, secondsIntoMinute: 0 };
 }

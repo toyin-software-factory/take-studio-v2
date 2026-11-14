@@ -160,7 +160,7 @@ describe("session and Origin (spec 0004 API surface)", () => {
       await handleMedia(req("GET", `/api/takes/${id}/media?kind=play`), id, mediaDeps(null).deps),
     ]) {
       expect(res.status).toBe(401);
-      expect(res.headers.get("cache-control")).toBe("no-store");
+      expect(res.headers.get("cache-control")).toBe("private, no-store");
     }
   });
 
