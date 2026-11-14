@@ -155,7 +155,8 @@ export const PROCESSORS: readonly Processor[] = [
     id: "deepgram",
     name: "Deepgram",
     role: "Turns your audio into a transcript.",
-    receives: "The audio of your take.",
+    receives:
+      "The audio of your take. If you turn on Follow my voice while you record with a script, your microphone audio is also sent live to Deepgram, only while you record. We do not store that live audio.",
     doesNotReceive:
       "Your video, your name or your email. We ask Deepgram not to use your audio to train its models. The short lived access token we ask Deepgram for, so your browser can connect while you record, carries no personal data.",
     location: "Deepgram cloud.",
