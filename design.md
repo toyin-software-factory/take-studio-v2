@@ -1684,6 +1684,13 @@ if (matchMedia("(pointer: fine)").matches && !REDUCED) {
 - Never remove an outline without replacing it.
 - Add a skip link to `#main` as the first focusable element.
 
+**Legal pages: reading and print (spec 0015 AC-12, B2-T34)**
+
+- One `h1`, then `h2` sections; the table of contents (`On this page`) links every section by its id. The text column is capped at `72ch`.
+- The site has one light theme (dark is the `.stage` rebind), so Privacy and Terms are checked with axe under both `prefers-color-scheme` values and look the same.
+- Print: the header, skip link and table of contents are hidden, text is black on white at 11pt, headings stay with their text, and an external link prints its address after it (`@media print` in `globals.css`).
+- Mobbin was unavailable for this pass (Toyin, C-39); built from the tokens above, no new component.
+
 **Reduced motion (global)**
 
 ```css
