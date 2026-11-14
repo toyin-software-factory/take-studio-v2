@@ -1,6 +1,10 @@
 import { insertAnalyticsEvent } from "@/db/data/analytics";
 import type { Executor } from "@/db/types";
-import { ANALYTICS_EVENTS, type AnalyticsEventInput } from "@/lib/analytics-events";
+import {
+  ANALYTICS_EVENTS,
+  hasRequiredTakeId,
+  type AnalyticsEventInput,
+} from "@/lib/analytics-events";
 import { type Result, err, ok } from "@/lib/result";
 
 export type RecordError = "invalid" | "failed";
@@ -16,7 +20,7 @@ export async function recordEvent(
   event: AnalyticsEventInput,
 ): Promise<Result<boolean, RecordError>> {
   const parsed = ANALYTICS_EVENTS[event.name].props.safeParse(event.props ?? {});
-  if (!parsed.success) {
+  if (!parsed.success || !hasRequiredTakeId(event.name, event.takeId)) {
     console.error("analytics event refused", { name: event.name, takeId: event.takeId ?? null });
     return err("invalid");
   }

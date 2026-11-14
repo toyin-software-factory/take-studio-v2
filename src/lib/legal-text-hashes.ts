@@ -13,11 +13,19 @@ export const LEGAL_TEXT_HASHES: Readonly<Record<"privacy" | "terms", readonly Re
       date: "2026-11-14",
       hash: "9fdba6ccbeefa6e7ad64e0202e47b73dc98f8c3633ff925913d04f85a2b34e44",
     },
+    {
+      date: "2026-11-15",
+      hash: "a0476a3c6ce025261d5edd0ce926836bcf8344f047cb62209c6f6a95e861ae0c",
+    },
   ],
   terms: [
     {
       date: "2026-11-14",
       hash: "42a10ab98ab87d6012ecb293d76fdd889c40263396e2a5bbe05ddb828fd74995",
+    },
+    {
+      date: "2026-11-15",
+      hash: "d8cbd801c47aae66eb125831fd14e78de841f04455b82ce3f19ec68489ed7ea6",
     },
   ],
 };

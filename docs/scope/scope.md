@@ -275,7 +275,7 @@ Three events that show whether the core loop works: signup, take uploaded, take 
    - [ ] Download, transcript, change and limit events (AC-4, AC-5)
    - [ ] Backfill from existing users and takes (AC-12)
    - [ ] Retention sweep and delete tests (AC-9, AC-10)
-   - [ ] Legal facts entry and copy bump (AC-11)
+   - [x] Legal facts entry and copy bump (AC-11)
    - [ ] Docs and deploy env list for the viewer secret
 - [ ] Verify it: `/check verify product analytics`
 Spec [0016](../specs/0016-product-analytics.md) · Toyin answers seven open questions (tool, visits, who sees it, retention, deletion, founding member rule, event list)

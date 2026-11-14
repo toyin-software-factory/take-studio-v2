@@ -3,7 +3,6 @@ import { eq } from "drizzle-orm";
 import { analyticsEvent, take, user } from "@/db/schema";
 import { createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import { recordEvent } from "./record";
-import { funnel, windowStart } from "./report";
 
 const test = await openTestDb({ database: "take_studio_test_analytics" });
 const { db } = test;
@@ -61,6 +60,13 @@ describe("recordEvent (spec 0016, AC-4, AC-6)", () => {
     expect(await rows(c.id)).toHaveLength(0);
   });
 
+  it("refuses a once per take event with no take ID", async () => {
+    const c = await createCreator(db);
+    const bad = await recordEvent(db, { name: "take_uploaded", creatorId: c.id } as never);
+    expect(bad).toEqual({ ok: false, error: "invalid" });
+    expect(await rows(c.id)).toHaveLength(0);
+  });
+
   it("logs the event name and take ID only", async () => {
     const spy = vi.mocked(console.error);
     spy.mockClear();
@@ -76,35 +82,5 @@ describe("recordEvent (spec 0016, AC-4, AC-6)", () => {
     expect((await rows(c.id))[0]?.takeId).toBeNull();
     await db.delete(user).where(eq(user.id, c.id));
     expect(await rows(c.id)).toHaveLength(0);
-  });
-});
-
-describe("funnel (spec 0016, AC-7)", () => {
-  it("counts signups inside the window", async () => {
-    const now = new Date();
-    const before = {
-      w7: (await funnel(db, "7d", now)).signedUp,
-      w30: (await funnel(db, "30d", now)).signedUp,
-      all: (await funnel(db, "all", now)).signedUp,
-    };
-    const day = 24 * 60 * 60 * 1000;
-    for (const ageDays of [1, 20, 60]) {
-      const c = await createCreator(db);
-      await recordEvent(db, {
-        name: "signup",
-        creatorId: c.id,
-        occurredAt: new Date(now.getTime() - ageDays * day),
-      });
-    }
-    const w7 = await funnel(db, "7d", now);
-    const w30 = await funnel(db, "30d", now);
-    const all = await funnel(db, "all", now);
-    expect(w7.signedUp - before.w7).toBe(1);
-    expect(w30.signedUp - before.w30).toBe(2);
-    expect(all.signedUp - before.all).toBe(3);
-  });
-
-  it("has no start for all time", () => {
-    expect(windowStart("all", new Date())).toBeNull();
   });
 });

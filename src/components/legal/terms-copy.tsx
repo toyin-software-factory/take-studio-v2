@@ -15,6 +15,7 @@ export const TERMS_TOC = [
   { id: "content", title: "Your videos and transcripts" },
   { id: "rules", title: "What you may not upload" },
   { id: "storage", title: "Storage and deleting" },
+  { id: "usage", title: "How we count use" },
   { id: "allowance", title: "The free allowance" },
   { id: "service", title: "Availability" },
   { id: "liability", title: "Liability and governing law" },
@@ -67,6 +68,12 @@ export function TermsCopy({
           {ACCOUNT_DELETE_SELF_SERVE
             ? "You can delete your account from the account menu."
             : "To delete your account, email us; the Privacy Policy says how."}
+        </p>
+      </LegalSection>
+      <LegalSection id="usage" title="How we count use">
+        <p>
+          We count what you do in Take Studio (for example that you uploaded or downloaded a take)
+          to run and improve the service. The Privacy Policy lists what we count.
         </p>
       </LegalSection>
       <LegalSection id="allowance" title="The free allowance">

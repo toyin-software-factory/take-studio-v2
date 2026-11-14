@@ -77,13 +77,26 @@ export type InsightsWindow = (typeof INSIGHTS_WINDOWS)[number];
 export const DEFAULT_INSIGHTS_WINDOW: InsightsWindow = "30d";
 export const insightsWindowSchema = z.enum(INSIGHTS_WINDOWS).catch(DEFAULT_INSIGHTS_WINDOW);
 
+/** The take ID field: required and non null for a once per take event, optional otherwise. */
+type TakeIdField<N extends AnalyticsEventName> =
+  (typeof ANALYTICS_EVENTS)[N]["oncePer"] extends "take"
+    ? { readonly takeId: string }
+    : { readonly takeId?: string | null };
+
 /** One event to record: the name, who, which take, and its validated properties. */
 export type AnalyticsEventInput = {
   readonly [N in AnalyticsEventName]: {
     readonly name: N;
     readonly creatorId: string;
-    readonly takeId?: string | null;
     readonly props?: z.input<(typeof ANALYTICS_EVENTS)[N]["props"]>;
     readonly occurredAt?: Date;
-  };
+  } & TakeIdField<N>;
 }[AnalyticsEventName];
+
+/**
+ * Runtime twin of the type: a once per take event with no take ID would escape the partial
+ * unique index and could be written twice, so it is refused (AC-4).
+ */
+export function hasRequiredTakeId(name: AnalyticsEventName, takeId: string | null | undefined) {
+  return ANALYTICS_EVENTS[name].oncePer !== "take" || (typeof takeId === "string" && takeId !== "");
+}
