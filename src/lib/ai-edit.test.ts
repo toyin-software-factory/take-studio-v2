@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  wordCutMaxShareFor,
   type AiCandidate,
   type AiEditAnswer,
   type AiWord,
@@ -376,22 +377,44 @@ describe("validateAiEdit", () => {
     expect(d.dropped).toBe(1);
   });
 
-  it("refuses the whole answer when word cuts take over 40% of the take", () => {
+  it("refuses the whole answer when word cuts take over 40% of a take of 30 s or longer", () => {
+    const words = [w("a", 0, 100), w("b", 100, 200), w("c", 12_300, 12_400)];
+    const answer = {
+      ...empty,
+      wordCuts: [{ fromWord: 1, toWord: 1, kind: "false_start" as const, reason: "x" }],
+    };
+    expect(validateAiEdit(answer, words, [], 30_000)).toEqual({ ok: false, error: "invalid" }); // 40.3 %
+    expect(validateAiEdit(answer, words, [], 31_000).ok).toBe(true); // 39.0 %
+  });
+
+  it("picks the cap from the take length: 60% under 30 s, 40% from 30 s (C-42)", () => {
+    expect(wordCutMaxShareFor(29_999)).toBe(0.6);
+    expect(wordCutMaxShareFor(30_000)).toBe(0.4);
+    expect(wordCutMaxShareFor(12_300)).toBe(0.6);
+    expect(wordCutMaxShareFor(120_000)).toBe(0.4);
+  });
+
+  it("lets a take under 30 s lose up to 60% to word cuts and refuses past it", () => {
+    // One cut from 100 to 3000 ms: 2900 ms. Take length 5000 ms gives 58%, 4800 ms gives 60.4%.
     const words = [w("a", 0, 100), w("b", 100, 200), w("c", 3000, 3100)];
-    const r = validateAiEdit(
-      { ...empty, wordCuts: [{ fromWord: 1, toWord: 1, kind: "false_start", reason: "x" }] },
-      words,
-      [],
-      7000,
-    ); // 100..3000 = 2900 ms of 7000 = 41.4 %
-    expect(r).toEqual({ ok: false, error: "invalid" });
-    const fine = validateAiEdit(
-      { ...empty, wordCuts: [{ fromWord: 1, toWord: 1, kind: "false_start", reason: "x" }] },
-      words,
-      [],
-      7500,
-    ); // 38.7 %
-    expect(fine.ok).toBe(true);
+    const answer = {
+      ...empty,
+      wordCuts: [{ fromWord: 1, toWord: 1, kind: "false_start" as const, reason: "x" }],
+    };
+    expect(validateAiEdit(answer, words, [], 5000).ok).toBe(true);
+    expect(validateAiEdit(answer, words, [], 4800)).toEqual({ ok: false, error: "invalid" });
+  });
+
+  it("keeps 40% for a take of 30 s or longer, and 60% applies only just under it", () => {
+    // 13 000 ms of cuts: 43.3% of 30 000 ms (refused), but 43.4% of 29 999 ms (kept).
+    const words = [w("a", 0, 100), w("b", 100, 200), w("c", 13_100, 13_200)];
+    const answer = {
+      ...empty,
+      wordCuts: [{ fromWord: 1, toWord: 1, kind: "false_start" as const, reason: "x" }],
+    };
+    expect(validateAiEdit(answer, words, [], 30_000)).toEqual({ ok: false, error: "invalid" });
+    expect(validateAiEdit(answer, words, [], 29_999).ok).toBe(true);
+    expect(validateAiEdit(answer, words, [], 32_600).ok).toBe(true); // 39.9%
   });
 
   it("refuses the answer when more than half of the items are dropped, not at exactly half", () => {

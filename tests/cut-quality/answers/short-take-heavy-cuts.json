@@ -1,0 +1,31 @@
+{
+  "keepPauses": [],
+  "wordCuts": [
+    {
+      "fromWord": 0,
+      "toWord": 1,
+      "kind": "filler",
+      "reason": "Opening tic with no meaning"
+    },
+    {
+      "fromWord": 7,
+      "toWord": 15,
+      "kind": "filler",
+      "reason": "A sentence that only says the speaker has nothing to say"
+    },
+    {
+      "fromWord": 16,
+      "toWord": 18,
+      "kind": "false_start",
+      "reason": "Started the sentence again"
+    },
+    {
+      "fromWord": 25,
+      "toWord": 25,
+      "kind": "filler",
+      "reason": "Hesitation sound"
+    }
+  ],
+  "fixes": [],
+  "background": null
+}

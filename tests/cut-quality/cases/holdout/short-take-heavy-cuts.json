@@ -1,0 +1,214 @@
+{
+  "id": "short-take-heavy-cuts",
+  "note": "Invented, shaped like a short clip (12.7 s) where about 47% is cut: an opening tic, a sentence with nothing to say, a false start and an um. Needs the 60% cap for takes under 30 s (C-42).",
+  "durationMs": 12700,
+  "words": [
+    {
+      "w": "Um,",
+      "startMs": 400,
+      "endMs": 720,
+      "filler": false
+    },
+    {
+      "w": "okay,",
+      "startMs": 800,
+      "endMs": 1120,
+      "filler": false
+    },
+    {
+      "w": "this",
+      "startMs": 1200,
+      "endMs": 1520,
+      "filler": false
+    },
+    {
+      "w": "is",
+      "startMs": 1600,
+      "endMs": 1920,
+      "filler": false
+    },
+    {
+      "w": "my",
+      "startMs": 2000,
+      "endMs": 2320,
+      "filler": false
+    },
+    {
+      "w": "tomato",
+      "startMs": 2400,
+      "endMs": 2720,
+      "filler": false
+    },
+    {
+      "w": "patch.",
+      "startMs": 2800,
+      "endMs": 3120,
+      "filler": false
+    },
+    {
+      "w": "I",
+      "startMs": 3200,
+      "endMs": 3520,
+      "filler": false
+    },
+    {
+      "w": "honestly",
+      "startMs": 3600,
+      "endMs": 3920,
+      "filler": false
+    },
+    {
+      "w": "have",
+      "startMs": 4000,
+      "endMs": 4320,
+      "filler": false
+    },
+    {
+      "w": "no",
+      "startMs": 4400,
+      "endMs": 4720,
+      "filler": false
+    },
+    {
+      "w": "idea",
+      "startMs": 4800,
+      "endMs": 5120,
+      "filler": false
+    },
+    {
+      "w": "what",
+      "startMs": 5200,
+      "endMs": 5520,
+      "filler": false
+    },
+    {
+      "w": "to",
+      "startMs": 5600,
+      "endMs": 5920,
+      "filler": false
+    },
+    {
+      "w": "say",
+      "startMs": 6000,
+      "endMs": 6320,
+      "filler": false
+    },
+    {
+      "w": "here.",
+      "startMs": 6400,
+      "endMs": 6720,
+      "filler": false
+    },
+    {
+      "w": "The",
+      "startMs": 6800,
+      "endMs": 7120,
+      "filler": false
+    },
+    {
+      "w": "soil",
+      "startMs": 7200,
+      "endMs": 7520,
+      "filler": false
+    },
+    {
+      "w": "was,",
+      "startMs": 7600,
+      "endMs": 7920,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 8000,
+      "endMs": 8320,
+      "filler": false
+    },
+    {
+      "w": "soil",
+      "startMs": 8400,
+      "endMs": 8720,
+      "filler": false
+    },
+    {
+      "w": "was",
+      "startMs": 8800,
+      "endMs": 9120,
+      "filler": false
+    },
+    {
+      "w": "dry",
+      "startMs": 9200,
+      "endMs": 9520,
+      "filler": false
+    },
+    {
+      "w": "last",
+      "startMs": 9600,
+      "endMs": 9920,
+      "filler": false
+    },
+    {
+      "w": "week.",
+      "startMs": 10000,
+      "endMs": 10320,
+      "filler": false
+    },
+    {
+      "w": "um",
+      "startMs": 10400,
+      "endMs": 10720,
+      "filler": true
+    },
+    {
+      "w": "so",
+      "startMs": 10800,
+      "endMs": 11120,
+      "filler": false
+    },
+    {
+      "w": "I",
+      "startMs": 11200,
+      "endMs": 11520,
+      "filler": false
+    },
+    {
+      "w": "watered",
+      "startMs": 11600,
+      "endMs": 11920,
+      "filler": false
+    },
+    {
+      "w": "it.",
+      "startMs": 12000,
+      "endMs": 12320,
+      "filler": false
+    }
+  ],
+  "pauses": [],
+  "expected": [
+    {
+      "startMs": 400,
+      "endMs": 1200,
+      "kind": "filler",
+      "verdict": "cut"
+    },
+    {
+      "startMs": 3200,
+      "endMs": 6800,
+      "kind": "filler",
+      "verdict": "cut"
+    },
+    {
+      "startMs": 6800,
+      "endMs": 8000,
+      "kind": "false_start",
+      "verdict": "cut"
+    },
+    {
+      "startMs": 10400,
+      "endMs": 10800,
+      "kind": "filler",
+      "verdict": "cut"
+    }
+  ]
+}
