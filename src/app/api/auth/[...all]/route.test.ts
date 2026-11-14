@@ -29,6 +29,29 @@ describe("/api/auth Authorization header rule", () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
+  it("AC-4: delete user, change email, change password and sign out refuse a header beside a valid cookie", async () => {
+    handler.mockClear();
+    for (const path of [
+      "/api/auth/delete-user",
+      "/api/auth/change-email",
+      "/api/auth/change-password",
+      "/api/auth/sign-out",
+    ]) {
+      for (const authorization of ["Bearer tsk_x", "Basic Zm9vOmJhcg==", ""]) {
+        const res = await POST(
+          new Request(`https://studio.test${path}`, {
+            method: "POST",
+            headers: { cookie: "better-auth.session_token=valid", authorization },
+          }),
+        );
+        expect(res.status).toBe(401);
+        expect(((await res.json()) as { error: string }).error).toBe("session_required");
+        expect(res.headers.get("cache-control")).toBe("private, no-store");
+      }
+    }
+    expect(handler).not.toHaveBeenCalled();
+  });
+
   it("lets HTTP Basic through only on POST token and revoke", async () => {
     for (const path of ["/api/auth/oauth2/token", "/api/auth/oauth2/revoke"]) {
       handler.mockClear();

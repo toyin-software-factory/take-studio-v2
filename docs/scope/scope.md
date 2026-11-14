@@ -34,7 +34,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 10 | AI editing agents | Slice 5 | in-progress |
 | 11 | Take library, delete & retention | Slice 6 | done |
 | 12 | Monthly usage limit | Slice 6 | done |
-| 13 | Public API | Slice 7 | planned |
+| 13 | Public API | Slice 7 | in-progress |
 | 14 | MCP server for AI agents | Slice 7 | in-progress |
 | 15 | Landing page & SEO | Launch | done |
 | 16 | Privacy & terms pages | Launch | in-progress |
@@ -226,21 +226,21 @@ Spec [0014](../specs/0014-monthly-usage-limit.md)
 
 ## Slice 7: Usable by AI agents
 
-### 13. Public API · planned · GA
+### 13. Public API · in-progress · GA
 A documented API so programs and agents can do everything the web app does for a creator: upload a take, choose a background, run processing, review and undo cuts, fetch the video and transcript, delete a take.
 **Done when:** a creator can create and revoke an API key; every web app action has an API equivalent with the same limits and permissions; the API is documented.
 - [x] Design it (spec): `/architect public API`
 - [ ] Build it: `/develop public API`
-   - [ ] Migration, key and rate rules, key routes (create, list, revoke, session only) (AC-1, AC-2, AC-3, AC-4, AC-9, AC-13, AC-14)
-   - [ ] Tracer thread: one resolver (bearer else session, no fallback), Origin rule, rate window, last used, live check on two routes (AC-5, AC-6, AC-9, AC-10, AC-16)
-   - [ ] Every route behind the guard, parity, permission and allowance tests (AC-7)
-   - [ ] Public registry, coverage test, `/docs/api` and `/api/openapi.json` (AC-8, AC-11)
+   - [x] Migration, key and rate rules, key routes (create, list, revoke, session only) (AC-1, AC-2, AC-3, AC-4, AC-9, AC-13, AC-14)
+   - [x] Tracer thread: one resolver (bearer else session, no fallback), Origin rule, rate window, last used, live check on two routes (AC-5, AC-6, AC-9, AC-10, AC-16)
+   - [x] Every route behind the guard, parity, permission and allowance tests (AC-7)
+   - [x] Public registry, coverage test, `/docs/api` and `/api/openapi.json` (AC-8, AC-11)
    - [x] API keys screen, browser tests and axe (AC-12)
-   - [ ] Legal facts, Privacy and Terms copy, version and hash line (AC-15)
+   - [x] Legal facts, Privacy and Terms copy, version and hash line (AC-15)
    - [ ] Real run by key from upload to download, then revoke (AC-3, AC-5, AC-7)
-- [ ] Verify it: `/check verify public API`
-- [ ] Test it: `/test public API`
-- [ ] Review it: `/check review public API`
+- [x] Verify it: `/check verify public API` (`docs/reviews/0018-public-api-verify.md`, B2-T88)
+- [x] Test it: `/test public API` (B2-T90)
+- [x] Review it: `/check review public API` (`docs/reviews/0018-public-api-review.md`, B2-T90)
 - [ ] Document it: `/document public API`
 Spec [0018](../specs/0018-public-api.md)
 
