@@ -119,15 +119,6 @@ export function RecordStage({
         </span>
       </div>
       {prompter.total > 0 ? <PrompterControls prompter={prompter} /> : null}
-      {prompter.total > 0 ? (
-        <FollowVoiceToggle
-          enabled={prompter.settings.follow}
-          onChange={prompter.setFollow}
-          disclosureSeen={prompter.settings.followDisclosed}
-          onDisclosureSeen={prompter.markFollowDisclosed}
-          follow={follow}
-        />
-      ) : null}
       <p role="status" className="sr-only">
         {status}
       </p>
@@ -162,6 +153,16 @@ export function RecordStage({
           </Button>
         )}
       </div>
+      {/* Below the Record and Stop row so Stop stays on the first screen of a phone (AC-10). */}
+      {prompter.total > 0 ? (
+        <FollowVoiceToggle
+          enabled={prompter.settings.follow}
+          onChange={prompter.setFollow}
+          disclosureSeen={prompter.settings.followDisclosed}
+          onDisclosureSeen={prompter.markFollowDisclosed}
+          follow={follow}
+        />
+      ) : null}
     </div>
   );
 }
