@@ -121,11 +121,11 @@ describe("GET /api/takes/{id}/transcript/{format}", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("content-type")).toContain("application/x-subrip");
     expect(res.headers.get("content-disposition")).toMatch(/^attachment;/);
-    // "After" was at 5.6 s. At 25 fps the cut end 5.5 s snaps to the frame at 5.52 s, the same as
-    // the render, so the word lands at 3.0 + (5.6 - 5.52) = 3.08 s on the trimmed video.
+    // "After" was at 5.6 s. At 25 fps the next kept start 5.5 s snaps down to the frame at 5.48 s, the same
+    // as the render, so the word lands at 3.0 + (5.6 - 5.48) = 3.12 s on the trimmed video.
     expect(await res.text()).toBe(
       "1\n00:00:00,500 --> 00:00:02,800\nBefore the pause.\n\n" +
-        "2\n00:00:03,080 --> 00:00:04,080\nAfter it.\n\n",
+        "2\n00:00:03,120 --> 00:00:04,120\nAfter it.\n\n",
     );
   });
 
@@ -138,7 +138,7 @@ describe("GET /api/takes/{id}/transcript/{format}", () => {
     expect(res.headers.get("content-disposition")).toMatch(/^inline;/);
     expect(await res.text()).toBe(
       "WEBVTT\n\n00:00:00.500 --> 00:00:02.800\nBefore the pause.\n\n" +
-        "00:00:03.080 --> 00:00:04.080\nAfter it.\n\n",
+        "00:00:03.120 --> 00:00:04.120\nAfter it.\n\n",
     );
   });
 
@@ -271,7 +271,7 @@ describe("getTrimmedForCreator", () => {
     expect(view.data.title).toBe("My interview");
     expect(view.data.paragraphs.map((p) => [p.startMs, p.words.map((x) => x.w)])).toEqual([
       [300, ["Um,", "Before", "the", "pause."]],
-      [3080, ["After", "it."]],
+      [3120, ["After", "it."]],
     ]);
     expect(view.data.paragraphs[0]?.words[0]?.filler).toBe(true);
   });

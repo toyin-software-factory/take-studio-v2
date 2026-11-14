@@ -7,7 +7,7 @@ import { type ChangeBackgroundError, changeBackground } from ".";
 /** What the background routes need: the session, the app origin and the job trigger. */
 export type BackgroundHttpDeps = Pick<
   TakeHttpDeps,
-  "getCreator" | "allowedOrigin" | "triggerProcessTake" | "now"
+  "getCreator" | "allowedOrigin" | "keyAuth" | "triggerProcessTake" | "now"
 >;
 
 const STATUS: Readonly<Record<ChangeBackgroundError | "invalid", number>> = {

@@ -42,7 +42,12 @@ export function useUpload() {
   useEffect(() => () => controller.current?.abort(), []);
 
   const run = useCallback(
-    async (file: File, container: Container | RecordingContainer, backgroundId?: string) => {
+    async (
+      file: File,
+      container: Container,
+      backgroundId?: string,
+      recording?: { readonly script: string },
+    ) => {
       const abort = new AbortController();
       controller.current = abort;
       setState({ kind: "uploading", fileName: file.name, percent: 0 });
@@ -59,6 +64,7 @@ export function useUpload() {
           },
         },
         backgroundId,
+        recording,
       );
       controller.current = null;
       if (outcome.ok) {
@@ -95,7 +101,7 @@ export function useUpload() {
    * take when it fails.
    */
   const startRecording = useCallback(
-    async (file: File, container: RecordingContainer, backgroundId?: string) => {
+    async (file: File, container: RecordingContainer, script: string, backgroundId?: string) => {
       if (controller.current) return null;
       if (file.size <= 0 || file.size > MEDIA_LIMITS.maxBytes) {
         const message =
@@ -105,7 +111,7 @@ export function useUpload() {
         setState({ kind: "rejected", message });
         return { ok: false, reason: "failed", message } as const;
       }
-      return run(file, container, backgroundId);
+      return run(file, container, backgroundId, { script });
     },
     [run],
   );

@@ -11,7 +11,10 @@ import {
 } from ".";
 
 /** What the transcript routes need: the session and the app origin (reads skip the Origin check). */
-export type TranscriptHttpDeps = Pick<TakeHttpDeps, "getCreator" | "allowedOrigin" | "now"> & {
+export type TranscriptHttpDeps = Pick<
+  TakeHttpDeps,
+  "getCreator" | "allowedOrigin" | "keyAuth" | "now"
+> & {
   /** Triggers `transcribe-take` for a job (global key `transcribe-{jobId}`); only POST needs it. */
   readonly triggerTranscribe?: (jobId: string) => Promise<{ readonly id: string }>;
 };

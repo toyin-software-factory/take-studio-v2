@@ -46,7 +46,7 @@ export function RecordView({ creatorId }: { readonly creatorId: string }) {
     const { take } = state;
     dispatch({ type: "upload" });
     const file = new File([take.blob], take.fileName, { type: take.blob.type });
-    const outcome = await upload.startRecording(file, containerOf(take.fileName));
+    const outcome = await upload.startRecording(file, containerOf(take.fileName), script);
     if (outcome?.ok) clearDraft(deviceStore(), creatorId);
     if (outcome && !outcome.ok) {
       dispatch({

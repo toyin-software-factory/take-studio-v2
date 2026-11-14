@@ -104,6 +104,8 @@ export async function uploadFile(
   events: UploadEvents = {},
   /** Spec 0008, AC-1: a background ID or `original`; left out means no choice was made. */
   backgroundId?: string,
+  /** Spec 0021: a browser recording says so and may carry the creator's script. */
+  recording?: { readonly script: string },
 ): Promise<UploadOutcome> {
   let takeId: string | null = null;
   try {
@@ -112,6 +114,12 @@ export async function uploadFile(
       sizeBytes: file.size,
       container,
       ...(backgroundId === undefined ? {} : { backgroundId }),
+      ...(recording === undefined
+        ? {}
+        : {
+            source: "recording",
+            ...(recording.script.trim() === "" ? {} : { script: recording.script }),
+          }),
     });
     if (created.status !== 201) throw new UploadFailure(messageOf(created));
     const plan = createdBody.safeParse(created.data);
