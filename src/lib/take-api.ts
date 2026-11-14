@@ -24,7 +24,11 @@ export const takeListSchema = z.object({
 });
 export type TakeList = z.infer<typeof takeListSchema>;
 
-export const takeSchema = takeCardSchema.extend({ container: z.string() });
+/** The take page's take: the card plus the file type and the creator's own script (spec 0021, null or absent when none). */
+export const takeSchema = takeCardSchema.extend({
+  container: z.string(),
+  script: z.string().nullable().optional(),
+});
 export type TakeData = z.infer<typeof takeSchema>;
 
 const stepSchema = z.object({

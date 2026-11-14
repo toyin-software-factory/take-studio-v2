@@ -32,3 +32,5 @@ The library at `/library` (`/` redirects signed in visitors there) and the take 
 - `MissedButton` (`missed-button.tsx`, spec 0017 AC-3): "Missed something?" under the player controls, only while the finished video plays (`source.active === "render"`, so the time is on the edited video). It POSTs `{ atMs }` to `/api/takes/{id}/missed`; the confirmation sits in an always present `role="status"` `aria-live="polite"` line (`data-testid="missed-note"`). Size lg, so 44 px on every pointer.
 
 _Drafted by /sync from the introducing change, worth a quick human pass._
+
+- Script on Details (spec 0021 AC-8): `take-script.tsx` shows the take's script read only under a "Script" heading in the Details tab (a focusable scroll box capped at 12 rem, text wraps, no layout shift) or "No script for this take." when there is none. `takeSchema` carries `script` (nullable, optional so older literals still parse). It is personal data: show it to the owner only, never log it.

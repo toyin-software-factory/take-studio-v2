@@ -100,6 +100,21 @@ describe("deleteTake (AC-17)", () => {
     expect(queued).toHaveLength(2);
   });
 
+  it("removes the take's script with the row and never queues it as a storage key (spec 0021 AC-8)", async () => {
+    const creator = await createCreator(db);
+    const script = "Quartz synthetic script text for the delete check";
+    const t = await seedTake(db, creator.id, { script });
+    const { after } = spyAfter();
+
+    const result = await deleteTake(db, creator.id, t.id, after);
+
+    expect(result.ok).toBe(true);
+    expect(await db.select().from(take).where(eq(take.script, script))).toEqual([]);
+    const queued = await db.select().from(storageDeletion);
+    expect(queued.length).toBeGreaterThan(0);
+    expect(JSON.stringify(queued)).not.toContain(script);
+  });
+
   it("queues the derived key of a render still in progress (its file may already be uploaded)", async () => {
     const creator = await createCreator(db);
     const t = await seedTake(db, creator.id);

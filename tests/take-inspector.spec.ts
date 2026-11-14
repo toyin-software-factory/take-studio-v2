@@ -16,7 +16,7 @@ test.afterEach(async () => {
   cleanups = [];
 });
 
-async function seedReady(page: Page, baseURL: string, title: string) {
+async function seedReady(page: Page, baseURL: string, title: string, script?: string) {
   const { user, cleanup } = await signIn(page.context(), baseURL);
   cleanups.push(cleanup);
   const [id] = await seedTakes(user.id, [
@@ -29,6 +29,7 @@ async function seedReady(page: Page, baseURL: string, title: string) {
         { name: "render", status: "succeeded" },
       ],
       removedRanges: [{ startMs: 1000, endMs: 9000 }],
+      script,
     },
   ]);
   await page.route("**/api/takes/*/media?kind=play", (route) =>
@@ -91,6 +92,45 @@ test("tabs switch by click and by arrow keys, and only the chosen panel shows", 
   await expect(
     details.getByRole("switch", { name: "Email me when takes are ready" }),
   ).toBeVisible();
+});
+
+const LONG_SCRIPT = `${"Synthetic line about gardening tools. ".repeat(80)}\nSecond paragraph, kept as typed.`;
+
+test("the Details tab shows the take's script, read only, and long text stays in a scroll box (AC-8)", async ({
+  page,
+  baseURL,
+}) => {
+  const id = await seedReady(page, baseURL!, "Founder intro", LONG_SCRIPT);
+  await page.goto(`/takes/${id}`);
+  await page.getByRole("tab", { name: "Details" }).click();
+  const details = page.getByRole("tabpanel", { name: "Details" });
+  await expect(details.getByRole("heading", { name: "Script" })).toBeVisible();
+  const box = details.getByTestId("take-script");
+  await expect(box).toContainText("Synthetic line about gardening tools.");
+  await expect(box).toContainText("Second paragraph, kept as typed.");
+  await expect(details.locator("textarea, input[type=text]")).toHaveCount(0);
+  // Long text scrolls inside a fixed height box: the page does not grow or scroll sideways.
+  const fits = await box.evaluate((el) => ({
+    scrolls: el.scrollHeight > el.clientHeight,
+    height: el.clientHeight,
+    page: document.documentElement.scrollWidth <= window.innerWidth,
+  }));
+  expect(fits.scrolls).toBe(true);
+  expect(fits.height).toBeLessThanOrEqual(192);
+  expect(fits.page).toBe(true);
+  await box.focus();
+  await expect(box).toBeFocused();
+  await expectNoSeriousAxeIssues(page);
+});
+
+test("a take with no script says so on the Details tab (AC-8)", async ({ page, baseURL }) => {
+  const id = await seedReady(page, baseURL!, "Founder intro");
+  await page.goto(`/takes/${id}`);
+  await page.getByRole("tab", { name: "Details" }).click();
+  const details = page.getByRole("tabpanel", { name: "Details" });
+  await expect(details.getByText("No script for this take.")).toBeVisible();
+  await expect(details.getByTestId("take-script")).toHaveCount(0);
+  await expectNoSeriousAxeIssues(page);
 });
 
 test("the breadcrumb and chip in the top bar follow a rename", async ({ page, baseURL }) => {
