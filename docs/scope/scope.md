@@ -332,7 +332,7 @@ Record a take inside Take Studio (phone or laptop camera and mic) while a telepr
    - [ ] Record, review and upload thread, then the teleprompter controls (tasks 1 and 2)
    - [ ] Permissions, devices, phone behaviour, length and usage, accessibility pass (tasks 3 to 5)
    - [ ] Legal copy for stored scripts (task 6)
-   - [ ] Voice following with live Deepgram audio, then its legal copy (tasks 7 to 9)
+   - [ ] Voice following with live audio, then its legal copy (tasks 7 to 9)
    - [ ] Script aware cuts, cut quality cases and legal copy (tasks 10 to 12)
 - [ ] Verify it: `/check verify Record with script`
 - [ ] Test it: `/test Record with script`
