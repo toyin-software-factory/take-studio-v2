@@ -225,6 +225,7 @@ export const NON_PROCESSOR_ENV: readonly string[] = [
  * in a processor's `packages`, so an analytics or payments SDK cannot slip in unseen.
  */
 export const NON_DATA_PACKAGES: readonly string[] = [
+  "@better-auth/oauth-provider",
   "@modelcontextprotocol/sdk",
   "better-auth",
   "class-variance-authority",
@@ -274,6 +275,12 @@ export const COLLECTED: readonly Collected[] = [
     why: "To let your own tools and agents use Take Studio as you, and to slow down misuse.",
     kept: "A key is kept until you revoke it or delete the account. Request counts are kept about an hour.",
     deletedWith: "Revoking the key or deleting the account.",
+  },
+  {
+    what: "Connected apps: when you connect an app such as an AI assistant with your sign in, its name, the web addresses it returns you to, the permission you gave, one way hashes of its access and refresh tokens, and when they were made and expire. The tokens themselves are never stored",
+    why: "To let the app you chose act as you in Take Studio, and to let you disconnect it.",
+    kept: "A connection is kept until you disconnect the app or delete the account. Expired tokens are removed within a day or so.",
+    deletedWith: "Disconnecting the app or deleting the account.",
   },
   {
     what: "Email, name and picture from Google, or just your email for a sign in link",

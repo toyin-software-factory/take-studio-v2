@@ -7,6 +7,8 @@ import {
   retryAfterFromSecond,
   retryAfterSeconds,
 } from "@/lib/api-rules";
+import { authenticateOauthToken } from "@/db/data/oauth";
+import { bearerToken, hashOauthToken } from "@/lib/oauth-rules";
 import { ok } from "@/lib/result";
 
 /**
@@ -29,6 +31,11 @@ export type ApiAuthDeps = {
   /** Left out, a request with an `Authorization` header is always `invalid_api_key`. */
   readonly keyAuth?: {
     readonly getDb: () => Promise<Db>;
+    /**
+     * The resource OAuth access tokens must be issued for (`<base>/mcp`, spec 0019 AC-13). Left
+     * out, a bearer value that is not an API key is `invalid_api_key`.
+     */
+    readonly oauthResource?: string;
     /** Tests only: the clock of the rate window. Left out, the database clock decides. */
     readonly now?: () => Date;
   };
@@ -54,6 +61,23 @@ async function resolveKey(
   keyAuth: NonNullable<ApiAuthDeps["keyAuth"]>,
 ): Promise<Resolved> {
   const key = bearerKey(header);
+  const token = key === null && keyAuth.oauthResource ? bearerToken(header) : null;
+  if (token !== null && keyAuth.oauthResource) {
+    // Spec 0019 AC-14: an OAuth access token reaches the same routes as the session, found by
+    // its hash. Unknown, expired, revoked and wrong resource tokens are all one 401.
+    const db = await keyAuth.getDb();
+    const found = await authenticateOauthToken(
+      db,
+      await hashOauthToken(token),
+      keyAuth.oauthResource,
+      keyAuth.now?.(),
+    );
+    if (!found) {
+      logRejected("unknown");
+      return fail({ kind: "invalid_api_key" });
+    }
+    return ok({ db, creatorId: found.creatorId });
+  }
   if (key === null) {
     logRejected("malformed");
     return fail({ kind: "invalid_api_key" });

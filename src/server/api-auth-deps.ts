@@ -1,5 +1,5 @@
 import { parseWebEnv } from "@/lib/env";
-import { createAuth } from "./auth";
+import { createAuth, mcpResource } from "./auth";
 import type { ApiAuthDeps, Creator } from "./api-auth";
 import { getDb } from "./request";
 
@@ -17,6 +17,6 @@ export function apiAuthDeps(): Required<
   return {
     getCreator: sessionCreator,
     allowedOrigin: new URL(parseWebEnv().BETTER_AUTH_URL).origin,
-    keyAuth: { getDb },
+    keyAuth: { getDb, oauthResource: mcpResource(parseWebEnv()) },
   };
 }

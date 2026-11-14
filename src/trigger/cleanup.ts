@@ -2,6 +2,7 @@ import { logger, schedules } from "@trigger.dev/sdk";
 import { withJobDb } from "@/db/client/job";
 import { purgeOldAnalyticsEvents, repairAnalyticsEvents } from "@/db/data/analytics-repair";
 import { purgeOldRateWindows } from "@/db/data/api-keys";
+import { deleteExpiredOauthRows } from "@/db/data/oauth";
 import { purgeOldMints } from "@/db/data/realtime-mints";
 import { failStuckBackgrounds, purgeRemovedBackgrounds } from "@/db/data/backgrounds";
 import {
@@ -112,9 +113,17 @@ export const cleanupTask = schedules.task({
         });
         return null;
       });
+      // Spec 0019 AC-13: OAuth tokens a day past expiry or revocation can go.
+      const oauthPurged = await deleteExpiredOauthRows(db, now).catch((error: unknown) => {
+        logger.error("oauth token purge failed", {
+          error: error instanceof Error ? error.name : "unknown",
+        });
+        return null;
+      });
       return {
         analytics,
         rateWindowsPurged,
+        oauthPurged,
         mintsPurged,
         studiosInstalled,
         probesRedispatched: recovery.redispatched.length,

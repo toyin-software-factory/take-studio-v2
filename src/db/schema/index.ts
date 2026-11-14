@@ -16,3 +16,4 @@ export * from "./analytics";
 export * from "./api-key";
 export * from "./realtime-mint";
 export * from "./ai-eval";
+export * from "./oauth";
