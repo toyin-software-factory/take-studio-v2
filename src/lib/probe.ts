@@ -64,7 +64,10 @@ function rotationOf(stream: z.infer<typeof streamSchema>): number {
  * Facts from ffprobe's JSON output, or null when there is no usable video stream (the take
  * then fails as corrupt). Width and height are as displayed (rotation applied).
  */
-export function parseFfprobe(json: unknown): ProbeFacts | null {
+export function parseFfprobe(
+  json: unknown,
+  options: { readonly packetEndSeconds?: number | null } = {},
+): ProbeFacts | null {
   const parsed = ffprobeSchema.safeParse(json);
   if (!parsed.success) return null;
   const { streams, format } = parsed.data;
@@ -72,17 +75,22 @@ export function parseFfprobe(json: unknown): ProbeFacts | null {
   const video = streams.find((s) => s.codec_type === "video" && s.disposition?.attached_pic !== 1);
   if (!video?.width || !video.height) return null;
 
-  const seconds = Number(format.duration ?? video.duration);
+  const formatName = format.format_name ?? "";
+  const isWebm = isWebmFormat(formatName);
+  // A browser WebM often has no duration header, so its length is the last packet's end time.
+  const fromHeader = Number(format.duration ?? video.duration);
+  const seconds = isWebm ? (options.packetEndSeconds ?? fromHeader) : fromHeader;
   if (!Number.isFinite(seconds) || seconds <= 0) return null;
 
   const quarterTurn = Math.abs(rotationOf(video)) % 180 === 90;
-  const formatName = format.format_name ?? "";
   const isQuickTime = (format.tags?.major_brand ?? "").trim() === "qt";
   const container = formatName.split(",").includes("mov")
     ? isQuickTime
       ? "mov"
       : "mp4"
-    : formatName;
+    : isWebm
+      ? "webm"
+      : formatName;
 
   const transfer = video.color_transfer;
   return {
@@ -94,6 +102,39 @@ export function parseFfprobe(json: unknown): ProbeFacts | null {
     fps: parseRate(video.avg_frame_rate) ?? parseRate(video.r_frame_rate),
     hdrTransfer: transfer === "smpte2084" || transfer === "arib-std-b67" ? transfer : null,
   };
+}
+
+/** ffprobe's `format_name` for WebM and Matroska files (one demuxer, `matroska,webm`). */
+export function isWebmFormat(formatName: string): boolean {
+  return formatName.split(",").some((n) => n === "matroska" || n === "webm");
+}
+
+/** True when this ffprobe output is a WebM, whose length has to come from its packets. */
+export function needsPacketEnd(json: unknown): boolean {
+  const parsed = ffprobeSchema.safeParse(json);
+  return parsed.success && isWebmFormat(parsed.data.format.format_name ?? "");
+}
+
+/**
+ * The playable length in seconds from `ffprobe -select_streams v:0 -show_entries
+ * packet=pts_time,duration_time -of csv=p=0`: the largest `pts_time + duration_time` minus the
+ * smallest `pts_time` (the duration may be missing, then just the time), so a file whose first
+ * packet starts late is not counted as longer. Null when the span is not positive.
+ */
+export function parsePacketEnd(csv: string): number | null {
+  let end: number | null = null;
+  let start: number | null = null;
+  for (const line of csv.split("\n")) {
+    const [time, duration] = line.trim().split(",");
+    const pts = Number(time);
+    if (time === undefined || time === "" || time === "N/A" || !Number.isFinite(pts) || pts < 0)
+      continue;
+    const length = Number(duration);
+    const to = pts + (Number.isFinite(length) && length > 0 ? length : 0);
+    if (start === null || pts < start) start = pts;
+    if (end === null || to > end) end = to;
+  }
+  return end !== null && start !== null && end > start ? end - start : null;
 }
 
 /** The seek point for a thumbnail: 1 s in, or the start for clips of 2 s or less. */

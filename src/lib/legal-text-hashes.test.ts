@@ -39,8 +39,8 @@ export function historyProblems(lines: readonly RecordedHash[], today: string): 
  * fails. Raise a floor when you append (count and the digest the test prints); never lower one.
  */
 export const FLOOR: Readonly<Record<"privacy" | "terms", { count: number; digest: string }>> = {
-  privacy: { count: 3, digest: "caadbbb50fe758ca7501719c3831bba9abedb0babac3624f430b27748b122ff2" },
-  terms: { count: 4, digest: "001c92aa9b33ad2e6cbc1e9bd381472c659ce24fbb7d4675ccd6ea01c5716fea" },
+  privacy: { count: 4, digest: "13e995439469c86d17c3b9ec6db0d4d8d365b2b51eba2e958036ce240756b421" },
+  terms: { count: 5, digest: "c9ef1146874b0bfe8714e9c526566ae33fb110eeb06501896a81380080ce817c" },
 };
 
 export function floorProblems(

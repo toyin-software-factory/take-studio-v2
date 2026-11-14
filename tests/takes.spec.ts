@@ -211,7 +211,7 @@ test.describe("library", () => {
     await page.goto("/library");
     await page
       .locator("#upload-video-input")
-      .setInputFiles({ name: "take.webm", mimeType: "video/webm", buffer: Buffer.from("x") });
+      .setInputFiles({ name: "take.avi", mimeType: "video/x-msvideo", buffer: Buffer.from("x") });
     await expect(page.locator("[data-slot=alert]")).toContainText(
       "This file isn't an MP4 or MOV video. Choose an MP4 or MOV.",
     );

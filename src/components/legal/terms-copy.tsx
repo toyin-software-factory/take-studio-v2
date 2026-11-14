@@ -12,7 +12,7 @@ import { LegalList, LegalSection } from "./section";
 export const TERMS_TOC = [
   { id: "using", title: "Using Take Studio" },
   { id: "account", title: "Your account" },
-  { id: "content", title: "Your videos and transcripts" },
+  { id: "content", title: "Your videos, transcripts and scripts" },
   { id: "rules", title: "What you may not upload" },
   { id: "storage", title: "Storage and deleting" },
   { id: "usage", title: "How we count use" },
@@ -43,10 +43,10 @@ export function TermsCopy({
           so do not share it. You are responsible for what happens in your account.
         </p>
       </LegalSection>
-      <LegalSection id="content" title="Your videos and transcripts">
+      <LegalSection id="content" title="Your videos, transcripts and scripts">
         <p>
-          You keep all rights in your videos and transcripts. You give us only the right to process
-          them and show them to you, so we can make your finished video.
+          You keep all rights in your videos, transcripts and scripts. You give us only the right to
+          process them and show them to you, so we can make your finished video.
         </p>
       </LegalSection>
       <LegalSection id="rules" title="What you may not upload">

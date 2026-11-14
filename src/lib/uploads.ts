@@ -34,5 +34,6 @@ export function partCount(sizeBytes: number, partSize: number = UPLOAD.partSize)
 
 /** The Content-Type stored on an original upload. */
 export function containerContentType(container: Container): string {
+  if (container === "webm") return "video/webm";
   return container === "mov" ? "video/quicktime" : "video/mp4";
 }

@@ -17,6 +17,9 @@ export function takeView(take: Take, now: Date) {
     title: take.title,
     status: take.status,
     container: take.container,
+    // Spec 0021: where the video came from, and the creator's own script (null when none).
+    source: take.source,
+    script: take.script,
     durationMs: take.durationMs,
     videoExpiresAt: iso(take.videoExpiresAt),
     createdAt: iso(take.createdAt),

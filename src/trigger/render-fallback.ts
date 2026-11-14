@@ -1,4 +1,4 @@
-import { ORIGINAL_INPUT, STORED_IMAGE_INPUT } from "@/lib/ffmpeg-input";
+import { ORIGINAL_INPUT, originalInput, STORED_IMAGE_INPUT } from "@/lib/ffmpeg-input";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
@@ -59,7 +59,7 @@ export async function encodeRender(
   await runFfmpeg(
     [
       "-y",
-      ...ORIGINAL_INPUT,
+      ...originalInput(plan.source),
       "-i",
       plan.source,
       // The background image, looped at the output frame rate, is input 1 of the key graph.

@@ -27,9 +27,16 @@ export const ACTIVE_JOB_STATUSES = ["queued", "running"] as const satisfies read
 export const TAKE_TITLE_MIN = 1;
 export const TAKE_TITLE_MAX = 200;
 
-/** Upload containers accepted (AC-5). */
-export const CONTAINERS = ["mp4", "mov"] as const;
+/** Upload containers accepted (AC-5); `webm` is a browser recording (spec 0021). */
+export const CONTAINERS = ["mp4", "mov", "webm"] as const;
 export type Container = (typeof CONTAINERS)[number];
+
+/** Where a take's video came from (spec 0021): a file the creator chose or a recording in the app. */
+export const TAKE_SOURCES = ["file", "recording"] as const;
+export type TakeSource = (typeof TAKE_SOURCES)[number];
+
+/** Longest script stored with a take (spec 0021 AC-2, AC-8). */
+export const SCRIPT_MAX_CHARS = 20_000;
 
 /**
  * processing_job.kind, with the product slice that makes each kind live.
