@@ -1,10 +1,27 @@
-import { countEvents } from "@/db/data/analytics";
 import type { Executor } from "@/db/types";
 import type { InsightsWindow } from "@/lib/analytics-events";
+import {
+  aiEditShare,
+  creatorCount,
+  eventCount,
+  failuresByCode,
+  secondTakeCount,
+} from "./report-queries";
 
 export type Funnel = {
   readonly window: InsightsWindow;
   readonly signedUp: number;
+  readonly uploaded: number;
+  readonly ready: number;
+  readonly downloaded: number;
+  readonly secondTake: number;
+  readonly aiEditUses: number;
+  /** Ready takes in the window, and how many of them had a finished AI edit. */
+  readonly readyTakes: number;
+  readonly readyWithAiEdit: number;
+  readonly changeRequests: number;
+  readonly limitHits: number;
+  readonly failures: readonly { readonly code: string; readonly count: number }[];
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -22,5 +39,47 @@ export async function funnel(
   window: InsightsWindow,
   now: Date = new Date(),
 ): Promise<Funnel> {
-  return { window, signedUp: await countEvents(db, "signup", windowStart(window, now)) };
+  const since = windowStart(window, now);
+  const [
+    signedUp,
+    uploaded,
+    ready,
+    downloaded,
+    secondTake,
+    aiEditUses,
+    share,
+    changes,
+    limits,
+    failures,
+  ] = await Promise.all([
+    eventCount(db, "signup", since),
+    creatorCount(db, "take_uploaded", since),
+    creatorCount(db, "take_ready", since),
+    creatorCount(db, "take_downloaded", since, "video"),
+    secondTakeCount(db, since),
+    eventCount(db, "ai_edit_used", since),
+    aiEditShare(db, since),
+    eventCount(db, "change_requested", since),
+    eventCount(db, "limit_hit", since),
+    failuresByCode(db, since),
+  ]);
+  return {
+    window,
+    signedUp,
+    uploaded,
+    ready,
+    downloaded,
+    secondTake,
+    aiEditUses,
+    readyTakes: share.ready,
+    readyWithAiEdit: share.done,
+    changeRequests: changes,
+    limitHits: limits,
+    failures,
+  };
+}
+
+/** Founding members: creators with at least two uploaded takes, all time (AC-7). */
+export async function foundingMembers(db: Executor): Promise<number> {
+  return secondTakeCount(db, null);
 }

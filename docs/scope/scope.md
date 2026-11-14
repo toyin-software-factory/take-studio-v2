@@ -274,8 +274,8 @@ Three events that show whether the core loop works: signup, take uploaded, take 
 - [ ] Build it: `/develop product analytics`
    - [x] Table, record function, signup event, drift and privacy tests (AC-1, AC-2, AC-3, AC-4, AC-6)
    - [x] Insights page with the viewer gate (AC-7, AC-8)
-   - [ ] Upload and job events, second take and founding member counts (AC-4, AC-7, AC-12)
-   - [ ] Download, transcript, change and limit events (AC-4, AC-5)
+   - [x] Upload and job events, second take and founding member counts (AC-4, AC-7, AC-12)
+   - [x] Download, transcript, change and limit events (AC-4, AC-5)
    - [ ] Backfill from existing users and takes (AC-12)
    - [ ] Retention sweep and delete tests (AC-9, AC-10)
    - [x] Legal facts entry and copy bump (AC-11)

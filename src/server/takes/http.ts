@@ -6,6 +6,7 @@ import { isExpired, isRetryable, removedMs, takeNote } from "@/lib/take-media";
 import { limitExceededMessage } from "@/lib/usage-rules";
 import { type AfterDelete, deleteTake, getForCreator, listForCreator, rename } from ".";
 import { listForTake } from "../cuts";
+import { recordEvent } from "../analytics/record";
 import { hasActiveTranscribe } from "../transcripts";
 import { start } from "../jobs";
 import { PRIVATE_NO_STORE, usageForCreator, usageNumbers } from "../usage";
@@ -247,6 +248,13 @@ export async function handleRetry(
   });
   if (!started.ok) {
     if (started.error === "limit_exceeded") {
+      // Spec 0016 AC-4: the first charge did not fit, after the upload was complete.
+      await recordEvent(creator.db, {
+        name: "limit_hit",
+        creatorId: creator.creatorId,
+        takeId: take.id,
+        props: { place: "upload_complete" },
+      });
       return limitExceededResponse(creator, take.videoExpiresAt, usageSecret, at);
     }
     return errorResponse(started.error === "invalid_transition" ? "not_retryable" : started.error);

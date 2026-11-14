@@ -11,6 +11,7 @@ import { R2CompleteError, type R2 } from "@/lib/r2";
 import { type Result, err, ok } from "@/lib/result";
 import { MEDIA_LIMITS } from "@/lib/take-rules";
 import { UPLOAD, containerContentType, partCount } from "@/lib/uploads";
+import { recordEvent } from "../analytics/record";
 import { attachUpload, create } from "../takes";
 
 /**
@@ -262,6 +263,10 @@ export async function completeUpload(
     });
     return err("size_mismatch");
   }
+
+  // Spec 0016 AC-4: the upload is complete in storage. Counted before the probe, so a take the
+  // probe later rejects is still an upload; once per take, so a repeated complete is skipped.
+  await recordEvent(deps.db, { name: "take_uploaded", creatorId, takeId: t.id });
 
   try {
     await deps.dispatchProbe(t.id);

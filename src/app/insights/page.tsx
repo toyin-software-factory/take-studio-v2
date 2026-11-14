@@ -5,7 +5,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { FunnelTable, WindowLinks } from "@/components/insights/funnel-table";
 import { insightsWindowSchema } from "@/lib/analytics-events";
 import { isInsightsViewer } from "@/lib/env";
-import { funnel } from "@/server/analytics/report";
+import { foundingMembers, funnel } from "@/server/analytics/report";
 import { getDb, getSession } from "@/server/request";
 
 export const dynamic = "force-dynamic";
@@ -26,14 +26,15 @@ export default async function InsightsPage({
   const session = await getSession(await headers());
   if (!isInsightsViewer(session?.user.id)) notFound();
   const window = insightsWindowSchema.parse((await searchParams).window);
-  const counts = await funnel(await getDb(), window);
+  const db = await getDb();
+  const [counts, founding] = await Promise.all([funnel(db, window), foundingMembers(db)]);
 
   return (
     <AppShell user={{ id: session!.user.id, name: session!.user.name, email: session!.user.email }}>
       <div className="flex flex-col gap-6">
         <h1 className="text-h2">Insights</h1>
         <WindowLinks current={window} />
-        <FunnelTable funnel={counts} />
+        <FunnelTable funnel={counts} founding={founding} />
         <p className="text-sm text-muted-foreground">
           Counts come from recorded events and can miss a few.
         </p>

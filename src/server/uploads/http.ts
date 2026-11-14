@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Db } from "@/db/types";
 import { shortDate } from "@/lib/usage-rules";
+import { recordEvent } from "../analytics/record";
 import { PRIVATE_NO_STORE, usageForCreator, usageNumbers } from "../usage";
 import {
   type UploadDeps,
@@ -115,6 +116,12 @@ async function earlyRefusal(
     const tooLong =
       hintSeconds !== undefined && Math.ceil(hintSeconds / 1000) > usage.data.remainingSeconds;
     if (usage.data.remainingSeconds > 0 && !tooLong) return null;
+    // Spec 0016 AC-4: refused before any take exists, so no take ID. Best effort.
+    await recordEvent(creator.db, {
+      name: "limit_hit",
+      creatorId: creator.creatorId,
+      props: { place: "upload_start" },
+    });
     const when = shortDate(usage.data.resetsOn);
     const message =
       usage.data.remainingSeconds > 0

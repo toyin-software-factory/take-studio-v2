@@ -4,7 +4,9 @@ import {
   ANALYTICS_EVENTS,
   ANALYTICS_EVENT_NAMES,
   BLOCKED_PROP_KEYS,
+  aiEditOutcome,
   insightsWindowSchema,
+  parseEventProps,
 } from "./analytics-events";
 
 /** True when a schema field can hold free text (a string that is not an enum or literal). */
@@ -52,5 +54,25 @@ describe("analytics events (spec 0016, AC-2, AC-3)", () => {
     expect(insightsWindowSchema.parse("7d")).toBe("7d");
     expect(insightsWindowSchema.parse("bogus")).toBe("30d");
     expect(insightsWindowSchema.parse(undefined)).toBe("30d");
+  });
+});
+
+describe("parseEventProps and aiEditOutcome (spec 0016, AC-4)", () => {
+  it("returns the parsed props or null", () => {
+    expect(parseEventProps("take_ready", { aiEdit: "done", cuts: 2 })).toEqual({
+      aiEdit: "done",
+      cuts: 2,
+    });
+    expect(parseEventProps("take_ready", { aiEdit: "maybe", cuts: 2 })).toBeNull();
+    expect(parseEventProps("signup", undefined)).toEqual({});
+    expect(parseEventProps("signup", { email: "a@b.c" })).toBeNull();
+  });
+
+  it("reads the AI edit outcome the way the take page does", () => {
+    expect(aiEditOutcome({ status: "succeeded", failureCode: null })).toBe("done");
+    expect(aiEditOutcome({ status: "skipped", failureCode: "ai_unavailable" })).toBe("unavailable");
+    expect(aiEditOutcome({ status: "skipped", failureCode: "no_speech" })).toBe("none");
+    expect(aiEditOutcome({ status: "failed", failureCode: "ai_unavailable" })).toBe("none");
+    expect(aiEditOutcome(undefined)).toBe("none");
   });
 });

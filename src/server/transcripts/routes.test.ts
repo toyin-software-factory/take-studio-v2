@@ -1,6 +1,7 @@
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { upsertTranscript } from "@/db/data/transcripts";
-import { render } from "@/db/schema";
+import { analyticsEvent, render } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import type { TranscriptWord } from "@/lib/transcript-rules";
@@ -226,6 +227,26 @@ describe("GET /api/takes/{id}/transcript/{format}", () => {
     }
     // Another creator cannot tell from a bad format that the take exists.
     expect((await get(other.id, t.id, "pdf")).status).toBe(404);
+  });
+
+  it("records transcript_downloaded with the format, and nothing for a refused one (spec 0016 AC-5)", async () => {
+    const creator = await createCreator(db);
+    const t = await seed(creator.id);
+    for (const format of ["txt", "srt", "vtt", "pdf"]) await get(creator.id, t.id, format);
+    const rows = await db
+      .select()
+      .from(analyticsEvent)
+      .where(
+        and(
+          eq(analyticsEvent.creatorId, creator.id),
+          eq(analyticsEvent.name, "transcript_downloaded"),
+        ),
+      );
+    expect(rows.map((r) => r.props)).toEqual([
+      { kind: "transcript_txt" },
+      { kind: "transcript_srt" },
+      { kind: "transcript_vtt" },
+    ]);
   });
 
   it("does not need an Origin header (a read)", async () => {

@@ -1,4 +1,8 @@
-import { INSIGHTS_WINDOWS, type InsightsWindow } from "@/lib/analytics-events";
+import {
+  FOUNDING_MEMBER_TARGET,
+  INSIGHTS_WINDOWS,
+  type InsightsWindow,
+} from "@/lib/analytics-events";
 import type { Funnel } from "@/server/analytics/report";
 import { cn } from "@/lib/utils";
 
@@ -32,8 +36,29 @@ export function WindowLinks({ current }: { readonly current: InsightsWindow }) {
   );
 }
 
+function percent(part: number, whole: number): string {
+  return whole === 0 ? "none yet" : `${Math.round((part / whole) * 100)}%`;
+}
+
+function Row({ label, value }: { readonly label: string; readonly value: string | number }) {
+  return (
+    <tr className="border-b border-border">
+      <th scope="row" className="py-3 pr-4 font-normal">
+        {label}
+      </th>
+      <td className="py-3 text-right font-mono text-h3 tabular-nums">{value}</td>
+    </tr>
+  );
+}
+
 /** Counts only: no creator rows, emails or names (spec 0016, AC-7). */
-export function FunnelTable({ funnel }: { readonly funnel: Funnel }) {
+export function FunnelTable({
+  funnel,
+  founding,
+}: {
+  readonly funnel: Funnel;
+  readonly founding: number;
+}) {
   return (
     <table className="w-full max-w-md text-left">
       <caption className="sr-only">
@@ -47,13 +72,30 @@ export function FunnelTable({ funnel }: { readonly funnel: Funnel }) {
         </tr>
       </thead>
       <tbody>
-        <tr className="border-b border-border">
-          <th scope="row" className="py-3 pr-4 font-normal">
-            Signed up
-          </th>
-          <td className="py-3 text-right font-mono text-h3 tabular-nums">{funnel.signedUp}</td>
-        </tr>
+        <Row label="Signed up" value={funnel.signedUp} />
+        <Row label="Uploaded a take" value={funnel.uploaded} />
+        <Row label="Had a ready take" value={funnel.ready} />
+        <Row label="Downloaded a video" value={funnel.downloaded} />
+        <Row label="Uploaded a second take" value={funnel.secondTake} />
+        <Row label="AI edits used" value={funnel.aiEditUses} />
+        <Row
+          label="Ready takes with an AI edit"
+          value={percent(funnel.readyWithAiEdit, funnel.readyTakes)}
+        />
+        <Row label="Change requests" value={funnel.changeRequests} />
+        <Row label="Limit hits" value={funnel.limitHits} />
+        <Row
+          label="Founding members (all time)"
+          value={`${founding} of ${FOUNDING_MEMBER_TARGET}`}
+        />
       </tbody>
+      {funnel.failures.length > 0 && (
+        <tbody>
+          {funnel.failures.map((f) => (
+            <Row key={f.code} label={`Failed: ${f.code}`} value={f.count} />
+          ))}
+        </tbody>
+      )}
     </table>
   );
 }

@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { reanalyse } from "@/db/data/cuts";
-import { cut, processingJob, render, take } from "@/db/schema";
+import { analyticsEvent, cut, processingJob, render, take } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { type TakeHttpDeps, handleGet } from "../takes/http";
@@ -79,6 +79,13 @@ async function post(
   return { status: res.status, json: (await res.json()) as Record<string, unknown> };
 }
 
+/** The recorded events of one name for a creator (spec 0016). */
+const eventsOf = (db: Db, creatorId: string, name: string) =>
+  db
+    .select()
+    .from(analyticsEvent)
+    .where(and(eq(analyticsEvent.creatorId, creatorId), eq(analyticsEvent.name, name)));
+
 describe("POST /api/takes/[id]/changes (spec 0011)", () => {
   it("starts one free job with the cut plan and triggers it (202)", async () => {
     const ctx = await readyTake();
@@ -101,6 +108,10 @@ describe("POST /api/takes/[id]/changes (spec 0011)", () => {
     expect(triggered).toEqual([job!.id]);
     const [row] = await db.select().from(take).where(eq(take.id, ctx.take.id));
     expect(row?.status).toBe("ready");
+    // Spec 0016 AC-4: one change request event, with the take ID and nothing else.
+    const events = await eventsOf(db, ctx.creator.id, "change_requested");
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({ takeId: ctx.take.id, props: {} });
   });
 
   it("checks Origin (403), session (401), then the body (422)", async () => {
