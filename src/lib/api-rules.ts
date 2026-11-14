@@ -84,7 +84,12 @@ export function rateWindowStart(at: Date): Date {
 
 /** Seconds until the next UTC minute: `60 - secondsIntoMinute`, at least 1 (AC-9). */
 export function retryAfterSeconds(at: Date): number {
-  return Math.max(1, 60 - at.getUTCSeconds());
+  return retryAfterFromSecond(at.getUTCSeconds());
+}
+
+/** The same from a whole second into the minute (the database's clock). */
+export function retryAfterFromSecond(secondsIntoMinute: number): number {
+  return Math.max(1, 60 - secondsIntoMinute);
 }
 
 /** True when `count` (after counting this request) is over the per minute limit. */
