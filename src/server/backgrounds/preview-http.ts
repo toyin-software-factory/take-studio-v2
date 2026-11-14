@@ -5,7 +5,10 @@ import { type TakeHttpDeps, errorResponse, guard, json } from "../takes/http";
 import { type PreviewError, previewView, startPreview } from "./preview";
 
 /** What the preview routes need: the session, the app origin, the job trigger and R2 links. */
-export type PreviewHttpDeps = Pick<TakeHttpDeps, "getCreator" | "allowedOrigin" | "now"> & {
+export type PreviewHttpDeps = Pick<
+  TakeHttpDeps,
+  "getCreator" | "allowedOrigin" | "keyAuth" | "now"
+> & {
   /** Triggers `preview-background` for a preview (concurrency key per take). */
   readonly triggerPreview: (preview: BackgroundPreview) => Promise<unknown>;
   readonly presignGet: (

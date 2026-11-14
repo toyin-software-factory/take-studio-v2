@@ -3,7 +3,7 @@ import { type TakeHttpDeps, guard, json } from "../takes/http";
 import { listBackgrounds } from "./library";
 
 /** What the backgrounds routes need: the session, the app origin and R2 links for thumbnails. */
-export type LibraryHttpDeps = Pick<TakeHttpDeps, "getCreator" | "allowedOrigin"> & {
+export type LibraryHttpDeps = Pick<TakeHttpDeps, "getCreator" | "allowedOrigin" | "keyAuth"> & {
   readonly presignGet: (
     key: string,
     options: { readonly expiresSeconds: number },
