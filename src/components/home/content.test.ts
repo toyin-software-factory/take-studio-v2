@@ -53,9 +53,13 @@ describe("homepage copy is true today (spec 0010, AC-2)", () => {
     expect(content.CLOSING.sent("a@b.co")).toContain("a@b.co");
   });
 
-  it("leaves the Legal column at the email until Privacy and Terms ship (feature 16)", () => {
+  it("links Privacy and Terms beside the contact email in the Legal column (spec 0015 AC-2)", () => {
     const legal = content.FOOTER.columns.find((c) => c.label === "Legal");
-    expect(legal?.links.map((l) => l.label)).toEqual(["hello@takestudio.app"]);
+    expect(legal?.links.map((l) => [l.label, l.href])).toEqual([
+      ["Privacy", "/privacy"],
+      ["Terms", "/terms"],
+      ["hello@takestudio.app", "mailto:hello@takestudio.app"],
+    ]);
   });
 });
 

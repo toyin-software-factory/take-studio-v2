@@ -45,19 +45,19 @@ export function privacyContactEmail(entity: LegalEntity = LEGAL_ENTITY): string 
 }
 
 /* ------------------------------------------------------------------ */
-/* Decisions taken as the recommended default (spec 0015 Decision).    */
+/* Toyin's answers to spec 0015 questions 3 to 7 (C-30, recommended).  */
 /* Each answer from Toyin is a one line change here.                    */
 /* ------------------------------------------------------------------ */
 
-/** PLACEHOLDER (question 5): the minimum age to use the service. */
+/** Toyin's answer to question 5 (C-30): 16. */
 export const MINIMUM_AGE = 16;
-/** PLACEHOLDER (question 6): where the service is offered. */
+/** Toyin's answer to question 6 (C-30): worldwide. */
 export const SERVICE_REGION: "worldwide" | "limited" = "worldwide";
-/** PLACEHOLDER (question 3): `notice` is a line under the sign in form, no checkbox, nothing stored. */
+/** Toyin's answer to question 3 (C-30): `notice` is a line under the sign in form, no checkbox, nothing stored. */
 export const AGREEMENT: "notice" | "checkbox" | "notice_and_stored" = "notice";
-/** PLACEHOLDER (question 7): `date_and_email` is the date plus an email for material changes. */
+/** Toyin's answer to question 7 (C-30): `date_and_email` is the date plus an email for material changes. */
 export const CHANGE_NOTICE: "date_and_email" | "date_only" = "date_and_email";
-/** PLACEHOLDER (question 4): false says "email us, done within 30 days"; true names the control. */
+/** Toyin's answer to question 4 (C-30): "email us" until the button ships. False says "email us, done within 30 days"; true names the control. */
 export const ACCOUNT_DELETE_SELF_SERVE = false;
 /** Days we take to delete an account asked for by email. */
 export const ACCOUNT_DELETE_EMAIL_DAYS = 30;

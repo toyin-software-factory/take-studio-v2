@@ -260,8 +260,14 @@ export const FOOTER = {
         { href: "#studio", label: "MCP server (soon)" },
       ],
     },
-    // Privacy and Terms join this column when scope feature 16 ships.
-    { label: "Legal", links: [{ href: `mailto:${CONTACT_EMAIL}`, label: CONTACT_EMAIL }] },
+    {
+      label: "Legal",
+      links: [
+        { href: "/privacy", label: "Privacy" },
+        { href: "/terms", label: "Terms" },
+        { href: `mailto:${CONTACT_EMAIL}`, label: CONTACT_EMAIL },
+      ],
+    },
   ],
   note: `Videos are deleted after ${VIDEO_RETENTION_DAYS} days. Transcripts stay until you delete the take.`,
   year: 2026,

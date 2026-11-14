@@ -21,7 +21,11 @@ describe("robots and sitemap (spec 0010, AC-3)", () => {
       robots: robots(),
       sitemap: sitemap(),
     }));
-    expect(out.sitemap).toEqual([expect.objectContaining({ url: "https://take.example.com/" })]);
+    expect(out.sitemap.map((entry) => entry.url)).toEqual([
+      "https://take.example.com/",
+      "https://take.example.com/privacy",
+      "https://take.example.com/terms",
+    ]);
     expect(out.robots.sitemap).toBe("https://take.example.com/sitemap.xml");
     const rules = out.robots.rules as { allow: string; disallow: string[] };
     expect(rules.allow).toBe("/");
