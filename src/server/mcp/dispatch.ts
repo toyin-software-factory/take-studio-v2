@@ -1,4 +1,5 @@
 import { routeKey } from "@/lib/api-registry";
+import { composeStartUpload, firstBatch, parseCreated, parseLinks } from "./start-upload";
 import { type ToolDef, pathInputKeys, placeholders } from "./tools";
 
 /**
@@ -104,10 +105,53 @@ export async function callTool(
   }
   const response = await handler(buildRouteRequest(tool, input, context), pathParams(tool, input));
   const text = response.status === 204 ? "{}" : await response.text();
+  const ok = response.status >= 200 && response.status <= 299;
+  if (ok && tool.name === "start_upload") {
+    return startUploadOutcome(response.status, text, handlers, context);
+  }
+  return { status: response.status, isError: !ok, text, takeId };
+}
+
+const PARTS_ROUTE = "POST /api/uploads/{takeId}/parts";
+
+/**
+ * `start_upload` answers with the first batch of part links too (AC-5): one more call of the
+ * parts route, as the caller. When that fails the answer still has the take and the steps, which
+ * name get_upload_part_links. The links stay in the answer only; the log line never sees them.
+ */
+async function startUploadOutcome(
+  status: number,
+  text: string,
+  handlers: McpHandlers,
+  context: ToolContext,
+): Promise<ToolOutcome> {
+  const created = parseCreated(text);
+  if (created === null) return { status, isError: false, text, takeId: null };
+  const libraryUrl = `${context.origin}/library`;
+  const handler = handlers[PARTS_ROUTE];
+  let links = null;
+  if (handler !== undefined) {
+    const headers = new Headers({
+      authorization: context.authorization,
+      "content-type": "application/json",
+    });
+    const request = new Request(`${context.origin}/api/uploads/${created.takeId}/parts`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ partNumbers: firstBatch(created.partCount) }),
+    });
+    try {
+      const answer = await handler(request, { takeId: created.takeId });
+      if (answer.status >= 200 && answer.status <= 299) links = parseLinks(await answer.text());
+    } catch {
+      // The links are optional: keep the take ID and the steps, which name get_upload_part_links.
+      links = null;
+    }
+  }
   return {
-    status: response.status,
-    isError: response.status < 200 || response.status > 299,
-    text,
-    takeId,
+    status,
+    isError: false,
+    text: composeStartUpload(created, links, libraryUrl),
+    takeId: created.takeId,
   };
 }

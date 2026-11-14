@@ -24,6 +24,7 @@ describe("robots and sitemap (spec 0010, AC-3)", () => {
     expect(out.sitemap.map((entry) => entry.url)).toEqual([
       "https://take.example.com/",
       "https://take.example.com/docs/api",
+      "https://take.example.com/docs/mcp",
       "https://take.example.com/privacy",
       "https://take.example.com/terms",
     ]);
