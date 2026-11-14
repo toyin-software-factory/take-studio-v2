@@ -673,6 +673,48 @@ describe("tokens as identity (AC-14)", () => {
     expect(late.body.access_token).toBeUndefined();
   });
 
+  it("a token pair that appears after a disconnect does not work, and its refresh is refused", async () => {
+    const who = await signIn("race@example.test");
+    const grant = await connect(who);
+    const [old] = await db
+      .select()
+      .from(oauthAccessToken)
+      .where(eq(oauthAccessToken.token, await hashOauthToken(grant.access)));
+    expect(await disconnectApp(db, who.id, grant.clientId)).toBe(true);
+    // What a refresh that read the old row before the disconnect would insert afterwards.
+    const lateAccess = "late-access-token-for-race-test";
+    const lateRefresh = "late-refresh-token-for-race-test";
+    await db.insert(oauthAccessToken).values({
+      ...old!,
+      id: "late-access-row",
+      token: await hashOauthToken(lateAccess),
+      refreshId: null,
+    });
+    const res = await guard(
+      bearer(lateAccess),
+      { getCreator: async () => null, keyAuth: identity() },
+      { checkOrigin: false },
+    );
+    expect(res instanceof Response ? res.status : 200).toBe(401);
+    // The old refresh token cannot mint a new pair either (its row may survive a race).
+    await db.insert(oauthRefreshToken).values({
+      id: "late-refresh-row",
+      token: await hashOauthToken(lateRefresh),
+      clientId: grant.clientId,
+      userId: who.id,
+      expiresAt: new Date(Date.now() + 3_600_000),
+      createdAt: new Date(),
+      scopes: ["openid"],
+    });
+    const refreshed = await tokenRequest({
+      grant_type: "refresh_token",
+      refresh_token: lateRefresh,
+      client_id: grant.clientId,
+    });
+    expect(refreshed.status).toBeGreaterThanOrEqual(400);
+    expect(refreshed.body.access_token).toBeUndefined();
+  });
+
   it("lists connected apps and disconnect ends the token on the next request", async () => {
     const who = await signIn("disconnect@example.test");
     const other = await signIn("bystander@example.test");

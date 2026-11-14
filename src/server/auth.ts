@@ -11,7 +11,7 @@ import { ACCOUNT_DELETE_FRESH_SECONDS } from "./account/policy";
 import type { EmailSender } from "@/lib/email/send";
 import { signInEmail } from "@/lib/email/templates";
 import { takeSignInEmailSlot } from "./email/sign-in-limits";
-import { revokeGrantOnRefreshReuse } from "@/db/data/oauth";
+import { refreshGrantDisconnected, revokeGrantOnRefreshReuse } from "@/db/data/oauth";
 import { basicClientId, hashOauthToken, redirectUriAllowed } from "@/lib/oauth-rules";
 import { recordEvent } from "./analytics/record";
 
@@ -96,7 +96,15 @@ export function createAuth(
             typeof body.refresh_token === "string" &&
             clientId !== null
           ) {
-            await revokeGrantOnRefreshReuse(db, await hashOauthToken(body.refresh_token), clientId);
+            const hash = await hashOauthToken(body.refresh_token);
+            await revokeGrantOnRefreshReuse(db, hash, clientId);
+            // A disconnect ended this grant: a refresh must not mint a new pair for it.
+            if (await refreshGrantDisconnected(db, hash, clientId)) {
+              throw new APIError("BAD_REQUEST", {
+                error: "invalid_grant",
+                error_description: "This connection was removed. Connect again.",
+              });
+            }
           }
           return;
         }

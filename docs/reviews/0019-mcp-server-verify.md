@@ -1,6 +1,6 @@
 # Verify: MCP server for AI agents, spec 0019
 
-**Verdict: NOT ready to close. Scope row 14 and spec 0019 stay open.** Every acceptance criterion that code and tests can prove is met on main, and the two small test gaps found are closed in this PR. Two things are still owed: AC-15 (the consent page and connected apps screens, which live in PR #281 and have not merged) and AC-17 (the live check with the MCP Inspector, Claude Code and Claude.ai, which only Toyin can run).
+**Verdict: NOT ready to close. Scope row 14 and spec 0019 stay open.** Every acceptance criterion that code and tests can prove is met on main, and the two small test gaps found are closed in this PR. One thing is still owed: AC-17 (the live check with the MCP Inspector, Claude Code and Claude.ai, which only Toyin can run). AC-15 was rechecked after #281 merged and is met.
 
 Run on 2026-11-14 on branch `b2-t89-verify-mcp`, main at `47ff009`. Only code and tests were read and run, with synthetic accounts (`*.example.test`) and synthetic keys. No production sign in (C-31), no real take. Playwright and `agent-browser` cannot run in this sandbox, so the browser specs were read, not run. CI runs them on every PR.
 
@@ -24,7 +24,7 @@ Run here: the 12 unit files for this spec (`src/server/mcp`, `src/server/oauth`,
 | AC-12 connect with a key | Met in code; CI browser spec | `/docs/mcp` is generated from the registry (`mcp-docs.ts`, `mcp-docs.test.ts`, `docs.test.ts`); `tests/mcp-docs.spec.ts` covers the three setups, the tool list, indexing, skip link and phone width. Not run here. |
 | AC-13 connect with sign in | Met (two tests added) | `oauth-flow.test.ts`: both metadata documents (S256 only, code and refresh grants); registration linked to `/mcp`; a bad redirect, `*`, custom scheme and plain http refused; a minimal registration is a public client; one time code with a wrong verifier refused; only SHA-256 hashes stored; access token 1 hour and refresh 30 days; `plain`, a missing challenge, an inexact redirect and a replayed code refused; a code is refused after 60 seconds; refresh rotation with reuse revoking the whole grant, consent included; Basic client reuse. **Added:** "Deny sends the client back with `access_denied`, the state and no code" (no consent row is kept), and "registration rate limit": 20 registrations an hour from one address are accepted and the 21st is 429, while another address is not held back (wired as in the Worker, with `cf-connecting-ip`). |
 | AC-14 connected apps | Met | `oauth-flow.test.ts`: a token on a session only route is 401 `session_required`; the list and disconnect routes are session only, own rows only; disconnect ends the token on the next request and also kills an unexchanged code; deleting the account deletes its grants and tokens, and only its own (real delete path); cleanup keeps rotated refresh rows until expiry. The UI part is AC-15. |
-| AC-15 accessible consent and screens | **Needs #281 to merge** | The consent page, connected apps list, disconnect dialog and their specs (`tests/oauth-consent.spec.ts`, `tests/connected-apps.spec.ts`, axe, keyboard, phone width) are in PR #281 (B2-T82), which is open and waiting for CI. `src/lib/oauth-screen.test.ts` is on main. Re run this row once #281 is on main. |
+| AC-15 accessible consent and screens | Met (CI browser specs) | PR #281 (B2-T82) is merged (a859059) with its checks green. `tests/oauth-consent.spec.ts` covers the consent page: app name and where it sends you back, Allow and Deny, a failed answer keeps both buttons and moves focus to one alert (AC-15), axe, keyboard and phone width. `tests/connected-apps.spec.ts` covers the list, the disconnect dialog (focus trap, Escape, a failed disconnect keeps it open with an alert in the dialog), a failed load with Try again, axe and phone width. `src/lib/oauth-screen.test.ts` covers the copy. These browser specs run in CI only; they cannot run in the agent sandbox, so the proof is the green CI run on the merged head. |
 | AC-16 legal facts | Met | B2-T81 (#280) finished build step 9: `COLLECTED` has the connected apps line, `NON_DATA_PACKAGES` has `@modelcontextprotocol/sdk` and `@better-auth/oauth-provider`, the Privacy and Terms copy has the assistant lines, `LEGAL_VERSION` is 2026-11-14 and a hash line is appended. `legal-facts.test.ts` and `legal-text-hashes.test.ts` pass and `pnpm legal:drift` is clean. Nothing was left for this task. |
 | AC-17 compatibility for real | **Owed: live check** | Needs the MCP Inspector, Claude Code by key and Claude.ai as a custom connector, each running a full upload, run, review, transcript, video link and delete on a real take. Agents cannot reach Claude.ai and must not sign in to production (C-31). Step 10 for Toyin through Michael. |
 
@@ -36,7 +36,7 @@ Run here: the 12 unit files for this spec (`src/server/mcp`, `src/server/oauth`,
 ## Not done and why
 
 - The browser specs were not run (no Playwright here). CI runs them.
-- AC-15 and AC-17 as above.
+- AC-17 as above (AC-15 is met since #281 merged).
 
 ## Bigger gaps for Michael
 
@@ -44,4 +44,4 @@ None found in code. Two notes, not gaps: a tool call spends two of a key's 120 a
 
 ## Scope and spec
 
-Not changed. Row 14 and spec 0019 stay open until #281 merges (AC-15 re run) and Toyin's live check (AC-17) is recorded here.
+Not changed. Row 14 and spec 0019 stay open until Toyin's live check (AC-17) is recorded here. AC-15 was rechecked in B2-T92 after #281 merged.
