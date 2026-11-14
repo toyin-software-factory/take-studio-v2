@@ -210,35 +210,67 @@ describe("validateAiEdit", () => {
     expect(d.dropped).toBe(4);
   });
 
-  it("drops a filler cut over a word that is not a filler, accepts isFillerWord matches", () => {
+  it("keeps a filler cut over plain words, still drops a fix on a filler word", () => {
     const words = [w("Um,", 0, 100, false), w("so", 200, 300), w("fine", 400, 500)];
     const ok = validateAiEdit(
       {
         ...empty,
-        wordCuts: [{ fromWord: 0, toWord: 0, kind: "filler", reason: "um" }],
+        wordCuts: [
+          { fromWord: 0, toWord: 0, kind: "filler", reason: "um" },
+          { fromWord: 1, toWord: 1, kind: "filler", reason: "Says nothing" },
+        ],
         fixes: [{ index: 2, old: "fine", new: "Fine.", reason: "caps" }],
       },
       words,
       [],
       1000,
     );
-    expect(ok.ok && ok.data.cuts).toHaveLength(1);
+    expect(ok.ok && ok.data.cuts).toHaveLength(2);
+    expect(ok.ok && ok.data.dropped).toBe(0);
     const bad = validateAiEdit(
       {
         ...empty,
         keepPauses: [],
-        wordCuts: [
-          { fromWord: 1, toWord: 1, kind: "filler", reason: "no" },
-          { fromWord: 2, toWord: 2, kind: "false_start", reason: "ok" },
-        ],
+        wordCuts: [{ fromWord: 1, toWord: 1, kind: "false_start", reason: "ok" }],
         fixes: [{ index: 0, old: "Um,", new: "Um.", reason: "ok" }],
       },
       words,
       [],
-      1000,
+      10_000,
     );
-    // 1 of 2 cuts + 1 fix on a filler = 2 of 3 dropped: whole answer refused
-    expect(bad).toEqual({ ok: false, error: "invalid" });
+    // the fix on a filler is dropped; 1 of 2 items dropped is not over half: answer kept
+    expect(bad.ok && bad.data.dropped).toBe(1);
+  });
+
+  it("Meaning cuts: nonsense speech and an earlier attempt are cut with their reasons", () => {
+    const words = [
+      w("blah", 0, 200),
+      w("blah", 250, 450),
+      w("blah", 500, 700),
+      w("Welcome", 1000, 1300),
+      w("to", 1350, 1450),
+      w("Welcome", 2000, 2300),
+      w("to", 2350, 2450),
+      w("my", 2500, 2600),
+      w("channel", 2650, 3000),
+    ];
+    const r = validateAiEdit(
+      {
+        ...empty,
+        wordCuts: [
+          { fromWord: 0, toWord: 2, kind: "filler", reason: "Placeholder speech" },
+          { fromWord: 3, toWord: 4, kind: "false_start", reason: "Said again below" },
+        ],
+      },
+      words,
+      [],
+      10_000,
+    );
+    expect(r.ok && r.data.dropped).toBe(0);
+    expect(r.ok && r.data.cuts.map((c) => [c.kind, c.reason])).toEqual([
+      ["filler", "Placeholder speech"],
+      ["false_start", "Said again below"],
+    ]);
   });
 
   it("applies the 20 s limit again after merging: the pause stays alone", () => {
@@ -344,21 +376,21 @@ describe("validateAiEdit", () => {
     expect(d.dropped).toBe(1);
   });
 
-  it("refuses the whole answer when word cuts take over 25% of the take", () => {
+  it("refuses the whole answer when word cuts take over 40% of the take", () => {
     const words = [w("a", 0, 100), w("b", 100, 200), w("c", 3000, 3100)];
     const r = validateAiEdit(
       { ...empty, wordCuts: [{ fromWord: 1, toWord: 1, kind: "false_start", reason: "x" }] },
       words,
       [],
-      10_000,
-    ); // 100..3000 = 2900 ms of 10 000 = 29 %
+      7000,
+    ); // 100..3000 = 2900 ms of 7000 = 41.4 %
     expect(r).toEqual({ ok: false, error: "invalid" });
     const fine = validateAiEdit(
       { ...empty, wordCuts: [{ fromWord: 1, toWord: 1, kind: "false_start", reason: "x" }] },
       words,
       [],
-      12_000,
-    ); // 24.2 %
+      7500,
+    ); // 38.7 %
     expect(fine.ok).toBe(true);
   });
 

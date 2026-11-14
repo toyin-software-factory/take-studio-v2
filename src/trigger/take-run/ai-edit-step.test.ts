@@ -234,17 +234,17 @@ describe("aiEditStep", () => {
     expect(report).toHaveBeenCalledWith({ takeId: take.id, jobId: job.id, cause });
   });
 
-  it("falls back when word cuts take over 25 % of the take", async () => {
+  it("falls back when word cuts take over 40 % of the take", async () => {
     const { ctx, take, job } = await seedRun();
     const words = [
       { ...WORDS[0]!, endMs: 400 },
       { ...WORDS[1]!, startMs: 500 },
-      { ...WORDS[2]!, startMs: 7000, endMs: 7200 },
+      { ...WORDS[2]!, startMs: 9000, endMs: 9200 },
     ];
     await testDb.db.update(transcript).set({ words }).where(eq(transcript.takeId, take.id));
     const answer = {
       keepPauses: [],
-      wordCuts: [{ fromWord: 1, toWord: 1, kind: "false_start", reason: "x" }], // 500..7000
+      wordCuts: [{ fromWord: 1, toWord: 1, kind: "false_start", reason: "x" }], // 500..9000, 42.5 % of 20 000
       fixes: [],
       background: null,
     };
