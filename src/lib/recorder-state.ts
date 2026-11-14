@@ -12,6 +12,8 @@ export type RecordedTake = {
   readonly blob: Blob;
   readonly durationMs: number;
   readonly fileName: string;
+  /** Set when the recording ended on its own (page went to the background, camera lost). */
+  readonly note?: string;
 };
 
 export type RecorderState =

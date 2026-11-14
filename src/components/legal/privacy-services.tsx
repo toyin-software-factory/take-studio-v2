@@ -12,7 +12,10 @@ export function ServicesSection() {
           ? " We tell Deepgram not to use your audio to train its models."
           : ""}{" "}
         The AI step sees transcript words, which words the transcriber was unsure of, and where the
-        pauses are, and your script when the take has one, never your video or your audio.
+        pauses are, and your script when the take has one, never your video or your audio. If you
+        connect an AI assistant to your account with your own API key, that assistant can read your
+        takes, their transcripts, cut reasons and video links, under its own terms and privacy
+        policy. We send it only what it asks for through your key.
       </p>
       <dl className="flex flex-col gap-4">
         {PROCESSORS.map((p) => (

@@ -2,6 +2,14 @@
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import {
+  interruptionNote,
+  interruptionReason,
+  nextCameraId,
+  setupProblem,
+  shouldRelockOnVisible,
+  stillAvailable,
+} from "@/lib/recorder-devices";
+import {
   RECORDER,
   baseType,
   classifyMediaError,
@@ -11,8 +19,10 @@ import {
   recordingLimitMs,
   shouldAutoStop,
   type PickedType,
+  type SetupFailure,
 } from "@/lib/recorder-rules";
 import { INITIAL_RECORDER, recorderReducer, wouldLoseWork } from "@/lib/recorder-state";
+import { useDevices } from "./use-devices";
 
 /** Wake lock where the browser has it, so the screen stays on while recording; best effort. */
 async function keepAwake(): Promise<WakeLockSentinel | null> {
@@ -23,10 +33,30 @@ async function keepAwake(): Promise<WakeLockSentinel | null> {
   }
 }
 
-function canRecord(): PickedType | null {
-  if (typeof window === "undefined" || !window.isSecureContext) return null;
-  if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") return null;
-  return pickMimeType((type) => MediaRecorder.isTypeSupported(type));
+/** Ask the browser for the camera and microphone, the chosen ones or its defaults (AC-1). */
+function openMedia(camera: string | null, mic: string | null): Promise<MediaStream> {
+  return navigator.mediaDevices.getUserMedia({
+    video: {
+      ...(camera ? { deviceId: { exact: camera } } : { facingMode: "user" }),
+      width: { ideal: 1920 },
+      height: { ideal: 1080 },
+      frameRate: { ideal: 30 },
+    },
+    audio: mic ? { deviceId: { exact: mic } } : true,
+  });
+}
+
+/** The type to record in, or why this browser cannot record at all (AC-5). */
+function checkBrowser(): { picked: PickedType | null; problem: SetupFailure | null } {
+  const hasRecorder = typeof MediaRecorder !== "undefined";
+  const picked = hasRecorder ? pickMimeType((type) => MediaRecorder.isTypeSupported(type)) : null;
+  const problem = setupProblem({
+    secure: typeof window !== "undefined" && window.isSecureContext,
+    hasGetUserMedia: Boolean(navigator.mediaDevices?.getUserMedia),
+    hasMediaRecorder: hasRecorder,
+    hasRecordableType: picked !== null,
+  });
+  return { picked, problem };
 }
 
 /**
@@ -45,6 +75,14 @@ export function useRecorder(limitSeconds: number | null = null) {
   const chunks = useRef<Blob[]>([]);
   const startedAt = useRef(0);
   const mounted = useRef(true);
+  const [cameraId, setCameraId] = useState<string | null>(null);
+  const [micId, setMicId] = useState<string | null>(null);
+  /** Why the recorder stopped without Stop being pressed (AC-7); read in `onstop`. */
+  const stoppedByPerson = useRef(false);
+  const hiddenDuring = useRef(false);
+  const trackEnded = useRef(false);
+  const live = useRef<MediaStream | null>(null);
+  const devices = useDevices(stream);
   const limitMs = recordingLimitMs(limitSeconds);
 
   const release = useCallback(() => {
@@ -54,53 +92,153 @@ export function useRecorder(limitSeconds: number | null = null) {
     });
   }, []);
 
-  const acquire = useCallback(async () => {
-    picked.current = canRecord();
-    if (!picked.current) {
-      dispatch({ type: "failed", failure: "unsupported" });
-      return;
-    }
-    try {
-      const media = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user",
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-          frameRate: { ideal: 30 },
-        },
-        audio: true,
-      });
-      if (!mounted.current) {
-        // The page was left while the browser was asking: nothing may keep the camera on.
-        media.getTracks().forEach((track) => track.stop());
+  /** The ids of the devices a stream actually uses (the browser may have chosen them). */
+  const idsOf = (media: MediaStream) => ({
+    camera: media.getVideoTracks()[0]?.getSettings().deviceId ?? null,
+    mic: media.getAudioTracks()[0]?.getSettings().deviceId ?? null,
+  });
+
+  const commit = useCallback((media: MediaStream) => {
+    const ids = idsOf(media);
+    setCameraId(ids.camera);
+    setMicId(ids.mic);
+    setStream((now) => {
+      now?.getTracks().forEach((track) => track.stop());
+      return media;
+    });
+  }, []);
+
+  const acquire = useCallback(
+    async (camera: string | null = null, mic: string | null = null) => {
+      const { picked: type, problem } = checkBrowser();
+      picked.current = type;
+      if (problem) {
+        dispatch({ type: "failed", failure: problem });
         return;
       }
-      setStream(media);
-      dispatch({ type: "granted" });
-    } catch (error) {
-      if (!mounted.current) return;
-      const name = error instanceof Error ? error.name : "";
-      dispatch({ type: "failed", failure: classifyMediaError(name) });
-    }
-  }, []);
+      try {
+        let media: MediaStream;
+        try {
+          media = await openMedia(camera, mic);
+        } catch (error) {
+          // A remembered device that is gone (an unplugged microphone) must not block the
+          // camera for good: ask again with the browser's defaults.
+          const name = error instanceof Error ? error.name : "";
+          const gone = name === "OverconstrainedError" || name === "NotFoundError";
+          if (!gone || (!camera && !mic)) throw error;
+          media = await openMedia(null, null);
+        }
+        if (!mounted.current) {
+          // The page was left while the browser was asking: nothing may keep the camera on.
+          media.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        commit(media);
+        dispatch({ type: "granted" });
+      } catch (error) {
+        if (!mounted.current) return;
+        const name = error instanceof Error ? error.name : "";
+        dispatch({ type: "failed", failure: classifyMediaError(name) });
+      }
+    },
+    [commit],
+  );
+
+  const kindNow = useRef(state.kind);
+  useEffect(() => {
+    kindNow.current = state.kind;
+  }, [state.kind]);
+  /** Counts device changes, so only the newest answer is used. */
+  const selection = useRef(0);
+  const [deviceNote, setDeviceNote] = useState<string | null>(null);
+  /** True while a device change is in flight: the old stream may already be let go. */
+  const [switching, setSwitching] = useState(false);
+
+  /**
+   * Switch camera or microphone while the preview is on. A device that has gone away falls
+   * back to the browser's default. Some phones open one camera at a time: if the new one is
+   * refused, the current one is let go and the request is tried again, and if that also
+   * fails the old devices come back with a message (never a silent nothing).
+   */
+  const choose = useCallback(
+    async (camera: string | null, mic: string | null) => {
+      const mine = ++selection.current;
+      const next = {
+        camera: stillAvailable(devices.cameras, camera),
+        mic: stillAvailable(devices.microphones, mic),
+      };
+      const previous = { camera: cameraId, mic: micId };
+      // A result that arrives after Record was pressed (or after a newer change) is dropped.
+      const current = () =>
+        mounted.current && selection.current === mine && kindNow.current === "ready";
+      const settle = (media: MediaStream): boolean => {
+        if (!current()) {
+          media.getTracks().forEach((track) => track.stop());
+          return false;
+        }
+        commit(media);
+        return true;
+      };
+      setDeviceNote(null);
+      setSwitching(true);
+      try {
+        try {
+          settle(await openMedia(next.camera, next.mic));
+          return;
+        } catch {
+          if (!current()) return;
+        }
+        try {
+          live.current?.getTracks().forEach((track) => track.stop());
+          settle(await openMedia(next.camera, next.mic));
+          return;
+        } catch {
+          if (!current()) return;
+        }
+        try {
+          settle(await openMedia(previous.camera, previous.mic));
+          if (current()) setDeviceNote("That camera or microphone could not be turned on.");
+        } catch {
+          if (!current()) return;
+          setDeviceNote(
+            "Neither the new nor the previous camera or microphone could be turned on. Choose again.",
+          );
+        }
+      } finally {
+        // Only the newest change decides when switching is over.
+        if (mounted.current && selection.current === mine) setSwitching(false);
+      }
+    },
+    [devices, cameraId, micId, commit],
+  );
+
+  const flip = useCallback(() => {
+    const target = nextCameraId(devices.cameras, cameraId);
+    if (target) void choose(target, micId);
+  }, [devices.cameras, cameraId, micId, choose]);
 
   const request = useCallback(() => {
     dispatch({ type: "request" });
-    return acquire();
-  }, [acquire]);
+    return acquire(cameraId, micId);
+  }, [acquire, cameraId, micId]);
 
   /** Record again: the camera was released after the take, so ask for it again. */
   const again = useCallback(() => {
     dispatch({ type: "again" });
-    return acquire();
-  }, [acquire]);
+    return acquire(cameraId, micId);
+  }, [acquire, cameraId, micId]);
 
-  const begin = useCallback(
-    () => dispatch({ type: "start", seconds: RECORDER.countdownSeconds }),
-    [],
-  );
+  const begin = useCallback(() => {
+    // Never start a countdown on a stream that was let go (a device change that failed).
+    if (!live.current?.getVideoTracks().some((track) => track.readyState === "live")) {
+      setDeviceNote("The camera is off. Choose a camera again.");
+      return;
+    }
+    dispatch({ type: "start", seconds: RECORDER.countdownSeconds });
+  }, []);
 
   const stop = useCallback(() => {
+    stoppedByPerson.current = true;
     if (recorder.current?.state === "recording") recorder.current.stop();
   }, []);
 
@@ -119,6 +257,9 @@ export function useRecorder(limitSeconds: number | null = null) {
       audioBitsPerSecond: RECORDER.audioBitsPerSecond,
     });
     chunks.current = [];
+    stoppedByPerson.current = false;
+    hiddenDuring.current = false;
+    trackEnded.current = false;
     next.ondataavailable = (event) => {
       if (event.data.size > 0) chunks.current.push(event.data);
     };
@@ -130,9 +271,18 @@ export function useRecorder(limitSeconds: number | null = null) {
       if (!isLongEnough(durationMs) || blob.size === 0) dispatch({ type: "discarded" });
       else {
         release();
+        // The browser ended it (page hidden, camera taken): keep what was captured and say why.
+        const note = stoppedByPerson.current
+          ? undefined
+          : interruptionNote(
+              interruptionReason({
+                wasHidden: hiddenDuring.current,
+                trackEnded: trackEnded.current,
+              }),
+            );
         dispatch({
           type: "stopped",
-          take: { blob, durationMs, fileName: recordingFileName(new Date(), container) },
+          take: { blob, durationMs, fileName: recordingFileName(new Date(), container), note },
         });
       }
     };
@@ -165,20 +315,41 @@ export function useRecorder(limitSeconds: number | null = null) {
     return () => clearInterval(timer);
   }, [state.kind, limitMs, stop]);
 
-  // The screen stays on while recording.
+  // The screen stays on while recording, and the lock is asked for again when the page comes
+  // back (the browser releases it whenever the page is hidden).
   useEffect(() => {
     if (state.kind !== "recording") return;
     let lock: WakeLockSentinel | null = null;
     let ended = false;
-    void keepAwake().then((got) => {
-      if (ended) void got?.release().catch(() => undefined);
-      else lock = got;
-    });
+    const hold = () =>
+      void keepAwake().then((got) => {
+        if (ended) void got?.release().catch(() => undefined);
+        else lock = got;
+      });
+    hold();
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") hiddenDuring.current = true;
+      else if (shouldRelockOnVisible(true, document.visibilityState)) hold();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       ended = true;
+      document.removeEventListener("visibilitychange", onVisibility);
       void lock?.release().catch(() => undefined);
     };
   }, [state.kind]);
+
+  // A camera or microphone taken away mid recording (a call) ends it with what was captured.
+  useEffect(() => {
+    if (state.kind !== "recording" || !stream) return;
+    const lost = () => {
+      trackEnded.current = true;
+      if (recorder.current?.state === "recording") recorder.current.stop();
+    };
+    const tracks = stream.getTracks();
+    tracks.forEach((track) => track.addEventListener("ended", lost));
+    return () => tracks.forEach((track) => track.removeEventListener("ended", lost));
+  }, [state.kind, stream]);
 
   useEffect(() => {
     if (!wouldLoseWork(state)) return;
@@ -191,7 +362,6 @@ export function useRecorder(limitSeconds: number | null = null) {
   }, [state]);
 
   // Leaving the page turns everything off.
-  const live = useRef<MediaStream | null>(null);
   useEffect(() => {
     live.current = stream;
   }, [stream]);
@@ -207,5 +377,24 @@ export function useRecorder(limitSeconds: number | null = null) {
     };
   }, []);
 
-  return { state, dispatch, stream, elapsedMs, limitMs, request, again, begin, stop };
+  const canFlip = devices.cameras.length > 1;
+  return {
+    state,
+    dispatch,
+    stream,
+    elapsedMs,
+    limitMs,
+    request,
+    again,
+    begin,
+    stop,
+    devices,
+    deviceNote,
+    switching,
+    cameraId,
+    micId,
+    chooseCamera: (id: string) => void choose(id, micId),
+    chooseMic: (id: string) => void choose(cameraId, id),
+    flip: canFlip ? flip : null,
+  };
 }

@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { offersNativeCamera } from "@/lib/recorder-devices";
 import { SETUP_MESSAGES, type SetupFailure } from "@/lib/recorder-rules";
+import { NativeCamera } from "./native-camera";
 
 /** The longest script the page accepts (spec 0021, Configuration). */
 export const SCRIPT_MAX = 20_000;
@@ -19,7 +21,10 @@ export function RecordSetup({
   failure,
   busy,
   usedUp,
+  uploadNote,
+  touch,
   onStart,
+  onNativeFile,
 }: {
   readonly script: string;
   readonly onScript: (value: string) => void;
@@ -27,7 +32,12 @@ export function RecordSetup({
   readonly busy: boolean;
   /** The used up message when the monthly allowance is gone (AC-6); Record cannot start. */
   readonly usedUp: string | null;
+  /** A phone or tablet (a touch screen), where the native camera is a way forward. */
+  readonly touch: boolean;
+  /** Why the phone camera file was not uploaded; choose it again to retry. */
+  readonly uploadNote: string | null;
   readonly onStart: () => void;
+  readonly onNativeFile: (file: File) => void;
 }) {
   const message = failure ? SETUP_MESSAGES[failure] : null;
   return (
@@ -38,6 +48,11 @@ export function RecordSetup({
           <Link href="/library" className="underline">
             Back to your library
           </Link>
+        </Alert>
+      ) : null}
+      {uploadNote ? (
+        <Alert variant="danger" title="That file was not uploaded">
+          {uploadNote} Choose the file again to retry.
         </Alert>
       ) : null}
       {message ? (
@@ -60,8 +75,9 @@ export function RecordSetup({
       </div>
       <div className="flex flex-wrap items-center gap-3">
         <Button size="lg" loading={busy} disabled={usedUp !== null} onClick={onStart}>
-          <Icon icon={Camera} /> Turn on camera
+          <Icon icon={Camera} /> {failure ? "Try again" : "Turn on camera"}
         </Button>
+        {offersNativeCamera(failure, touch) ? <NativeCamera onFile={onNativeFile} /> : null}
         {message ? null : (
           <Link href="/library" className="text-small underline">
             Upload a file instead
