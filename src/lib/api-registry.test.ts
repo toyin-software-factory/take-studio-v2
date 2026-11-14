@@ -15,15 +15,10 @@ import {
 const API_DIR = join(process.cwd(), "src", "app", "api");
 
 /**
- * Exclusions whose route file has not landed on this branch yet: `keys` (step 2).
- * Delete an entry here when its route exists; the staleness check below
- * then covers it.
+ * Exclusions whose route file has not landed yet. Empty now that `keys` exists; add an
+ * entry here only while a route is still to come, and delete it when the route exists.
  */
-const NOT_BUILT_YET: ReadonlySet<string> = new Set([
-  "GET /api/keys",
-  "POST /api/keys",
-  "DELETE /api/keys/{id}",
-]);
+const NOT_BUILT_YET: ReadonlySet<string> = new Set<string>();
 
 function routeFiles(dir: string): readonly string[] {
   return readdirSync(dir).flatMap((name) => {
