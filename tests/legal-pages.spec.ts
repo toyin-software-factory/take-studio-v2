@@ -111,13 +111,20 @@ for (const { path } of PAGES) {
     test("the text column keeps a readable line length", async ({ page }) => {
       await page.setViewportSize({ width: 1440, height: 900 });
       await page.goto(path);
-      const box = await page.locator("article p").nth(1).boundingBox();
-      const font = await page
+      const chars = await page
         .locator("article p")
         .nth(1)
-        .evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
-      // 72ch is about 0.5em per character: under ~80 characters per line.
-      expect((box?.width ?? 0) / font).toBeLessThanOrEqual(80);
+        .evaluate((el) => {
+          // One `ch` in pixels: the width of a 1ch wide probe in the paragraph's own font.
+          const probe = document.createElement("span");
+          probe.style.cssText = "display:inline-block;width:1ch";
+          el.appendChild(probe);
+          const ch = probe.getBoundingClientRect().width;
+          probe.remove();
+          return el.getBoundingClientRect().width / ch;
+        });
+      // The column is capped at 72ch, so a line holds about 72 characters of "0" width.
+      expect(chars).toBeLessThanOrEqual(75);
     });
 
     test("fits a phone with no sideways scroll", async ({ page }) => {
