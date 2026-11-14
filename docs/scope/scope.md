@@ -38,7 +38,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 14 | MCP server for AI agents | Slice 7 | planned |
 | 15 | Landing page & SEO | Launch | done |
 | 16 | Privacy & terms pages | Launch | in-progress |
-| 17 | Product analytics | Launch | in-progress |
+| 17 | Product analytics | Launch | done |
 | 18 | Email sign in and take ready email | Slice 1 | done |
 | 19 | Cut quality measurement | Launch | in-progress |
 
@@ -267,12 +267,12 @@ Public privacy policy and terms, needed because we store people's videos.
 - [ ] Verify it: `/check verify privacy & terms pages`
 Spec [0015](../specs/0015-privacy-and-terms.md) · Toyin supplies the legal facts and a lawyer reviews the text before launch
 
-### 17. Product analytics · in-progress
+### 17. Product analytics · done
 Three events that show whether the core loop works: signup, take uploaded, take downloaded.
 **Done when:** the three events are recorded per creator, with no video content or transcript text in the events.
 - Note (2026-11-13): Toyin and Michael recommend building this first, so the growth ideas under Deferred can be measured: signups, first upload, first download and second take. Not repeated there.
 - [x] Design it (spec): `/architect product analytics`
-- [ ] Build it: `/develop product analytics`
+- [x] Build it: `/develop product analytics`
    - [x] Table, record function, signup event, drift and privacy tests (AC-1, AC-2, AC-3, AC-4, AC-6)
    - [x] Insights page with the viewer gate (AC-7, AC-8)
    - [x] Upload and job events, second take and founding member counts (AC-4, AC-7, AC-12)
@@ -281,7 +281,7 @@ Three events that show whether the core loop works: signup, take uploaded, take 
    - [x] Retention sweep and delete tests (AC-9, AC-10)
    - [x] Legal facts entry and copy bump (AC-11)
    - [x] Docs and deploy env list for the viewer secret
-- [ ] Verify it: `/check verify product analytics`
+- [x] Verify it: `/check verify product analytics`
 Spec [0016](../specs/0016-product-analytics.md) · Toyin answered the open questions on 2026-11-14 (C-30): our own events in our database, recommended options otherwise
 
 ### 19. Cut quality measurement · in-progress
