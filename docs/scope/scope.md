@@ -247,17 +247,17 @@ Spec [0018](../specs/0018-public-api.md)
 An MCP server so AI assistants (Claude, ChatGPT and agent tools) can use Take Studio directly on a creator's behalf, built on the public API.
 **Done when:** an AI assistant connected to the MCP server can upload a take, run it, review the cuts and fetch the results for a signed in creator, and can only reach that creator's takes.
 - [x] Design it (spec): `/architect MCP server for AI agents`
-- [ ] Spike: MCP SDK on the Worker or a hand written handler; rules file `src/lib/mcp-rules.ts`
-- [ ] Tracer thread: `POST /mcp` by API key with `get_usage` and `list_takes` end to end
-- [ ] Every tool over the public registry, the delete guard, parity, ownership and coverage tests
-- [ ] Upload and run by presigned links, a real take through `/mcp` only
-- [ ] `/docs/mcp` setup page
-- [ ] OAuth: spike, data and endpoints (metadata, register, authorize, token, refresh rotation)
-- [ ] Consent page and connected apps list (design check)
-- [ ] Legal facts, Privacy and Terms copy, version and hash line
-- [ ] Live check: Inspector, Claude Code by key, Claude.ai by sign in
-- [ ] Verify and Test
-Spec [0019](../specs/0019-mcp-server.md)
+- [ ] Build it: `/develop MCP server for AI agents`
+   - [ ] Key based server: spike (SDK or hand written), `src/lib/mcp-rules.ts`, `POST /mcp` tracer with `get_usage` and `list_takes` (AC-1, AC-2, AC-3, AC-10, AC-11)
+   - [ ] Every tool over the public registry, the delete guard, parity, ownership and coverage tests, upload and run by presigned links (AC-3 to AC-9)
+   - [ ] `/docs/mcp` setup page (AC-12)
+   - [ ] OAuth: spike, data and endpoints, consent page and connected apps list (AC-13, AC-14, AC-15)
+   - [ ] Legal facts, Privacy and Terms copy, version and hash line, then the live check with Inspector, Claude Code and Claude.ai (AC-16, AC-17)
+- [ ] Verify it: `/check verify MCP server for AI agents`
+- [ ] Test it: `/test MCP server for AI agents`
+- [ ] Review it: `/check review MCP server for AI agents`
+- [ ] Document it: `/document MCP server for AI agents`
+Spec [0019](../specs/0019-mcp-server/index.md)
 
 ## Launch
 
