@@ -21,7 +21,13 @@ const spanFields = { startMs: ms, endMs: ms };
 const orderedSpan = (s: { startMs: number; endMs: number }) => s.startMs < s.endMs;
 
 const wordSchema = z
-  .object({ w: z.string().min(1).max(40), ...spanFields, filler: z.boolean() })
+  .object({
+    w: z.string().min(1).max(40),
+    ...spanFields,
+    filler: z.boolean(),
+    /** Transcriber confidence; omit for a clearly heard word. */
+    conf: z.number().min(0).max(1).optional(),
+  })
   .strict()
   .refine(orderedSpan, "word must end after it starts");
 

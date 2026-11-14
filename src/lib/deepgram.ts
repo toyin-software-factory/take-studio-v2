@@ -21,8 +21,17 @@ export const DEEPGRAM_OPTIONS = {
   mip_opt_out: "true",
 } as const;
 
+/**
+ * Nova-3 keyterm prompting (B2-T50): placeholder speech creators say on purpose. Without the
+ * hint the model tends to hear "blah blah" as a real looking word ("Wow."). A fixed list of
+ * ours; no creator data is sent in it.
+ */
+export const DEEPGRAM_KEYTERMS = ["blah blah", "la la la", "something something"] as const;
+
 export function deepgramUrl(): string {
-  return `${DEEPGRAM_LISTEN_URL}?${new URLSearchParams(DEEPGRAM_OPTIONS).toString()}`;
+  const params = new URLSearchParams(DEEPGRAM_OPTIONS);
+  for (const term of DEEPGRAM_KEYTERMS) params.append("keyterm", term);
+  return `${DEEPGRAM_LISTEN_URL}?${params.toString()}`;
 }
 
 const wordSchema = z.object({

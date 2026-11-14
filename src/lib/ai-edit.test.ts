@@ -555,3 +555,34 @@ describe("cut quality fixture 1: hesitation sounds and both stutters", () => {
     }
   });
 });
+
+describe("unclear words (B2-T50)", () => {
+  const base = { startMs: 0, endMs: 300, filler: false };
+  const build = (words: Parameters<typeof buildAiRequest>[0]["words"]) =>
+    buildAiRequest({ words, candidates: [], durationMs: 1000 }).user.split("\n");
+
+  it("marks a word under the confidence threshold with u, and leaves a clear word plain", () => {
+    const lines = build([
+      { ...base, w: "Wow.", conf: 0.31 },
+      { ...base, w: "Today", conf: 0.99 },
+      { ...base, w: "um", filler: true, conf: 0.4 },
+      { ...base, w: "plain" },
+    ]);
+    expect(lines.filter((l) => /^\d+\|/.test(l)).slice(0, 4)).toEqual([
+      "0|Wow.|0|300|u",
+      "1|Today|0|300|",
+      "2|um|0|300|fu",
+      "3|plain|0|300|",
+    ]);
+  });
+
+  it("tells the model what u means, and still never sends the confidence number", () => {
+    const request = buildAiRequest({
+      words: [{ ...base, w: "Wow.", conf: 0.31 }],
+      candidates: [],
+      durationMs: 1000,
+    });
+    expect(request.system).toContain("A u flag means the transcriber was unsure");
+    expect(request.user).not.toContain("0.31");
+  });
+});

@@ -75,7 +75,9 @@ describe("parseDeepgramResponse (spec 0007)", () => {
 describe("deepgramUrl", () => {
   it("sends the spec's options including mip_opt_out", () => {
     const q = new URL(deepgramUrl()).searchParams;
-    expect(Object.fromEntries(q)).toEqual({
+    const options = new URLSearchParams(q);
+    options.delete("keyterm");
+    expect(Object.fromEntries(options)).toEqual({
       model: "nova-3",
       detect_language: "true",
       smart_format: "true",
@@ -84,5 +86,10 @@ describe("deepgramUrl", () => {
       filler_words: "true",
       mip_opt_out: "true",
     });
+  });
+
+  it("asks for the placeholder words as keyterms, one parameter each", () => {
+    const q = new URL(deepgramUrl()).searchParams;
+    expect(q.getAll("keyterm")).toEqual(["blah blah", "la la la", "something something"]);
   });
 });

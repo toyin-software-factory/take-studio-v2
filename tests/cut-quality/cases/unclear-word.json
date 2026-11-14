@@ -1,0 +1,89 @@
+{
+  "id": "unclear-word",
+  "note": "A low confidence word that does not fit the sentence: a mumble heard as a real looking word.",
+  "durationMs": 5600,
+  "words": [
+    {
+      "w": "Welcome",
+      "startMs": 400,
+      "endMs": 720,
+      "filler": false
+    },
+    {
+      "w": "back",
+      "startMs": 800,
+      "endMs": 1120,
+      "filler": false
+    },
+    {
+      "w": "everyone",
+      "startMs": 1200,
+      "endMs": 1520,
+      "filler": false
+    },
+    {
+      "w": "Wow.",
+      "startMs": 1600,
+      "endMs": 1920,
+      "filler": false,
+      "conf": 0.31
+    },
+    {
+      "w": "Today",
+      "startMs": 2000,
+      "endMs": 2320,
+      "filler": false
+    },
+    {
+      "w": "I",
+      "startMs": 2400,
+      "endMs": 2720,
+      "filler": false
+    },
+    {
+      "w": "will",
+      "startMs": 2800,
+      "endMs": 3120,
+      "filler": false
+    },
+    {
+      "w": "show",
+      "startMs": 3200,
+      "endMs": 3520,
+      "filler": false
+    },
+    {
+      "w": "you",
+      "startMs": 3600,
+      "endMs": 3920,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 4000,
+      "endMs": 4320,
+      "filler": false
+    },
+    {
+      "w": "lantern",
+      "startMs": 4400,
+      "endMs": 4720,
+      "filler": false
+    },
+    {
+      "w": "kit",
+      "startMs": 4800,
+      "endMs": 5120,
+      "filler": false
+    }
+  ],
+  "pauses": [],
+  "expected": [
+    {
+      "startMs": 1600,
+      "endMs": 2000,
+      "kind": "filler",
+      "verdict": "cut"
+    }
+  ]
+}

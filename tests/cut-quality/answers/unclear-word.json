@@ -1,0 +1,13 @@
+{
+  "keepPauses": [],
+  "wordCuts": [
+    {
+      "fromWord": 3,
+      "toWord": 3,
+      "kind": "filler",
+      "reason": "Unclear word that does not fit the sentence"
+    }
+  ],
+  "fixes": [],
+  "background": null
+}
