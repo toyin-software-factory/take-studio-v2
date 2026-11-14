@@ -37,7 +37,7 @@ export default async function RecordPage() {
     <AppShell user={{ id: session.user.id, name: session.user.name, email: session.user.email }}>
       <div className="flex max-w-3xl flex-col gap-6">
         <h1 className="text-h1 font-medium">Record a take</h1>
-        <RecordView usage={usage} />
+        <RecordView usage={usage} creatorId={session.user.id} />
       </div>
     </AppShell>
   );

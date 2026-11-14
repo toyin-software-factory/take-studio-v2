@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usedUpMessage, type UsageView } from "@/components/takes/usage-meter";
 import { useUsage } from "@/components/takes/use-usage";
 import { UploadProgress } from "@/components/takes/upload-progress";
 import { useLeaveGuard } from "@/components/takes/use-leave-guard";
 import { useUpload } from "@/components/takes/use-upload";
 import { wouldLoseWork } from "@/lib/recorder-state";
+import { clearDraft, deviceStore, loadDraft, saveDraft } from "@/lib/prompter-storage";
 import { isUsedUp, usageLimitSeconds, type RecordingContainer } from "@/lib/recorder-rules";
 import { RecordReview } from "./record-review";
 import { RecordSetup } from "./record-setup";
 import { RecordStage } from "./record-stage";
+import { usePrompter } from "./use-prompter";
 import { useRecorder } from "./use-recorder";
 
 /** The container a file name ends in (the recorder named it from the type it picked). */
@@ -24,7 +26,13 @@ const LEAVE_MESSAGE = "Your recording hasn't been uploaded. Leave without it?";
  * 3 second countdown, record, stop, then review. "Use this take" goes through the normal
  * upload and ends on the take page. Nothing leaves the device before that.
  */
-export function RecordView({ usage: firstUsage = null }: { readonly usage?: UsageView | null }) {
+export function RecordView({
+  usage: firstUsage = null,
+  creatorId,
+}: {
+  readonly usage?: UsageView | null;
+  readonly creatorId: string;
+}) {
   const [usageKey, setUsageKey] = useState("");
   const usage = useUsage(firstUsage, usageKey);
   const recorder = useRecorder(usageLimitSeconds(usage));
@@ -33,6 +41,15 @@ export function RecordView({ usage: firstUsage = null }: { readonly usage?: Usag
   const { state, dispatch } = recorder;
   // Links and Back ask first too, not only closing the tab (the recorder warns for that).
   useLeaveGuard(wouldLoseWork(state), LEAVE_MESSAGE);
+  const prompter = usePrompter(script, creatorId, state.kind === "recording");
+
+  // The script draft is remembered on this device and cleared once the take is created.
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- reading device storage after hydration
+  useEffect(() => setScript(loadDraft(deviceStore(), creatorId)), [creatorId]);
+  const editScript = (next: string) => {
+    setScript(next);
+    saveDraft(deviceStore(), creatorId, next);
+  };
 
   const submitTake = async () => {
     if (state.kind !== "review" && state.kind !== "upload_failed") return;
@@ -46,6 +63,7 @@ export function RecordView({ usage: firstUsage = null }: { readonly usage?: Usag
       undefined,
       take.durationMs,
     );
+    if (outcome?.ok) clearDraft(deviceStore(), creatorId);
     if (outcome && !outcome.ok) {
       // A refused take may mean the numbers changed: read them again (the recording stays).
       setUsageKey(String(Date.now()));
@@ -73,7 +91,7 @@ export function RecordView({ usage: firstUsage = null }: { readonly usage?: Usag
       <RecordStage
         state={state}
         stream={recorder.stream}
-        script={script}
+        prompter={prompter}
         elapsedMs={recorder.elapsedMs}
         limitMs={recorder.limitMs}
         onRecord={recorder.begin}
@@ -85,7 +103,7 @@ export function RecordView({ usage: firstUsage = null }: { readonly usage?: Usag
     <RecordSetup
       usedUp={usage && isUsedUp(usage) ? usedUpMessage(usage) : null}
       script={script}
-      onScript={setScript}
+      onScript={editScript}
       failure={state.kind === "failed" ? state.failure : null}
       busy={state.kind === "requesting"}
       onStart={() => void recorder.request()}
