@@ -84,13 +84,18 @@ describe("bearer header (AC-5)", () => {
     expect(bearerKey(`Bearer ${FIXED}`)).toBe(FIXED);
   });
 
+  it("accepts any casing of the scheme and more than one space", () => {
+    expect(bearerKey(`bearer ${FIXED}`)).toBe(FIXED);
+    expect(bearerKey(`BEARER   ${FIXED}`)).toBe(FIXED);
+    expect(bearerKey(`Bearer  ${FIXED} `)).toBe(FIXED);
+  });
+
   it("returns null for another scheme, an empty value, a malformed key or extra parts", () => {
     for (const bad of [
       "",
       "Bearer",
       "Bearer ",
       `Basic ${FIXED}`,
-      `bearer ${FIXED}`,
       "Bearer tsk_short",
       `Bearer ${FIXED} extra`,
       FIXED,

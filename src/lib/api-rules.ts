@@ -67,7 +67,7 @@ export async function hashApiKey(key: string): Promise<string> {
  * fall back to the session (AC-5).
  */
 export function bearerKey(header: string): string | null {
-  const match = /^Bearer ([^\s]+)$/.exec(header.trim());
+  const match = /^Bearer +([^\s]+)$/i.exec(header.trim());
   return match?.[1] ? parseApiKey(match[1]) : null;
 }
 

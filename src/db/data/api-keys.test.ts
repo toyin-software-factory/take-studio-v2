@@ -1,4 +1,4 @@
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
 import { apiKey, apiRateWindow, user } from "@/db/schema";
 import { createCreator, openTestDb } from "@/db/testing/test-db";
@@ -7,9 +7,22 @@ import { purgeOldRateWindows } from "./api-keys";
 
 const test = await openTestDb({ database: "take_studio_test_api_keys" });
 const { db } = test;
+const FIXED_NOW = new Date("2026-11-14T12:00:30Z");
+const creators: string[] = [];
+// Rows stay in the reused local database, so every creator a test made is removed (keys and
+// windows cascade) and no window can leak into another test's purge count.
+afterEach(async () => {
+  for (const id of creators.splice(0)) await db.delete(user).where(eq(user.id, id));
+});
 afterAll(async () => {
   await test.close();
 });
+
+async function newCreator() {
+  const c = await createCreator(db);
+  creators.push(c.id);
+  return c;
+}
 
 async function makeKey(creatorId: string) {
   const key = generateApiKey();
@@ -23,7 +36,7 @@ async function makeKey(creatorId: string) {
 
 describe("api_key table (AC-2)", () => {
   it("stores the hash and prefix, never the key, and the hash is unique", async () => {
-    const c = await createCreator(db);
+    const c = await newCreator();
     const { key, row } = await makeKey(c.id);
     expect(JSON.stringify(row)).not.toContain(key);
     expect(row.keyHash).toBe(await hashApiKey(key));
@@ -38,11 +51,11 @@ describe("api_key table (AC-2)", () => {
 
 describe("account deletion (AC-14)", () => {
   it("removes the creator's keys and their rate windows", async () => {
-    const c = await createCreator(db);
-    const other = await createCreator(db);
+    const c = await newCreator();
+    const other = await newCreator();
     const mine = await makeKey(c.id);
     const theirs = await makeKey(other.id);
-    const start = rateWindowStart(new Date());
+    const start = rateWindowStart(FIXED_NOW);
     await db.insert(apiRateWindow).values([
       { keyId: mine.row.id, windowStart: start, count: 3 },
       { keyId: theirs.row.id, windowStart: start, count: 1 },
@@ -61,9 +74,9 @@ describe("account deletion (AC-14)", () => {
 
 describe("purgeOldRateWindows (AC-9)", () => {
   it("deletes windows older than an hour in batches and keeps recent ones", async () => {
-    const c = await createCreator(db);
+    const c = await newCreator();
     const { row } = await makeKey(c.id);
-    const now = new Date("2026-11-14T12:00:30Z");
+    const now = FIXED_NOW;
     const minute = (ago: number) => new Date(rateWindowStart(now).getTime() - ago * 60_000);
     await db.insert(apiRateWindow).values([
       { keyId: row.id, windowStart: minute(0), count: 5 },
