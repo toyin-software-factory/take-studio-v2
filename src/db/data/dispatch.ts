@@ -6,6 +6,13 @@ import type { Executor } from "../types";
 import { finish } from "./jobs";
 
 /**
+ * `trigger_failed`: this call failed the job. `trigger_failed_already_final`: triggering threw
+ * but the job was already final (another call failed it first), so only that call may count
+ * the failure.
+ */
+export type DispatchError = "trigger_failed" | "trigger_failed_already_final" | "not_found";
+
+/**
  * Hands a started job to Trigger.dev (spec 0002, "Background work"). `trigger` must use the
  * job ID as a global idempotency key, so a retried dispatch never starts a second run (see
  * `triggerForJob` in src/lib/trigger-runs.ts). On success the run ID is stored on the job;
@@ -18,7 +25,7 @@ export async function dispatchJob(
     /** `creatorId` lets the trigger give the run a per creator concurrency key. */
     readonly trigger: (jobId: string, creatorId?: string) => Promise<{ readonly id: string }>;
   },
-): Promise<Result<{ readonly runId: string }, "trigger_failed" | "not_found">> {
+): Promise<Result<{ readonly runId: string }, DispatchError>> {
   // The job's creator, for the run's concurrency key (an unknown job just has none).
   const [owner] = await db
     .select({ creatorId: take.creatorId })
@@ -34,7 +41,8 @@ export async function dispatchJob(
       status: "failed",
       failureCode: "trigger_failed",
     });
-    return err(finished.ok || finished.error === "already_final" ? "trigger_failed" : "not_found");
+    if (finished.ok) return err("trigger_failed");
+    return err(finished.error === "already_final" ? "trigger_failed_already_final" : "not_found");
   }
 
   // Keep the first run ID; markRunning also records it.

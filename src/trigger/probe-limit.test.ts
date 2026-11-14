@@ -5,6 +5,8 @@ import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/t
 import type { Db } from "@/db/types";
 import { chargedMonth } from "@/lib/billing";
 import { usageAccountHash } from "@/lib/usage-hash";
+import { dispatchJob } from "@/db/data/dispatch";
+import { startJob } from "@/db/data/jobs";
 import { startAndDispatch } from "./probe";
 
 // The trigger is replaced so no real run starts; `failTrigger` makes it throw (dispatch fails).
@@ -76,5 +78,24 @@ describe("probe ending at the limit", () => {
     expect(events.map((e) => [e.name, e.props])).toEqual([
       ["take_failed", { code: "trigger_failed" }],
     ]);
+  });
+
+  it("a dispatch that fails on a job another call already failed is not this call's failure (CodeRabbit, #221)", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, { durationMs: 5_000, status: "uploaded" });
+    const started = await startJob(db, {
+      creatorId: creator.id,
+      takeId: t.id,
+      usageSecret: SECRET,
+      fromStatuses: ["uploaded"],
+    });
+    if (!started.ok) throw new Error(started.error);
+    const throwing = async () => {
+      throw new Error("trigger down");
+    };
+    const first = await dispatchJob(db, { jobId: started.data.id, trigger: throwing });
+    const second = await dispatchJob(db, { jobId: started.data.id, trigger: throwing });
+    expect(first).toEqual({ ok: false, error: "trigger_failed" });
+    expect(second).toEqual({ ok: false, error: "trigger_failed_already_final" });
   });
 });
