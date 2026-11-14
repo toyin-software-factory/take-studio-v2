@@ -168,8 +168,8 @@ export const PROCESSORS: readonly Processor[] = [
     name: "Anthropic",
     role: "Suggests which words to fix and which pauses to cut (the AI edit).",
     receives:
-      "Transcript words, which words the transcriber was unsure of, and where the pauses are.",
-    doesNotReceive: "Video, audio, your name or your email.",
+      "Transcript words, which words the transcriber was unsure of, where the pauses are, and the script you typed or pasted when the take has one.",
+    doesNotReceive: "Video or audio. Your name or your email, except any you type into a script.",
     location: "Anthropic cloud.",
     trainsOnContent: false,
     envNames: ["ANTHROPIC_API_KEY"],
