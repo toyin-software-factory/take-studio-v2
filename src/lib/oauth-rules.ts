@@ -20,10 +20,18 @@ export function bearerToken(header: string): string | null {
 
 const SIGNED_QUERY_PARAMS = ["sig", "exp", "ba_iat", "ba_pl"] as const;
 
+/** True when the client asked for a fresh login (`prompt` holds `login`). */
+export function oauthWantsFreshLogin(search: URLSearchParams): boolean {
+  return (search.get("prompt") ?? "").split(/\s+/).includes("login");
+}
+
 /**
  * Where sign in returns to when an OAuth client sent the creator here. Better Auth's login
  * redirect carries the original authorize query plus signature fields; dropping those and
  * replaying the rest on the authorize endpoint lets the flow carry on to the consent page.
+ * Sign in itself is the fresh login a `prompt=login` asks for, so `login` is dropped from the
+ * replayed `prompt` (kept, the provider would send the creator back here again); the page also
+ * shows the form, not an instant redirect, for a signed in creator when a fresh login was asked.
  * The path is fixed (never taken from the query), so this cannot be an open redirect. A query
  * without a `client_id` and `sig` is not an OAuth hand off, so it returns null.
  */
@@ -31,6 +39,9 @@ export function oauthResumePath(search: URLSearchParams): string | null {
   if (!search.has("client_id") || !search.has("sig")) return null;
   const params = new URLSearchParams(search);
   for (const name of SIGNED_QUERY_PARAMS) params.delete(name);
+  const prompt = (params.get("prompt") ?? "").split(/\s+/).filter((p) => p !== "" && p !== "login");
+  if (prompt.length > 0) params.set("prompt", prompt.join(" "));
+  else params.delete("prompt");
   return `/api/auth/oauth2/authorize?${params.toString()}`;
 }
 

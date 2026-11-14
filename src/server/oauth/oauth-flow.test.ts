@@ -1,7 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
-import { desc, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  countOauthRequest,
   deleteExpiredOauthRows,
   disconnectApp,
   getConsentClient,
@@ -27,7 +28,7 @@ import { hashOauthToken } from "@/lib/oauth-rules";
 import { guard } from "../api-auth";
 import { createAuth } from "../auth";
 import { handleMcp } from "../mcp/http";
-import { TEST_ORIGIN, testMcpDeps } from "../mcp/test-wiring";
+import { TEST_NOW, TEST_ORIGIN, testMcpDeps } from "../mcp/test-wiring";
 import { protectedResourceMetadata } from "./metadata";
 
 /**
@@ -332,11 +333,12 @@ describe("authorize and token (AC-13)", () => {
     const registered = (await (await register()).json()) as Registered;
     const { verifier, challenge } = pkce();
     const code = await grantCode(who.cookie, registered.client_id, challenge);
-    const [row] = await db
-      .select()
-      .from(verification)
-      .orderBy(desc(verification.createdAt))
-      .limit(1);
+    // The code row is the verification row whose value names this client (never "the newest").
+    const rows = (await db.select().from(verification)).filter((r) =>
+      r.value.includes(registered.client_id),
+    );
+    expect(rows).toHaveLength(1);
+    const row = rows[0];
     const seconds = ((row?.expiresAt.getTime() ?? 0) - (row?.createdAt.getTime() ?? 0)) / 1000;
     expect(seconds).toBeGreaterThanOrEqual(59);
     expect(seconds).toBeLessThanOrEqual(61);
@@ -430,6 +432,18 @@ describe("tokens as identity (AC-14)", () => {
     if (!(res instanceof Response)) throw new Error("expected a refusal");
     expect(res.status).toBe(401);
     expect(await res.json()).toMatchObject({ error: "session_required" });
+  });
+
+  it("counts a token's requests against 120 a minute per app and creator, with Retry-After", async () => {
+    const who = await signIn("limited@example.test");
+    const grant = await connect(who);
+    const deps = { getCreator: async () => null, keyAuth: identity() };
+    for (let i = 0; i < 119; i++) await countOauthRequest(db, grant.clientId, who.id, TEST_NOW);
+    const last = await guard(bearer(grant.access), deps, { checkOrigin: false });
+    expect(last instanceof Response).toBe(false);
+    const over = await guard(bearer(grant.access), deps, { checkOrigin: false });
+    expect(over instanceof Response && over.status).toBe(429);
+    expect(over instanceof Response && over.headers.get("retry-after")).not.toBeNull();
   });
 
   it("refuses an unknown, expired, revoked or wrong resource token with 401", async () => {

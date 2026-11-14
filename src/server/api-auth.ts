@@ -7,7 +7,7 @@ import {
   retryAfterFromSecond,
   retryAfterSeconds,
 } from "@/lib/api-rules";
-import { authenticateOauthToken } from "@/db/data/oauth";
+import { authenticateOauthToken, countOauthRequest } from "@/db/data/oauth";
 import { bearerToken, hashOauthToken } from "@/lib/oauth-rules";
 import { ok } from "@/lib/result";
 
@@ -75,6 +75,15 @@ async function resolveKey(
     if (!found) {
       logRejected("unknown");
       return fail({ kind: "invalid_api_key" });
+    }
+    // The same per minute limit as a key, counted for this app and creator.
+    const at = keyAuth.now?.();
+    const window = await countOauthRequest(db, found.clientId, found.creatorId, at);
+    if (isOverRateLimit(window.count)) {
+      return fail({
+        kind: "rate_limited",
+        retryAfter: at ? retryAfterSeconds(at) : retryAfterFromSecond(window.secondsIntoMinute),
+      });
     }
     return ok({ db, creatorId: found.creatorId });
   }

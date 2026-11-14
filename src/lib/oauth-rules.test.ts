@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { oauthResumePath, redirectUriAllowed } from "./oauth-rules";
+import { oauthResumePath, oauthWantsFreshLogin, redirectUriAllowed } from "./oauth-rules";
 
 describe("oauthResumePath", () => {
   it("replays the authorize query without the signature fields", () => {
@@ -9,6 +9,15 @@ describe("oauthResumePath", () => {
     expect(oauthResumePath(search)).toBe(
       "/api/auth/oauth2/authorize?response_type=code&client_id=abc&state=s1",
     );
+  });
+
+  it("drops login from prompt so the replay does not ask for a login again", () => {
+    const only = new URLSearchParams("client_id=abc&sig=x&prompt=login");
+    expect(oauthResumePath(only)).toBe("/api/auth/oauth2/authorize?client_id=abc");
+    const both = new URLSearchParams("client_id=abc&sig=x&prompt=login%20consent");
+    expect(oauthResumePath(both)).toBe("/api/auth/oauth2/authorize?client_id=abc&prompt=consent");
+    expect(oauthWantsFreshLogin(both)).toBe(true);
+    expect(oauthWantsFreshLogin(new URLSearchParams("prompt=consent"))).toBe(false);
   });
 
   it("is null for a plain sign in or an unsigned query", () => {

@@ -5,6 +5,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -269,3 +270,23 @@ export const oauthConsentRelations = relations(oauthConsent, ({ one }) => ({
     references: [user.id],
   }),
 }));
+
+/**
+ * Requests per minute for one connected app of one creator (spec 0019 AC-14), the OAuth side of
+ * `api_rate_window`: the same fixed one minute window and the same limit as an API key. Rows
+ * cascade away with the client or the account and are purged with the expired tokens.
+ */
+export const oauthRateWindow = pgTable(
+  "oauth_rate_window",
+  {
+    clientId: text("client_id")
+      .notNull()
+      .references(() => oauthClient.clientId, { onDelete: "cascade" }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.clientId, t.userId, t.windowStart] })],
+);

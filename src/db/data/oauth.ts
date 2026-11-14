@@ -1,5 +1,12 @@
 import { and, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
-import { oauthAccessToken, oauthClient, oauthConsent, oauthRefreshToken } from "../schema";
+import { API_RATE, rateWindowStart } from "@/lib/api-rules";
+import {
+  oauthAccessToken,
+  oauthClient,
+  oauthConsent,
+  oauthRateWindow,
+  oauthRefreshToken,
+} from "../schema";
 import type { Executor } from "../types";
 
 /**
@@ -12,9 +19,9 @@ export async function authenticateOauthToken(
   tokenHash: string,
   resource: string,
   now: Date = new Date(),
-): Promise<{ readonly creatorId: string } | null> {
+): Promise<{ readonly creatorId: string; readonly clientId: string } | null> {
   const [row] = await db
-    .select({ userId: oauthAccessToken.userId })
+    .select({ userId: oauthAccessToken.userId, clientId: oauthAccessToken.clientId })
     .from(oauthAccessToken)
     .innerJoin(oauthClient, eq(oauthClient.clientId, oauthAccessToken.clientId))
     .where(
@@ -27,7 +34,7 @@ export async function authenticateOauthToken(
       ),
     )
     .limit(1);
-  return row?.userId ? { creatorId: row.userId } : null;
+  return row?.userId ? { creatorId: row.userId, clientId: row.clientId } : null;
 }
 
 /** An assistant a creator connected (AC-14): the client name, when it was allowed, last use. */
@@ -94,7 +101,11 @@ export async function disconnectApp(
 export async function deleteExpiredOauthRows(
   db: Executor,
   now: Date = new Date(),
-): Promise<{ readonly accessTokens: number; readonly refreshTokens: number }> {
+): Promise<{
+  readonly accessTokens: number;
+  readonly refreshTokens: number;
+  readonly rateWindows: number;
+}> {
   const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const access = await db
     .delete(oauthAccessToken)
@@ -104,7 +115,15 @@ export async function deleteExpiredOauthRows(
     .delete(oauthRefreshToken)
     .where(or(lt(oauthRefreshToken.expiresAt, cutoff), lt(oauthRefreshToken.revoked, cutoff)))
     .returning({ id: oauthRefreshToken.id });
-  return { accessTokens: access.length, refreshTokens: refresh.length };
+  const windows = await db
+    .delete(oauthRateWindow)
+    .where(lt(oauthRateWindow.windowStart, new Date(now.getTime() - API_RATE.keepMs)))
+    .returning({ clientId: oauthRateWindow.clientId });
+  return {
+    accessTokens: access.length,
+    refreshTokens: refresh.length,
+    rateWindows: windows.length,
+  };
 }
 
 /** Disconnects by consent row ID; false when it is not this creator's (or already gone). */
@@ -137,4 +156,34 @@ export async function getConsentClient(
     .where(and(eq(oauthClient.clientId, clientId), eq(oauthClient.disabled, false)))
     .limit(1);
   return row ? { name: row.name, redirectUris: row.redirectUris ?? [] } : null;
+}
+
+/**
+ * Counts one request for a connected app of a creator in the current minute (spec 0019 AC-14),
+ * one atomic upsert like `countApiRequest`. `at` is for tests; left out, the window and the
+ * second come from the database clock.
+ */
+export async function countOauthRequest(
+  db: Executor,
+  clientId: string,
+  userId: string,
+  at?: Date,
+): Promise<{ readonly count: number; readonly secondsIntoMinute: number }> {
+  const windowStart = at
+    ? rateWindowStart(at)
+    : sql<Date>`date_trunc('minute', now() at time zone 'utc') at time zone 'utc'`;
+  const [row] = await db
+    .insert(oauthRateWindow)
+    .values({ clientId, userId, windowStart, count: 1 })
+    .onConflictDoUpdate({
+      target: [oauthRateWindow.clientId, oauthRateWindow.userId, oauthRateWindow.windowStart],
+      set: { count: sql`${oauthRateWindow.count} + 1` },
+    })
+    .returning({
+      count: oauthRateWindow.count,
+      secondsIntoMinute: at
+        ? sql<number>`${at.getUTCSeconds()}::int`
+        : sql<number>`floor(extract(second from now()))::int`,
+    });
+  return row ?? { count: 1, secondsIntoMinute: 0 };
 }

@@ -43,6 +43,10 @@ const fail = (message: string): never => {
   throw new Error(message);
 };
 
+/** Every request is bounded, so a stalled server cannot keep the script from its cleanup. */
+const REQUEST_TIMEOUT_MS = 30_000;
+const timeout = () => AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+
 let nextId = 1;
 /** One JSON-RPC call to /mcp. The answer is JSON or one server sent event. */
 async function rpc(method: string, params: unknown): Promise<unknown> {
@@ -54,6 +58,7 @@ async function rpc(method: string, params: unknown): Promise<unknown> {
       accept: "application/json, text/event-stream",
     },
     body: JSON.stringify({ jsonrpc: "2.0", id: nextId++, method, params }),
+    signal: timeout(),
   });
   if (!res.ok) fail(`${method}: HTTP ${res.status}`);
   const raw = await res.text();
@@ -142,6 +147,7 @@ async function main() {
       const put = await fetch(part.url, {
         method: "PUT",
         body: bytes.subarray(from, from + plan.partSize),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS * 4),
       });
       const etag = put.headers.get("etag");
       if (!put.ok || etag === null) fail(`part ${part.partNumber}: PUT status ${put.status}`);
@@ -181,8 +187,13 @@ async function main() {
     if (takeId !== null) {
       const gone = await tool("delete_take", { takeId, confirm: true });
       const after = await tool("get_take", { takeId });
-      log("delete_take", { deleted: !gone.isError, getAfter: after.isError ? "refused" : "found" });
-      if (gone.isError || !after.isError) process.exitCode = 1;
+      // Only a plain not_found proves the take is gone; a rate limit or server error proves nothing.
+      const goneForSure = after.isError && after.body.error === "not_found";
+      log("delete_take", {
+        deleted: !gone.isError,
+        getAfter: goneForSure ? "not_found" : after.isError ? "inconclusive" : "found",
+      });
+      if (gone.isError || !goneForSure) process.exitCode = 1;
     }
   }
 }
