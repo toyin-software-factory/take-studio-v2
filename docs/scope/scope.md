@@ -261,7 +261,7 @@ Public privacy policy and terms, needed because we store people's videos.
    - [x] Sign in notice, upload note, user menu links (AC-2)
    - [x] Accessibility and print pass, browser tests and axe (AC-12)
    - [x] Change checklist, `/sync` flag, launch gate check (AC-8, AC-10)
-   - [ ] Self serve Delete account control, then flip the copy (AC-13)
+   - [x] Self serve Delete account control, then flip the copy (AC-13)
    - [ ] Launch gate: Toyin's facts and the lawyer's review filled in, Draft banner removed (AC-8, AC-11)
 - [ ] Verify it: `/check verify privacy & terms pages`
 Spec [0015](../specs/0015-privacy-and-terms.md) · Toyin supplies the legal facts and a lawyer reviews the text before launch

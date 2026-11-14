@@ -58,8 +58,8 @@ export const SERVICE_REGION: "worldwide" | "limited" = "worldwide";
 export const AGREEMENT: "notice" | "checkbox" | "notice_and_stored" = "notice";
 /** Toyin's answer to question 7 (C-30): `date_and_email` is the date plus an email for material changes. */
 export const CHANGE_NOTICE: "date_and_email" | "date_only" = "date_and_email";
-/** Toyin's answer to question 4 (C-30): "email us" until the button ships. False says "email us, done within 30 days"; true names the control. */
-export const ACCOUNT_DELETE_SELF_SERVE = false;
+/** Toyin's answer to question 4 (C-30): "email us" until the button ships. False says "email us, done within 30 days"; true names the control. Shipped with B2-T33 (the account menu's Delete account). */
+export const ACCOUNT_DELETE_SELF_SERVE = true;
 /** Days we take to delete an account asked for by email. */
 export const ACCOUNT_DELETE_EMAIL_DAYS = 30;
 
@@ -69,8 +69,8 @@ export const ACCOUNT_DELETE_EMAIL_DAYS = 30;
 
 /** ISO dates, bumped by hand whenever the page text changes (the text hash test forces it). */
 export const LEGAL_VERSION = {
-  privacy: "2026-11-16",
-  terms: "2026-11-15",
+  privacy: "2026-11-14",
+  terms: "2026-11-14",
 } as const;
 
 export type Review = {

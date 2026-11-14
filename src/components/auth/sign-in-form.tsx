@@ -8,6 +8,11 @@ import { Field } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { SignInNotice } from "@/components/legal/legal-notice";
+import {
+  DELETE_ACCOUNT_REASON,
+  DELETE_ACCOUNT_RETURN,
+  DELETE_ACCOUNT_STALE_NOTICE,
+} from "@/components/shell/delete-account";
 import { authClient } from "@/lib/auth-client";
 import {
   SIGN_IN_MESSAGES,
@@ -28,7 +33,15 @@ type State =
  * nobody can tell whether an account exists), error, and rate limited. `notice` shows the
  * expired or used link message (AC-2) above the form, with the same way to ask for a new link.
  */
-export function SignInForm({ notice }: { readonly notice?: "link_expired" }) {
+export function SignInForm({
+  notice,
+  reason,
+}: {
+  readonly notice?: "link_expired";
+  /** `delete-account`: a stale session came here to delete the account; sign in returns to the dialog. */
+  readonly reason?: typeof DELETE_ACCOUNT_REASON;
+}) {
+  const landing = reason === DELETE_ACCOUNT_REASON ? DELETE_ACCOUNT_RETURN : "/library";
   const [state, setState] = useState<State>({ kind: "idle" });
   const [email, setEmail] = useState("");
   const [invalid, setInvalid] = useState(false);
@@ -44,9 +57,12 @@ export function SignInForm({ notice }: { readonly notice?: "link_expired" }) {
     try {
       const result = await authClient.signIn.magicLink({
         email: email.trim(),
-        callbackURL: "/library",
-        newUserCallbackURL: "/library",
-        errorCallbackURL: "/sign-in/link-expired",
+        callbackURL: landing,
+        newUserCallbackURL: landing,
+        errorCallbackURL:
+          reason === DELETE_ACCOUNT_REASON
+            ? `/sign-in/link-expired?reason=${DELETE_ACCOUNT_REASON}`
+            : "/sign-in/link-expired",
       });
       setState(
         result.error
@@ -63,7 +79,7 @@ export function SignInForm({ notice }: { readonly notice?: "link_expired" }) {
     try {
       const result = await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/library",
+        callbackURL: landing,
       });
       if (result.error) setState({ kind: "failed", why: "error" });
     } catch {
@@ -100,6 +116,11 @@ export function SignInForm({ notice }: { readonly notice?: "link_expired" }) {
   const sending = state.kind === "sending";
   return (
     <div className="flex flex-col gap-6">
+      {reason === DELETE_ACCOUNT_REASON ? (
+        <Alert variant="info" title={DELETE_ACCOUNT_STALE_NOTICE}>
+          Your account is still here. Sign in and we will bring you back to finish.
+        </Alert>
+      ) : null}
       {notice === "link_expired" ? (
         <Alert variant="warning" title="That link has expired or was already used">
           Links work once and last 15 minutes. Send yourself a new one below.

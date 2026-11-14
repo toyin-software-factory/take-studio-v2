@@ -2,13 +2,22 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Clapperboard } from "lucide-react";
 import { SignInForm } from "@/components/auth/sign-in-form";
+import { DELETE_ACCOUNT_REASON } from "@/components/shell/delete-account";
 import { SkipLink } from "@/components/shell/skip-link";
 import { Icon } from "@/components/ui/icon";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = { title: "Link expired · Take Studio" };
 
 /** An expired or already used sign in link (spec 0006, AC-2): a friendly page to ask for a new one. */
-export default function LinkExpiredPage() {
+export default async function LinkExpiredPage({
+  searchParams,
+}: {
+  readonly searchParams: Promise<{ readonly reason?: string | string[] }>;
+}) {
+  // A deletion sign in link that expired: the new link still returns to the dialog.
+  const deleting = (await searchParams).reason === DELETE_ACCOUNT_REASON;
   return (
     <>
       <SkipLink />
@@ -27,7 +36,10 @@ export default function LinkExpiredPage() {
         className="mx-auto flex min-h-[calc(100dvh-6rem)] max-w-sm flex-col justify-center gap-6 px-4 pb-16 outline-hidden"
       >
         <h1 className="text-h2">Sign in to Take Studio</h1>
-        <SignInForm notice="link_expired" />
+        <SignInForm
+          notice="link_expired"
+          {...(deleting ? { reason: DELETE_ACCOUNT_REASON } : {})}
+        />
       </main>
     </>
   );

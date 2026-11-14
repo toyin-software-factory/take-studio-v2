@@ -287,8 +287,8 @@ describe("contact and account deletion", () => {
     expect(privacyContactEmail({ ...LEGAL_ENTITY, privacyEmail: "p@x.test" })).toBe("p@x.test");
   });
 
-  it("says to email for deletion until the self serve control ships", () => {
-    expect(ACCOUNT_DELETE_SELF_SERVE).toBe(false);
+  it("names the self serve Delete account control (spec 0015 AC-13, shipped)", () => {
+    expect(ACCOUNT_DELETE_SELF_SERVE).toBe(true);
   });
 });
 
