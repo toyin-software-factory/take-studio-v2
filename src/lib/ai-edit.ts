@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { type ProposedCut, cleanReason, overlaps } from "./cut-rules";
+import { SMOOTH } from "./trim";
 import { type TranscriptWord, isFillerWord } from "./transcript-rules";
 import { type Result, err, ok } from "./result";
 
@@ -408,6 +409,37 @@ function mergeCuts(
 }
 
 /**
+ * Smooth cuts (spec 0020): a word cut edge that borders a kept word moves to the middle of the
+ * gap between them, at most `SMOOTH.wordEdgeMaxMs`, so a cut never lands on the word's attack or
+ * tail. Edges next to a pause cut or the take's start or end stay, and so do edges of words with
+ * no gap. Only word cuts move; the kept word's own time is never entered. Pure.
+ */
+export function smoothWordCutEdges(
+  cuts: readonly ProposedCut[],
+  words: readonly AiWord[],
+): ProposedCut[] {
+  const applied = cuts.filter((c) => c.applied !== false);
+  const hits = (a: Span, b: Span) => a.startMs < b.endMs && b.startMs < a.endMs;
+  const kept = words.filter((w) => !applied.some((c) => hits(c, w)));
+  return cuts.map((c) => {
+    if (c.applied === false || (c.kind !== "false_start" && c.kind !== "filler")) return c;
+    const others = cuts.filter((o) => o !== c);
+    const before = kept.filter((w) => w.endMs <= c.startMs).at(-1);
+    const after = kept.find((w) => w.startMs >= c.endMs);
+    let { startMs, endMs } = c;
+    if (before && !others.some((o) => o.endMs > before.endMs && o.startMs < c.startMs)) {
+      const gap = c.startMs - before.endMs;
+      startMs = c.startMs - Math.min(SMOOTH.wordEdgeMaxMs, Math.floor(gap / 2));
+    }
+    if (after && !others.some((o) => o.startMs < after.startMs && o.endMs > c.endMs)) {
+      const gap = after.startMs - c.endMs;
+      endMs = c.endMs + Math.min(SMOOTH.wordEdgeMaxMs, Math.floor(gap / 2));
+    }
+    return { ...c, startMs, endMs };
+  });
+}
+
+/**
  * Checks the answer against the transcript and the candidates (spec 0012, Validation). Items that
  * break a rule are dropped and counted; the whole answer is refused (`invalid`, so the caller falls
  * back to the rules cuts) when word cuts total over 40% of the take (60% for a take under 30 s), or more than half of all
@@ -466,9 +498,25 @@ export function validateAiEdit(
   });
   const unapplied = pauseCuts.filter((c) => c.applied === false);
   const applied = pauseCuts.filter((c) => c.applied !== false);
-  const cuts = [...unapplied, ...mergeCuts(applied, wordCuts, count)].sort(
-    (a, b) => a.startMs - b.startMs,
-  );
+  const merged = [...unapplied, ...mergeCuts(applied, wordCuts, count)];
+  const smoothed = smoothWordCutEdges(merged, words);
+  // Smoothing grows word cuts by up to 160 ms each; when that would take the word cuts over the
+  // share limit, the answer keeps the unsmoothed edges (the check above stays true).
+  const grown = smoothed.reduce((sum, c, i) => {
+    const before = merged[i];
+    return sum + (before ? c.endMs - c.startMs - (before.endMs - before.startMs) : 0);
+  }, 0);
+  // A cut that smoothing grew past the per cut limit also keeps its unsmoothed edges.
+  const pastCutLimit = smoothed.some((c, i) => {
+    const before = merged[i];
+    const len = c.endMs - c.startMs;
+    return (
+      before !== undefined && len > before.endMs - before.startMs && len > AI_EDIT.wordCutMaxMs
+    );
+  });
+  const withinLimit =
+    !pastCutLimit && wordCutMs + grown <= durationMs * wordCutMaxShareFor(durationMs);
+  const cuts = (withinLimit ? smoothed : merged).sort((a, b) => a.startMs - b.startMs);
   // Last, so the merge's drops count too.
   if (count.dropped * 2 > total) return err("invalid");
   return ok({ cuts, fixes, background, dropped: count.dropped });

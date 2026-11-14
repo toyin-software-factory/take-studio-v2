@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Container } from "./processing";
+import type { RecordingContainer } from "./recorder-rules";
 import {
   LINK_REFRESH_MARGIN_MS,
   PART_ATTEMPTS,
@@ -97,7 +98,7 @@ function batchFrom(from: number, count: number, has: (n: number) => boolean): nu
 /** Uploads `file`. Resolves with the take ID, a cancellation, or a friendly failure. */
 export async function uploadFile(
   file: Blob & { readonly name: string },
-  container: Container,
+  container: Container | RecordingContainer,
   io: UploadIo,
   signal: AbortSignal,
   events: UploadEvents = {},

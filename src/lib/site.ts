@@ -29,6 +29,7 @@ export function siteOrigin(value: string | undefined): string | null {
 export const PRIVATE_PATHS = [
   "/takes",
   "/library",
+  "/record",
   "/design",
   "/account",
   "/api/",
