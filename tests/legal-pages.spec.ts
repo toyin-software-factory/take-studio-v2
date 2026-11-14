@@ -156,8 +156,13 @@ for (const { path } of PAGES) {
         const ctx = document.createElement("canvas").getContext("2d", {
           willReadFrequently: true,
         }) as CanvasRenderingContext2D;
-        const rgb = (v: string) => {
+        // Composite over a backdrop so a translucent colour is read as it prints.
+        const rgb = (v: string, backdrop?: number[]) => {
           ctx.clearRect(0, 0, 1, 1);
+          if (backdrop) {
+            ctx.fillStyle = `rgb(${backdrop.join(", ")})`;
+            ctx.fillRect(0, 0, 1, 1);
+          }
           ctx.fillStyle = "#000";
           ctx.fillStyle = v;
           ctx.fillRect(0, 0, 1, 1);
@@ -165,7 +170,8 @@ for (const { path } of PAGES) {
         };
         const body = getComputedStyle(document.body);
         const text = getComputedStyle(document.querySelector("[data-legal-copy] p") as Element);
-        return { bg: rgb(body.backgroundColor), fg: rgb(text.color) };
+        const bg = rgb(body.backgroundColor, [255, 255, 255]);
+        return { bg, fg: rgb(text.color, bg) };
       });
       expect(Math.min(...colours.bg)).toBeGreaterThanOrEqual(250);
       expect(Math.max(...colours.fg)).toBeLessThanOrEqual(60);
