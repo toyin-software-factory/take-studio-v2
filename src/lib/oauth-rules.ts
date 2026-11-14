@@ -33,3 +33,21 @@ export function oauthResumePath(search: URLSearchParams): string | null {
   for (const name of SIGNED_QUERY_PARAMS) params.delete(name);
   return `/api/auth/oauth2/authorize?${params.toString()}`;
 }
+
+/**
+ * AC-13 redirect policy: `https`, or `http` on a loopback host (localhost, 127.0.0.1, [::1]),
+ * and no wildcard or credentials. The plugin also accepts native private use schemes such as
+ * `com.example.app:/callback`; we do not.
+ */
+export function redirectUriAllowed(uri: string): boolean {
+  if (uri.includes("*")) return false;
+  let url: URL;
+  try {
+    url = new URL(uri);
+  } catch {
+    return false;
+  }
+  if (url.username !== "" || url.password !== "" || url.hash !== "") return false;
+  if (url.protocol === "https:") return true;
+  return url.protocol === "http:" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+}

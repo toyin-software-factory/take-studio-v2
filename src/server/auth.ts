@@ -11,6 +11,7 @@ import { ACCOUNT_DELETE_FRESH_SECONDS } from "./account/policy";
 import type { EmailSender } from "@/lib/email/send";
 import { signInEmail } from "@/lib/email/templates";
 import { takeSignInEmailSlot } from "./email/sign-in-limits";
+import { redirectUriAllowed } from "@/lib/oauth-rules";
 import { recordEvent } from "./analytics/record";
 
 type AuthEnv = Pick<
@@ -83,12 +84,16 @@ export function createAuth(
       // AC-4: 3 sign in link requests per email per 15 minutes (the IP limit is above).
       before: createAuthMiddleware(async (ctx) => {
         if (ctx.path === "/oauth2/register") {
-          // AC-13: no wildcard redirect URIs (the plugin already requires https or loopback).
+          // AC-13: https or loopback only, no wildcards (the plugin also allows custom schemes).
           const uris = (ctx.body as { redirect_uris?: unknown } | undefined)?.redirect_uris;
-          if (Array.isArray(uris) && uris.some((u) => typeof u === "string" && u.includes("*"))) {
+          if (
+            Array.isArray(uris) &&
+            uris.some((u) => typeof u !== "string" || !redirectUriAllowed(u))
+          ) {
             throw new APIError("BAD_REQUEST", {
               error: "invalid_redirect_uri",
-              error_description: "Redirect URIs cannot contain wildcards.",
+              error_description:
+                "Redirect URIs must be https, or http on localhost, with no wildcard.",
             });
           }
           return;

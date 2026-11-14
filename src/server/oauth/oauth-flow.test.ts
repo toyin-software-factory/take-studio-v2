@@ -249,6 +249,10 @@ describe("discovery and registration (AC-13)", () => {
     expect(bad.status).toBeGreaterThanOrEqual(400);
     const wild = await register("https://*.evil.example/cb");
     expect(wild.status).toBeGreaterThanOrEqual(400);
+    const custom = await register("com.example.app:/callback");
+    expect(custom.status).toBeGreaterThanOrEqual(400);
+    const loopback = await register("http://127.0.0.1:8123/cb");
+    expect(loopback.status).toBe(201);
   });
 });
 
