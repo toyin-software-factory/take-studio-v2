@@ -2,6 +2,9 @@ import postgres from "postgres";
 import { usageAccountHash } from "../../src/lib/usage-hash";
 import { localDatabaseUrl, setting, type TestUser } from "./session";
 
+/** Arbitrary key shared by every `setUsage` caller. */
+const USAGE_LOCK = 2100021;
+
 /**
  * Test only: sets the monthly usage state of a test user in the local or CI Postgres (same
  * guard as `session.ts`): the two `app_setting` rows and this month's `usage_month` row. The
@@ -19,6 +22,9 @@ export async function setUsage(
   const secret = setting("USAGE_HASH_SECRET");
   if (!secret) throw new Error("USAGE_HASH_SECRET is not set (CI writes it to .env).");
   const sql = postgres(localDatabaseUrl(), { max: 1 });
+  // The settings are global rows, so every test that sets usage (in any file or worker) takes this
+  // session lock until its cleanup runs. Without it, parallel workers overwrite each other's limit.
+  await sql`select pg_advisory_lock(${USAGE_LOCK})`;
   const hash = await usageAccountHash(user.email, secret);
   const month = `${new Date().toISOString().slice(0, 7)}-01`;
   const keys = ["usage_limit_enabled", "free_monthly_seconds"];
@@ -40,6 +46,7 @@ export async function setUsage(
       if (old) await put(key, old.value);
       else await sql`delete from app_setting where key = ${key}`;
     }
+    await sql`select pg_advisory_unlock(${USAGE_LOCK})`;
     await sql.end();
   };
 }

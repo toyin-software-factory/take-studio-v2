@@ -110,10 +110,8 @@ describe("deleteTake (AC-17)", () => {
 
     expect(result.ok).toBe(true);
     expect(await db.select().from(take).where(eq(take.script, script))).toEqual([]);
-    const queued = await db
-      .select()
-      .from(storageDeletion)
-      .where(inArray(storageDeletion.objectKey, [t.originalKey]));
+    const queued = await db.select().from(storageDeletion);
+    expect(queued.length).toBeGreaterThan(0);
     expect(JSON.stringify(queued)).not.toContain(script);
   });
 

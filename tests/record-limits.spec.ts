@@ -91,7 +91,7 @@ test("a refused upload (403) keeps the take and reads the numbers again (AC-6)",
   page,
   baseURL,
 }) => {
-  await open(page, baseURL!, 30);
+  await open(page, baseURL!, 5);
   let usageReads = 0;
   await page.route("**/api/usage", (r) => {
     usageReads += 1;
@@ -116,7 +116,7 @@ test("a refused upload (403) keeps the take and reads the numbers again (AC-6)",
   await expect(page.getByText("This take wasn't uploaded")).toBeVisible();
   await expect(page.getByLabel("Your recording")).toBeVisible();
   await expect(page.getByRole("link", { name: "Save to your device" })).toBeVisible();
-  expect(usageReads).toBeGreaterThan(0);
+  await expect.poll(() => usageReads).toBeGreaterThan(0);
 });
 
 test.describe("leaving with a recording (AC-7)", () => {
