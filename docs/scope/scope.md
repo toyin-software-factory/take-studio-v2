@@ -258,7 +258,7 @@ An MCP server so AI assistants (Claude, ChatGPT and agent tools) can use Take St
 - [x] Verify it: `/check verify MCP server for AI agents`
 - [x] Test it: `/test MCP server for AI agents`
 - [x] Review it: `/check review MCP server for AI agents`
-- [ ] Document it: `/document MCP server for AI agents`
+- [x] Document it: `/document MCP server for AI agents`
 Spec [0019](../specs/0019-mcp-server/index.md)
 
 ## Launch
