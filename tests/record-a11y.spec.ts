@@ -77,9 +77,16 @@ for (const scheme of SCHEMES) {
       await expect(page.getByRole("button", { name: "Record" })).toBeVisible();
       await expectNoSeriousAxeIssues(page);
 
+      // Hold the page clock inside the countdown, so the scan sees the countdown on a slow
+      // runner too, then let it run again.
+      await page.clock.install();
       await page.getByRole("button", { name: "Record" }).click();
-      await expect(page.getByRole("status").filter({ hasText: "Recording starts" })).toBeVisible();
+      await page.clock.pauseAt(await page.evaluate(() => Date.now() + 500));
+      const countdown = page.getByRole("status").filter({ hasText: "Recording starts" });
+      await expect(countdown).toBeVisible();
       await expectNoSeriousAxeIssues(page);
+      await expect(countdown).toBeVisible();
+      await page.clock.resume();
 
       await expect(page.getByTestId("record-timer")).toBeVisible();
       await expectNoSeriousAxeIssues(page);
@@ -192,7 +199,7 @@ test("the whole flow works from the keyboard, with a visible focus ring and no t
   await page.keyboard.press("Enter");
 
   await expect(page.getByTestId("record-timer")).toBeVisible();
-  await page.locator("body").click({ position: { x: 1, y: 1 } });
+  // No pointer: the shortcut must work with whatever the keyboard left focused.
   await page.keyboard.press("p");
   await expect(page.getByRole("button", { name: "Resume script" })).toBeVisible();
   await page.waitForTimeout(1500);
