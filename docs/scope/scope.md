@@ -225,10 +225,23 @@ Spec [0014](../specs/0014-monthly-usage-limit.md)
 
 ## Slice 7: Usable by AI agents
 
-### 13. Public API · needs a decision · GA
+### 13. Public API · planned · GA
 A documented API so programs and agents can do everything the web app does for a creator: upload a take, choose a background, run processing, review and undo cuts, fetch the video and transcript, delete a take.
 **Done when:** a creator can create and revoke an API key; every web app action has an API equivalent with the same limits and permissions; the API is documented.
-- [ ] Design it (spec): `/architect public API`
+- [x] Design it (spec): `/architect public API`
+- [ ] Build it: `/develop public API`
+   - [ ] Migration, key and rate rules, key routes (create, list, revoke, session only) (AC-1, AC-2, AC-3, AC-4, AC-9, AC-13, AC-14)
+   - [ ] Tracer thread: one resolver (bearer else session, no fallback), Origin rule, rate window, last used, live check on two routes (AC-5, AC-6, AC-9, AC-10, AC-16)
+   - [ ] Every route behind the guard, parity, permission and allowance tests (AC-7)
+   - [ ] Public registry, coverage test, `/docs/api` and `/api/openapi.json` (AC-8, AC-11)
+   - [ ] API keys screen, browser tests and axe (AC-12)
+   - [ ] Legal facts, Privacy and Terms copy, version and hash line (AC-15)
+   - [ ] Real run by key from upload to download, then revoke (AC-3, AC-5, AC-7)
+- [ ] Verify it: `/check verify public API`
+- [ ] Test it: `/test public API`
+- [ ] Review it: `/check review public API`
+- [ ] Document it: `/document public API`
+Spec [0018](../specs/0018-public-api.md)
 
 ### 14. MCP server for AI agents · needs a decision · GA
 An MCP server so AI assistants (Claude, ChatGPT and agent tools) can use Take Studio directly on a creator's behalf, built on the public API.
