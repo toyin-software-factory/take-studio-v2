@@ -6,6 +6,7 @@ import {
   cutName,
   NO_EDITS,
   normalizeEdits,
+  nextCutIndex,
   numberCuts,
   pendingItems,
   pendingRanges,
@@ -125,5 +126,17 @@ describe("cut review model", () => {
     expect(r.width).toBe(12);
     expect(r.hitWidth).toBe(24);
     expect(r.left).toBe(0);
+  });
+  it("arrow, Home and End move between cuts and stop at the ends (B2-T97)", () => {
+    expect(nextCutIndex("ArrowRight", 0, 3)).toBe(1);
+    expect(nextCutIndex("ArrowDown", 1, 3)).toBe(2);
+    expect(nextCutIndex("ArrowRight", 2, 3)).toBe(2);
+    expect(nextCutIndex("ArrowLeft", 2, 3)).toBe(1);
+    expect(nextCutIndex("ArrowUp", 0, 3)).toBe(0);
+    expect(nextCutIndex("Home", 2, 3)).toBe(0);
+    expect(nextCutIndex("End", 0, 3)).toBe(2);
+    expect(nextCutIndex("Tab", 0, 3)).toBeNull();
+    expect(nextCutIndex("Enter", 0, 3)).toBeNull();
+    expect(nextCutIndex("ArrowRight", 0, 0)).toBeNull();
   });
 });

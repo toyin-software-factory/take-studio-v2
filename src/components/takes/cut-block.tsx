@@ -14,6 +14,7 @@ export function CutBlock({
   disabled,
   onPress,
   onFocus,
+  tabStop,
   describedBy,
 }: {
   readonly cut: NumberedCut;
@@ -23,6 +24,8 @@ export function CutBlock({
   readonly disabled: boolean;
   readonly onPress: () => void;
   readonly onFocus?: () => void;
+  /** Roving tabindex: only the current cut is a Tab stop, arrows move between the others. */
+  readonly tabStop: boolean;
   /** Id of the element holding this cut's reason (spec 0012 AC-3). */
   readonly describedBy?: string;
 }) {
@@ -33,6 +36,8 @@ export function CutBlock({
       aria-pressed={!applied}
       aria-label={cutName(cut, applied)}
       aria-describedby={describedBy}
+      data-cut-block=""
+      tabIndex={tabStop ? 0 : -1}
       onFocus={onFocus}
       disabled={disabled}
       onClick={onPress}

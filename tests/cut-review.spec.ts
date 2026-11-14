@@ -434,8 +434,7 @@ test("on a phone the reason line wraps without sideways page scroll (AC-3)", asy
 });
 
 // B2-T95 (/test cut review timeline): keyboard, focus, targets, themes, reduced motion and the
-// summary against the cut list. Arrow keys are not part of the timeline (it has no key handler),
-// so Tab and Enter or Space are the keyboard model; see the PR for that gap.
+// summary against the cut list. Arrows, Home and End arrived with B2-T97 (below).
 const listButtons = (page: Page) => list(page).getByRole("button", { name: /^(Undo|Redo) / });
 
 test("Enter and Space both toggle a block, and keeping then cutting again leaves no change (AC-1, AC-2, AC-10)", async ({
@@ -453,28 +452,94 @@ test("Enter and Space both toggle a block, and keeping then cutting again leaves
   await expect(bar(page)).toHaveCount(0);
 });
 
-test("Tab reaches the timeline, then every block in time order, before the cut list (AC-10)", async ({
+test("the blocks are one Tab stop: timeline, one block, then the cut list (AC-10, B2-T97)", async ({
   page,
   baseURL,
 }) => {
   const { id } = await setup(page, baseURL!);
   await load(page, id);
   await timeline(page).focus();
-  const seen: string[] = [];
-  for (let i = 0; i < 12 && !seen.some((s) => s.startsWith("list:")); i += 1) {
-    await page.keyboard.press("Tab");
-    seen.push(
-      await page.evaluate(() => {
-        const el = document.activeElement;
-        const inList = el?.closest("[data-testid='cut-list']") !== null;
-        return `${inList ? "list:" : ""}${el?.getAttribute("aria-label") ?? el?.textContent ?? ""}`;
-      }),
-    );
-  }
-  const order = [1, 2, 3].map((n) => seen.findIndex((s) => s.startsWith(`Pause ${n},`)));
-  expect(order.every((i) => i >= 0)).toBe(true);
-  expect(order).toEqual([...order].sort((a, b) => a - b));
-  expect(seen.findIndex((s) => s.startsWith("list:"))).toBeGreaterThan(order[2]!);
+  await page.keyboard.press("Tab");
+  await expect(cutButton(page, 1)).toBeFocused();
+  // Tab again leaves the blocks: it never lands on block 2 or 3.
+  await page.keyboard.press("Tab");
+  await expect(timeline(page).locator(":focus")).toHaveCount(0);
+  await expect(cutButton(page, 2)).toHaveAttribute("tabindex", "-1");
+  await expect(cutButton(page, 3)).toHaveAttribute("tabindex", "-1");
+  // Shift+Tab comes back to the same block, not the last one.
+  await page.keyboard.press("Shift+Tab");
+  await expect(cutButton(page, 1)).toBeFocused();
+});
+
+test("arrows, Home and End move between cuts; Enter and Space still toggle (B2-T97)", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!);
+  await load(page, id);
+  await cutButton(page, 1).focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(cutButton(page, 2)).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  await expect(cutButton(page, 3)).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect(cutButton(page, 3)).toBeFocused();
+  await page.keyboard.press("ArrowLeft");
+  await expect(cutButton(page, 2)).toBeFocused();
+  await page.keyboard.press("Home");
+  await expect(cutButton(page, 1)).toBeFocused();
+  await page.keyboard.press("ArrowUp");
+  await expect(cutButton(page, 1)).toBeFocused();
+  await page.keyboard.press("End");
+  await expect(cutButton(page, 3)).toBeFocused();
+  // Moving never changes a cut; Enter does.
+  await expect(bar(page)).toHaveCount(0);
+  await page.keyboard.press("Enter");
+  await expect(cutButton(page, 3)).toHaveAttribute("aria-pressed", "false");
+  await page.keyboard.press("Home");
+  await page.keyboard.press("Space");
+  await expect(cutButton(page, 1)).toHaveAttribute("aria-pressed", "true");
+  await expect(bar(page)).toContainText("2 changes");
+});
+
+test("the focused block is the Tab stop, its reason is read and its ring is visible (B2-T97, spec 0012 AC-3)", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!, { detail: { cuts: AI_CUTS, aiEdit: "done" } });
+  await load(page, id);
+  await cutAny(page, 1).focus();
+  await page.keyboard.press("ArrowRight");
+  await page.keyboard.press("ArrowRight");
+  await expect(cutAny(page, 3)).toBeFocused();
+  await expect(cutAny(page, 3)).toHaveAttribute("tabindex", "0");
+  await expect(cutAny(page, 1)).toHaveAttribute("tabindex", "-1");
+  await expect(cutAny(page, 3)).toHaveCSS("outline-style", "solid");
+  await expect(reasonLineOf(page)).toHaveText("Cut 3: A repeated word.");
+  await expect(cutAny(page, 3)).toHaveAccessibleDescription("A repeated word.");
+  // Leaving and coming back lands on the cut last used.
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Tab");
+  await expect(cutAny(page, 3)).toBeFocused();
+});
+
+test("arrow keys scroll a far cut into view inside the timeline, with reduced motion too (B2-T97)", async ({
+  page,
+  baseURL,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const far = [
+    ...CUTS,
+    { id: "c4", startMs: 580_000, endMs: 581_000, kind: "pause", applied: true },
+  ];
+  const { id } = await setup(page, baseURL!, { detail: { cuts: far, durationMs: 600_000 } });
+  await load(page, id);
+  await cutButton(page, 1).focus();
+  await page.keyboard.press("End");
+  const last = timeline(page).getByRole("button", { name: /^Pause 4,/ });
+  await expect(last).toBeFocused();
+  await expect(last).toBeInViewport();
+  expect(await noPageScroll(page)).toBe(true);
 });
 
 test("a focused block shows a visible focus ring, and the targets are 44 px on desktop (AC-10)", async ({
