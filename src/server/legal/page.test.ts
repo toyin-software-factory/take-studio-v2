@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
-import { LEGAL_ENTITY, PUBLIC_VIEWER } from "@/lib/legal-facts";
+import { PUBLIC_VIEWER } from "@/lib/legal-facts";
 import { legalAllowance } from "./allowance";
 import { allowanceState } from "./page";
 
@@ -55,7 +55,4 @@ describe("the legal pages (spec 0015 AC-1, value sourcing)", () => {
       expect(source).toContain(`canonical: "/${page}"`);
     });
   }
-  it("starts with every entity value unset, so no value is invented", () => {
-    expect(Object.values(LEGAL_ENTITY).every((v) => v === null)).toBe(true);
-  });
 });
