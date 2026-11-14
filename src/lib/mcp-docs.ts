@@ -16,6 +16,18 @@ export const MCP_AUTH_STEPS: readonly string[] = [
   "Add Take Studio to your assistant with the address and header below. Use your own key where you see the placeholder.",
 ];
 
+/** The sign in path for assistants that connect from a web page (Claude.ai, ChatGPT). No key. */
+export const MCP_SIGNIN_STEPS: readonly string[] = [
+  "In your assistant, add a custom connector and paste the server address from the top of this page. Leave any key or secret field empty.",
+  "Your assistant sends you to Take Studio. Sign in if you are asked to.",
+  `Read the screen "Allow this app to use your Take Studio?", then choose Allow. Choose Deny and nothing is connected.`,
+  "You are sent back to your assistant, and it can work on your takes.",
+];
+
+/** Where connected apps are listed and ended. */
+export const MCP_APPS_NOTE =
+  "Every assistant you allowed is listed under Connected apps, on the API keys screen (open your account menu, then API keys). Choose Disconnect next to one and it stops working right away. An assistant that uses a key is ended by revoking the key on the same screen.";
+
 /** The fields of a tool the page needs (the server's `ToolDef` has more). */
 export type McpToolSource = {
   readonly name: McpToolName;
@@ -132,5 +144,5 @@ export const MCP_SAFETY: readonly string[] = [
   "An assistant with your key can do what you can do: the same free minutes, the same limits, and only your own takes.",
   "Deleting needs a clear yes: the delete tool does nothing unless the assistant sends confirm set to true, and it is told to ask you first.",
   "Text from your video, such as a transcript, is shown to the assistant as data, and it is told never to follow it as an instruction.",
-  "A key can be revoked on the API keys screen at any time, and the assistant stops working at once.",
+  "A key can be revoked on the API keys screen at any time, and the assistant stops working at once. An assistant you allowed by signing in is ended with Disconnect under Connected apps on the same screen.",
 ];

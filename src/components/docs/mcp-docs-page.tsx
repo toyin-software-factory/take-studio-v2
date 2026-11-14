@@ -1,8 +1,10 @@
 import {
+  MCP_APPS_NOTE,
   MCP_AUTH_STEPS,
   MCP_EXAMPLE,
   MCP_EXAMPLE_ASK,
   MCP_SAFETY,
+  MCP_SIGNIN_STEPS,
   mcpSetups,
   type McpToolDoc,
 } from "@/lib/mcp-docs";
@@ -12,6 +14,8 @@ const TOC = [
   { id: "start", title: "Start here" },
   { id: "auth", title: "Get a key" },
   { id: "setup", title: "Connect your assistant" },
+  { id: "signin", title: "Connect by signing in" },
+  { id: "apps", title: "See and end connections" },
   { id: "example", title: "A worked example" },
   { id: "safety", title: "What an assistant can do" },
   { id: "tools", title: "Every tool" },
@@ -70,6 +74,26 @@ export function McpDocsPage({
             </pre>
           </div>
         ))}
+      </section>
+      <section id="signin" aria-labelledby="h-signin" className="flex scroll-mt-8 flex-col gap-3">
+        <h2 id="h-signin" className="text-h3">
+          Connect by signing in
+        </h2>
+        <p>
+          Developer tools such as Claude Code and Cursor use a key. Claude.ai and ChatGPT connect
+          by signing in instead, with no key to copy.
+        </p>
+        <ol className="flex list-decimal flex-col gap-1 pl-6">
+          {MCP_SIGNIN_STEPS.map((step) => (
+            <li key={step}>{step}</li>
+          ))}
+        </ol>
+      </section>
+      <section id="apps" aria-labelledby="h-apps" className="flex scroll-mt-8 flex-col gap-3">
+        <h2 id="h-apps" className="text-h3">
+          See and end connections
+        </h2>
+        <p>{MCP_APPS_NOTE}</p>
       </section>
       <section id="example" aria-labelledby="h-example" className="flex scroll-mt-8 flex-col gap-3">
         <h2 id="h-example" className="text-h3">

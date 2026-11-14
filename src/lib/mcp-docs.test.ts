@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { MCP_EXAMPLE, MCP_KEY_PLACEHOLDER, firstSentence, mcpSetups, mcpUrl } from "./mcp-docs";
+import {
+  MCP_APPS_NOTE,
+  MCP_EXAMPLE,
+  MCP_KEY_PLACEHOLDER,
+  MCP_SAFETY,
+  MCP_SIGNIN_STEPS,
+  firstSentence,
+  mcpSetups,
+  mcpUrl,
+} from "./mcp-docs";
 import { MCP_TOOL_NAMES } from "./mcp-rules";
+import { CONNECTED_COPY, CONSENT_COPY } from "./oauth-screen";
 
 describe("firstSentence", () => {
   it("cuts at the first full stop followed by a space", () => {
@@ -54,5 +64,25 @@ describe("the worked example", () => {
     const intro = mcpSetups(mcpUrl(null)).find((s) => s.id === "json")!.intro;
     expect(intro).toContain("mcpServers");
     expect(intro).toContain(".vscode/mcp.json");
+  });
+});
+
+describe("the sign in path and connected apps (spec 0019 AC-13, AC-14)", () => {
+  it("names the consent screen and the Allow and Deny buttons the page really shows", () => {
+    const text = MCP_SIGNIN_STEPS.join(" ");
+    expect(text).toContain(CONSENT_COPY.title);
+    expect(text).toContain(CONSENT_COPY.allow);
+    expect(text).toContain(CONSENT_COPY.deny);
+  });
+
+  it("says where apps are listed and ended, with the real heading and button", () => {
+    expect(MCP_APPS_NOTE).toContain(CONNECTED_COPY.heading);
+    expect(MCP_APPS_NOTE).toContain("Disconnect");
+    expect(MCP_SAFETY.join(" ")).toContain(CONNECTED_COPY.heading);
+  });
+
+  it("never holds a real token or code", () => {
+    const all = [...MCP_SIGNIN_STEPS, MCP_APPS_NOTE, ...MCP_SAFETY].join(" ");
+    expect(all).not.toMatch(/tsk_[A-Za-z0-9]{16,}/);
   });
 });
