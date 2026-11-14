@@ -1,7 +1,13 @@
 import { createHash, randomBytes } from "node:crypto";
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { deleteExpiredOauthRows, disconnectApp, listConnectedApps } from "@/db/data/oauth";
+import {
+  deleteExpiredOauthRows,
+  disconnectApp,
+  getConsentClient,
+  listConnectedApps,
+} from "@/db/data/oauth";
+import { handleDisconnect, handleList } from "./http";
 import {
   account,
   oauthAccessToken,
@@ -311,6 +317,33 @@ describe("authorize and token (AC-13)", () => {
     expect(replay.status).toBe(400);
   });
 
+  it("an authorization code lasts 60 seconds and is refused after that", async () => {
+    const who = await signIn("code-ttl@example.test");
+    const registered = (await (await register()).json()) as Registered;
+    const { verifier, challenge } = pkce();
+    const code = await grantCode(who.cookie, registered.client_id, challenge);
+    const [row] = await db
+      .select()
+      .from(verification)
+      .orderBy(desc(verification.createdAt))
+      .limit(1);
+    const seconds = ((row?.expiresAt.getTime() ?? 0) - (row?.createdAt.getTime() ?? 0)) / 1000;
+    expect(seconds).toBeGreaterThanOrEqual(59);
+    expect(seconds).toBeLessThanOrEqual(61);
+    await db
+      .update(verification)
+      .set({ expiresAt: new Date(Date.now() - 1000) })
+      .where(eq(verification.id, row!.id));
+    const late = await tokenRequest({
+      grant_type: "authorization_code",
+      code,
+      client_id: registered.client_id,
+      redirect_uri: REDIRECT,
+      code_verifier: verifier,
+    });
+    expect(late.status).toBe(400);
+  });
+
   it("rotates the refresh token, and reuse of an old one revokes the whole grant", async () => {
     const who = await signIn("rotate@example.test");
     const grant = await connect(who);
@@ -446,6 +479,58 @@ describe("tokens as identity (AC-14)", () => {
       client_id: mine.clientId,
     });
     expect(refresh.status).toBe(400);
+  });
+
+  it("connected apps routes: session only, own rows only, disconnect by consent ID", async () => {
+    const who = await signIn("routes@example.test");
+    const other = await signIn("routes-other@example.test");
+    const mine = await connect(who);
+    const theirs = await connect(other);
+    const origin = new URL(RESOURCE).origin;
+    const deps = (id: string | null) => ({
+      allowedOrigin: origin,
+      getCreator: async () => (id ? { db, creatorId: id } : null),
+    });
+    const list = (id: string | null, headers: Record<string, string> = {}) =>
+      handleList(new Request(`${origin}/api/connected-apps`, { headers }), deps(id));
+    const remove = (id: string | null, consent: string, headers: Record<string, string>) =>
+      handleDisconnect(
+        new Request(`${origin}/api/connected-apps/${consent}`, { method: "DELETE", headers }),
+        consent,
+        deps(id),
+      );
+
+    expect((await list(null)).status).toBe(401);
+    const viaToken = await list(who.id, { authorization: `Bearer ${mine.access}` });
+    expect(viaToken.status).toBe(401);
+    expect(((await viaToken.json()) as { error: string }).error).toBe("session_required");
+
+    const body = (await (await list(who.id)).json()) as {
+      apps: { id: string; name: string; connectedAt: string; lastUsedAt: string | null }[];
+    };
+    expect(body.apps).toHaveLength(1);
+    const app = body.apps[0]!;
+    expect(app.name).toBe("Test assistant");
+    expect(app.lastUsedAt).not.toBeNull();
+    expect(JSON.stringify(body)).not.toContain(mine.access);
+    expect(JSON.stringify(body)).not.toContain(mine.clientId);
+
+    const theirConsent = (await listConnectedApps(db, other.id))[0]!.id;
+    expect((await remove(who.id, theirConsent, { origin })).status).toBe(404);
+    expect((await remove(who.id, app.id, {})).status).toBe(403);
+    expect((await remove(who.id, app.id, { origin })).status).toBe(204);
+    expect((await remove(who.id, app.id, { origin })).status).toBe(404);
+    expect(await listConnectedApps(db, other.id)).toHaveLength(1);
+    expect(theirs.access).toBeTruthy();
+  });
+
+  it("the consent page reads a client's name and redirects, and nothing for an unknown one", async () => {
+    const who = await signIn("consent-client@example.test");
+    const app = await connect(who);
+    const client = await getConsentClient(db, app.clientId);
+    expect(client?.name).toBe("Test assistant");
+    expect(client?.redirectUris.length).toBeGreaterThan(0);
+    expect(await getConsentClient(db, "no-such-client")).toBeNull();
   });
 
   it("deleting the account deletes its grants and tokens, and only its own", async () => {

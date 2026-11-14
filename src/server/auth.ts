@@ -110,8 +110,10 @@ export function createAuth(
         // is a signed JWT that is never stored, so it could not be looked up or revoked (a
         // disconnect must work on the next request, AC-14). Spike note in spec 0019 Follow-up.
         disableJwtPlugin: true,
+        // AC-13: an authorization code lives 60 seconds (the plugin's default is 600).
+        codeExpiresIn: 60,
         loginPage: "/sign-in",
-        consentPage: "/consent",
+        consentPage: "/oauth/consent",
         allowDynamicClientRegistration: true,
         allowUnauthenticatedClientRegistration: true,
         resources: [mcpResource(env)],

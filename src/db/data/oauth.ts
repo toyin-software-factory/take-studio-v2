@@ -32,6 +32,8 @@ export async function authenticateOauthToken(
 
 /** An assistant a creator connected (AC-14): the client name, when it was allowed, last use. */
 export type ConnectedApp = {
+  /** The consent row's ID: safe to show, never a token or a client secret. */
+  readonly id: string;
   readonly clientId: string;
   readonly name: string | null;
   readonly connectedAt: Date;
@@ -45,6 +47,7 @@ export async function listConnectedApps(
 ): Promise<readonly ConnectedApp[]> {
   const rows = await db
     .select({
+      id: oauthConsent.id,
       clientId: oauthConsent.clientId,
       name: oauthClient.name,
       connectedAt: oauthConsent.createdAt,
@@ -102,4 +105,36 @@ export async function deleteExpiredOauthRows(
     .where(or(lt(oauthRefreshToken.expiresAt, cutoff), lt(oauthRefreshToken.revoked, cutoff)))
     .returning({ id: oauthRefreshToken.id });
   return { accessTokens: access.length, refreshTokens: refresh.length };
+}
+
+/** Disconnects by consent row ID; false when it is not this creator's (or already gone). */
+export async function disconnectConsent(
+  db: Executor,
+  creatorId: string,
+  consentId: string,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ clientId: oauthConsent.clientId })
+    .from(oauthConsent)
+    .where(and(eq(oauthConsent.id, consentId), eq(oauthConsent.userId, creatorId)))
+    .limit(1);
+  return row ? disconnectApp(db, creatorId, row.clientId) : false;
+}
+
+export type ConsentClient = {
+  readonly name: string | null;
+  readonly redirectUris: readonly string[];
+};
+
+/** What the consent page shows about a client: its name and where it will send the creator. */
+export async function getConsentClient(
+  db: Executor,
+  clientId: string,
+): Promise<ConsentClient | null> {
+  const [row] = await db
+    .select({ name: oauthClient.name, redirectUris: oauthClient.redirectUris })
+    .from(oauthClient)
+    .where(and(eq(oauthClient.clientId, clientId), eq(oauthClient.disabled, false)))
+    .limit(1);
+  return row ? { name: row.name, redirectUris: row.redirectUris ?? [] } : null;
 }
