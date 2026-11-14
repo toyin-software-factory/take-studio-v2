@@ -109,6 +109,21 @@ describe("dependencies", () => {
   });
 });
 
+/** Spec 0005 AC-4: every category off, written out so a flip inside the helper cannot pass. */
+const ALL_OFF = {
+  userInfo: false,
+  cookies: false,
+  httpHeaders: false,
+  httpBodies: [],
+  urlQueryParams: false,
+  graphQL: { document: false, variables: false },
+  genAI: { inputs: false, outputs: false },
+  mcp: { inputs: false, outputs: false },
+  databaseQueryData: false,
+  queues: false,
+  stackFrameVariables: false,
+};
+
 describe("promises tied to settings", () => {
   it("keeps Deepgram opted out of training", () => {
     expect(DEEPGRAM_OPTIONS.mip_opt_out).toBe("true");
@@ -123,10 +138,12 @@ describe("promises tied to settings", () => {
         runtime,
       });
       expect(options).not.toHaveProperty("sendDefaultPii", true);
-      expect(options.dataCollection).toEqual(minimalDataCollection());
+      expect(options.dataCollection).toEqual(ALL_OFF);
     }
     const worker = workerSentryOptions({ dsn: undefined, environment: "preview", runtime: "web" });
     expect(worker).not.toHaveProperty("sendDefaultPii", true);
+    expect(worker.dataCollection).toEqual(ALL_OFF);
+    expect(minimalDataCollection()).toEqual(ALL_OFF);
     const data = minimalDataCollection();
     expect(data.userInfo).toBe(false);
     expect(data.cookies).toBe(false);

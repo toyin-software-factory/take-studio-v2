@@ -143,7 +143,8 @@ export const PROCESSORS: readonly Processor[] = [
     role: "Runs the video jobs that trim, key and render your take.",
     receives:
       "File keys and IDs, and your video while a job runs (it passes through their machines).",
-    doesNotReceive: "Your email address or transcript text.",
+    doesNotReceive:
+      "Your email address. Transcript words pass through its jobs while they run (the AI edit reads them); we do not send transcripts to it for storage.",
     location: "Trigger.dev cloud.",
     trainsOnContent: false,
     envNames: ["TRIGGER_SECRET_KEY"],
@@ -269,6 +270,12 @@ export const COLLECTED: readonly Collected[] = [
     why: "To make your finished video.",
     kept: `${DAYS} from the end of the upload, then deleted. You can delete them sooner.`,
     deletedWith: "Deleting the take or the account.",
+  },
+  {
+    what: "Backgrounds you upload (images)",
+    why: "To put you in front of your own backdrop.",
+    kept: "Until you delete them. They do not expire after the video retention period.",
+    deletedWith: "Deleting the background or the account.",
   },
   {
     what: "Transcripts, cuts and edits",
