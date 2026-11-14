@@ -69,8 +69,8 @@ export const ACCOUNT_DELETE_EMAIL_DAYS = 30;
 
 /** ISO dates, bumped by hand whenever the page text changes (the text hash test forces it). */
 export const LEGAL_VERSION = {
-  privacy: "2026-11-16",
-  terms: "2026-11-16",
+  privacy: "2026-11-14",
+  terms: "2026-11-14",
 } as const;
 
 export type Review = {
