@@ -37,6 +37,15 @@ async function stubDelete(page: Page, answers: readonly (number | "abort")[]) {
   return calls;
 }
 
+/** Tab and Shift+Tab many times: focus never leaves the open dialog (AC-12). */
+async function expectFocusTrapped(page: Page) {
+  const dialog = page.getByRole("dialog");
+  for (const key of ["Tab", "Tab", "Tab", "Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab"]) {
+    await page.keyboard.press(key);
+    await expect.poll(() => dialog.evaluate((d) => d.contains(document.activeElement))).toBe(true);
+  }
+}
+
 const seeds = [
   { title: "Alpha take", status: "failed", failureCode: "unsupported", minutesAgo: 1 },
   { title: "Beta take", status: "failed", failureCode: "unsupported", minutesAgo: 2 },
@@ -65,6 +74,16 @@ test.describe("library card menu", () => {
     await page.keyboard.press("Escape");
     await expect(page.getByRole("dialog")).toBeHidden();
     await expect(menu).toBeFocused();
+  });
+
+  test("the dialog traps focus and names the action Delete <title>", async ({ page, baseURL }) => {
+    const user = await signedIn(page, baseURL!);
+    await seedTakes(user.id, seeds);
+    await page.goto("/library");
+    await page.getByRole("button", { name: "Actions for Beta take" }).click();
+    await page.getByRole("menuitem", { name: "Delete Beta take" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await expectFocusTrapped(page);
   });
 
   test("deleting removes the card at once, updates the count and moves focus", async ({
@@ -168,6 +187,23 @@ test.describe("take page", () => {
     expect(new URL(page.url()).search).toBe("");
   });
 
+  test("the Delete button in Details is keyboard reachable; trap, Keep it returns focus", async ({
+    page,
+    baseURL,
+  }) => {
+    const user = await signedIn(page, baseURL!);
+    const [id] = await seedTakes(user.id, processing);
+    await page.goto(`/takes/${id}`);
+    const button = page.getByRole("button", { name: "Delete Gamma take" });
+    await button.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await expectFocusTrapped(page);
+    await page.getByRole("button", { name: "Keep it" }).click();
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await expect(button).toBeFocused();
+  });
+
   test("the header menu opens the same dialog and Escape returns focus to it", async ({
     page,
     baseURL,
@@ -212,6 +248,29 @@ test.describe("phone width", () => {
       () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
     );
     expect(overflow).toBeLessThanOrEqual(0);
+    await expectNoSeriousAxeIssues(page);
+  });
+
+  test("the take page and its dialog fit with no sideways scroll and 44 px targets", async ({
+    page,
+    baseURL,
+  }) => {
+    const user = await signedIn(page, baseURL!);
+    const [id] = await seedTakes(user.id, [{ title: "Gamma take", status: "processing" }]);
+    await page.goto(`/takes/${id}`);
+    const sideways = () =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      );
+    expect(await sideways()).toBeLessThanOrEqual(0);
+    const del = page.getByRole("button", { name: "Delete Gamma take" });
+    expect((await del.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    await del.click();
+    for (const name of ["Keep it", "Delete take"]) {
+      const b = (await page.getByRole("button", { name }).boundingBox())!;
+      expect(b.height).toBeGreaterThanOrEqual(44);
+    }
+    expect(await sideways()).toBeLessThanOrEqual(0);
     await expectNoSeriousAxeIssues(page);
   });
 });

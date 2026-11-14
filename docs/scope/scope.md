@@ -32,7 +32,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 8 | Studio background swap | Slice 3 | done |
 | 9 | Cut review timeline | Slice 4 | done |
 | 10 | AI editing agents | Slice 5 | in-progress |
-| 11 | Take library, delete & retention | Slice 6 | in-progress |
+| 11 | Take library, delete & retention | Slice 6 | done |
 | 12 | Monthly usage limit | Slice 6 | in-progress |
 | 13 | Public API | Slice 7 | planned |
 | 14 | MCP server for AI agents | Slice 7 | planned |
@@ -193,19 +193,19 @@ Spec [0012](../specs/0012-ai-editing-agents.md)
 
 ## Slice 6: Library, retention and limits
 
-### 11. Take library, delete & retention · in-progress
+### 11. Take library, delete & retention · done
 A proper library of past takes with status and expiry date; delete a take at any time; originals and finished videos auto delete after 30 days, transcripts stay until the take is deleted.
 **Done when:** the library shows each take's status and when its video expires; deleting a take removes every stored file and record for it; videos older than 30 days are removed automatically while their transcripts remain.
 - [x] Design it (spec): `/architect take library, delete & retention`
-- [ ] Build it: `/develop take library, delete & retention`
+- [x] Build it: `/develop take library, delete & retention`
    - [x] Delete route and proof of full removal (AC-3, AC-6, AC-7)
    - [x] Delete dialog on the take page (AC-4, AC-11, AC-12)
-   - [ ] Delete on library cards and the clearer expired states and take page (AC-1, AC-2, AC-5, AC-8)
+   - [x] Delete on library cards and the clearer expired states and take page (AC-1, AC-2, AC-5, AC-8) (B2-T07, B2-T17)
    - [x] R2 lifecycle rules as a backstop and the account deletion test (AC-9, AC-10) (B2-T06; the deploy skips the step with a warning until `R2_LIFECYCLE_TOKEN` is a CI secret)
-   - [ ] Browser tests and axe for the delete dialog and library (AC-12)
-   - [ ] Fix: the player's Full screen button does nothing on iPhone; add the webkit fallback (B2-T21, reported by Toyin 2026-11-14)
-- [ ] Verify it: `/check verify take library, delete & retention`
-- [ ] Test it: `/test take library, delete & retention`
+   - [x] Browser tests and axe for the delete dialog and library (AC-12) (`tests/delete-take.spec.ts`, `tests/expired-take.spec.ts`, B2-T32)
+   - [x] Fix: the player's Full screen button does nothing on iPhone; add the webkit fallback (B2-T21, reported by Toyin 2026-11-14)
+- [x] Verify it: `/check verify take library, delete & retention` ([review](../reviews/0013-take-library-delete-retention-verify.md))
+- [x] Test it: `/test take library, delete & retention`
 Spec [0013](../specs/0013-take-library-delete-retention.md)
 
 ### 12. Monthly usage limit · in-progress
