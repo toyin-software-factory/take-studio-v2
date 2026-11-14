@@ -1,5 +1,3 @@
-import { z } from "zod";
-
 /**
  * What the sign in form shows after a failed "Email me a sign in link" request (spec 0006,
  * AC-4, AC-8). Maps the Better Auth error to a state and a friendly message that says what
@@ -38,10 +36,16 @@ export function looksLikeEmail(value: string): boolean {
   return EMAIL_SHAPE.test(value.trim());
 }
 
-const emailSchema = z.string().trim().pipe(z.email());
+/**
+ * Zod 4's own `z.email()` pattern, copied so this file does not pull the zod library into the
+ * homepage and sign in page (about 100 KB of JavaScript for one email check, launch speed review).
+ * The unit test checks it against `z.email()` so the two cannot drift apart.
+ */
+export const EMAIL_PATTERN =
+  /^(?:[A-Za-z0-9_'+\-]+\.)*[A-Za-z0-9_'+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$/;
 
-/** The address to send a link to, or null when it is not an email (zod, used by the homepage form). */
+/** The address to send a link to (trimmed), or null when it is not an email (homepage form). */
 export function parseSignInEmail(value: string): string | null {
-  const parsed = emailSchema.safeParse(value);
-  return parsed.success ? parsed.data : null;
+  const trimmed = value.trim();
+  return EMAIL_PATTERN.test(trimmed) ? trimmed : null;
 }

@@ -55,6 +55,15 @@ async function firstUsage(creatorId: string) {
   }
 }
 
+/**
+ * The upload area with the first usage read. The read starts in the page (before `AppShell` runs
+ * its own) and is awaited here, so the two database reads run side by side instead of one after
+ * the other. No `Suspense` around it: nothing about the first paint changes.
+ */
+async function UploadWithUsage({ usage }: { readonly usage: ReturnType<typeof firstUsage> }) {
+  return <UploadArea usage={await usage} />;
+}
+
 /** The library (spec 0004 AC-1): upload area on top, takes below. Signed out goes to sign in. */
 export default async function LibraryPage({
   searchParams,
@@ -64,13 +73,13 @@ export default async function LibraryPage({
   const deleted = (await searchParams)[DELETED_PARAM] === "1";
   const session = await getSession(await headers());
   if (!session) redirect("/sign-in");
-  const usage = await firstUsage(session.user.id);
+  const usage = firstUsage(session.user.id);
 
   return (
     <AppShell user={{ id: session.user.id, name: session.user.name, email: session.user.email }}>
       <div className="flex flex-col gap-8">
         <LibraryHeading deleted={deleted} />
-        <UploadArea usage={usage} />
+        <UploadWithUsage usage={usage} />
         <section aria-labelledby="takes-heading" className="flex flex-col gap-4">
           <h2 id="takes-heading" className="sr-only">
             Takes
