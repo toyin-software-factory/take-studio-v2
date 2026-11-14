@@ -51,6 +51,17 @@ describe("cut review model", () => {
     expect(summaryLine([{ ms: 400 }])).toBe("1 pause cut, 0.4 s saved.");
     expect(summaryLine([{ ms: 1450 }, { ms: 100 }])).toBe("2 pauses cut, 1.6 s saved.");
   });
+  it("summary counts word cuts and pauses separately", () => {
+    const w = (ms: number) => ({ ms, kind: "filler" });
+    const p = (ms: number) => ({ ms, kind: "pause" });
+    expect(summaryLine([w(1000), w(1000), w(1000), p(700), p(700)])).toBe(
+      "3 word cuts and 2 pauses, 4.4 s saved.",
+    );
+    expect(summaryLine([w(500), p(400)])).toBe("1 word cut and 1 pause, 0.9 s saved.");
+    expect(summaryLine([w(500), w(600)])).toBe("2 word cuts, 1.1 s saved.");
+    expect(summaryLine([w(500)])).toBe("1 word cut, 0.5 s saved.");
+    expect(summaryLine([p(400), p(1000)])).toBe("2 pauses cut, 1.4 s saved.");
+  });
   it("toggling twice returns to no edits", () => {
     const once = toggleCut(NO_EDITS, cuts, null, "a");
     expect(once.cuts).toEqual({ a: false });

@@ -1,4 +1,4 @@
-import { devices, expect as baseExpect, test, type Page } from "@playwright/test";
+import { devices, expect as baseExpect, test, type Locator, type Page } from "@playwright/test";
 import { expectNoSeriousAxeIssues } from "./support/axe";
 import { signIn } from "./support/session";
 import { seedTakes } from "./support/takes";
@@ -20,6 +20,13 @@ function resetLabel(): string {
   return `1 ${MONTHS[(now.getUTCMonth() + 1) % 12]}`;
 }
 
+/** Days to keep a fixture take so it expires before the reset on any UTC day (at most 1 day). */
+function daysBeforeReset(): number {
+  const now = new Date();
+  const reset = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
+  return Math.min(1, (reset - now.getTime()) / 2 / 86_400_000);
+}
+
 let cleanups: (() => Promise<void>)[] = [];
 test.afterEach(async () => {
   await Promise.all(cleanups.map((c) => c()));
@@ -30,6 +37,21 @@ async function setUp(page: Page, baseURL: string, state: Parameters<typeof setUs
   const { user, cleanup } = await signIn(page.context(), baseURL);
   cleanups.push(cleanup, await setUsage(user, state));
   return user;
+}
+
+/** No sideways scroll: the page is no wider than the window (AC-14, phone width). */
+async function expectNoSidewaysScroll(page: Page) {
+  const extra = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(extra).toBeLessThanOrEqual(0);
+}
+
+/** A touch target is at least 44 px tall (AC-14). Only asserted on the touch (phone) run. */
+async function expectTouchTarget(target: Locator, isMobile: boolean | undefined) {
+  if (!isMobile) return;
+  const box = await target.boundingBox();
+  expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
 }
 
 function suite() {
@@ -134,7 +156,7 @@ function suite() {
         status: "failed",
         failureCode: "limit_exceeded",
         durationMs: 60_000,
-        expiresInDays: 1,
+        expiresInDays: daysBeforeReset(),
         minutesAgo: 5,
       },
     ]);
@@ -144,6 +166,7 @@ function suite() {
       `try again from ${reset}`,
     );
     await expect(page.getByText(/Upload it again/).first()).toBeVisible();
+    await expectNoSidewaysScroll(page);
     await expectNoSeriousAxeIssues(page);
 
     await page.goto(`/takes/${kept}`);
@@ -152,6 +175,47 @@ function suite() {
     );
     await expectNoSeriousAxeIssues(page);
     expect(expiring).toBeTruthy();
+  });
+
+  test("the meter and the used up area fit the screen and keep 44 px targets", async ({
+    page,
+    baseURL,
+    isMobile,
+  }) => {
+    await setUp(page, baseURL!, { usedSeconds: 60 * 60, enforced: true });
+    await page.goto("/library");
+    await expect(page.getByTestId("usage-meter")).toBeVisible();
+    await expectNoSidewaysScroll(page);
+    const choose = page.getByTestId("dropzone").locator("button", { hasText: "Choose a video" });
+    await expectTouchTarget(choose, isMobile);
+    await expect(page.getByTestId("usage-meter").getByRole("progressbar")).toHaveAttribute(
+      "aria-valuenow",
+      /\d+/,
+    );
+  });
+
+  test("a take that expires before the reset says to upload it again, on the take page", async ({
+    page,
+    baseURL,
+    isMobile,
+  }) => {
+    const user = await setUp(page, baseURL!, { usedSeconds: 60 * 60, enforced: true });
+    const [expiring] = await seedTakes(user.id, [
+      {
+        title: "Going",
+        status: "failed",
+        failureCode: "limit_exceeded",
+        durationMs: 60_000,
+        expiresInDays: daysBeforeReset(),
+      },
+    ]);
+    await page.goto(`/takes/${expiring}`);
+    const alert = page.getByRole("alert").filter({ hasText: "Your upload is kept until" });
+    await expect(alert).toContainText("before your minutes come back");
+    await expect(alert).toContainText("Upload it again then");
+    await expectNoSidewaysScroll(page);
+    await expectTouchTarget(page.getByRole("button", { name: "Try again" }), isMobile);
+    await expectNoSeriousAxeIssues(page);
   });
 }
 

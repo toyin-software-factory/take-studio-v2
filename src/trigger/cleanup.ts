@@ -1,5 +1,6 @@
 import { logger, schedules } from "@trigger.dev/sdk";
 import { withJobDb } from "@/db/client/job";
+import { purgeOldAnalyticsEvents, repairAnalyticsEvents } from "@/db/data/analytics-repair";
 import { failStuckBackgrounds, purgeRemovedBackgrounds } from "@/db/data/backgrounds";
 import {
   expireDueTakes,
@@ -24,6 +25,9 @@ import { ensureBuiltInBackgrounds } from "./built-in-backgrounds";
  *    run is still waiting in Trigger.dev's queue (a creator's concurrency limit) is not stale;
  * 3. expire takes past `video_expires_at`, queuing their video files;
  * 4. drain the file deletion queue;
+ * 4b. product events (spec 0016): insert the milestone events a dropped insert missed (the real
+ *    rows' own times) and purge repeatable events older than 13 months; a failure is logged and
+ *    never stops the sweep;
  * 5. first of all, install the built in studio backgrounds (spec 0008, AC-7; idempotent and cheap
  *    when they are all there; a failure is logged and never stops the sweep).
  * Each step handles a batch; the next run continues. Logs counts and IDs only.
@@ -77,7 +81,21 @@ export const cleanupTask = schedules.task({
       const stuckBackgrounds = await failStuckBackgrounds(db, now);
       // And the deleted ones kept hidden while their upload link could still be live.
       const purgedBackgrounds = await purgeRemovedBackgrounds(db, now);
+      // Spec 0016 AC-6 and AC-9: repair what a dropped insert missed, purge what has expired.
+      const analytics = await Promise.all([
+        repairAnalyticsEvents(db),
+        purgeOldAnalyticsEvents(db, now),
+      ]).then(
+        ([repaired, purged]) => ({ repaired, purged }),
+        (error: unknown) => {
+          logger.error("analytics repair failed", {
+            error: error instanceof Error ? error.name : "unknown",
+          });
+          return null;
+        },
+      );
       return {
+        analytics,
         studiosInstalled,
         probesRedispatched: recovery.redispatched.length,
         stuckUploadsFailed: recovery.failed.length,

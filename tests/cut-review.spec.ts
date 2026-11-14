@@ -325,7 +325,7 @@ test("a take that fell back to rules shows the rules cuts and the unavailable li
   const { id } = await setup(page, baseURL!, { detail: { aiEdit: "unavailable" } });
   await load(page, id);
   await expect(page.getByTestId("ai-unavailable")).toHaveText(
-    "AI edit wasn't available for this take.",
+    "The AI edit didn’t run for this take, so only pauses were cut.",
   );
   await expect(cutButton(page, 1)).not.toHaveAttribute("aria-describedby", /.+/);
   await cutButton(page, 1).focus();
@@ -341,6 +341,76 @@ test("no unavailable line when aiEdit is null (not English or no speech)", async
   await load(page, id);
   await expect(cutButton(page, 1)).toBeVisible();
   await expect(page.getByTestId("ai-unavailable")).toHaveCount(0);
+  await expect(page.getByTestId("no-ai-reasons")).toHaveText(
+    "The AI didn’t run on this take, so only pauses were cut.",
+  );
+});
+
+// B2-T25: a visible list of cuts with their reasons, readable without undoing anything.
+const list = (page: Page) => page.getByRole("list", { name: "Cuts and reasons" });
+
+test("the cut list shows every reason; Undo and Redo stay in sync with the timeline; a row only seeks", async ({
+  page,
+  baseURL,
+}) => {
+  const { id } = await setup(page, baseURL!, { detail: { cuts: AI_CUTS, aiEdit: "done" } });
+  await load(page, id);
+  const rows = list(page).getByRole("listitem");
+  await expect(rows).toHaveCount(3);
+  await expect(rows.nth(0)).toContainText("You restarted the sentence.");
+  await expect(rows.nth(0)).toContainText("0:01 to 0:01, 0.8 s");
+  await expect(rows.nth(1)).toContainText("No reason given.");
+  await expect(rows.nth(2)).toContainText("A repeated word.");
+  await expect(rows.nth(2)).toContainText("kept");
+  // Reading a reason (pressing the row) changes nothing.
+  await rows
+    .nth(0)
+    .getByRole("button", { name: /^Cut 1 / })
+    .click();
+  await expect(cutAny(page, 1)).toHaveAttribute("aria-pressed", "false");
+  await expect(bar(page)).toHaveCount(0);
+  // Undo in the list flips the timeline block, Redo flips it back.
+  await rows.nth(0).getByRole("button", { name: "Undo Cut 1" }).click();
+  await expect(cutAny(page, 1)).toHaveAttribute("aria-pressed", "true");
+  await expect(rows.nth(0).getByRole("button", { name: "Redo Cut 1" })).toBeVisible();
+  // The timeline toggles the list the other way round.
+  await cutAny(page, 3).click();
+  await expect(rows.nth(2).getByRole("button", { name: "Undo Cut 3" })).toBeVisible();
+  await expect(reasonLineOf(page)).toHaveText("Cut 3: A repeated word.");
+  // The reason line follows the cut the list just toggled, not the older focused block.
+  await rows.nth(0).getByRole("button", { name: "Redo Cut 1" }).click();
+  await expect(reasonLineOf(page)).toHaveText("Cut 1: You restarted the sentence.");
+  await expectNoSeriousAxeIssues(page);
+});
+
+test("the summary counts word cuts and pauses separately", async ({ page, baseURL }) => {
+  const { id } = await setup(page, baseURL!, { detail: { cuts: AI_CUTS, aiEdit: "done" } });
+  await load(page, id);
+  await expect(page.getByText("1 word cut and 1 pause, 1.5 s saved.")).toBeVisible();
+});
+
+test("a fallback take says the AI didn't run; on a phone the list fits without sideways scroll", async ({
+  browser,
+  baseURL,
+}) => {
+  const context = await browser.newContext({ ...devices["Pixel 7"], baseURL: baseURL! });
+  const page = await context.newPage();
+  try {
+    const { id } = await setup(page, baseURL!, { detail: { aiEdit: "unavailable" } });
+    await load(page, id);
+    await expect(page.getByTestId("ai-unavailable")).toBeVisible();
+    await expect(list(page).getByRole("listitem")).toHaveCount(3);
+    await expect(list(page).getByRole("button", { name: "Undo Pause 1" })).toBeVisible();
+    const box = await list(page).getByRole("button", { name: "Undo Pause 1" }).boundingBox();
+    expect(box!.height).toBeGreaterThanOrEqual(44);
+    const scrolls = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+    );
+    expect(scrolls).toBe(false);
+    await expectNoSeriousAxeIssues(page);
+  } finally {
+    await context.close();
+  }
 });
 
 test("on a phone the reason line wraps without sideways page scroll (AC-3)", async ({

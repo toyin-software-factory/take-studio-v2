@@ -33,7 +33,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 9 | Cut review timeline | Slice 4 | done |
 | 10 | AI editing agents | Slice 5 | in-progress |
 | 11 | Take library, delete & retention | Slice 6 | in-progress |
-| 12 | Monthly usage limit | Slice 6 | in-progress |
+| 12 | Monthly usage limit | Slice 6 | done |
 | 13 | Public API | Slice 7 | planned |
 | 14 | MCP server for AI agents | Slice 7 | planned |
 | 15 | Landing page & SEO | Launch | done |
@@ -208,18 +208,18 @@ A proper library of past takes with status and expiry date; delete a take at any
 - [ ] Test it: `/test take library, delete & retention`
 Spec [0013](../specs/0013-take-library-delete-retention.md)
 
-### 12. Monthly usage limit · in-progress
+### 12. Monthly usage limit · done
 Free accounts get a monthly allowance of processed minutes, keeping costs safe until billing exists.
 **Done when:** the creator sees minutes used and left this month; an upload that would go over the limit is refused with a clear message; the allowance resets monthly.
 - [x] Design it (spec): `/architect monthly usage limit`
-- [ ] Build it: `/develop monthly usage limit`
+- [x] Build it: `/develop monthly usage limit`
    - [x] Usage rules, the `limit_exceeded` code and message, the `usage_month` and `app_setting` migration with backfill (AC-2, AC-3, AC-9, AC-11, AC-12)
    - [x] The atomic check in `startJob`, the refund and the probe ending (AC-1, AC-4, AC-5, AC-6, AC-10)
    - [x] Usage route, early refusal at upload create and the duration hint (AC-7, AC-8, AC-13)
-   - [ ] Usage meter, upload area states and failed take message, browser tests and axe (AC-9, AC-14)
+   - [x] Usage meter, upload area states and failed take message, browser tests and axe (AC-9, AC-14)
    - [x] Real pipeline check of a refused take and its retry (AC-4, AC-6)
-- [ ] Verify it: `/check verify monthly usage limit`
-- [ ] Test it: `/test monthly usage limit`
+- [x] Verify it: `/check verify monthly usage limit` ([review](../reviews/0014-monthly-usage-limit-verify.md))
+- [x] Test it: `/test monthly usage limit`
 Spec [0014](../specs/0014-monthly-usage-limit.md)
 
 ## Slice 7: Usable by AI agents
@@ -276,10 +276,10 @@ Three events that show whether the core loop works: signup, take uploaded, take 
    - [x] Insights page with the viewer gate (AC-7, AC-8)
    - [x] Upload and job events, second take and founding member counts (AC-4, AC-7, AC-12)
    - [x] Download, transcript, change and limit events (AC-4, AC-5)
-   - [ ] Backfill from existing users and takes (AC-12)
-   - [ ] Retention sweep and delete tests (AC-9, AC-10)
+   - [x] Backfill from existing users and takes (AC-12)
+   - [x] Retention sweep and delete tests (AC-9, AC-10)
    - [x] Legal facts entry and copy bump (AC-11)
-   - [ ] Docs and deploy env list for the viewer secret
+   - [x] Docs and deploy env list for the viewer secret
 - [ ] Verify it: `/check verify product analytics`
 Spec [0016](../specs/0016-product-analytics.md) · Toyin answered the open questions on 2026-11-14 (C-30): our own events in our database, recommended options otherwise
 
