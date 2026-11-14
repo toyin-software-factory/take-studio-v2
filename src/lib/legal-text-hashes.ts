@@ -56,6 +56,11 @@ export const LEGAL_TEXT_HASHES: Readonly<Record<"privacy" | "terms", readonly Re
       hash: "cc8b0807242b53a9359bab6448a82361c59dd15c19ae1f4f3fca3c1b43cb74e4",
       after: "19631d3d77737edbbb2be5b4d70930aeef56a77024568d3acf460fc9838d32ba",
     },
+    {
+      date: "2026-11-14",
+      hash: "dc6b191efa5d96987778c1c0a2cfb65806bbb2493f5b3c0880a3b3b9b850307f",
+      after: "c9f6fd80e9590f48c5dd1a5ffa8a86eab7bc801df00d8462b2773a542cc7dc4d",
+    },
   ],
   terms: [
     {
@@ -81,6 +86,11 @@ export const LEGAL_TEXT_HASHES: Readonly<Record<"privacy" | "terms", readonly Re
       date: "2026-11-14",
       hash: "5da07428f861f18db40faef37b04e91aff94f80c20bbd333cc567b578cff70fb",
       after: "001c92aa9b33ad2e6cbc1e9bd381472c659ce24fbb7d4675ccd6ea01c5716fea",
+    },
+    {
+      date: "2026-11-14",
+      hash: "1f6e45aafff8d58a43ccf2afac818421c300e68152f3fb3e07cd38de112fc77c",
+      after: "c9ef1146874b0bfe8714e9c526566ae33fb110eeb06501896a81380080ce817c",
     },
   ],
 };
