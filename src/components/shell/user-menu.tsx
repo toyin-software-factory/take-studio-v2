@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronsUpDown, FileText, LogOut, ShieldCheck, Trash2 } from "lucide-react";
+import { ChevronsUpDown, FileText, KeyRound, LogOut, ShieldCheck, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
+import { API_KEYS_PATH } from "@/lib/api-keys-screen";
 import { LEGAL_LINKS } from "@/lib/legal-links";
 import { notify } from "@/components/ui/sonner";
 import { DELETE_ACCOUNT_PARAM } from "./delete-account";
@@ -116,6 +117,12 @@ export function UserMenu({ user }: { readonly user: ShellUser }) {
             </DropdownMenuItem>
           ))}
           <DropdownMenuSeparator />
+          <DropdownMenuItem asChild>
+            <Link href={API_KEYS_PATH}>
+              <Icon icon={KeyRound} size="badge" />
+              API keys
+            </Link>
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => void signOut()}>
             <Icon icon={LogOut} size="badge" />
             Sign out

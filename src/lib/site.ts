@@ -30,6 +30,7 @@ export const PRIVATE_PATHS = [
   "/takes",
   "/library",
   "/design",
+  "/account",
   "/api/",
   "/emails",
   "/sign-in",
