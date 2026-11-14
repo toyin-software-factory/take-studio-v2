@@ -376,6 +376,10 @@ test("the cut list shows every reason; Undo and Redo stay in sync with the timel
   // The timeline toggles the list the other way round.
   await cutAny(page, 3).click();
   await expect(rows.nth(2).getByRole("button", { name: "Undo Cut 3" })).toBeVisible();
+  await expect(reasonLineOf(page)).toHaveText("Cut 3: A repeated word.");
+  // The reason line follows the cut the list just toggled, not the older focused block.
+  await rows.nth(0).getByRole("button", { name: "Redo Cut 1" }).click();
+  await expect(reasonLineOf(page)).toHaveText("Cut 1: You restarted the sentence.");
   await expectNoSeriousAxeIssues(page);
 });
 

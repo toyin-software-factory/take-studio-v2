@@ -117,6 +117,10 @@ export function CutTimeline({
           setFocusedId(cut.id);
           bridge.seekOriginal(Math.max(0, cut.startMs - 1000));
         }}
+        onToggle={(cut) => {
+          setFocusedId(cut.id);
+          review.toggle(cut.id);
+        }}
       />
     </StagePanel>
   );

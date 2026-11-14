@@ -96,10 +96,13 @@ export function CutList({
   review,
   aiEdit,
   onSeek,
+  onToggle,
 }: {
   readonly review: CutReview;
   readonly aiEdit: "done" | "unavailable" | null;
   readonly onSeek: (cut: NumberedCut) => void;
+  /** Called with the cut whose Undo or Redo was pressed, so the reason line follows it. */
+  readonly onToggle: (cut: NumberedCut) => void;
 }) {
   const note = fallbackNote(
     aiEdit,
@@ -123,7 +126,7 @@ export function CutList({
               applied={review.applied(cut.id)}
               disabled={disabled}
               onSeek={() => onSeek(cut)}
-              onToggle={() => review.toggle(cut.id)}
+              onToggle={() => onToggle(cut)}
             />
           ))}
         </ul>
