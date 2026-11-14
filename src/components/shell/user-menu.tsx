@@ -53,6 +53,15 @@ function useSignOut() {
   };
 }
 
+/**
+ * Where focus returns after the dialog closes. At phone width the sidebar's menu button is
+ * `display: none`, so fall back to the top bar's "Open menu" button, which is visible.
+ */
+function visibleFocusTarget(button: HTMLElement | null): HTMLElement | null {
+  if (button && button.getClientRects().length > 0) return button;
+  return document.querySelector<HTMLElement>('button[aria-label="Open menu"]');
+}
+
 /** The user menu at the bottom of the sidebar (and the phone sheet): who you are, sign out. */
 export function UserMenu({ user }: { readonly user: ShellUser }) {
   const signOut = useSignOut();
@@ -120,7 +129,7 @@ export function UserMenu({ user }: { readonly user: ShellUser }) {
       <DeleteAccountDialog
         open={deleting}
         onOpenChange={setDeleting}
-        returnFocus={() => trigger.current}
+        returnFocus={() => visibleFocusTarget(trigger.current)}
       />
     </>
   );

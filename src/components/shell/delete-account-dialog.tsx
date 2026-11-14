@@ -67,8 +67,13 @@ export function DeleteAccountDialog({
         return;
       }
       if (isStaleSession(failure)) {
+        const { error: signOutFailure } = await authClient.signOut();
+        if (signOutFailure) {
+          // Still signed in: going to /sign-in would bounce straight back here.
+          setError(DELETE_ACCOUNT_FAILED);
+          return;
+        }
         done.current = true;
-        await authClient.signOut();
         onOpenChange(false);
         router.replace(`/sign-in?reason=${DELETE_ACCOUNT_REASON}`);
         router.refresh();

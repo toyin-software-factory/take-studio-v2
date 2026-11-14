@@ -59,7 +59,10 @@ export function SignInForm({
         email: email.trim(),
         callbackURL: landing,
         newUserCallbackURL: landing,
-        errorCallbackURL: "/sign-in/link-expired",
+        errorCallbackURL:
+          reason === DELETE_ACCOUNT_REASON
+            ? `/sign-in/link-expired?reason=${DELETE_ACCOUNT_REASON}`
+            : "/sign-in/link-expired",
       });
       setState(
         result.error
