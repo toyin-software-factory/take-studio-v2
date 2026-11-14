@@ -34,6 +34,15 @@ export const usageEnvSchema = z.object({
 });
 
 /**
+ * Insights (spec 0016, AC-8): the one user ID allowed to open /insights. Kept out of the web,
+ * usage and email schemas on purpose: it is parsed with `safeParse` inside the page's own
+ * guard, so a missing or bad value gives the 404, never a 500 (and never blocks the app).
+ */
+export const insightsEnvSchema = z.object({
+  INSIGHTS_VIEWER_USER_ID: z.string().min(1),
+});
+
+/**
  * Email (spec 0006): app URL, Resend key, sender and the secret that signs unsubscribe links. Parsed
  * only where email is sent or a link is signed, so the app keeps running before they are set.
  */
@@ -110,4 +119,13 @@ export function parseTranscriptEnv(source: Source = process.env): TranscriptEnv 
 /** AI edit env: the Anthropic key (the `ai_edit` step only). */
 export function parseAiEditEnv(source: Source = process.env): AiEditEnv {
   return parseEnv(aiEditEnvSchema, source, "ai edit");
+}
+
+/** True only when `userId` is the configured insights viewer; false for any missing or bad config. */
+export function isInsightsViewer(
+  userId: string | undefined,
+  source: Source = process.env,
+): boolean {
+  const parsed = insightsEnvSchema.safeParse(source);
+  return parsed.success && userId !== undefined && parsed.data.INSIGHTS_VIEWER_USER_ID === userId;
 }

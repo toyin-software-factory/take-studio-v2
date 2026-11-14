@@ -90,3 +90,20 @@ describe("slice 1 migration", () => {
     expect(statement("storage_deletion")).not.toContain("REFERENCES");
   });
 });
+
+describe("analytics migration (spec 0016)", () => {
+  it("keeps one signup per creator and one milestone event per take with partial indexes", () => {
+    expect(statement("analytics_event_signup_once_uidx")).toContain(`'signup'`);
+    const perTake = statement("analytics_event_once_per_take_uidx");
+    for (const name of ["take_uploaded", "take_ready", "ai_edit_used"]) {
+      expect(perTake).toContain(`'${name}'`);
+    }
+    expect(perTake).toContain("is not null");
+  });
+
+  it("closes the name list and sets the delete rules (AC-2, AC-10)", () => {
+    expect(statement("analytics_event")).toContain("analytics_event_name_check");
+    expect(sql).toMatch(/analytics_event_creator_id_user_id_fk[^;]*ON DELETE cascade/);
+    expect(sql).toMatch(/analytics_event_take_id_take_id_fk[^;]*ON DELETE set null/);
+  });
+});

@@ -269,8 +269,8 @@ Three events that show whether the core loop works: signup, take uploaded, take 
 - Note (2026-11-13): Toyin and Michael recommend building this first, so the growth ideas under Deferred can be measured: signups, first upload, first download and second take. Not repeated there.
 - [x] Design it (spec): `/architect product analytics`
 - [ ] Build it: `/develop product analytics`
-   - [ ] Table, record function, signup event, drift and privacy tests (AC-1, AC-2, AC-3, AC-4, AC-6)
-   - [ ] Insights page with the viewer gate (AC-7, AC-8)
+   - [x] Table, record function, signup event, drift and privacy tests (AC-1, AC-2, AC-3, AC-4, AC-6)
+   - [x] Insights page with the viewer gate (AC-7, AC-8)
    - [ ] Upload and job events, second take and founding member counts (AC-4, AC-7, AC-12)
    - [ ] Download, transcript, change and limit events (AC-4, AC-5)
    - [ ] Backfill from existing users and takes (AC-12)

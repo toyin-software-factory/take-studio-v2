@@ -1,0 +1,89 @@
+import { z } from "zod";
+import { FAILURE_CODE_VALUES } from "./failure-codes";
+
+/**
+ * First party product events (spec 0016). The list is closed: a name not here cannot be
+ * recorded. Properties are enums, small integers and booleans only, so a person's words can
+ * never reach the table. Pure: no database, no clock.
+ */
+
+const smallInt = z.number().int().min(0).max(1000);
+const AI_EDIT_OUTCOMES = ["done", "unavailable", "none"] as const;
+const DOWNLOAD_KINDS = ["video", "transcript_txt", "transcript_srt"] as const;
+const LIMIT_PLACES = ["upload_start", "upload_complete"] as const;
+
+/** Property keys no schema may use (AC-3). A test checks every schema against this list. */
+export const BLOCKED_PROP_KEYS = [
+  "email",
+  "name",
+  "title",
+  "text",
+  "transcript",
+  "url",
+  "ip",
+  "file",
+] as const;
+
+const empty = z.object({}).strict();
+
+/** Once per rule: `creator` is one row per creator, `take` is one row per take and name. */
+export type OncePer = "creator" | "take" | null;
+
+export const ANALYTICS_EVENTS = {
+  signup: { props: empty, oncePer: "creator" },
+  take_uploaded: { props: empty, oncePer: "take" },
+  take_ready: {
+    props: z.object({ aiEdit: z.enum(AI_EDIT_OUTCOMES), cuts: smallInt }).strict(),
+    oncePer: "take",
+  },
+  ai_edit_used: { props: z.object({ cuts: smallInt }).strict(), oncePer: "take" },
+  change_requested: { props: empty, oncePer: null },
+  take_downloaded: { props: z.object({ kind: z.enum(DOWNLOAD_KINDS) }).strict(), oncePer: null },
+  transcript_downloaded: {
+    props: z.object({ kind: z.enum(DOWNLOAD_KINDS) }).strict(),
+    oncePer: null,
+  },
+  take_failed: {
+    props: z.object({ code: z.enum(FAILURE_CODE_VALUES as [string, ...string[]]) }).strict(),
+    oncePer: null,
+  },
+  limit_hit: { props: z.object({ place: z.enum(LIMIT_PLACES) }).strict(), oncePer: null },
+} as const;
+
+export type AnalyticsEventName = keyof typeof ANALYTICS_EVENTS;
+
+export const ANALYTICS_EVENT_NAMES = Object.keys(ANALYTICS_EVENTS) as readonly AnalyticsEventName[];
+
+/** Names that are kept as long as the account exists (AC-9); the rest expire. */
+export const MILESTONE_EVENTS = ANALYTICS_EVENT_NAMES.filter(
+  (name) => ANALYTICS_EVENTS[name].oncePer !== null,
+);
+
+/** Names with a once per take rule: the partial unique index covers these. */
+export const ONCE_PER_TAKE_EVENTS = ANALYTICS_EVENT_NAMES.filter(
+  (name) => ANALYTICS_EVENTS[name].oncePer === "take",
+);
+
+/** Repeatable events are purged after this many months (AC-9). */
+export const ANALYTICS_RETENTION_MONTHS = 13;
+
+/** Founding members: creators with at least this many uploaded takes, out of the target. */
+export const FOUNDING_MEMBER_TARGET = 50;
+export const FOUNDING_MEMBER_MIN_TAKES = 2;
+
+/** The reporting windows on /insights, default 30 days. */
+export const INSIGHTS_WINDOWS = ["7d", "30d", "all"] as const;
+export type InsightsWindow = (typeof INSIGHTS_WINDOWS)[number];
+export const DEFAULT_INSIGHTS_WINDOW: InsightsWindow = "30d";
+export const insightsWindowSchema = z.enum(INSIGHTS_WINDOWS).catch(DEFAULT_INSIGHTS_WINDOW);
+
+/** One event to record: the name, who, which take, and its validated properties. */
+export type AnalyticsEventInput = {
+  readonly [N in AnalyticsEventName]: {
+    readonly name: N;
+    readonly creatorId: string;
+    readonly takeId?: string | null;
+    readonly props?: z.input<(typeof ANALYTICS_EVENTS)[N]["props"]>;
+    readonly occurredAt?: Date;
+  };
+}[AnalyticsEventName];
