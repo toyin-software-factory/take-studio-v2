@@ -100,4 +100,21 @@ describe("followScript repeat flag", () => {
   it("does not mark unmatched speech as a repeat", () => {
     expect(followScript(script, ["banana"], 0).repeat).toBeUndefined();
   });
+  it("does not call a new phrase a repeat because its last word matches the last match", () => {
+    const long = [
+      "welcome",
+      ...Array<string>(39).fill("filler"),
+      "fresh",
+      "introduction",
+      "welcome",
+    ];
+    const result = followScript(long, ["fresh", "introduction", "welcome"], 0);
+    expect(result.repeat).toBeUndefined();
+    expect(result.advanced).toBe(false);
+    // recovery from the shown word (index 40) finds the phrase
+    expect(followScript(long, ["fresh", "introduction", "welcome"], 39)).toMatchObject({
+      matchIndex: 42,
+      advanced: true,
+    });
+  });
 });

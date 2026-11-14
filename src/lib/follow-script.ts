@@ -70,7 +70,8 @@ export function followScript(
     // the tail already lines up with the script ending at the last match, the position stays.
     const lastStart = lastMatchIndex - run + 1;
     if (lastStart >= 0 && tail.every((w, k) => wordsMatch(w, scriptWords[lastStart + k] ?? ""))) {
-      return { ...stay, repeat: true };
+      // Only the whole compared tail lining up is a revision; one shared last word of a new phrase is not.
+      return run === Math.min(FOLLOW_TAIL, heard.length) ? { ...stay, repeat: true } : stay;
     }
     for (let end = from + run - 1; end <= to; end++) {
       const start = end - run + 1;
