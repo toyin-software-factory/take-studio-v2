@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { PRIVATE_PATHS, siteOrigin } from "@/lib/site";
+import { OPENAPI_PATH, PRIVATE_PATHS, siteOrigin } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export default function robots(): MetadataRoute.Robots {
   const origin = siteOrigin(process.env.BETTER_AUTH_URL);
   return {
-    rules: { userAgent: "*", allow: "/", disallow: [...PRIVATE_PATHS] },
+    rules: { userAgent: "*", allow: ["/", OPENAPI_PATH], disallow: [...PRIVATE_PATHS] },
     ...(origin ? { sitemap: `${origin}/sitemap.xml`, host: origin } : {}),
   };
 }
