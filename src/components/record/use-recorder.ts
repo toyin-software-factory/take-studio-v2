@@ -9,6 +9,7 @@ import {
   pickMimeType,
   recordingFileName,
   recordingLimitMs,
+  shouldAutoStop,
   type PickedType,
 } from "@/lib/recorder-rules";
 import { INITIAL_RECORDER, recorderReducer, wouldLoseWork } from "@/lib/recorder-state";
@@ -43,6 +44,7 @@ export function useRecorder(limitSeconds: number | null = null) {
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
   const startedAt = useRef(0);
+  const mounted = useRef(true);
   const limitMs = recordingLimitMs(limitSeconds);
 
   const release = useCallback(() => {
@@ -68,9 +70,15 @@ export function useRecorder(limitSeconds: number | null = null) {
         },
         audio: true,
       });
+      if (!mounted.current) {
+        // The page was left while the browser was asking: nothing may keep the camera on.
+        media.getTracks().forEach((track) => track.stop());
+        return;
+      }
       setStream(media);
       dispatch({ type: "granted" });
     } catch (error) {
+      if (!mounted.current) return;
       const name = error instanceof Error ? error.name : "";
       dispatch({ type: "failed", failure: classifyMediaError(name) });
     }
@@ -131,7 +139,18 @@ export function useRecorder(limitSeconds: number | null = null) {
     recorder.current = next;
     startedAt.current = performance.now();
     setElapsedMs(0);
-    next.start(RECORDER.timesliceMs);
+    try {
+      next.start(RECORDER.timesliceMs);
+    } catch {
+      // For example the camera went away during the countdown: let the person turn it on again.
+      next.onstop = null;
+      recorder.current = null;
+      chunks.current = [];
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- the camera must be let go when the recorder cannot start
+      release();
+      dispatch({ type: "start_failed", failure: "unavailable" });
+      return;
+    }
     dispatch({ type: "recording" });
   }, [state, stream, release]);
 
@@ -141,7 +160,7 @@ export function useRecorder(limitSeconds: number | null = null) {
     const timer = setInterval(() => {
       const elapsed = performance.now() - startedAt.current;
       setElapsedMs(elapsed);
-      if (elapsed >= limitMs) stop();
+      if (shouldAutoStop(elapsed, limitMs)) stop();
     }, 250);
     return () => clearInterval(timer);
   }, [state.kind, limitMs, stop]);
@@ -150,8 +169,15 @@ export function useRecorder(limitSeconds: number | null = null) {
   useEffect(() => {
     if (state.kind !== "recording") return;
     let lock: WakeLockSentinel | null = null;
-    void keepAwake().then((got) => (lock = got));
-    return () => void lock?.release().catch(() => undefined);
+    let ended = false;
+    void keepAwake().then((got) => {
+      if (ended) void got?.release().catch(() => undefined);
+      else lock = got;
+    });
+    return () => {
+      ended = true;
+      void lock?.release().catch(() => undefined);
+    };
   }, [state.kind]);
 
   useEffect(() => {
@@ -169,16 +195,17 @@ export function useRecorder(limitSeconds: number | null = null) {
   useEffect(() => {
     live.current = stream;
   }, [stream]);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
       live.current?.getTracks().forEach((track) => track.stop());
       if (recorder.current?.state === "recording") {
         recorder.current.onstop = null;
         recorder.current.stop();
       }
-    },
-    [],
-  );
+    };
+  }, []);
 
   return { state, dispatch, stream, elapsedMs, limitMs, request, again, begin, stop };
 }

@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { UploadProgress } from "@/components/takes/upload-progress";
+import { useLeaveGuard } from "@/components/takes/use-leave-guard";
 import { useUpload } from "@/components/takes/use-upload";
+import { wouldLoseWork } from "@/lib/recorder-state";
 import type { RecordingContainer } from "@/lib/recorder-rules";
 import { RecordReview } from "./record-review";
 import { RecordSetup } from "./record-setup";
@@ -12,6 +14,8 @@ import { useRecorder } from "./use-recorder";
 /** The container a file name ends in (the recorder named it from the type it picked). */
 const containerOf = (fileName: string): RecordingContainer =>
   fileName.endsWith(".mp4") ? "mp4" : "webm";
+
+const LEAVE_MESSAGE = "Your recording hasn't been uploaded. Leave without it?";
 
 /**
  * The /record page (spec 0021 task 1): setup with an optional script, a mirrored preview, a
@@ -23,6 +27,8 @@ export function RecordView() {
   const upload = useUpload();
   const [script, setScript] = useState("");
   const { state, dispatch } = recorder;
+  // Links and Back ask first too, not only closing the tab (the recorder warns for that).
+  useLeaveGuard(wouldLoseWork(state), LEAVE_MESSAGE);
 
   const submitTake = async () => {
     if (state.kind !== "review" && state.kind !== "upload_failed") return;

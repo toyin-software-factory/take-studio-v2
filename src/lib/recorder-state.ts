@@ -33,6 +33,8 @@ export type RecorderAction =
   | { readonly type: "start"; readonly seconds: number }
   | { readonly type: "tick" }
   | { readonly type: "recording" }
+  /** The recorder could not start (the camera went away during the countdown). */
+  | { readonly type: "start_failed"; readonly failure: SetupFailure }
   | { readonly type: "stopped"; readonly take: RecordedTake }
   /** Stopped too early to be a take: back to ready with nothing kept. */
   | { readonly type: "discarded" }
@@ -60,6 +62,8 @@ export function recorderReducer(state: RecorderState, action: RecorderAction): R
       return { kind: "countdown", secondsLeft: Math.max(0, state.secondsLeft - 1) };
     case "recording":
       return state.kind === "countdown" ? { kind: "recording" } : state;
+    case "start_failed":
+      return state.kind === "countdown" ? { kind: "failed", failure: action.failure } : state;
     case "stopped":
       return state.kind === "recording" ? { kind: "review", take: action.take } : state;
     case "discarded":

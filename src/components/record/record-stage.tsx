@@ -60,7 +60,7 @@ export function RecordStage({
           aria-label="Camera preview"
           className="size-full -scale-x-100 object-cover"
         />
-        <div className="absolute inset-x-3 top-3 flex flex-col gap-2">
+        <div className="pointer-events-none absolute inset-x-3 top-3 bottom-12 flex flex-col gap-2">
           <ScriptScroll script={script} elapsedMs={elapsedMs} active={recording} />
         </div>
         {countdown && state.secondsLeft > 0 ? (
