@@ -89,7 +89,7 @@ export const API_REGISTRY: readonly ApiRoute[] = [
     "GET",
     "/api/takes/{id}/media",
     "A short lived link to play or download the take's video.",
-    { response: "MediaLink" },
+    { request: "MediaQuery", response: "MediaLink" },
   ),
   route("GET", "/api/takes/{id}/transcript", "The take's transcript state and paragraphs.", {
     response: "TranscriptView",

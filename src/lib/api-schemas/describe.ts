@@ -30,16 +30,25 @@ function typeOf(node: Json): string {
   return "any";
 }
 
+/** One alternative of a union, as a short phrase: a fixed value, or its format or type. */
+function branchOf(node: Json): string {
+  if ("const" in node) return JSON.stringify(node.const);
+  if (Array.isArray(node.enum)) return node.enum.map((v) => JSON.stringify(v)).join(" or ");
+  if (typeof node.format === "string") return node.format;
+  return typeOf(node);
+}
+
+const isNullable = (node: Json): boolean =>
+  Array.isArray(node.anyOf) && node.anyOf.some((n) => asJson(n).type === "null");
+
 function noteOf(node: Json): string {
   const notes: string[] = [];
-  const values = Array.isArray(node.enum)
-    ? node.enum
-    : "const" in node
-      ? [node.const]
-      : Array.isArray(node.anyOf)
-        ? node.anyOf.flatMap((n) => ("const" in asJson(n) ? [asJson(n).const] : []))
-        : [];
+  const values = Array.isArray(node.enum) ? node.enum : "const" in node ? [node.const] : [];
   if (values.length > 0) notes.push(`one of ${values.map((v) => JSON.stringify(v)).join(", ")}`);
+  else if (Array.isArray(node.anyOf)) {
+    const branches = node.anyOf.map((n) => branchOf(asJson(n))).filter((b) => b !== "null");
+    if (branches.length > 1) notes.push(`one of ${branches.join(", ")}`);
+  }
   if (typeof node.format === "string") notes.push(node.format);
   if (typeof node.minimum === "number") notes.push(`at least ${node.minimum}`);
   if (typeof node.maximum === "number") notes.push(`at most ${node.maximum}`);
@@ -70,7 +79,9 @@ function walk(node: Json, prefix: string): readonly FieldRow[] {
     const nested = objectOf(child);
     const row: FieldRow = {
       path,
-      type: nested ? (isList ? "object list" : "object") : typeOf(child),
+      type: nested
+        ? `${isList ? "object list" : "object"}${isNullable(child) ? " or null" : ""}`
+        : typeOf(child),
       required: required.includes(name),
       note: noteOf(child),
     };

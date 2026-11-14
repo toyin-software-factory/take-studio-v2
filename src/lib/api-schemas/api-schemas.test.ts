@@ -64,8 +64,12 @@ describe("/api/openapi.json carries the schemas", () => {
       expect(op.responses[key], routeKey(r)).toBeDefined();
       if (r.noContent) expect(op.responses[key]?.content).toBeUndefined();
       else {
-        const type = r.text ? "text/plain" : "application/json";
-        expect(op.responses[key]?.content?.[type]?.schema, routeKey(r)).toBeDefined();
+        const types = r.text
+          ? ["text/plain", "application/x-subrip", "text/vtt"]
+          : ["application/json"];
+        for (const type of types) {
+          expect(op.responses[key]?.content?.[type]?.schema, routeKey(r)).toBeDefined();
+        }
       }
       if (r.request && r.method !== "GET") {
         expect(op.requestBody?.content["application/json"].schema, routeKey(r)).toBeDefined();
@@ -106,6 +110,20 @@ describe("describeSchema", () => {
     const rows = describeSchema(apiSchema("UploadCreateRequest") as z.ZodType, "input");
     expect(rows.find((row) => row.path === "script")?.required).toBe(false);
     expect(rows.find((row) => row.path === "fileName")?.required).toBe(true);
+  });
+
+  it("keeps every alternative of a union and the null of a nested object", () => {
+    const change = describeSchema(apiSchema("BackgroundChangeRequest") as z.ZodType, "input");
+    expect(change.find((r) => r.note.includes('"original"'))?.note).toContain("uuid");
+    const detail = describeSchema(apiSchema("TakeDetail") as z.ZodType, "output");
+    expect(detail.find((r) => r.path === "latestJob")?.type).toMatch(/ or null$/);
+  });
+
+  it("documents the upload length hint and the media kind", () => {
+    const upload = describeSchema(apiSchema("UploadCreateRequest") as z.ZodType, "input");
+    expect(upload.find((r) => r.path === "durationHintMs")?.required).toBe(false);
+    const media = describeSchema(apiSchema("MediaQuery") as z.ZodType, "input");
+    expect(media.find((r) => r.path === "kind")?.note).toContain('"download"');
   });
 
   it("gives a text file no fields", () => {

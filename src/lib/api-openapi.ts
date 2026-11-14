@@ -81,11 +81,11 @@ function operation(route: ApiRoute, lookup: ApiSchemaLookup): Json {
         description: route.noContent ? "Done. There is no body." : "Success.",
         ...(response
           ? {
-              content: {
-                [route.text ? "text/plain" : "application/json"]: {
-                  schema: route.text ? { type: "string" } : response,
-                },
-              },
+              content: route.text
+                ? Object.fromEntries(
+                    TEXT_TYPES.map((type) => [type, { schema: { type: "string" } }]),
+                  )
+                : { "application/json": { schema: response } },
             }
           : {}),
       },
@@ -95,6 +95,9 @@ function operation(route: ApiRoute, lookup: ApiSchemaLookup): Json {
     },
   };
 }
+
+/** The transcript download: text, SubRip (srt) or WebVTT, picked by `format`. */
+const TEXT_TYPES = ["text/plain", "application/x-subrip", "text/vtt"] as const;
 
 function errorResponse(description: string): Json {
   return {

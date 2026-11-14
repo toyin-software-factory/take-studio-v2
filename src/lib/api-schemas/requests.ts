@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { CONTAINERS, TAKE_SOURCES } from "../processing";
+import { MEDIA_KINDS, type MediaKind } from "../take-media";
 import { UPLOAD } from "../uploads";
 
 /**
@@ -19,6 +20,20 @@ export const uploadCreateSchema = z.object({
   source: z.enum(TAKE_SOURCES).optional(),
   /** Spec 0021: the creator's script. Length is checked first (`script_too_long`), then stored trimmed. */
   script: z.string().optional(),
+});
+
+/**
+ * POST /api/uploads as the docs show it: the body above plus the optional length hint the handler
+ * reads on its own (`hintSchema` in `src/server/uploads/http.ts`) to refuse a too long video before
+ * it uploads. The handler still ignores a malformed hint, so this schema is for the docs only.
+ */
+export const uploadCreateDocSchema = uploadCreateSchema.extend({
+  durationHintMs: z.number().positive().finite().optional(),
+});
+
+/** GET /api/takes/{id}/media: `kind` is required, and `download` records the download. */
+export const mediaQuerySchema = z.object({
+  kind: z.enum(MEDIA_KINDS as [MediaKind, ...MediaKind[]]),
 });
 
 /** POST /api/uploads/{takeId}/parts */

@@ -7,9 +7,10 @@ import { RESPONSE_SCHEMAS } from "./responses";
  * the success bodies. `apiSchema` is the lookup `buildOpenApi` and the docs page use.
  */
 export const API_SCHEMAS: Readonly<Record<string, z.ZodType>> = {
-  UploadCreateRequest: requests.uploadCreateSchema,
+  UploadCreateRequest: requests.uploadCreateDocSchema,
   UploadPartsRequest: requests.uploadPartsSchema,
   UploadCompleteRequest: requests.uploadCompleteSchema,
+  MediaQuery: requests.mediaQuerySchema,
   TakeListQuery: requests.takeListQuerySchema,
   TakeRenameRequest: requests.takeRenameSchema,
   TranscriptFileQuery: requests.transcriptFileQuerySchema,

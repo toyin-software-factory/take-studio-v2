@@ -65,7 +65,7 @@ function RouteShapes({ route }: Readonly<{ route: ApiRoute }>) {
   if (requestRows.length === 0 && responseRows.length === 0 && answer === null) return null;
   return (
     <details className="text-sm">
-      <summary className="cursor-pointer font-medium">Request and response</summary>
+      <summary className="flex cursor-pointer items-center font-medium pointer-coarse:min-h-11">Request and response</summary>
       <div className="mt-2 flex flex-col gap-3">
         <Fields title={where} rows={requestRows} />
         <Fields title="Response" rows={responseRows} />
