@@ -55,6 +55,11 @@ export function failureMessage(
   // again instead of "Try again", so the words match the button.
   const again = retryable ? "Try again." : "Upload the video again.";
   switch (take.failureCode) {
+    case "limit_exceeded":
+      // The dated version (kept until, back on) is `limitExceededMessage` in usage-rules.ts.
+      return retryable
+        ? "This month's allowance is used up. Your upload is kept: try again when your minutes come back, or delete it."
+        : "This month's allowance was used up and this video can't be tried again. Upload the video again when your minutes come back.";
     case "timeout":
       return `Processing took too long and stopped. ${again}`;
     case "cancelled_while_running":

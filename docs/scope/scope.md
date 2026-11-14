@@ -211,10 +211,10 @@ Free accounts get a monthly allowance of processed minutes, keeping costs safe u
 - [x] Design it (spec): `/architect monthly usage limit`
 - [ ] Build it: `/develop monthly usage limit`
    - [x] Usage rules, the `limit_exceeded` code and message, the `usage_month` and `app_setting` migration with backfill (AC-2, AC-3, AC-9, AC-11, AC-12)
-   - [ ] The atomic check in `startJob`, the refund and the probe ending (AC-1, AC-4, AC-5, AC-6, AC-10)
-   - [ ] Usage route, early refusal at upload create and the duration hint (AC-7, AC-8, AC-13)
+   - [x] The atomic check in `startJob`, the refund and the probe ending (AC-1, AC-4, AC-5, AC-6, AC-10)
+   - [x] Usage route, early refusal at upload create and the duration hint (AC-7, AC-8, AC-13)
    - [ ] Usage meter, upload area states and failed take message, browser tests and axe (AC-9, AC-14)
-   - [ ] Real pipeline check of a refused take and its retry (AC-4, AC-6)
+   - [x] Real pipeline check of a refused take and its retry (AC-4, AC-6)
 - [ ] Verify it: `/check verify monthly usage limit`
 - [ ] Test it: `/test monthly usage limit`
 Spec [0014](../specs/0014-monthly-usage-limit.md)

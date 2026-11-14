@@ -163,6 +163,7 @@ Tracer Bullet: prove one real thread first (a charge that adds up and a refusal 
 - [ ] Toyin approves the backfill gap in AC-11 (takes deleted before the migration are not counted), through Michael.
 - [ ] The billing spec (C-26, month 2) adds plans, the per account override and the payment flow inside `monthlyAllowanceSeconds`; this spec stores none of them.
 - [ ] Optional later: an email at 80% used (not built; no new email in this spec).
+- [ ] Optional later: a take based email for `limit_exceeded`, if wanted (a refused take has no job, so the per job failed email does not fire).
 - [ ] Feature 16 (privacy and terms) quotes this behaviour: 60 free minutes a month, resets monthly, usage kept as a pseudonymous hash (not anonymous: whoever holds the secret could compute it for a known email) after account deletion.
 - [ ] `/sync` adds the usage rules to `src/lib/AGENTS.md`, `src/db/AGENTS.md` and `src/server/AGENTS.md` once built.
 
