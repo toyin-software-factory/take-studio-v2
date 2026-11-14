@@ -70,7 +70,12 @@ test("disconnect asks first; Keep returns focus; Disconnect removes it at once (
   await page.getByRole("dialog").getByRole("button", { name: "Disconnect" }).click();
   await expect(page.getByText("No apps are connected.")).toBeVisible();
   await expect(page.getByRole("heading", { level: 2, name: "Connected apps" })).toBeFocused();
-  await expect(page.getByRole("status").filter({ hasText: "Disconnected." })).toHaveCount(1);
+  await expect(
+    page
+      .getByRole("region", { name: "Connected apps" })
+      .getByRole("status")
+      .filter({ hasText: "Disconnected." }),
+  ).toHaveCount(1);
   await page.reload();
   await expect(page.getByText("No apps are connected.")).toBeVisible();
 });
@@ -84,8 +89,12 @@ test("a failed disconnect keeps the dialog open with an alert", async ({ page, b
   );
   await page.getByRole("button", { name: "Disconnect Synthetic Assistant" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Disconnect" }).click();
-  await expect(page.getByRole("alert")).toContainText("couldn't disconnect");
-  await expect(page.getByRole("alert")).toBeFocused();
+  await expect(
+    page.getByRole("region", { name: "Connected apps" }).getByRole("alert"),
+  ).toContainText("couldn't disconnect");
+  await expect(
+    page.getByRole("region", { name: "Connected apps" }).getByRole("alert"),
+  ).toBeFocused();
 });
 
 test("a failed load shows a message and Try again works", async ({ page, baseURL }) => {
@@ -97,7 +106,9 @@ test("a failed load shows a message and Try again works", async ({ page, baseURL
     return route.fulfill({ json: { apps: [] } });
   });
   await page.goto("/account/api-keys");
-  await expect(page.getByRole("alert")).toContainText("couldn't load");
+  await expect(
+    page.getByRole("region", { name: "Connected apps" }).getByRole("alert"),
+  ).toContainText("couldn't load");
   fail = false;
   await page.getByRole("button", { name: "Try again" }).click();
   await expect(page.getByText("No apps are connected.")).toBeVisible();
