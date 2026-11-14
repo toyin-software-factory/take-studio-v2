@@ -62,39 +62,55 @@ for (const scheme of SCHEMES) {
       await page.emulateMedia({ colorScheme: scheme });
     });
 
-    test("setup, ready, countdown, recording, paused script, review and a refused upload", async ({
-      page,
-      baseURL,
-    }) => {
+    // One test per state: a state that is slow can't use up the time of the others.
+    test("setup", async ({ page, baseURL }) => {
       await signedIn(page, baseURL!);
-      await refuseUpload(page);
       await page.goto("/record");
       await expect(page.getByRole("heading", { name: "Record a take" })).toBeVisible();
       await expectNoSeriousAxeIssues(page);
+    });
 
+    test("ready", async ({ page, baseURL }) => {
+      await signedIn(page, baseURL!);
+      await page.goto("/record");
       await page.getByLabel("Script (optional)").fill(SCRIPT);
       await page.getByRole("button", { name: "Turn on camera" }).click();
       await expect(page.getByRole("button", { name: "Record" })).toBeVisible();
       await expectNoSeriousAxeIssues(page);
+    });
 
-      // Hold the page clock inside the countdown, so the scan sees the countdown on a slow
-      // runner too, then let it run again.
-      await page.clock.install();
-      await page.getByRole("button", { name: "Record" }).click();
-      await page.clock.pauseAt(await page.evaluate(() => Date.now() + 500));
+    test("countdown", async ({ page, baseURL }) => {
+      await signedIn(page, baseURL!);
+      // The countdown is three real seconds and a scan takes about one, so a slow runner can
+      // lose it mid scan. The scan only counts if the countdown was still showing after it;
+      // otherwise start again (up to three times).
       const countdown = page.getByRole("status").filter({ hasText: "Recording starts" });
-      await expect(countdown).toBeVisible();
-      await expectNoSeriousAxeIssues(page);
-      await expect(countdown).toBeVisible();
-      await page.clock.resume();
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        await page.goto("/record");
+        await page.getByRole("button", { name: "Turn on camera" }).click();
+        await page.getByRole("button", { name: "Record", exact: true }).click();
+        await expect(countdown).toBeVisible();
+        await expectNoSeriousAxeIssues(page);
+        if (await countdown.isVisible()) return;
+      }
+      throw new Error("The countdown ended before every scan finished");
+    });
 
-      await expect(page.getByTestId("record-timer")).toBeVisible();
+    test("recording and a paused script", async ({ page, baseURL }) => {
+      await signedIn(page, baseURL!);
+      await page.goto("/record");
+      await toRecording(page);
       await expectNoSeriousAxeIssues(page);
-
       await page.keyboard.press("p");
       await expect(page.getByTestId("script-scroll")).toHaveAttribute("data-paused", "true");
       await expectNoSeriousAxeIssues(page);
+    });
 
+    test("review and a refused upload", async ({ page, baseURL }) => {
+      await signedIn(page, baseURL!);
+      await refuseUpload(page);
+      await page.goto("/record");
+      await toRecording(page);
       await page.waitForTimeout(1500);
       await page.getByRole("button", { name: "Stop" }).click();
       await expect(page.getByRole("button", { name: "Use this take" })).toBeVisible();
