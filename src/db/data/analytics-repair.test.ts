@@ -205,4 +205,33 @@ describe("retention purge (spec 0016, AC-9)", () => {
       );
     expect(left.map((r) => r.name).sort()).toEqual(["change_requested", "signup", "take_uploaded"]);
   });
+
+  it("expires cut_missed and cuts_reviewed past 13 months like the other repeatable events (spec 0017 AC-2)", async () => {
+    const c = await createCreator(db);
+    const t = await seedTake(db, c.id);
+    const now = new Date();
+    const old = new Date(now.getTime() - 14 * 30 * DAY);
+    const recent = new Date(now.getTime() - 12 * 30 * DAY);
+    const base = { creatorId: c.id, takeId: t.id };
+    await db.insert(analyticsEvent).values([
+      { ...base, name: "cut_missed", props: { atMs: 100, durationMs: 1000 }, occurredAt: old },
+      { ...base, name: "cut_missed", props: { atMs: 200, durationMs: 1000 }, occurredAt: recent },
+      { ...base, name: "cuts_reviewed", props: {}, occurredAt: old },
+    ]);
+    let removed = 0;
+    for (let i = 0; i < 5; i++) removed += await purgeOldAnalyticsEvents(db, now, 1);
+    expect(removed).toBeGreaterThanOrEqual(2);
+    const left = await db
+      .select({ name: analyticsEvent.name, at: analyticsEvent.occurredAt })
+      .from(analyticsEvent)
+      .where(
+        and(
+          eq(analyticsEvent.takeId, t.id),
+          inArray(analyticsEvent.name, ["cut_missed", "cuts_reviewed"]),
+        ),
+      );
+    expect(left).toHaveLength(1);
+    expect(left[0]?.name).toBe("cut_missed");
+    expect(left[0]?.at.getTime()).toBe(recent.getTime());
+  });
 });

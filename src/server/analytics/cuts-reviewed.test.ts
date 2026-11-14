@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it, vi } from "vitest";
 import { and, eq } from "drizzle-orm";
-import { analyticsEvent, cut } from "@/db/schema";
+import { analyticsEvent, cut, take } from "@/db/schema";
 import { createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import { AI_EDIT } from "@/lib/ai-edit";
 import { cutsReviewedProps } from "@/lib/analytics-events";
@@ -126,5 +126,60 @@ describe("cuts_reviewed snapshot (spec 0017, AC-1, AC-5, AC-6)", () => {
     expect(JSON.stringify(spy.mock.calls)).not.toContain("secret");
     spy.mockRestore();
     expect(await snapshots(t.id)).toHaveLength(0);
+  });
+
+  it("leaves out snapshots outside the window and snapshots of a deleted take, and counts missed marks in the window (AC-5)", async () => {
+    const c = await createCreator(db);
+    const live = await seedTake(db, c.id);
+    const gone = await seedTake(db, c.id);
+    const zero = { proposed: 0, undone: 0, restored: 0, kept: 0, added: 0 };
+    const kinds = (filler: typeof zero) => ({
+      pause: zero,
+      false_start: zero,
+      filler,
+      manual: zero,
+    });
+    const counts = (proposed: number) => ({
+      rules: kinds(zero),
+      ai: kinds({ ...zero, proposed }),
+      creator: kinds(zero),
+    });
+    const now = new Date();
+    const day = 24 * 60 * 60 * 1000;
+    const snap = (takeId: string, proposed: number, ago: number) => ({
+      name: "cuts_reviewed",
+      creatorId: c.id,
+      takeId,
+      props: { counts: counts(proposed) },
+      occurredAt: new Date(now.getTime() - ago * day),
+    });
+    const tally = (q: Awaited<ReturnType<typeof cutQuality>>) =>
+      q.rows.find((r) => r.proposer === "ai" && r.kind === "filler")?.tally.proposed ?? 0;
+    const before = await cutQuality(db, "7d", now);
+    await db.insert(analyticsEvent).values([
+      snap(live.id, 4, 1),
+      snap(live.id, 99, 20),
+      snap(gone.id, 50, 2),
+      {
+        name: "cut_missed",
+        creatorId: c.id,
+        takeId: live.id,
+        props: { atMs: 100, durationMs: 1000 },
+        occurredAt: new Date(now.getTime() - day),
+      },
+      {
+        name: "cut_missed",
+        creatorId: c.id,
+        takeId: live.id,
+        props: { atMs: 100, durationMs: 1000 },
+        occurredAt: new Date(now.getTime() - 20 * day),
+      },
+    ]);
+    // Deleting the take sets take_id to null on its snapshots, so they can no longer count.
+    await db.delete(take).where(eq(take.id, gone.id));
+    const after = await cutQuality(db, "7d", now);
+    expect(tally(after) - tally(before)).toBe(4);
+    expect(after.reviewedTakes - before.reviewedTakes).toBe(1);
+    expect(after.missed - before.missed).toBe(1);
   });
 });
