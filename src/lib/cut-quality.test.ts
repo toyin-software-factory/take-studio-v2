@@ -91,6 +91,48 @@ describe("scoreCuts", () => {
   });
 });
 
+describe("either copy of a doubled word (B2-T73)", () => {
+  // A word said twice: the second copy at 1200-1600, the first at 800-1200.
+  const doubled = [
+    { ...span(1200, 1600, "cut", "false_start"), either: { startMs: 800, endMs: 1200 } },
+  ];
+
+  it("cutting the marked copy scores 1 and 1", () => {
+    const s = scoreCuts(doubled, [cut(1200, 1600, "false_start")]);
+    expect(s).toMatchObject({ precision: 1, recall: 1 });
+    expect(s.tally.hitSpans).toBe(1);
+  });
+
+  it("cutting the other copy scores 1 and 1 too", () => {
+    const s = scoreCuts(doubled, [cut(800, 1200, "false_start")]);
+    expect(s).toMatchObject({ precision: 1, recall: 1 });
+    expect(missesOf(doubled, [cut(800, 1200, "false_start")]).missed).toEqual([]);
+  });
+
+  it("cutting neither copy is still a miss", () => {
+    const s = scoreCuts(doubled, [cut(3000, 3400, "false_start")]);
+    expect(s).toMatchObject({ precision: 0, recall: 0 });
+    expect(missesOf(doubled, [])).toMatchObject({ missed: [{ startMs: 1200, endMs: 1600 }] });
+  });
+
+  it("cutting both copies keeps one right and counts the other as a wrong cut", () => {
+    const s = scoreCuts(doubled, [cut(800, 1600, "false_start")]);
+    expect(s.recall).toBe(1);
+    expect(s.precision).toBeCloseTo(0.5);
+  });
+
+  it("the case schema takes an either on a cut span, and refuses it on a keep or an overlap", () => {
+    const base = { id: "x", note: "n", durationMs: 5000, pauses: [] } as const;
+    const words = [{ w: "a", startMs: 0, endMs: 100, filler: false }];
+    const ok = cutCaseSchema.safeParse({ ...base, words, expected: doubled });
+    expect(ok.success).toBe(true);
+    const keep = { ...span(1200, 1600, "keep"), either: { startMs: 800, endMs: 1200 } };
+    expect(cutCaseSchema.safeParse({ ...base, words, expected: [keep] }).success).toBe(false);
+    const overlap = [...doubled, span(900, 1000)];
+    expect(cutCaseSchema.safeParse({ ...base, words, expected: overlap }).success).toBe(false);
+  });
+});
+
 describe("the written cut quality test set", () => {
   const cases = CASE_ENTRIES.map((e) => ({ ...e, parsed: cutCaseSchema.safeParse(e.raw) }));
 

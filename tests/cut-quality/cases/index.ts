@@ -34,6 +34,8 @@ import a_earlier_attempt from "../answers/earlier-attempt.json";
 import a_like_and_trailing_filler from "../answers/like-and-trailing-filler.json";
 import a_tag_question from "../answers/tag-question.json";
 import a_tics_sort_of from "../answers/tics-sort-of.json";
+import c_tics_kind_of from "./tics-kind-of.json";
+import a_tics_kind_of from "../answers/tics-kind-of.json";
 import c_script_line_twice from "./script-line-twice.json";
 import a_script_line_twice from "../answers/script-line-twice.json";
 import c_script_line_three_times from "./script-line-three-times.json";
@@ -68,6 +70,7 @@ export const CASE_ENTRIES: readonly CaseEntry[] = [
   { holdout: false, raw: c_toyin3_pattern, answer: a_toyin3_pattern },
   { holdout: false, raw: c_unclear_word, answer: a_unclear_word },
   { holdout: false, raw: c_toyin4_nothing_to_say, answer: a_toyin4_nothing_to_say },
+  { holdout: false, raw: c_tics_kind_of, answer: a_tics_kind_of },
   { holdout: true, raw: h_drawn_out_hesitation, answer: a_drawn_out_hesitation },
   { holdout: true, raw: h_earlier_attempt, answer: a_earlier_attempt },
   { holdout: true, raw: h_like_and_trailing_filler, answer: a_like_and_trailing_filler },
