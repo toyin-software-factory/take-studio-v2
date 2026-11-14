@@ -1,6 +1,8 @@
 import { and, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
-import { analyticsEvent, cut } from "@/db/schema";
+import { runTx } from "@/db/tx";
+import { analyticsEvent, cut, take as takeTable } from "@/db/schema";
+import { ok } from "@/lib/result";
 import { MISSED_MARK } from "@/lib/cut-quality";
 import { isExpired, removedMs } from "@/lib/take-media";
 import { recordEvent } from "../analytics/record";
@@ -43,23 +45,40 @@ export async function handleMissed(
   const durationMs = Math.max(0, (take.durationMs ?? 0) - removedMs(cuts));
   if (parsed.data.atMs > durationMs) return errorResponse("invalid");
 
-  const [today] = await creator.db
-    .select({ n: sql<number>`count(*)::int` })
-    .from(analyticsEvent)
-    .where(
-      and(
-        eq(analyticsEvent.takeId, take.id),
-        eq(analyticsEvent.name, "cut_missed"),
-        gte(analyticsEvent.occurredAt, utcDayStart(at)),
-      ),
-    );
-  if ((today?.n ?? 0) < MISSED_MARK.perTakePerDay) {
-    await recordEvent(creator.db, {
-      name: "cut_missed",
-      creatorId: creator.creatorId,
-      takeId: take.id,
-      props: { atMs: Math.min(Math.round(parsed.data.atMs / 100) * 100, durationMs), durationMs },
+  const atMs = Math.min(Math.round(parsed.data.atMs / 100) * 100, durationMs);
+  try {
+    // The take row lock serializes presses of one take, so the count and the insert cannot
+    // interleave and two presses at 19 marks never make 21. Locking only the take follows the
+    // lock order rule (src/db/AGENTS.md). The mark is best effort: a failure here is logged by
+    // recordEvent (ids only) and the creator still gets the thank you.
+    await runTx(creator.db, async (tx) => {
+      await tx
+        .select({ id: takeTable.id })
+        .from(takeTable)
+        .where(eq(takeTable.id, take.id))
+        .for("update");
+      const [today] = await tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(analyticsEvent)
+        .where(
+          and(
+            eq(analyticsEvent.takeId, take.id),
+            eq(analyticsEvent.name, "cut_missed"),
+            gte(analyticsEvent.occurredAt, utcDayStart(at)),
+          ),
+        );
+      if ((today?.n ?? 0) < MISSED_MARK.perTakePerDay) {
+        await recordEvent(tx, {
+          name: "cut_missed",
+          creatorId: creator.creatorId,
+          takeId: take.id,
+          props: { atMs, durationMs },
+        });
+      }
+      return ok(true);
     });
+  } catch {
+    console.error("cut_missed transaction failed", { takeId: take.id });
   }
   return new Response(null, { status: 204, headers: { "cache-control": "no-store" } });
 }

@@ -115,4 +115,18 @@ describe("POST /api/takes/{id}/missed (spec 0017, AC-2 to AC-4)", () => {
     // The take is not expired at that instant (30 days), and the new day starts a new count.
     expect(await marks(t.id)).toHaveLength(21);
   });
+
+  it("never passes 20 a day when presses arrive at the same time", async () => {
+    const c = await createCreator(db);
+    const t = await seedTake(db, c.id, { status: "ready", durationMs: 60_000 });
+    const now = new Date();
+    for (let i = 0; i < 19; i++) await handleMissed(post({ atMs: i * 100 }), t.id, deps(c.id, now));
+    const statuses = await Promise.all(
+      Array.from({ length: 6 }, (_, i) =>
+        handleMissed(post({ atMs: 2000 + i * 100 }), t.id, deps(c.id, now)).then((r) => r.status),
+      ),
+    );
+    expect(statuses.every((s) => s === 204)).toBe(true);
+    expect(await marks(t.id)).toHaveLength(20);
+  });
 });
