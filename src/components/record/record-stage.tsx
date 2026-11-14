@@ -94,7 +94,7 @@ export function RecordStage({
             <Icon icon={Square} /> Stop
           </Button>
         ) : (
-          <Button size="lg" disabled={countdown} onClick={onRecord}>
+          <Button size="lg" disabled={countdown || limitMs <= 0} onClick={onRecord}>
             <Icon icon={Circle} /> {countdown ? "Starting…" : "Record"}
           </Button>
         )}
