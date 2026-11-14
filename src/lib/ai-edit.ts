@@ -498,10 +498,16 @@ export function validateAiEdit(
   });
   const unapplied = pauseCuts.filter((c) => c.applied === false);
   const applied = pauseCuts.filter((c) => c.applied !== false);
-  const cuts = smoothWordCutEdges(
-    [...unapplied, ...mergeCuts(applied, wordCuts, count)],
-    words,
-  ).sort((a, b) => a.startMs - b.startMs);
+  const merged = [...unapplied, ...mergeCuts(applied, wordCuts, count)];
+  const smoothed = smoothWordCutEdges(merged, words);
+  // Smoothing grows word cuts by up to 160 ms each; when that would take the word cuts over the
+  // share limit, the answer keeps the unsmoothed edges (the check above stays true).
+  const grown = smoothed.reduce((sum, c, i) => {
+    const before = merged[i];
+    return sum + (before ? c.endMs - c.startMs - (before.endMs - before.startMs) : 0);
+  }, 0);
+  const withinLimit = wordCutMs + grown <= durationMs * wordCutMaxShareFor(durationMs);
+  const cuts = (withinLimit ? smoothed : merged).sort((a, b) => a.startMs - b.startMs);
   // Last, so the merge's drops count too.
   if (count.dropped * 2 > total) return err("invalid");
   return ok({ cuts, fixes, background, dropped: count.dropped });

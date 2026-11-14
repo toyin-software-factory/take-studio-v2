@@ -139,6 +139,24 @@ describe("validateAiEdit", () => {
     expect(d.dropped).toBe(2);
   });
 
+  it("keeps the unsmoothed word cut when smoothing would pass the share limit (spec 0020)", () => {
+    const words = [
+      { w: "a", startMs: 0, endMs: 100, filler: false },
+      { w: "uh", startMs: 200, endMs: 300, filler: true },
+      { w: "b", startMs: 800, endMs: 900, filler: false },
+    ];
+    const answer: AiEditAnswer = {
+      keepPauses: [],
+      wordCuts: [{ fromWord: 1, toWord: 1, kind: "filler", reason: "filler" }],
+      fixes: [],
+      background: null,
+    } as unknown as AiEditAnswer;
+    const r = validateAiEdit(answer, words, [], 1_000);
+    if (!r.ok) throw new Error("expected valid");
+    // 200 to 800 is 60%; smoothing would take the start to 150 and pass the limit.
+    expect(r.data.cuts[0]).toMatchObject({ startMs: 200, endMs: 800 });
+  });
+
   it("places a word cut from the first word's start to the next word's start", () => {
     const d = data({
       wordCuts: [{ fromWord: 1, toWord: 1, kind: "filler", reason: "Filler word" }],
