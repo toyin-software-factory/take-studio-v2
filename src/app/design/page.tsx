@@ -5,6 +5,7 @@ import { Stage } from "@/components/stage";
 import { Toaster } from "@/components/ui/sonner";
 import { ColourSection } from "./colour-section";
 import { ComponentsSection } from "./components-section";
+import { RecorderDemo } from "./demo-recorder";
 import { StageDemo } from "./demo-stage";
 import { isGalleryEnabled } from "./gallery";
 import { LayersSection, ShapeSection, SpacingSection, TypeSection } from "./scale-sections";
@@ -71,6 +72,7 @@ export default function DesignGalleryPage() {
         <ShapeSection />
         <LayersSection />
         <StageDemo />
+        <RecorderDemo />
         <ComponentsSection />
         <Toaster />
       </main>
