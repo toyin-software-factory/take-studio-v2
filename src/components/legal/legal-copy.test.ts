@@ -7,7 +7,7 @@ import {
   MINIMUM_AGE,
   PROCESSORS,
 } from "@/lib/legal-facts";
-import { LEGAL_TEXT_HASHES, recordedHash } from "@/lib/legal-text-hashes";
+import { latestRecorded, recordedHash } from "@/lib/legal-text-hashes";
 import { legalCopyHash, legalCopyText } from "./legal-text";
 
 /** Spec 0015 AC-3, AC-5, AC-6, AC-7, AC-9, AC-13: the copy says what the facts file says. */
@@ -66,12 +66,9 @@ describe("the Terms copy", () => {
 
 describe("the recorded text hashes (AC-7, AC-9)", () => {
   for (const page of ["privacy", "terms"] as const) {
-    it(`${page}: the copy's hash is recorded under the current version date`, async () => {
+    it(`${page}: the copy's hash is the newest recorded line, under the current version date`, async () => {
+      expect(LEGAL_VERSION[page]).toBe(latestRecorded(page)?.date);
       expect(await legalCopyHash(page)).toBe(recordedHash(page, LEGAL_VERSION[page]));
-    });
-    it(`${page}: a date is recorded once, so a copy change needs a new date`, () => {
-      const dates = LEGAL_TEXT_HASHES[page].map((entry) => entry.date);
-      expect(new Set(dates).size).toBe(dates.length);
     });
   }
 });
