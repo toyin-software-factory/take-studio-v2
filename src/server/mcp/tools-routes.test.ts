@@ -6,7 +6,7 @@ import { apiKeyPrefix, generateApiKey, hashApiKey } from "@/lib/api-rules";
 import { routeKey } from "@/lib/api-registry";
 import { buildRouteRequest, callTool, pathParams } from "./dispatch";
 import { buildHandlers } from "./handlers";
-import { TEST_ORIGIN, testRouteDeps } from "./test-deps";
+import { TEST_ORIGIN, testRouteDeps } from "./test-wiring";
 import { TOOLS } from "./tools";
 
 /**

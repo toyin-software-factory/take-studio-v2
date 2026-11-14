@@ -5,7 +5,7 @@ import type { Db } from "@/db/types";
 import { apiKeyPrefix, generateApiKey, hashApiKey } from "@/lib/api-rules";
 import { MCP, MCP_TOOL_NAMES } from "@/lib/mcp-rules";
 import { type McpHttpDeps, handleMcp } from "./http";
-import { TEST_NOW, TEST_ORIGIN, testMcpDeps } from "./test-deps";
+import { TEST_NOW, TEST_ORIGIN, testMcpDeps } from "./test-wiring";
 import { TOOLS } from "./tools";
 
 /**
