@@ -64,7 +64,8 @@ export async function fetchRealtimeToken(fetchFn: typeof fetch): Promise<TokenRe
     if (res.status === 403) return failed("limit_exceeded", "token_403");
     if (res.status === 429) return failed("rate_limited", "token_429");
     if (!res.ok) return failed("unavailable", await statusCode(res));
-    const body = tokenSchema.safeParse(await res.json());
+    const json: unknown = await res.json().catch(() => undefined);
+    const body = tokenSchema.safeParse(json);
     return body.success
       ? { ok: true, token: body.data.token }
       : failed("unavailable", "token_body");
@@ -143,12 +144,17 @@ export function connectRealtime(
     const words = wordsFromMessage(event.data);
     if (words) handlers.onWords(words);
   };
+  // A failed socket fires `error` and then `close`: close is the one notification, with its code.
+  let notified = false;
   const ended = (code?: number) => {
     stopTimer();
-    if (!closedByUs) handlers.onClose(code);
+    if (!closedByUs && !notified) {
+      notified = true;
+      handlers.onClose(code);
+    }
   };
   socket.onclose = (event) => ended(event?.code);
-  socket.onerror = () => ended();
+  socket.onerror = () => stopTimer();
   return {
     sendAudio: (frame) => {
       if (socket.readyState === SOCKET_OPEN) socket.send(frame);

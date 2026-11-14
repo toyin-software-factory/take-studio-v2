@@ -106,9 +106,16 @@ describe("realtime stream (spec 0021 AC-12)", () => {
     expect(handlers.onClose).toHaveBeenCalledTimes(1);
     expect(handlers.onClose).toHaveBeenCalledWith(1008);
     expect(intervals[0]!.cleared).toBe(true);
-    const again = harness();
-    again.s.onerror?.();
-    expect(again.handlers.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a failed socket once, with the close code: error then close", () => {
+    const { s, handlers } = harness();
+    s.onerror?.();
+    expect(handlers.onClose).not.toHaveBeenCalled();
+    s.onclose?.({ code: 1006 });
+    s.onclose?.({ code: 1006 });
+    expect(handlers.onClose).toHaveBeenCalledTimes(1);
+    expect(handlers.onClose).toHaveBeenCalledWith(1006);
   });
 
   it("closing it ourselves sends CloseStream and is not reported as a drop", () => {
@@ -165,6 +172,15 @@ describe("fetchRealtimeToken", () => {
       ok: false,
       error: "unavailable",
       code: "token_network",
+    });
+  });
+
+  it("calls a 200 with invalid JSON token_body, not a network failure", async () => {
+    const bad = vi.fn(async () => new Response("{", { status: 200 })) as unknown as typeof fetch;
+    expect(await fetchRealtimeToken(bad)).toEqual({
+      ok: false,
+      error: "unavailable",
+      code: "token_body",
     });
   });
 
