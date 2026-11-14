@@ -399,6 +399,21 @@ describe("last used (AC-10)", () => {
   });
 });
 
+describe("last used on a 429 (B2-T104)", () => {
+  it("does not move last_used_at when the request is rate limited", async () => {
+    const c = await createCreator(db);
+    const { key, id } = await makeKey(c.id);
+    const deps = authDeps(noSession(), () => new Date("2026-11-14T15:00:30.000Z"));
+    for (let i = 0; i < 120; i++) await usage(deps, bearer(key));
+    const old = new Date(Date.now() - 2 * 3600_000);
+    await db.update(apiKey).set({ lastUsedAt: old }).where(eq(apiKey.id, id));
+    const over = await usage(deps, bearer(key));
+    expect(over.status).toBe(429);
+    const [row] = await db.select().from(apiKey).where(eq(apiKey.id, id));
+    expect(row?.lastUsedAt).toEqual(old);
+  });
+});
+
 describe("private (AC-13)", () => {
   it("logs one api_key_rejected line with a reason only, never the key", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});

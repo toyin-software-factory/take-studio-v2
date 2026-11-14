@@ -1,3 +1,4 @@
+import { SESSION_REQUIRED_MESSAGE } from "@/lib/session-required";
 import { guard } from "../api-auth";
 import { reserveMint } from "@/db/data/realtime-mints";
 import type { Db } from "@/db/types";
@@ -55,7 +56,7 @@ const STATUS: Readonly<Record<RealtimeError, number>> = {
 const MESSAGES: Readonly<Record<Exclude<RealtimeError, "limit_exceeded">, string>> = {
   forbidden: "This request isn't allowed.",
   unauthorized: "Please sign in again.",
-  session_required: "Follow my voice works from your signed in account, not with an API key.",
+  session_required: SESSION_REQUIRED_MESSAGE,
   rate_limited:
     "Follow my voice has been started a lot lately. Your script will scroll on a timer.",
   unavailable: "Follow my voice isn't available right now. Your script will scroll on a timer.",

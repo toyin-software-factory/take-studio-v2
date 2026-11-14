@@ -100,9 +100,16 @@ describe("annotations (AC-7)", () => {
     }
   });
 
-  it("only delete_take asks for confirmation", () => {
-    expect(TOOLS.filter((t) => t.confirm).map((t) => t.name)).toEqual(["delete_take"]);
-    expect(Object.keys(tool("delete_take").input)).toContain("confirm");
+  it("every destructive tool asks for confirmation, and no other tool does", () => {
+    const destructive = TOOLS.filter((t) => t.annotations.destructiveHint).map((t) => t.name);
+    expect(
+      TOOLS.filter((t) => t.confirm)
+        .map((t) => t.name)
+        .sort(),
+    ).toEqual(destructive.sort());
+    for (const name of ["abort_upload", "delete_take"]) {
+      expect(Object.keys(tool(name).input), name).toContain("confirm");
+    }
   });
 });
 
@@ -174,6 +181,27 @@ describe("the delete guard (AC-7)", () => {
     const ok = await callTool(tool("delete_take"), { takeId: "t1", confirm: true }, spy, context);
     expect(called).toBe(1);
     expect(ok.isError).toBe(false);
+  });
+});
+
+describe("the cancel guard (B2-T104)", () => {
+  it("does not cancel an upload without confirm true", async () => {
+    let called = 0;
+    const spy = {
+      [routeKey(tool("abort_upload").route)]: async () => {
+        called += 1;
+        return new Response("{}");
+      },
+    };
+    for (const input of [{ takeId: "t1" }, { takeId: "t1", confirm: false }]) {
+      const outcome = await callTool(tool("abort_upload"), input, spy, context);
+      expect(outcome.isError).toBe(true);
+      expect(JSON.parse(outcome.text).error).toBe("confirmation_required");
+      expect(JSON.parse(outcome.text).message).toMatch(/cancel this upload/i);
+    }
+    expect(called).toBe(0);
+    await callTool(tool("abort_upload"), { takeId: "t1", confirm: true }, spy, context);
+    expect(called).toBe(1);
   });
 });
 

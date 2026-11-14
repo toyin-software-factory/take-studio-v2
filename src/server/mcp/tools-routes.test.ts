@@ -55,7 +55,7 @@ const takeInputs = (t: string): Readonly<Record<string, Record<string, unknown>>
   delete_take: { takeId: t, confirm: true },
   get_upload_part_links: { takeId: t, partNumbers: [1] },
   complete_upload: { takeId: t, parts: [{ partNumber: 1, etag: "e" }] },
-  abort_upload: { takeId: t },
+  abort_upload: { takeId: t, confirm: true },
   retry_take: { takeId: t },
   get_job: { takeId: t, jobId: ANY_ID },
   get_media_link: { takeId: t, kind: "original" },

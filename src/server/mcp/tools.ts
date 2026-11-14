@@ -101,7 +101,8 @@ const TEXT: Readonly<Record<McpToolName, Text>> = {
   },
   abort_upload: {
     title: "Cancel an upload",
-    description: "Cancel an upload that is still in progress. The unfinished take is removed.",
+    description:
+      "Cancel an upload that is still in progress. The unfinished take is removed. Ask the creator first, and only then call this with confirm set to true.",
     annotations: DESTROY,
   },
   retry_take: {
@@ -218,7 +219,7 @@ function inputFor(route: ApiRoute, confirm: boolean): z.ZodRawShape {
     fields.confirm = z
       .boolean()
       .optional()
-      .describe("Must be true. Only set it after the creator has said yes to the deletion.");
+      .describe("Must be true. Only set it after the creator has said yes.");
   }
   return fields;
 }
@@ -226,7 +227,7 @@ function inputFor(route: ApiRoute, confirm: boolean): z.ZodRawShape {
 function toolFor(route: ApiRoute): ToolDef | null {
   if (route.mcp === undefined) return null;
   const text = TEXT[route.mcp];
-  const confirm = route.mcp === "delete_take";
+  const confirm = route.mcp === "delete_take" || route.mcp === "abort_upload";
   return {
     name: route.mcp,
     title: text.title,

@@ -1,3 +1,4 @@
+import { SESSION_REQUIRED_MESSAGE } from "@/lib/session-required";
 import { getAuth } from "@/server/request";
 
 /**
@@ -22,7 +23,7 @@ function isClientAuth(request: Request): boolean {
 async function handle(request: Request): Promise<Response> {
   if (request.headers.has("authorization") && !isClientAuth(request)) {
     return Response.json(
-      { error: "session_required", message: "This action needs you to be signed in on the web." },
+      { error: "session_required", message: SESSION_REQUIRED_MESSAGE },
       { status: 401, headers: { "cache-control": "private, no-store" } },
     );
   }

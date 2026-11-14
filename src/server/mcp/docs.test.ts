@@ -29,6 +29,11 @@ describe("describeTools", () => {
     expect(kind("delete_take")).toBe("destructive");
   });
 
+  it("says which tools make the assistant ask first", () => {
+    const asks = docs.filter((d) => d.asksFirst).map((d) => d.name);
+    expect(asks.sort()).toEqual(["abort_upload", "delete_take"]);
+  });
+
   it("gives every tool a short summary that is a sentence", () => {
     for (const d of docs) expect(d.summary).toMatch(/[.!?]$/);
   });
