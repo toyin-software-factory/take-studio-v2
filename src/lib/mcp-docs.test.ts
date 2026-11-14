@@ -51,7 +51,7 @@ describe("the worked example", () => {
   });
 
   it("labels the JSON for the mcpServers shape and says what VS Code needs", () => {
-    const intro = setups.find((s) => s.id === "json")!.intro;
+    const intro = mcpSetups(mcpUrl(null)).find((s) => s.id === "json")!.intro;
     expect(intro).toContain("mcpServers");
     expect(intro).toContain(".vscode/mcp.json");
   });
