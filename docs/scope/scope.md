@@ -255,7 +255,7 @@ Public privacy policy and terms, needed because we store people's videos.
    - [x] Facts file, processor registry, entity placeholders and the drift tests (AC-4, AC-5, AC-7, AC-8, AC-9, AC-11, AC-13)
    - [x] Privacy page, footer link, sitemap, draft banner (AC-1, AC-3, AC-5, AC-7)
    - [x] Terms page (AC-1, AC-6)
-   - [ ] Sign in notice, upload note, user menu links (AC-2)
+   - [x] Sign in notice, upload note, user menu links (AC-2)
    - [ ] Accessibility and print pass, browser tests and axe (AC-12)
    - [x] Change checklist, `/sync` flag, launch gate check (AC-8, AC-10)
    - [ ] Self serve Delete account control, then flip the copy (AC-13)

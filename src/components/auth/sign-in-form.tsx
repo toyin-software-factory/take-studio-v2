@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
+import { SignInNotice } from "@/components/legal/legal-notice";
 import { authClient } from "@/lib/auth-client";
 import {
   SIGN_IN_MESSAGES,
@@ -149,6 +150,7 @@ export function SignInForm({ notice }: { readonly notice?: "link_expired" }) {
           {sending ? "Sending" : "Email me a sign in link"}
         </Button>
       </form>
+      <SignInNotice />
     </div>
   );
 }
