@@ -40,6 +40,12 @@ function routePath(file: string): string {
   return `/api/${folders.map((f) => f.replace(/^\[(.+)\]$/, "{$1}")).join("/")}`.replace(/\/$/, "");
 }
 
+/** Every name a declaration binds, so `const { POST } = handlers` and `const [GET] = list` count. */
+function boundNames(name: ts.BindingName): readonly string[] {
+  if (ts.isIdentifier(name)) return [name.text];
+  return name.elements.flatMap((el) => (ts.isOmittedExpression(el) ? [] : boundNames(el.name)));
+}
+
 /**
  * Every HTTP method a route file exports, read from the syntax tree so comments and strings are
  * ignored: functions, every declarator of a `const`/`let`, and `export { x as GET }` (with or
@@ -56,7 +62,7 @@ export function exportedMethods(source: string): readonly ApiMethod[] {
       found.add(node.name.text);
     } else if (ts.isVariableStatement(node) && exported(node)) {
       for (const d of node.declarationList.declarations) {
-        if (ts.isIdentifier(d.name)) found.add(d.name.text);
+        for (const bound of boundNames(d.name)) found.add(bound);
       }
     } else if (ts.isExportDeclaration(node)) {
       if (!node.exportClause) throw new Error("export * in a route file hides its methods");
@@ -86,6 +92,10 @@ describe("exportedMethods", () => {
     expect(exportedMethods("export const DELETE = () => {};\nexport const dynamic = 'x';")).toEqual(
       ["DELETE"],
     );
+    expect(
+      exportedMethods("export const GET = a;\nexport const { POST, x: { DELETE }, ...rest } = h;"),
+    ).toEqual(["GET", "POST", "DELETE"]);
+    expect(exportedMethods("export const [GET, , PUT] = list;")).toEqual(["GET", "PUT"]);
     expect(exportedMethods("export { handle as GET, handle as POST };")).toEqual(["GET", "POST"]);
     expect(exportedMethods("function GET() {}\nexport const runtime = 'edge';")).toEqual([]);
   });
