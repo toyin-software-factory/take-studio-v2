@@ -1,0 +1,13 @@
+{
+  "keepPauses": [],
+  "wordCuts": [
+    {
+      "fromWord": 0,
+      "toWord": 0,
+      "kind": "filler",
+      "reason": "Filler sound"
+    }
+  ],
+  "fixes": [],
+  "background": null
+}

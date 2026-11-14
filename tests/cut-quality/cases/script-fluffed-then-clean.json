@@ -1,0 +1,95 @@
+{
+  "id": "script-fluffed-then-clean",
+  "note": "A fluffed attempt that stalls and apologises, then a clean one; the fluffed attempt is cut whole.",
+  "script": "Add two cups of flour and stir slowly.",
+  "durationMs": 6000,
+  "words": [
+    {
+      "w": "Add",
+      "startMs": 400,
+      "endMs": 720,
+      "filler": false
+    },
+    {
+      "w": "two",
+      "startMs": 800,
+      "endMs": 1120,
+      "filler": false
+    },
+    {
+      "w": "cups",
+      "startMs": 1200,
+      "endMs": 1520,
+      "filler": false
+    },
+    {
+      "w": "uh",
+      "startMs": 1600,
+      "endMs": 1920,
+      "filler": true
+    },
+    {
+      "w": "sorry",
+      "startMs": 2000,
+      "endMs": 2320,
+      "filler": false
+    },
+    {
+      "w": "Add",
+      "startMs": 2400,
+      "endMs": 2720,
+      "filler": false
+    },
+    {
+      "w": "two",
+      "startMs": 2800,
+      "endMs": 3120,
+      "filler": false
+    },
+    {
+      "w": "cups",
+      "startMs": 3200,
+      "endMs": 3520,
+      "filler": false
+    },
+    {
+      "w": "of",
+      "startMs": 3600,
+      "endMs": 3920,
+      "filler": false
+    },
+    {
+      "w": "flour",
+      "startMs": 4000,
+      "endMs": 4320,
+      "filler": false
+    },
+    {
+      "w": "and",
+      "startMs": 4400,
+      "endMs": 4720,
+      "filler": false
+    },
+    {
+      "w": "stir",
+      "startMs": 4800,
+      "endMs": 5120,
+      "filler": false
+    },
+    {
+      "w": "slowly",
+      "startMs": 5200,
+      "endMs": 5520,
+      "filler": false
+    }
+  ],
+  "pauses": [],
+  "expected": [
+    {
+      "startMs": 400,
+      "endMs": 2400,
+      "kind": "false_start",
+      "verdict": "cut"
+    }
+  ]
+}

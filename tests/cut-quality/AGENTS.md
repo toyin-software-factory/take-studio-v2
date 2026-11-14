@@ -14,6 +14,7 @@ A written, invented test set for the AI edit. No real creator words, no real tak
 
 1. Write the JSON in `cases/` (or `cases/holdout/` for a held out case). Use invented words only; the schema rejects overlaps and spans past the end.
 2. Write `answers/<same id>.json` as the model should answer, then add both to `cases/index.ts`.
+   A case may carry an optional `script` (what the speaker meant to say, invented text, at most 20000 characters): the scorer, `ai-eval` and the record script then send it to the model and validate with the script share (spec 0021 AC-13). The `script-*` cases cover a line said twice, three times, fluffed then clean, an ad lib and a skipped line.
 3. Run `pnpm vitest run src/lib/cut-quality.test.ts`. The answer must validate with nothing dropped. If a total goes up, raise `baseline.json` in the same PR; never lower it to get green without saying why.
 
 ## Rules

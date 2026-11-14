@@ -1,0 +1,13 @@
+{
+  "keepPauses": [],
+  "wordCuts": [
+    {
+      "fromWord": 0,
+      "toWord": 4,
+      "kind": "false_start",
+      "reason": "Fluffed, a clean take follows"
+    }
+  ],
+  "fixes": [],
+  "background": null
+}

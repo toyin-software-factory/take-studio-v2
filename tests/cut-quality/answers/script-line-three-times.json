@@ -1,0 +1,19 @@
+{
+  "keepPauses": [],
+  "wordCuts": [
+    {
+      "fromWord": 0,
+      "toWord": 2,
+      "kind": "false_start",
+      "reason": "Cut short, a complete take follows"
+    },
+    {
+      "fromWord": 7,
+      "toWord": 10,
+      "kind": "false_start",
+      "reason": "Said wrong, the earlier take is cleaner"
+    }
+  ],
+  "fixes": [],
+  "background": null
+}
