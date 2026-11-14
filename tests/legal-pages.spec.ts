@@ -97,15 +97,22 @@ for (const { path } of PAGES) {
       expect((await focused())?.text).toBe("Take Studio");
       await page.keyboard.press("Tab");
       expect((await focused())?.inToc).toBe(true);
-      // The focused link shows a visible ring (outline or ring shadow), not nothing.
-      const focus = page.locator(":focus");
-      const style = await focus.evaluate((el) => {
+      // The focused link shows a visible ring: a real outline (width and colour) or a ring shadow.
+      const style = await page.locator(":focus").evaluate((el) => {
         const cs = getComputedStyle(el);
-        return { outline: cs.outlineStyle, width: cs.outlineWidth, shadow: cs.boxShadow };
+        const transparent = (c: string) =>
+          c === "transparent" || /^rgba\((\s*\d+\s*,){3}\s*0\s*\)$/.test(c);
+        const outline =
+          cs.outlineStyle !== "none" &&
+          parseFloat(cs.outlineWidth) > 0 &&
+          !transparent(cs.outlineColor);
+        const shadow =
+          cs.boxShadow !== "none" &&
+          /\d+px/.test(cs.boxShadow) &&
+          !/ 0px 0px 0px 0px/.test(cs.boxShadow);
+        return { outline, shadow };
       });
-      expect(
-        style.outline !== "none" && style.width !== "0px" ? true : style.shadow !== "none",
-      ).toBe(true);
+      expect(style.outline || style.shadow).toBe(true);
     });
 
     test("the text column keeps a readable line length", async ({ page }) => {
@@ -145,7 +152,17 @@ for (const { path } of PAGES) {
       await expect(page.getByRole("navigation", { name: "On this page" })).toBeHidden();
       await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
       const colours = await page.evaluate(() => {
-        const rgb = (v: string) => (v.match(/\d+(\.\d+)?/g) ?? []).slice(0, 3).map(Number);
+        // Resolve any CSS colour (rgb, oklch, color()) to sRGB bytes via a 1x1 canvas.
+        const ctx = document.createElement("canvas").getContext("2d", {
+          willReadFrequently: true,
+        }) as CanvasRenderingContext2D;
+        const rgb = (v: string) => {
+          ctx.clearRect(0, 0, 1, 1);
+          ctx.fillStyle = "#000";
+          ctx.fillStyle = v;
+          ctx.fillRect(0, 0, 1, 1);
+          return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
+        };
         const body = getComputedStyle(document.body);
         const text = getComputedStyle(document.querySelector("[data-legal-copy] p") as Element);
         return { bg: rgb(body.backgroundColor), fg: rgb(text.color) };
