@@ -19,6 +19,10 @@ import { useRecorder } from "./use-recorder";
 const containerOf = (fileName: string): RecordingContainer =>
   fileName.endsWith(".mp4") ? "mp4" : "webm";
 
+/** A touch screen as the main input (a phone or tablet). Read in the browser only. */
+const isTouchDevice = (): boolean =>
+  typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+
 const LEAVE_MESSAGE = "Your recording hasn't been uploaded. Leave without it?";
 
 /**
@@ -40,7 +44,8 @@ export function RecordView({
   const [script, setScript] = useState("");
   const { state, dispatch } = recorder;
   // Links and Back ask first too, not only closing the tab (the recorder warns for that).
-  useLeaveGuard(wouldLoseWork(state), LEAVE_MESSAGE);
+  // A phone's own camera file uploading (upload.busy) is lost on leaving too.
+  useLeaveGuard(wouldLoseWork(state) || upload.busy, LEAVE_MESSAGE);
   const onStage =
     state.kind === "ready" || state.kind === "countdown" || state.kind === "recording";
   const prompter = usePrompter(script, creatorId, state.kind === "recording", onStage);
@@ -98,17 +103,36 @@ export function RecordView({
         limitMs={recorder.limitMs}
         onRecord={recorder.begin}
         onStop={recorder.stop}
+        devices={recorder.devices}
+        deviceNote={recorder.deviceNote}
+        switching={recorder.switching}
+        cameraId={recorder.cameraId}
+        micId={recorder.micId}
+        onCamera={recorder.chooseCamera}
+        onMic={recorder.chooseMic}
+        onFlip={recorder.flip}
       />
     );
   }
+  // A photo or video from the phone's own camera goes through the same upload.
+  if (upload.busy) return <UploadProgress state={upload.state} onCancel={upload.cancel} />;
   return (
     <RecordSetup
+      uploadNote={
+        upload.state.kind === "rejected"
+          ? upload.state.message
+          : upload.state.kind === "cancelled"
+            ? "The upload was cancelled."
+            : null
+      }
       usedUp={usage && isUsedUp(usage) ? usedUpMessage(usage) : null}
       script={script}
       onScript={editScript}
       failure={state.kind === "failed" ? state.failure : null}
       busy={state.kind === "requesting"}
+      touch={isTouchDevice()}
       onStart={() => void recorder.request()}
+      onNativeFile={(file) => void upload.start(file)}
     />
   );
 }

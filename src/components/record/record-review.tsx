@@ -32,6 +32,11 @@ export function RecordReview({
 
   return (
     <div className="flex flex-col gap-4">
+      {take.note ? (
+        <Alert variant="warning" title="Recording stopped early">
+          {take.note}
+        </Alert>
+      ) : null}
       {failure ? (
         <Alert variant="danger" title="This take wasn't uploaded">
           {failure} Your recording is still here.

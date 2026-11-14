@@ -7,9 +7,13 @@ import { Icon } from "@/components/ui/icon";
 import { shouldWarn } from "@/lib/recorder-rules";
 import { formatClock } from "@/lib/take-display";
 import type { RecorderState } from "@/lib/recorder-state";
+import type { DeviceChoices } from "@/lib/recorder-devices";
+import { DevicePickers } from "./device-pickers";
+import { LevelMeter } from "./level-meter";
 import { PrompterControls } from "./prompter-controls";
 import { PrompterText } from "./prompter-text";
 import type { Prompter } from "./use-prompter";
+import { useLevel } from "./use-level";
 
 /**
  * The live preview (mirrored, display only: the file is never mirrored), the script over it,
@@ -24,6 +28,14 @@ export function RecordStage({
   limitMs,
   onRecord,
   onStop,
+  devices,
+  deviceNote,
+  switching,
+  cameraId,
+  micId,
+  onCamera,
+  onMic,
+  onFlip,
 }: {
   readonly state: RecorderState;
   readonly stream: MediaStream | null;
@@ -32,7 +44,17 @@ export function RecordStage({
   readonly limitMs: number;
   readonly onRecord: () => void;
   readonly onStop: () => void;
+  readonly devices: DeviceChoices;
+  readonly deviceNote: string | null;
+  /** A camera or microphone change is in flight: Record waits for it. */
+  readonly switching: boolean;
+  readonly cameraId: string | null;
+  readonly micId: string | null;
+  readonly onCamera: (id: string) => void;
+  readonly onMic: (id: string) => void;
+  readonly onFlip: (() => void) | null;
 }) {
+  const level = useLevel(stream);
   const video = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     if (video.current) video.current.srcObject = stream;
@@ -91,13 +113,28 @@ export function RecordStage({
           {formatClock(leftMs)} left. The recording stops by itself at the limit.
         </p>
       ) : null}
+      <LevelMeter level={level} />
+      {deviceNote ? (
+        <p role="alert" className="text-small font-medium text-destructive">
+          {deviceNote}
+        </p>
+      ) : null}
+      <DevicePickers
+        choices={devices}
+        cameraId={cameraId}
+        micId={micId}
+        locked={state.kind !== "ready"}
+        onCamera={onCamera}
+        onMic={onMic}
+        onFlip={onFlip}
+      />
       <div className="flex gap-3">
         {recording ? (
           <Button size="lg" variant="destructive" onClick={onStop}>
             <Icon icon={Square} /> Stop
           </Button>
         ) : (
-          <Button size="lg" disabled={countdown || limitMs <= 0} onClick={onRecord}>
+          <Button size="lg" disabled={countdown || switching || limitMs <= 0} onClick={onRecord}>
             <Icon icon={Circle} /> {countdown ? "Starting…" : "Record"}
           </Button>
         )}
