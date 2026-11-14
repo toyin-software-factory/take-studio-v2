@@ -179,13 +179,13 @@ The public registry covers: uploads (create, part links, complete, abort), takes
 Approach: Tracer Bullet. First one key through one real route end to end, then widen to every route, then the screen and the docs.
 
 1. Migration and rules: `api_key`, `api_rate_window`, `src/lib/api-rules.ts` (limits, key format helpers: generate, hash, prefix, parse), the cleanup of old rate windows in `src/trigger/cleanup.ts` with a test, unit tests including the key format and the hash, satisfies **AC-2**, **AC-9**, **AC-14**
-2. Key data functions and routes: create (with the 5 key lock), list, revoke, session only, tests through the real handlers, satisfies **AC-1**, **AC-3**, **AC-4**, **AC-13**
+2. Key data functions and routes: create (with the 5 key lock), list, revoke, session only, tests through the real handlers, satisfies **AC-1**, **AC-3**, **AC-4**, **AC-13**. Also the legal facts (moved here from step 8 by the lead, 2026-11-14): `COLLECTED` row, the Terms API line, `LEGAL_VERSION`, the hash lines and `pnpm legal:drift` clean, satisfies **AC-15**. Why: this is the first change that lets a creator store a key, so the copy goes live in the same deploy as the thing it describes.
 3. The tracer thread: `src/server/api-auth.ts` (`resolveCreator` returning a `Result`, and the one `guard` with the Origin order of AC-6), the `auth/[...all]` bearer rejection, rate window and last used, pointing the three `deps.ts` files and the takes, uploads and usage guards at it (so the tracer touches all three guards), with the no private session check test and a live check by key, satisfies **AC-5**, **AC-6**, **AC-9**, **AC-10**, **AC-16**
 4. Widen the guard to every remaining route in the registry (the guard calls and deps type change, the handler bodies stay untouched), move request schemas into `src/lib/api-schemas/` with response schemas, the by session and by key parity test (real routes, seeded state), the permission and allowance tests, satisfies **AC-7**
 5. The registry (`src/lib/api-registry.ts`), the coverage test per method and path, and the typed exclusion list with reasons, satisfies **AC-8**
 6. `/docs/api` and `/api/openapi.json` generated from the registry and the schemas, the robots Allow and sitemap entry with tests, the worked upload to download example, satisfies **AC-11**
 7. The "API keys" screen from the user menu (Mobbin is unavailable, C-39: use the existing account and settings patterns and dialogs in the /design gallery and note it in the PR), browser tests and axe, satisfies **AC-12**
-8. Legal facts, Privacy and Terms copy, `LEGAL_VERSION`, hash line, `pnpm legal:drift` clean, satisfies **AC-15**
+8. (Moved to step 2: the legal facts land with the first route that stores keys.)
 9. Real run: a script uses only a key to go from upload to download on a real take, and a revoked key stops in production too, satisfies **AC-5**, **AC-7**, **AC-3**
 
 ## Consequences

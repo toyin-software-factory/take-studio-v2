@@ -268,6 +268,12 @@ export const COLLECTED: readonly Collected[] = [
     deletedWith: "Deleting the account.",
   },
   {
+    what: "API keys: the name you give a key, a one way hash of the key, its first few characters, when it was made and last used, and a count of requests per key per minute. The key itself is shown once and never stored",
+    why: "To let your own tools and agents use Take Studio as you, and to slow down misuse.",
+    kept: "A key is kept until you revoke it or delete the account. Request counts are kept about an hour.",
+    deletedWith: "Revoking the key or deleting the account.",
+  },
+  {
     what: "Email, name and picture from Google, or just your email for a sign in link",
     why: "To make and recognise your account.",
     kept: "While the account exists.",
