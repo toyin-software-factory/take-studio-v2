@@ -150,6 +150,22 @@ describe("limitExceededMessage (AC-6)", () => {
       "Your upload is kept until 30 Nov, before your minutes come back on 1 Dec. Upload it again then.",
     );
   });
+  it("treats expiry at the reset instant as gone, but later that day as kept", () => {
+    expect(
+      limitExceededMessage({
+        resetsOn: "2026-12-01",
+        videoExpiresAt: new Date("2026-12-01T00:00:00.000Z"),
+      }),
+    ).toBe("Your upload expires on 1 Dec, just as your minutes come back. Upload it again then.");
+    expect(
+      limitExceededMessage({
+        resetsOn: "2026-12-01",
+        videoExpiresAt: new Date("2026-12-01T00:00:00.001Z"),
+      }),
+    ).toBe(
+      "This month's allowance is used up. Your upload is kept until 1 Dec: try again from 1 Dec, or delete it.",
+    );
+  });
   it("still gives the reset date when the expiry is unknown", () => {
     expect(limitExceededMessage({ resetsOn: "2026-12-01", videoExpiresAt: null })).toContain(
       "1 Dec",

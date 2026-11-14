@@ -151,8 +151,13 @@ export function limitExceededMessage(input: {
   }
   const expiryDate = utcDate(input.videoExpiresAt);
   const expiry = shortDate(expiryDate);
-  // ISO dates compare as text: the video is gone before the minutes come back.
-  if (expiryDate < input.resetsOn) {
+  // The video is gone by the time the minutes come back when it expires at or before midnight
+  // UTC on the reset date (equal to the reset instant is expired, as everywhere else).
+  if (input.videoExpiresAt.getTime() <= Date.parse(`${input.resetsOn}T00:00:00Z`)) {
+    // Expiring at the very instant of the reset reads oddly as "before", so it has its own words.
+    if (expiryDate === input.resetsOn) {
+      return `Your upload expires on ${reset}, just as your minutes come back. Upload it again then.`;
+    }
     return `Your upload is kept until ${expiry}, before your minutes come back on ${reset}. Upload it again then.`;
   }
   return `This month's allowance is used up. Your upload is kept until ${expiry}: try again from ${reset}, or delete it.`;
