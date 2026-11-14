@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNow } from "./use-now";
 import { Film } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
@@ -34,6 +34,11 @@ export function TakeLibrary({
   readonly nowIso: string;
 }) {
   const [takes, setTakes] = useState<readonly TakeCardData[]>(initial.takes);
+  // The latest committed list, for callbacks that outlive the render that created them.
+  const takesRef = useRef(takes);
+  useEffect(() => {
+    takesRef.current = takes;
+  }, [takes]);
   const [cursor, setCursor] = useState(initial.nextCursor);
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState(false);
@@ -46,18 +51,23 @@ export function TakeLibrary({
   const opener = useRef<HTMLElement | null>(null);
   const openDelete = useCallback((take: TakeCardData, from: HTMLElement | null) => {
     opener.current = from;
+    // Clear the last message so the next success changes the text and is announced again.
+    setAnnouncement("");
     setDeleting(take);
     setDialogOpen(true);
   }, []);
   const onDeleted = () => {
     if (!deleting) return;
-    const next = afterCardDelete(takes, deleting.id);
-    setTakes(next.takes);
+    // The focus target comes from the latest list; the list itself is updated functionally so a
+    // page or poll that landed while DELETE was pending is not overwritten.
+    const { focusId } = afterCardDelete(takesRef.current, deleting.id);
+    const gone = deleting.id;
+    setTakes((list) => list.filter((t) => t.id !== gone));
     setAnnouncement(DELETED_MESSAGE);
     // After the dialog has closed (it runs its own focus handling first), move focus on.
     requestAnimationFrame(() => {
-      const target = next.focusId
-        ? document.getElementById(takeLinkId(next.focusId))
+      const target = focusId
+        ? document.getElementById(takeLinkId(focusId))
         : document.getElementById(UPLOAD_INPUT_ID)?.closest("section")?.querySelector("button");
       (target as HTMLElement | null)?.focus();
     });
@@ -145,7 +155,7 @@ export function TakeLibrary({
     </p>
   );
 
-  if (takes.length === 0) {
+  if (takes.length === 0 && cursor === null) {
     return (
       <div className="flex flex-col gap-4">
         {status}

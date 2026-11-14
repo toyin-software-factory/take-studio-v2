@@ -169,7 +169,13 @@ export function TakeView({
             title={detail.take.title}
             open={deleteOpen}
             onOpenChange={setDeleteOpen}
-            returnFocus={() => opener.current}
+            returnFocus={() =>
+              // The opener can be gone (the Details section is replaced when the take becomes
+              // ready while the dialog is open): fall back to the header menu button.
+              opener.current?.isConnected
+                ? opener.current
+                : document.querySelector<HTMLElement>("[aria-label='More actions for this take']")
+            }
             onDeleted={() => {
               setGone(true);
               router.push(`/library?${DELETED_PARAM}=1`);
