@@ -225,6 +225,16 @@ describe("keepRanges and the render graph (AC-6)", () => {
     expect(keyed.indexOf("crop=1776:998")).toBeLessThan(keyed.indexOf("concat="));
   });
 
+  it("fades both edges of a single piece when cuts trim the start and the end (AC-1)", () => {
+    const script = renderFilterScript([{ startMs: 1_000, endMs: 9_000 }], {
+      hdr: null,
+      durationMs: 10_000,
+    });
+    const audio = script.split("\n").find((l) => l.startsWith("[0:a]")) ?? "";
+    expect(audio).toContain("afade=t=in:st=0:d=0.030000");
+    expect(audio).toContain("afade=t=out:st=7.970000:d=0.030000");
+  });
+
   it("renders a take with no cuts as before (AC-4)", () => {
     const script = renderFilterScript([{ startMs: 0, endMs: 10_000 }], {
       hdr: null,

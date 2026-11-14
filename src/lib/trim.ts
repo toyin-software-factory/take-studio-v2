@@ -247,9 +247,7 @@ export function renderFilterScript(keep: readonly Range[], options: RenderGraphO
     }[v${i}];`,
     ...(hasAudio
       ? [
-          `[0:a]atrim=start=${seconds(r.startMs)}:end=${seconds(r.endMs)},asetpts=PTS-STARTPTS${
-            keep.length > 1 ? fades(r, i) : ""
-          }[a${i}];`,
+          `[0:a]atrim=start=${seconds(r.startMs)}:end=${seconds(r.endMs)},asetpts=PTS-STARTPTS${fades(r, i)}[a${i}];`,
         ]
       : []),
   ]);
