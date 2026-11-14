@@ -242,7 +242,7 @@ export function renderFilterScript(keep: readonly Range[], options: RenderGraphO
   const lines = keep.flatMap((r, i) => [
     `[0:v]trim=start=${videoSeconds(r.startMs)}:end=${videoSeconds(r.endMs)},setpts=PTS-STARTPTS${
       zooms?.[i] && crop && options.size
-        ? `,crop=${crop.w}:${crop.h},scale=${options.size.width}:${options.size.height}`
+        ? `,crop=${crop.w}:${crop.h},scale=${options.size.width}:${options.size.height},setsar=1`
         : ""
     }[v${i}];`,
     ...(hasAudio

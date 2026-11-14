@@ -214,7 +214,7 @@ describe("keepRanges and the render graph (AC-6)", () => {
     });
     const video = script.split("\n").filter((l) => l.startsWith("[0:v]"));
     expect(video[0]).not.toContain("crop=");
-    expect(video[1]).toContain("crop=1776:998,scale=1920:1080[v1]");
+    expect(video[1]).toContain("crop=1776:998,scale=1920:1080,setsar=1[v1]");
     // With a background the zoom is still per piece, before the concat.
     const keyed = renderFilterScript([r(0, 2_000), r(3_000, 2_000)], {
       hdr: null,
