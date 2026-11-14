@@ -29,11 +29,17 @@ export function useUsage(initial: UsageView | null, refreshKey: string): UsageVi
     if (!enforced || !resetsOn) return;
     const resetAt = Date.parse(`${resetsOn}T00:00:00Z`);
     if (Number.isNaN(resetAt)) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     const check = () => {
-      if (Date.now() >= resetAt) setResetTick((n) => n + 1);
+      clearTimeout(timer);
+      if (Date.now() >= resetAt) {
+        setResetTick((n) => n + 1);
+        return;
+      }
+      // setTimeout cannot wait longer than 2^31 ms (about 24.8 days): wake early, check again.
+      timer = setTimeout(check, Math.min(resetAt - Date.now(), 2 ** 31 - 1));
     };
-    // setTimeout cannot wait longer than 2^31 ms (about 24.8 days): wake early and check again.
-    const timer = setTimeout(check, Math.min(Math.max(resetAt - Date.now(), 0), 2 ** 31 - 1));
+    check();
     const onVisible = () => {
       if (document.visibilityState === "visible") check();
     };
