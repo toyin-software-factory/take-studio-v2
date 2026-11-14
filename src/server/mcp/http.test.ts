@@ -295,4 +295,43 @@ describe("limits and privacy (AC-10, AC-11)", () => {
       expect(everything).not.toContain(secret);
     }
   });
+  it("a route that throws answers a fixed message, logs one line and hides the error text", async () => {
+    const a = await newCaller();
+    const secret =
+      "Failed query: select * from take where title = 'Secret title' params: tsk_secret";
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const real = deps();
+    const throwing: McpHttpDeps = {
+      ...real,
+      handlers: {
+        ...real.handlers,
+        "GET /api/takes": async () => {
+          throw new Error(secret);
+        },
+      },
+    };
+    const res = await handleMcp(
+      new Request(`${ORIGIN}/mcp`, {
+        method: "POST",
+        headers: { "content-type": "application/json", authorization: `Bearer ${a.key}` },
+        body: JSON.stringify(call("list_takes")),
+      }),
+      throwing,
+    );
+    const out = toolText(await json(res));
+    expect(out.isError).toBe(true);
+    expect(JSON.parse(out.text)).toEqual({
+      error: "internal",
+      message: "Something went wrong on our side. Try again in a moment.",
+    });
+    expect(out.text).not.toContain("Secret title");
+    const lines = info.mock.calls.filter((c) => c[0] === "mcp_call");
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.[1]).toMatchObject({
+      tool: "list_takes",
+      creatorId: a.creatorId,
+      status: 500,
+    });
+    expect(JSON.stringify(info.mock.calls)).not.toContain("Secret title");
+  });
 });

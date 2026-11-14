@@ -1,3 +1,4 @@
+import { captureMessage } from "@sentry/core";
 import { routeKey } from "@/lib/api-registry";
 import { composeStartUpload, firstBatch, parseCreated, parseLinks } from "./start-upload";
 import { type ToolDef, pathInputKeys, placeholders } from "./tools";
@@ -83,6 +84,17 @@ const refused = (status: number, error: string, message: string, takeId: string 
   takeId,
 });
 
+const INTERNAL_MESSAGE = "Something went wrong on our side. Try again in a moment.";
+
+/** One Sentry message with IDs and the error class name only, never the message or the input. */
+function reportToolFailure(tool: string, takeId: string | null, error: unknown): void {
+  captureMessage("mcp_tool_failed", {
+    level: "error",
+    tags: { service: "web", tool },
+    extra: { takeId, errorName: error instanceof Error ? error.constructor.name : "unknown" },
+  });
+}
+
 /** Runs one tool through its route and returns the route's answer as the tool outcome. */
 export async function callTool(
   tool: ToolDef,
@@ -103,7 +115,15 @@ export async function callTool(
   if (handler === undefined) {
     return refused(500, "tool_unavailable", "This tool isn't available right now.", takeId);
   }
-  const response = await handler(buildRouteRequest(tool, input, context), pathParams(tool, input));
+  let response: Response;
+  try {
+    response = await handler(buildRouteRequest(tool, input, context), pathParams(tool, input));
+  } catch (error) {
+    // A route that throws (database, storage) must not hand its message to the assistant: it can
+    // hold SQL and values. The answer is fixed; the report carries the tool, take and error name.
+    reportToolFailure(tool.name, takeId, error);
+    return refused(500, "internal", INTERNAL_MESSAGE, takeId);
+  }
   const text = response.status === 204 ? "{}" : await response.text();
   const ok = response.status >= 200 && response.status <= 299;
   if (ok && tool.name === "start_upload") {

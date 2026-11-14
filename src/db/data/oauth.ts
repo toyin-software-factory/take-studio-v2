@@ -1,5 +1,7 @@
 import { and, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
 import { API_RATE, rateWindowStart } from "@/lib/api-rules";
+import { ok } from "@/lib/result";
+import { runTx } from "../tx";
 import {
   oauthAccessToken,
   oauthClient,
@@ -25,6 +27,15 @@ export async function authenticateOauthToken(
     .select({ userId: oauthAccessToken.userId, clientId: oauthAccessToken.clientId })
     .from(oauthAccessToken)
     .innerJoin(oauthClient, eq(oauthClient.clientId, oauthAccessToken.clientId))
+    // Consent is part of identity: a token pair minted while a disconnect ran (a refresh that
+    // read the old row first) has no consent row left and must not work.
+    .innerJoin(
+      oauthConsent,
+      and(
+        eq(oauthConsent.userId, oauthAccessToken.userId),
+        eq(oauthConsent.clientId, oauthAccessToken.clientId),
+      ),
+    )
     .where(
       and(
         eq(oauthAccessToken.token, tokenHash),
@@ -88,24 +99,54 @@ export async function disconnectApp(
   creatorId: string,
   clientId: string,
 ): Promise<boolean> {
-  await db
-    .delete(oauthAccessToken)
-    .where(and(eq(oauthAccessToken.userId, creatorId), eq(oauthAccessToken.clientId, clientId)));
-  await db
-    .delete(oauthRefreshToken)
-    .where(and(eq(oauthRefreshToken.userId, creatorId), eq(oauthRefreshToken.clientId, clientId)));
-  // A code the app was given but has not exchanged yet (60 seconds) would still buy new tokens.
-  await db.delete(verification).where(
-    sql`case when ${verification.value} like '{"type":"authorization_code"%'
-      then ${verification.value}::jsonb ->> 'userId' = ${creatorId}
-        and ${verification.value}::jsonb -> 'query' ->> 'client_id' = ${clientId}
-      else false end`,
-  );
-  const gone = await db
-    .delete(oauthConsent)
-    .where(and(eq(oauthConsent.userId, creatorId), eq(oauthConsent.clientId, clientId)))
-    .returning({ id: oauthConsent.id });
-  return gone.length > 0;
+  const result = await runTx(db, async (tx) => {
+    // Consent first: from here on a token of this grant no longer authenticates, even one a
+    // concurrent refresh inserts before the deletes below finish.
+    const gone = await tx
+      .delete(oauthConsent)
+      .where(and(eq(oauthConsent.userId, creatorId), eq(oauthConsent.clientId, clientId)))
+      .returning({ id: oauthConsent.id });
+    await tx
+      .delete(oauthAccessToken)
+      .where(and(eq(oauthAccessToken.userId, creatorId), eq(oauthAccessToken.clientId, clientId)));
+    await tx
+      .delete(oauthRefreshToken)
+      .where(
+        and(eq(oauthRefreshToken.userId, creatorId), eq(oauthRefreshToken.clientId, clientId)),
+      );
+    // A code the app was given but has not exchanged yet (60 seconds) would still buy new tokens.
+    await tx.delete(verification).where(
+      sql`case when ${verification.value} like '{"type":"authorization_code"%'
+        then ${verification.value}::jsonb ->> 'userId' = ${creatorId}
+          and ${verification.value}::jsonb -> 'query' ->> 'client_id' = ${clientId}
+        else false end`,
+    );
+    return ok(gone.length > 0);
+  });
+  return result.ok ? result.data : false;
+}
+
+/**
+ * True when this refresh token belongs to a grant whose consent is gone (a disconnect): the
+ * refresh must be refused so it cannot mint a new pair. Unknown tokens are left to the plugin.
+ */
+export async function refreshGrantDisconnected(
+  db: Executor,
+  refreshHash: string,
+  clientId: string,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ userId: oauthRefreshToken.userId })
+    .from(oauthRefreshToken)
+    .where(and(eq(oauthRefreshToken.token, refreshHash), eq(oauthRefreshToken.clientId, clientId)))
+    .limit(1);
+  if (!row) return false;
+  const [consent] = await db
+    .select({ id: oauthConsent.id })
+    .from(oauthConsent)
+    .where(and(eq(oauthConsent.userId, row.userId), eq(oauthConsent.clientId, clientId)))
+    .limit(1);
+  return consent === undefined;
 }
 
 /**
