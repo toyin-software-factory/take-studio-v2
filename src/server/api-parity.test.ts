@@ -6,6 +6,7 @@ import { createApiKey } from "@/db/data/api-keys";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { apiKeyPrefix, generateApiKey, hashApiKey } from "@/lib/api-rules";
+import { API_REGISTRY, routeKey } from "@/lib/api-registry";
 import { chargedMonth } from "@/lib/billing";
 import { usageAccountHash } from "@/lib/usage-hash";
 import type { ApiAuthDeps } from "./api-auth";
@@ -393,6 +394,70 @@ describe("Better Auth paths are session only (AC-4)", () => {
       expect(res.status).toBe(401);
       expect(await res.json()).toMatchObject({ error: "session_required" });
       expect(res.headers.get("cache-control")).toBe("private, no-store");
+    }
+  });
+});
+
+/**
+ * Registry routes the by session vs by key comparison above does not run: they need R2, Trigger.dev
+ * or a multipart upload to answer. They go through the same shared guard as the rest (checked
+ * below), so a key reaches them exactly as a session does. Listed here so a new registry route
+ * must be run above or named here with a reason.
+ */
+const GUARD_CHECKED: Readonly<Record<string, string>> = {
+  "POST /api/uploads": "needs R2 multipart",
+  "POST /api/uploads/{takeId}/parts": "needs R2 multipart",
+  "POST /api/uploads/{takeId}/complete": "needs R2 and Trigger.dev",
+  "DELETE /api/uploads/{takeId}": "needs R2",
+  "DELETE /api/takes/{id}": "queues R2 deletions",
+  "POST /api/takes/{id}/retry": "needs Trigger.dev",
+  "POST /api/takes/{id}/missed": "writes a product event",
+  "PUT /api/takes/{id}/background": "needs Trigger.dev",
+  "GET /api/takes/{id}/background/preview": "needs R2",
+  "POST /api/takes/{id}/background/preview": "needs Trigger.dev",
+  "PATCH /api/takes/{id}/transcript/edits/{index}": "needs the transcript fixture",
+  "POST /api/backgrounds": "needs R2",
+  "POST /api/backgrounds/{id}/complete": "needs R2 and Trigger.dev",
+  "DELETE /api/backgrounds/{id}": "needs R2",
+};
+
+describe("every registry route is compared or guard checked (AC-7, AC-8)", () => {
+  const compared = new Set(ROUTES.map((r) => r.name));
+
+  it("names every registry route in the comparison or in the guard checked list", () => {
+    const missing = API_REGISTRY.map(routeKey).filter(
+      (k) => !compared.has(k) && !(k in GUARD_CHECKED),
+    );
+    expect(missing).toEqual([]);
+  });
+
+  it("lists no route twice and none that is not in the registry", () => {
+    const keys = new Set(API_REGISTRY.map(routeKey));
+    for (const name of compared) expect(keys.has(name)).toBe(true);
+    for (const name of Object.keys(GUARD_CHECKED)) {
+      expect(keys.has(name)).toBe(true);
+      expect(compared.has(name)).toBe(false);
+    }
+  });
+
+  it("has every route handler file take its creator from the shared guard", () => {
+    const files = [
+      "uploads/http.ts",
+      "takes/http.ts",
+      "takes/missed.ts",
+      "backgrounds/http.ts",
+      "backgrounds/upload-http.ts",
+      "backgrounds/library-http.ts",
+      "backgrounds/preview-http.ts",
+      "changes/http.ts",
+      "transcripts/http.ts",
+      "email/prefs-http.ts",
+      "usage/http.ts",
+      "media/index.ts",
+    ];
+    for (const file of files) {
+      const source = readFileSync(join(__dirname, file), "utf8");
+      expect(/\b(guard|resolveCreator)\(/.test(source), file).toBe(true);
     }
   });
 });
