@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { keepRunning } from "./keep-running";
 import { LEVEL_STEPS, levelLabel, levelOf, litSegments } from "@/lib/recorder-devices";
 
 export type Level = { readonly lit: number; readonly label: string };
@@ -29,6 +30,7 @@ export function useLevel(stream: MediaStream | null): Level {
     const analyser = context.createAnalyser();
     analyser.fftSize = 512;
     context.createMediaStreamSource(new MediaStream(stream.getAudioTracks())).connect(analyser);
+    const stopKeeping = keepRunning(context);
     const samples = new Uint8Array(analyser.fftSize);
     const timer = setInterval(() => {
       analyser.getByteTimeDomainData(samples);
@@ -38,6 +40,7 @@ export function useLevel(stream: MediaStream | null): Level {
     }, 100);
     return () => {
       clearInterval(timer);
+      stopKeeping();
       void context.close().catch(() => undefined);
     };
   }, [stream]);

@@ -2,6 +2,7 @@
 
 import { useEffect, useReducer, useRef } from "react";
 import { followScript, normaliseWord, scriptWordsOf } from "@/lib/follow-script";
+import { keepRunning } from "./keep-running";
 import { FOLLOW_OFF, followReducer, type FollowStatus } from "@/lib/follow-state";
 import { PCM_WORKLET_NAME, PCM_WORKLET_SOURCE } from "@/lib/pcm-worklet";
 import {
@@ -19,7 +20,11 @@ export type VoiceFollow = {
   readonly note: string | null;
 };
 
-type Audio = { readonly ctx: AudioContext; readonly url: string };
+type Audio = {
+  readonly ctx: AudioContext;
+  readonly url: string;
+  readonly stop: () => void;
+};
 
 /** Take the microphone only (never the video) and stream it as 16 kHz frames into `conn`. */
 async function pipeMicrophone(
@@ -35,10 +40,10 @@ async function pipeMicrophone(
     const node = new AudioWorkletNode(ctx, PCM_WORKLET_NAME, { numberOfOutputs: 0 });
     node.port.onmessage = (event: MessageEvent<ArrayBuffer>) => send(event.data);
     ctx.createMediaStreamSource(new MediaStream(tracks)).connect(node);
-    return { ctx, url };
+    return { ctx, url, stop: keepRunning(ctx) };
   } catch (error) {
     // The caller never gets the handles on failure, so release them here.
-    releaseAudio({ ctx, url });
+    releaseAudio({ ctx, url, stop: () => undefined });
     throw error;
   }
 }
@@ -47,6 +52,7 @@ async function pipeMicrophone(
 const STARTUP_QUEUE_MAX = 100;
 
 function releaseAudio(audio: Audio): void {
+  audio.stop();
   URL.revokeObjectURL(audio.url);
   void audio.ctx.close();
 }
