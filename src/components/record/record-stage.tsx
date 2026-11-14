@@ -8,8 +8,10 @@ import { RECORDER } from "@/lib/recorder-rules";
 import { formatClock } from "@/lib/take-display";
 import type { RecorderState } from "@/lib/recorder-state";
 import { PrompterControls } from "./prompter-controls";
+import { FollowVoiceToggle } from "./follow-voice-toggle";
 import { PrompterText } from "./prompter-text";
 import type { Prompter } from "./use-prompter";
+import { useVoiceFollow } from "./use-voice-follow";
 
 /**
  * The live preview (mirrored, display only: the file is never mirrored), the script over it,
@@ -18,6 +20,7 @@ import type { Prompter } from "./use-prompter";
  */
 export function RecordStage({
   state,
+  script,
   stream,
   prompter,
   elapsedMs,
@@ -26,6 +29,7 @@ export function RecordStage({
   onStop,
 }: {
   readonly state: RecorderState;
+  readonly script: string;
   readonly stream: MediaStream | null;
   readonly prompter: Prompter;
   readonly elapsedMs: number;
@@ -40,6 +44,12 @@ export function RecordStage({
 
   const recording = state.kind === "recording";
   const countdown = state.kind === "countdown";
+  const follow = useVoiceFollow({
+    script,
+    stream,
+    enabled: prompter.settings.follow,
+    recording,
+  });
   const leftMs = Math.max(0, limitMs - elapsedMs);
   const warn = recording && leftMs <= RECORDER.warnSecondsLeft * 1000;
   const status = countdown
@@ -63,7 +73,10 @@ export function RecordStage({
           className="size-full -scale-x-100 object-cover"
         />
         <div className="pointer-events-none absolute inset-x-3 top-3 bottom-12 flex flex-col gap-2">
-          <PrompterText prompter={prompter} />
+          <PrompterText
+            prompter={prompter}
+            followWordIndex={follow.status === "following" ? follow.wordIndex : null}
+          />
         </div>
         {countdown && state.secondsLeft > 0 ? (
           <div
@@ -83,6 +96,15 @@ export function RecordStage({
         ) : null}
       </div>
       {prompter.total > 0 ? <PrompterControls prompter={prompter} /> : null}
+      {prompter.total > 0 ? (
+        <FollowVoiceToggle
+          enabled={prompter.settings.follow}
+          onChange={prompter.setFollow}
+          disclosureSeen={prompter.settings.followDisclosed}
+          onDisclosureSeen={prompter.markFollowDisclosed}
+          follow={follow}
+        />
+      ) : null}
       <p role="status" className="sr-only">
         {status}
       </p>

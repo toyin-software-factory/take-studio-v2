@@ -11,16 +11,29 @@ import type { Prompter } from "./use-prompter";
  * position, or, when the device asks for reduced motion, steps one line at a time with the
  * current line highlighted and no smooth scrolling.
  */
-export function PrompterText({ prompter }: { readonly prompter: Prompter }) {
+export function PrompterText({
+  prompter,
+  followWordIndex = null,
+}: {
+  readonly prompter: Prompter;
+  /** The next word to say, from voice following; null keeps the timed scroll. */
+  readonly followWordIndex?: number | null;
+}) {
   const { lines, settings, reducedMotion, position, active, paused, setLineIndex } = prompter;
   const box = useRef<HTMLDivElement>(null);
   const current = useRef(0);
+  const follow = useRef<number | null>(null);
+  useEffect(() => {
+    follow.current = followWordIndex;
+  }, [followWordIndex]);
 
   useEffect(() => {
     const el = box.current;
     if (!el) return;
     let frame = 0;
     const place = () => {
+      // Voice following moves the script to the matched word; the timed position is only a fallback.
+      if (follow.current !== null) position.current = follow.current;
       const index = lineAt(lines, position.current);
       const line = lines[index];
       const node = el.children[index] as HTMLElement | undefined;
