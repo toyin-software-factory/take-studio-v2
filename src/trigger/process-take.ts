@@ -93,11 +93,15 @@ export const processTakeTask = task({
       // Spec 0016 AC-4: only a video job that this call really failed; a background change or a
       // transcribe job leaves the take as it was. Best effort, never throws.
       if (finished.ok && row && !isBackgroundKind(row.kind) && !isTranscribeKind(row.kind)) {
-        const [owner] = await d
-          .select({ id: take.id, creatorId: take.creatorId })
-          .from(take)
-          .where(eq(take.id, row.takeId));
-        if (owner) await recordTakeFailed(d, owner, code);
+        try {
+          const [owner] = await d
+            .select({ id: take.id, creatorId: take.creatorId })
+            .from(take)
+            .where(eq(take.id, row.takeId));
+          if (owner) await recordTakeFailed(d, owner, code);
+        } catch {
+          // Best effort: an analytics failure must not skip the failed-job email.
+        }
       }
       return row?.kind ?? null;
     });
