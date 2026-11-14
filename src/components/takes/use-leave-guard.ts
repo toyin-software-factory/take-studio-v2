@@ -2,13 +2,14 @@
 
 import { useEffect } from "react";
 
-const MESSAGE = "You have changes that haven't been rendered. Leave without rendering them?";
+const DEFAULT_MESSAGE =
+  "You have changes that haven't been rendered. Leave without rendering them?";
 
 /**
  * Warns before unsent changes are lost (spec 0011, AC-4): the browser's own prompt for a reload
  * or close, and a confirm for an in app link or the Back button. Off when `active` is false.
  */
-export function useLeaveGuard(active: boolean) {
+export function useLeaveGuard(active: boolean, message: string = DEFAULT_MESSAGE) {
   useEffect(() => {
     if (!active) return;
     const beforeUnload = (e: BeforeUnloadEvent) => {
@@ -23,7 +24,7 @@ export function useLeaveGuard(active: boolean) {
       const url = new URL(a.href, location.href);
       if (url.origin !== location.origin) return;
       if (url.pathname === location.pathname && url.search === location.search) return;
-      if (!window.confirm(MESSAGE)) {
+      if (!window.confirm(message)) {
         e.preventDefault();
         e.stopPropagation();
       }
@@ -35,7 +36,7 @@ export function useLeaveGuard(active: boolean) {
     const onPop = () => {
       if (leaving) return;
       parked = false;
-      if (window.confirm(MESSAGE)) {
+      if (window.confirm(message)) {
         leaving = true;
         history.back();
       } else {
@@ -54,5 +55,5 @@ export function useLeaveGuard(active: boolean) {
       if (parked && !leaving && (history.state as { leaveGuard?: boolean } | null)?.leaveGuard)
         history.back();
     };
-  }, [active]);
+  }, [active, message]);
 }

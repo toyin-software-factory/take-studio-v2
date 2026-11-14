@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   alignToFrames,
+  pushPlan,
   cutsFromSilences,
   keepRanges,
   outputFps,
@@ -220,14 +221,14 @@ describe("keepRanges and the render graph (AC-6)", () => {
     expect(video[1]).toContain(
       ":eval=frame,crop=1920:1080:x='(ceil(1920*(1.08+0.04*t/2.000000)/2)*2-1920)/2':y='(ceil(1080*(1.08+0.04*t/2.000000)/2)*2-1080)/2',setsar=1[v1]",
     );
-    // A short zoomed piece (no push) keeps the plain crop and scale back.
+    // A short piece after a pushed one holds the final scale 1.12 (spec 0020 AC-5).
     const short = renderFilterScript([r(0, 2_000), r(3_000, 2_000), r(6_000, 500)], {
       hdr: null,
       size: { width: 1920, height: 1080 },
       durationMs: 7_000,
     });
     expect(short.split("\n").filter((l) => l.startsWith("[0:v]"))[2]).toContain(
-      "crop=1776:998,scale=1920:1080,setsar=1[v2]",
+      "scale=2152:1210,crop=1920:1080:x=116:y=65,setsar=1[v2]",
     );
     // With a background the zoom is still per piece, before the concat.
     const keyed = renderFilterScript([r(0, 2_000), r(3_000, 2_000)], {
@@ -363,6 +364,33 @@ describe("keepRanges and the render graph (AC-6)", () => {
   });
 });
 
+describe("pushPlan and a short piece after a push (spec 0020 AC-5)", () => {
+  const keep = [
+    { startMs: 0, endMs: 3_000 },
+    { startMs: 4_000, endMs: 7_000 },
+    { startMs: 7_100, endMs: 7_400 },
+  ];
+  it("marks every piece after the first long one", () => {
+    expect(pushPlan(keep)).toEqual([false, true, true]);
+    expect(
+      pushPlan([
+        { startMs: 0, endMs: 3_000 },
+        { startMs: 3_100, endMs: 3_300 },
+      ]),
+    ).toEqual([false, false]);
+  });
+  it("holds the final push scale on a short piece instead of jumping back", () => {
+    const script = renderFilterScript(keep, { hdr: null, size: { width: 1920, height: 1080 } });
+    const lines = script.split("\n");
+    const short = lines.find((l) => l.startsWith("[0:v]") && l.endsWith("[v2];")) ?? "";
+    // Piece 1 is zoomed (1.1 base), so the short piece holds 1.1 + the push.
+    const scale = SMOOTH.zoomScale + SMOOTH.pushScale;
+    expect(short).toContain(`scale=${Math.ceil((1920 * scale) / 2) * 2}:`);
+    expect(short).not.toContain("crop=1745");
+    expect(short).not.toContain("t/");
+  });
+});
+
 describe("alignToFrames (AC-6 sync)", () => {
   it("snaps every keep range to the frame grid so audio and video cut at the same instant", () => {
     const aligned = alignToFrames(
@@ -378,11 +406,46 @@ describe("alignToFrames (AC-6 sync)", () => {
       expect(Math.abs(r.endMs / frame - Math.round(r.endMs / frame))).toBeLessThan(1e-9);
     }
     expect(aligned[0]?.startMs).toBeCloseTo(1_400, 6);
-    expect(aligned[1]?.startMs).toBeCloseTo(4_266.667, 2);
+    expect(aligned[1]?.startMs).toBeCloseTo(4_233.333, 2);
   });
 
-  it("drops a range shorter than half a frame and defaults to 30 fps", () => {
-    expect(alignToFrames([{ startMs: 1_000, endMs: 1_010 }], 30)).toEqual([]);
+  it("snaps a start down and an end up, so a kept word is never trimmed (spec 0020 AC-7)", () => {
+    const [r] = alignToFrames([{ startMs: 1_000, endMs: 1_010 }], 30);
+    expect(r?.startMs).toBeCloseTo(1_000, 6);
+    expect(r?.endMs).toBeCloseTo(1_033.333, 2);
+    const [late] = alignToFrames([{ startMs: 1_001, endMs: 2_000 }], 30);
+    expect(late?.startMs).toBeCloseTo(1_000, 6);
+  });
+
+  it("keeps a time already on a frame where it is", () => {
+    const frame = 1000 / 30;
+    const [r] = alignToFrames([{ startMs: 3 * frame, endMs: 9 * frame }], 30);
+    expect(r?.startMs).toBeCloseTo(3 * frame, 9);
+    expect(r?.endMs).toBeCloseTo(9 * frame, 9);
+  });
+
+  it("merges ranges that touch after aligning, so they never overlap", () => {
+    const out = alignToFrames(
+      [
+        { startMs: 0, endMs: 1_010 },
+        { startMs: 1_020, endMs: 2_000 },
+      ],
+      30,
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]?.endMs).toBeCloseTo(2_000, 6);
+    const apart = alignToFrames(
+      [
+        { startMs: 0, endMs: 1_000 },
+        { startMs: 1_200, endMs: 2_000 },
+      ],
+      30,
+    );
+    expect(apart).toHaveLength(2);
+  });
+
+  it("defaults to 30 fps and drops an empty range", () => {
+    expect(alignToFrames([{ startMs: 5, endMs: 5 }], 30)).toEqual([]);
     expect(alignToFrames([{ startMs: 0, endMs: 1_000 }], null)).toHaveLength(1);
   });
 });
