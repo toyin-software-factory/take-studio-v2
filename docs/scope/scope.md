@@ -283,7 +283,7 @@ Spec [0016](../specs/0016-product-analytics.md) · Toyin answers seven open ques
 
 ### 19. Cut quality measurement · in-progress
 Know whether AI cuts are good without watching creators' videos (C-37, from spec 0017).
-**Done when:** undo and missed rates per cut kind show on /insights, and every AI edit change is scored against a fixed written test set.
+**Done when:** undo rates per cut kind and the overall missed rate show on /insights, and every AI edit change is scored against a fixed written test set.
 - [x] Design it (spec): `/architect cut quality measurement`
 - [ ] Build it: `/develop cut quality measurement`
    - [ ] Scorer, written test set, baseline floor in CI (AC-7, AC-8, AC-9, AC-11)
