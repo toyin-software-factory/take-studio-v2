@@ -104,7 +104,7 @@ export async function uploadFile(
   /** Spec 0008, AC-1: a background ID or `original`; left out means no choice was made. */
   backgroundId?: string,
   /** Spec 0021: a browser recording says so and may carry the creator's script. */
-  recording?: { readonly script: string },
+  recording?: { readonly script: string; readonly durationMs?: number },
 ): Promise<UploadOutcome> {
   let takeId: string | null = null;
   try {
@@ -117,6 +117,10 @@ export async function uploadFile(
         ? {}
         : {
             source: "recording",
+            // Advisory: lets the server refuse a take longer than the minutes left (spec 0014).
+            ...(recording.durationMs !== undefined && recording.durationMs > 0
+              ? { durationHintMs: Math.round(recording.durationMs) }
+              : {}),
             ...(recording.script.trim() === "" ? {} : { script: recording.script }),
           }),
     });

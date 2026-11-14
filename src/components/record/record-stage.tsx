@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { Circle, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
-import { RECORDER } from "@/lib/recorder-rules";
+import { shouldWarn } from "@/lib/recorder-rules";
 import { formatClock } from "@/lib/take-display";
 import type { RecorderState } from "@/lib/recorder-state";
 import { ScriptScroll } from "./script-scroll";
@@ -39,7 +39,7 @@ export function RecordStage({
   const recording = state.kind === "recording";
   const countdown = state.kind === "countdown";
   const leftMs = Math.max(0, limitMs - elapsedMs);
-  const warn = recording && leftMs <= RECORDER.warnSecondsLeft * 1000;
+  const warn = recording && shouldWarn(elapsedMs, limitMs);
   const status = countdown
     ? `Recording starts in ${state.secondsLeft}`
     : warn
@@ -71,14 +71,14 @@ export function RecordStage({
             {state.secondsLeft}
           </div>
         ) : null}
-        {recording ? (
-          <span
-            data-testid="record-timer"
-            className="mono absolute bottom-3 left-3 rounded-md bg-nav-glass-dark px-2 py-1 text-small text-on-dark"
-          >
-            {formatClock(elapsedMs)} / {formatClock(limitMs)}
-          </span>
-        ) : null}
+        <span
+          data-testid={recording ? "record-timer" : "record-limit"}
+          className="mono absolute bottom-3 left-3 rounded-md bg-nav-glass-dark px-2 py-1 text-small text-on-dark"
+        >
+          {recording
+            ? `${formatClock(elapsedMs)} / ${formatClock(limitMs)}`
+            : `Up to ${formatClock(limitMs)}`}
+        </span>
       </div>
       <p role="status" className="sr-only">
         {status}
@@ -94,7 +94,7 @@ export function RecordStage({
             <Icon icon={Square} /> Stop
           </Button>
         ) : (
-          <Button size="lg" disabled={countdown} onClick={onRecord}>
+          <Button size="lg" disabled={countdown || limitMs <= 0} onClick={onRecord}>
             <Icon icon={Circle} /> {countdown ? "Starting…" : "Record"}
           </Button>
         )}

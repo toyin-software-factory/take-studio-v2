@@ -9,6 +9,9 @@ import {
   recordingFileName,
   recordingLimitMs,
   scrollFraction,
+  isUsedUp,
+  shouldWarn,
+  usageLimitSeconds,
   wordCount,
 } from "./recorder-rules";
 
@@ -66,6 +69,31 @@ describe("recordingLimitMs", () => {
     expect(recordingLimitMs(90)).toBe(90_000);
     expect(recordingLimitMs(5000)).toBe(600_000);
     expect(recordingLimitMs(-4)).toBe(0);
+  });
+});
+
+describe("usage and the length limit (AC-6)", () => {
+  it("only caps the recording when the limit is on", () => {
+    expect(usageLimitSeconds(null)).toBeNull();
+    expect(usageLimitSeconds({ enforced: false, remainingSeconds: 30 })).toBeNull();
+    expect(usageLimitSeconds({ enforced: true, remainingSeconds: 90 })).toBe(90);
+    expect(usageLimitSeconds({ enforced: true, remainingSeconds: -5 })).toBe(0);
+  });
+  it("is used up only with the limit on and nothing left", () => {
+    expect(isUsedUp({ enforced: true, remainingSeconds: 0 })).toBe(true);
+    expect(isUsedUp({ enforced: true, remainingSeconds: 1 })).toBe(false);
+    expect(isUsedUp({ enforced: false, remainingSeconds: 0 })).toBe(false);
+    expect(isUsedUp(null)).toBe(false);
+  });
+  it("the allowance left shortens the limit under 10 minutes", () => {
+    expect(recordingLimitMs(usageLimitSeconds({ enforced: true, remainingSeconds: 120 }))).toBe(
+      120_000,
+    );
+  });
+  it("warns 60 seconds before the stop, and at once for a limit under a minute", () => {
+    expect(shouldWarn(539_000, 600_000)).toBe(false);
+    expect(shouldWarn(540_000, 600_000)).toBe(true);
+    expect(shouldWarn(0, 45_000)).toBe(true);
   });
 });
 

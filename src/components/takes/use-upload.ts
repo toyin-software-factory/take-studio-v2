@@ -46,7 +46,7 @@ export function useUpload() {
       file: File,
       container: Container,
       backgroundId?: string,
-      recording?: { readonly script: string },
+      recording?: { readonly script: string; readonly durationMs?: number },
     ) => {
       const abort = new AbortController();
       controller.current = abort;
@@ -101,7 +101,13 @@ export function useUpload() {
    * take when it fails.
    */
   const startRecording = useCallback(
-    async (file: File, container: RecordingContainer, script: string, backgroundId?: string) => {
+    async (
+      file: File,
+      container: RecordingContainer,
+      script: string,
+      backgroundId?: string,
+      durationMs?: number,
+    ) => {
       if (controller.current) return null;
       if (file.size <= 0 || file.size > MEDIA_LIMITS.maxBytes) {
         const message =
@@ -111,7 +117,7 @@ export function useUpload() {
         setState({ kind: "rejected", message });
         return { ok: false, reason: "failed", message } as const;
       }
-      return run(file, container, backgroundId, { script });
+      return run(file, container, backgroundId, { script, durationMs });
     },
     [run],
   );

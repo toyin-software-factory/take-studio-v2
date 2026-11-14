@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { usedUpMessage, type UsageView } from "@/components/takes/usage-meter";
+import { useUsage } from "@/components/takes/use-usage";
 import { UploadProgress } from "@/components/takes/upload-progress";
 import { useLeaveGuard } from "@/components/takes/use-leave-guard";
 import { useUpload } from "@/components/takes/use-upload";
 import { wouldLoseWork } from "@/lib/recorder-state";
-import type { RecordingContainer } from "@/lib/recorder-rules";
+import { isUsedUp, usageLimitSeconds, type RecordingContainer } from "@/lib/recorder-rules";
 import { RecordReview } from "./record-review";
 import { RecordSetup } from "./record-setup";
 import { RecordStage } from "./record-stage";
@@ -22,8 +24,10 @@ const LEAVE_MESSAGE = "Your recording hasn't been uploaded. Leave without it?";
  * 3 second countdown, record, stop, then review. "Use this take" goes through the normal
  * upload and ends on the take page. Nothing leaves the device before that.
  */
-export function RecordView() {
-  const recorder = useRecorder();
+export function RecordView({ usage: firstUsage = null }: { readonly usage?: UsageView | null }) {
+  const [usageKey, setUsageKey] = useState("");
+  const usage = useUsage(firstUsage, usageKey);
+  const recorder = useRecorder(usageLimitSeconds(usage));
   const upload = useUpload();
   const [script, setScript] = useState("");
   const { state, dispatch } = recorder;
@@ -35,8 +39,16 @@ export function RecordView() {
     const { take } = state;
     dispatch({ type: "upload" });
     const file = new File([take.blob], take.fileName, { type: take.blob.type });
-    const outcome = await upload.startRecording(file, containerOf(take.fileName), script);
+    const outcome = await upload.startRecording(
+      file,
+      containerOf(take.fileName),
+      script,
+      undefined,
+      take.durationMs,
+    );
     if (outcome && !outcome.ok) {
+      // A refused take may mean the numbers changed: read them again (the recording stays).
+      setUsageKey(String(Date.now()));
       dispatch({
         type: "upload_failed",
         message: outcome.reason === "cancelled" ? "The upload was cancelled." : outcome.message,
@@ -71,6 +83,7 @@ export function RecordView() {
   }
   return (
     <RecordSetup
+      usedUp={usage && isUsedUp(usage) ? usedUpMessage(usage) : null}
       script={script}
       onScript={setScript}
       failure={state.kind === "failed" ? state.failure : null}

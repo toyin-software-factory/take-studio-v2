@@ -18,17 +18,28 @@ export function RecordSetup({
   onScript,
   failure,
   busy,
+  usedUp,
   onStart,
 }: {
   readonly script: string;
   readonly onScript: (value: string) => void;
   readonly failure: SetupFailure | null;
   readonly busy: boolean;
+  /** The used up message when the monthly allowance is gone (AC-6); Record cannot start. */
+  readonly usedUp: string | null;
   readonly onStart: () => void;
 }) {
   const message = failure ? SETUP_MESSAGES[failure] : null;
   return (
     <div className="flex flex-col gap-4">
+      {usedUp ? (
+        <Alert variant="danger" title="No recording time left">
+          {usedUp}{" "}
+          <Link href="/library" className="underline">
+            Back to your library
+          </Link>
+        </Alert>
+      ) : null}
       {message ? (
         <Alert variant="danger" title={message.title}>
           {message.body}{" "}
@@ -48,7 +59,7 @@ export function RecordSetup({
         />
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <Button size="lg" loading={busy} onClick={onStart}>
+        <Button size="lg" loading={busy} disabled={usedUp !== null} onClick={onStart}>
           <Icon icon={Camera} /> Turn on camera
         </Button>
         {message ? null : (
