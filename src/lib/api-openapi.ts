@@ -77,9 +77,17 @@ function operation(route: ApiRoute, lookup: ApiSchemaLookup): Json {
       ? { requestBody: { required: true, content: { "application/json": { schema: request } } } }
       : {}),
     responses: {
-      "2XX": {
-        description: "Success.",
-        ...(response ? { content: { "application/json": { schema: response } } } : {}),
+      [route.noContent ? "204" : "2XX"]: {
+        description: route.noContent ? "Done. There is no body." : "Success.",
+        ...(response
+          ? {
+              content: {
+                [route.text ? "text/plain" : "application/json"]: {
+                  schema: route.text ? { type: "string" } : response,
+                },
+              },
+            }
+          : {}),
       },
       "401": { $ref: "#/components/responses/Unauthorized" },
       ...(params.length > 0 ? { "404": { $ref: "#/components/responses/NotFound" } } : {}),

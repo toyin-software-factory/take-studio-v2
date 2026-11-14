@@ -11,7 +11,7 @@ import {
   uploadPartsSchema,
 } from "@/lib/api-schemas/requests";
 import { CLEANUP } from "@/lib/cleanup-rules";
-import { CONTAINERS, SCRIPT_MAX_CHARS, TAKE_SOURCES } from "@/lib/processing";
+import { SCRIPT_MAX_CHARS } from "@/lib/processing";
 import { R2CompleteError, type R2 } from "@/lib/r2";
 import { type Result, err, ok } from "@/lib/result";
 import { MEDIA_LIMITS } from "@/lib/take-rules";

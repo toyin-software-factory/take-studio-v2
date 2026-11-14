@@ -1,5 +1,4 @@
 import { emailPrefsSchema } from "@/lib/api-schemas/requests";
-import { z } from "zod";
 import { getTakeEmails, setTakeEmails } from "@/db/data/email-prefs";
 import { errorResponse, guard, json, type TakeHttpDeps } from "../takes/http";
 

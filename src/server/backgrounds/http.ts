@@ -1,5 +1,4 @@
 import { backgroundChangeSchema } from "@/lib/api-schemas/requests";
-import { z } from "zod";
 import { NO_GREEN_SCREEN_NOTE } from "@/lib/take-display";
 import { type TakeHttpDeps, guard, json } from "../takes/http";
 import { hasActiveTranscribe } from "../transcripts";

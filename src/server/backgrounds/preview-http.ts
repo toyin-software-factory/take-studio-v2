@@ -1,5 +1,4 @@
 import { backgroundPreviewSchema } from "@/lib/api-schemas/requests";
-import { z } from "zod";
 import { getPreview } from "@/db/data/previews";
 import type { BackgroundPreview } from "@/db/types";
 import { type TakeHttpDeps, errorResponse, guard, json } from "../takes/http";
