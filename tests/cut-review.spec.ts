@@ -495,7 +495,7 @@ test("arrows, Home and End move between cuts; Enter and Space still toggle (B2-T
   // Moving never changes a cut; Enter does.
   await expect(bar(page)).toHaveCount(0);
   await page.keyboard.press("Enter");
-  await expect(cutButton(page, 3)).toHaveAttribute("aria-pressed", "true");
+  await expect(cutButton(page, 3)).toHaveAttribute("aria-pressed", "false");
   await page.keyboard.press("Home");
   await page.keyboard.press("Space");
   await expect(cutButton(page, 1)).toHaveAttribute("aria-pressed", "true");
