@@ -1,3 +1,4 @@
+import { backgroundUploadSchema } from "@/lib/api-schemas/requests";
 import { z } from "zod";
 import {
   beginProcessing,
@@ -38,18 +39,12 @@ export type BackgroundUploadError =
   | "storage_error"
   | "dispatch_failed";
 
-const createSchema = z.object({
-  name: z.string().trim().min(1).max(80),
-  contentType: z.string().min(1).max(100),
-  bytes: z.number().int().positive(),
-});
-
 export async function createBackground(
   ports: UploadPorts,
   creatorId: string,
   input: unknown,
 ): Promise<Result<{ readonly id: string; readonly uploadUrl: string }, BackgroundUploadError>> {
-  const parsed = createSchema.safeParse(input);
+  const parsed = backgroundUploadSchema.safeParse(input);
   if (!parsed.success) return err("invalid");
   const { name, contentType, bytes } = parsed.data;
   if (!isBackgroundContentType(contentType)) return err("unsupported_type");

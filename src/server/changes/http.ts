@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { changesSchema } from "@/lib/api-schemas/requests";
 import { CHANGE_MESSAGES, type ChangeErrorCode } from "@/lib/change-messages";
 import { type TakeHttpDeps, errorResponse, guard, json } from "../takes/http";
 import { hasActiveTranscribe } from "../transcripts";
@@ -27,16 +27,6 @@ const STATUS: Readonly<Record<ChangeErrorCode, number>> = {
 /** The wording when a transcript is what is running (spec 0007 and 0011). */
 const TRANSCRIPT_RUNNING = "Your transcript is still being made. Try again in a moment.";
 
-const body = z.object({
-  baseRenderId: z.uuid().nullable(),
-  background: z.object({ id: z.uuid().nullable() }).optional(),
-  cuts: z
-    .array(z.object({ id: z.uuid(), applied: z.boolean() }))
-    .max(2000)
-    .refine((cuts) => new Set(cuts.map((c) => c.id)).size === cuts.length)
-    .optional(),
-});
-
 function refusal(code: ChangeErrorCode, message = CHANGE_MESSAGES[code]): Response {
   return json({ error: code, message }, STATUS[code]);
 }
@@ -53,7 +43,7 @@ export async function handleChanges(
 ): Promise<Response> {
   const creator = await guard(request, deps, { checkOrigin: true });
   if (creator instanceof Response) return creator;
-  const parsed = body.safeParse(await request.json().catch(() => null));
+  const parsed = changesSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return refusal("invalid", "Those changes can't be read. Reload the page.");
   const { baseRenderId, background, cuts = [] } = parsed.data;
   const started = await startChanges(

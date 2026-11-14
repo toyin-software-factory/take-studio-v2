@@ -1,3 +1,4 @@
+import { transcriptUndoSchema } from "@/lib/api-schemas/requests";
 import { z } from "zod";
 import { downloadBody, downloadFormatSchema, downloadHeaders } from "@/lib/transcript-download";
 import { recordEvent } from "../analytics/record";
@@ -128,7 +129,6 @@ export async function handleMakeTranscript(
   return json({ state: "making" }, 202);
 }
 
-const undoBodySchema = z.strictObject({ undone: z.boolean() });
 const indexSchema = z.string().regex(/^(0|[1-9]\d{0,8})$/);
 
 /**
@@ -148,7 +148,7 @@ export async function handlePatchEdit(
   if (creator instanceof Response) return creator;
   const position = indexSchema.safeParse(index);
   if (!position.success) return errorResponse("not_found");
-  const body = undoBodySchema.safeParse(await request.json().catch(() => null));
+  const body = transcriptUndoSchema.safeParse(await request.json().catch(() => null));
   if (!body.success) {
     return json({ error: "invalid_body", message: "Send undone as true or false." }, 422);
   }

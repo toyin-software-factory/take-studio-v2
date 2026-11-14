@@ -77,9 +77,17 @@ function operation(route: ApiRoute, lookup: ApiSchemaLookup): Json {
       ? { requestBody: { required: true, content: { "application/json": { schema: request } } } }
       : {}),
     responses: {
-      "2XX": {
-        description: "Success.",
-        ...(response ? { content: { "application/json": { schema: response } } } : {}),
+      [route.noContent ? "204" : "2XX"]: {
+        description: route.noContent ? "Done. There is no body." : "Success.",
+        ...(response
+          ? {
+              content: route.text
+                ? Object.fromEntries(
+                    TEXT_TYPES.map((type) => [type, { schema: { type: "string" } }]),
+                  )
+                : { "application/json": { schema: response } },
+            }
+          : {}),
       },
       "401": { $ref: "#/components/responses/Unauthorized" },
       ...(params.length > 0 ? { "404": { $ref: "#/components/responses/NotFound" } } : {}),
@@ -87,6 +95,9 @@ function operation(route: ApiRoute, lookup: ApiSchemaLookup): Json {
     },
   };
 }
+
+/** The transcript download: text, SubRip (srt) or WebVTT, picked by `format`. */
+const TEXT_TYPES = ["text/plain", "application/x-subrip", "text/vtt"] as const;
 
 function errorResponse(description: string): Json {
   return {
