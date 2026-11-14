@@ -117,18 +117,21 @@ jobs:
         run: pnpm db:migrate
 
   # The browser tests, split over parallel jobs (B2-T100: one job ran all ~400 tests on 2 workers
-  # and hit its 10 minute step limit). Each shard has its own Postgres service, so the specs that
-  # share monthly usage settings (the usage projects) stay serial inside a shard and cannot touch
-  # another shard. Shard 1 also runs the production mode check. The build runs once per shard
+  # and hit its 10 minute step limit). Four shards split the chromium project and a fifth job runs
+  # the usage suites in order (Playwright cannot shard a project chain, see playwright.config.ts).
+  # Each job has its own Postgres service, so the specs that share monthly usage settings cannot
+  # touch another job. Shard 1 also runs the production mode check. The build runs once per shard
   # (OpenNext bundles .env into the Worker, so it is not shared).
   e2e:
-    name: E2E shard ${{ matrix.shard }}
+    name: E2E ${{ matrix.shard == 'usage' && 'usage suites' || format('shard {0}', matrix.shard) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        # 1 to 4 split the chromium project; `usage` runs the suites that write the shared monthly
+        # usage settings, one after another.
+        shard: [1, 2, 3, 4, usage]
     services:
       postgres:
         image: postgres:17-alpine
@@ -196,6 +199,9 @@ jobs:
 
       - name: E2E smoke
         timeout-minutes: 15
+        env:
+          SHARD: ${{ matrix.shard }}
+          SHARDS: "4"
         # Host networking keeps the Postgres service on localhost (the seed guard needs that)
         # and the preview Worker on 127.0.0.1:8787. Runs as the runner's user so no root owned
         # files are left in the workspace. The built Worker and node_modules come from the
@@ -208,10 +214,10 @@ jobs:
           node_dir="$(dirname "$(dirname "$(command -v node)")")"
           docker run --rm --network host --ipc=host --init \
             --user "$(id -u):$(id -g)" -e HOME=/tmp \
-            -e CI -e PNPM_HOME -e NODE_DIR="$node_dir" -e DATABASE_URL -e DATABASE_URL_DIRECT \
+            -e CI -e E2E_SPLIT=1 -e SHARD -e SHARDS -e PNPM_HOME -e NODE_DIR="$node_dir" -e DATABASE_URL -e DATABASE_URL_DIRECT \
             -e CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE -e NEXT_TELEMETRY_DISABLED \
             -v "$GITHUB_WORKSPACE":/work -v "$pnpm_dir":"$pnpm_dir":ro -v "$node_dir":"$node_dir":ro -w /work \
-            "$PLAYWRIGHT_IMAGE" bash -c 'export PATH="$NODE_DIR/bin:$PNPM_HOME:$PATH" && node --version && pnpm exec playwright test --shard=${{ matrix.shard }}/${{ strategy.job-total }}'
+            "$PLAYWRIGHT_IMAGE" bash -c 'export PATH="$NODE_DIR/bin:$PNPM_HOME:$PATH" && node --version && if [ "$SHARD" = usage ]; then for p in usage record-a11y record-limits; do pnpm exec playwright test --project=$p || exit 1; done; else pnpm exec playwright test --project=chromium --shard=$SHARD/$SHARDS; fi'
 
       # The production check: the same built Worker, served as production serves it (no
       # `--var DESIGN_GALLERY:1`, which the normal run adds; the build is the same, the gallery is
@@ -219,7 +225,7 @@ jobs:
       # E2E_PRODUCTION=1 that check is skipped, so this step runs it and fails on any skipped
       # test or if it did not report exactly 1 passed.
       - name: E2E production mode (the gallery is not found)
-        if: matrix.shard == 1
+        if: matrix.shard == '1'
         timeout-minutes: 5
         shell: bash
         run: |

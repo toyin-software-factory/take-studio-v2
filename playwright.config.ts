@@ -11,6 +11,9 @@ const galleryVar = production ? "" : " --var DESIGN_GALLERY:1";
 
 const USAGE_SPECS = [/usage\.spec\.ts$/, /record-a11y\.spec\.ts$/, /record-limits\.spec\.ts$/];
 
+/** The run order between the usage suites (see the note on `projects`). */
+const chain = (names: string[]): string[] => (process.env.E2E_SPLIT ? [] : names);
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
@@ -24,24 +27,30 @@ export default defineConfig({
   // The suites that write the shared monthly usage settings (tests/support/usage.ts) run one
   // after the other, after everything else, so no other test sees limits switched on or off and
   // no test waits on the usage lock inside its own timeout.
+  //
+  // Sharding (B2-T100): Playwright runs a project's `dependencies` in full in every shard and
+  // shards only the top level projects, so the chain below cannot be split. CI sets E2E_SPLIT=1,
+  // which drops the chain: the `chromium` project is sharded over parallel jobs, and one more job
+  // runs `usage`, `record-a11y` and `record-limits` one after another, each as its own command.
+  // Without E2E_SPLIT (a local `pnpm test:e2e`) the chain keeps them in that order.
   projects: [
     { name: "chromium", testIgnore: USAGE_SPECS, use: { ...devices["Desktop Chrome"] } },
     {
       name: "usage",
       testMatch: /usage\.spec\.ts$/,
-      dependencies: ["chromium"],
+      dependencies: chain(["chromium"]),
       use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "record-a11y",
       testMatch: /record-a11y\.spec\.ts$/,
-      dependencies: ["usage"],
+      dependencies: chain(["usage"]),
       use: { ...devices["Desktop Chrome"] },
     },
     {
       name: "record-limits",
       testMatch: /record-limits\.spec\.ts$/,
-      dependencies: ["record-a11y"],
+      dependencies: chain(["record-a11y"]),
       fullyParallel: false,
       use: { ...devices["Desktop Chrome"] },
     },
