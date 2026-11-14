@@ -169,6 +169,35 @@ const seconds = (ms: number) => (ms / 1000).toFixed(6);
  */
 const videoSeconds = (ms: number) => (Math.max(0, ms - 0.001) / 1000).toFixed(6);
 
+/**
+ * Smooth cuts (spec 0020): a short audio fade on each edge that touches a cut, and a gentle
+ * alternating zoom between kept pieces so a cut reads as an edit, not a glitch.
+ */
+export const SMOOTH = {
+  audioFadeMs: 30,
+  wordEdgeMaxMs: 80,
+  zoomScale: 1.08,
+  zoomMinPieceMs: 1000,
+} as const;
+
+/**
+ * Per keep range, whether it is zoomed in: the first piece is not, then each piece of at least
+ * `zoomMinPieceMs` flips it, and a shorter piece keeps the previous piece's zoom.
+ */
+export function zoomPlan(keep: readonly Range[]): boolean[] {
+  let zoomed = false;
+  return keep.map((r, i) => {
+    if (i > 0 && r.endMs - r.startMs >= SMOOTH.zoomMinPieceMs) zoomed = !zoomed;
+    return zoomed;
+  });
+}
+
+/** Even pixel size of the centre crop for a zoom, so yuv420p stays valid. */
+function zoomCrop(width: number, height: number): { w: number; h: number } {
+  const even = (n: number) => Math.max(2, Math.floor(n / SMOOTH.zoomScale / 2) * 2);
+  return { w: even(width), h: even(height) };
+}
+
 export type RenderGraphOptions = {
   /** The source's HDR transfer (tone mapped to SDR), or null for SDR. */
   readonly hdr: HdrTransfer | null;
@@ -179,6 +208,10 @@ export type RenderGraphOptions = {
    * as input 1 (`-loop 1 -framerate {fps} -i image`).
    */
   readonly background?: BackgroundComposite;
+  /** The source's size. With it, and more than one piece, the pieces alternate a zoom. */
+  readonly size?: { readonly width: number; readonly height: number };
+  /** The take's length. A last piece ending at or past it has no cut at its end (no fade). */
+  readonly durationMs?: number;
 };
 
 /**
@@ -191,11 +224,32 @@ export type RenderGraphOptions = {
 export function renderFilterScript(keep: readonly Range[], options: RenderGraphOptions): string {
   const { hdr, background } = options;
   const hasAudio = options.hasAudio ?? true;
+  const zooms = options.size && keep.length > 1 ? zoomPlan(keep) : null;
+  const crop = options.size ? zoomCrop(options.size.width, options.size.height) : null;
+  const lastIndex = keep.length - 1;
+  const fades = (r: Range, i: number): string => {
+    const len = r.endMs - r.startMs;
+    const fadeMs = Math.min(SMOOTH.audioFadeMs, len / 2);
+    const cutAtStart = !(i === 0 && r.startMs <= 0);
+    const cutAtEnd = !(i === lastIndex && options.durationMs !== undefined
+      ? r.endMs >= options.durationMs
+      : i === lastIndex && options.durationMs === undefined);
+    return [
+      cutAtStart ? `,afade=t=in:st=0:d=${seconds(fadeMs)}` : "",
+      cutAtEnd ? `,afade=t=out:st=${seconds(len - fadeMs)}:d=${seconds(fadeMs)}` : "",
+    ].join("");
+  };
   const lines = keep.flatMap((r, i) => [
-    `[0:v]trim=start=${videoSeconds(r.startMs)}:end=${videoSeconds(r.endMs)},setpts=PTS-STARTPTS[v${i}];`,
+    `[0:v]trim=start=${videoSeconds(r.startMs)}:end=${videoSeconds(r.endMs)},setpts=PTS-STARTPTS${
+      zooms?.[i] && crop && options.size
+        ? `,crop=${crop.w}:${crop.h},scale=${options.size.width}:${options.size.height}`
+        : ""
+    }[v${i}];`,
     ...(hasAudio
       ? [
-          `[0:a]atrim=start=${seconds(r.startMs)}:end=${seconds(r.endMs)},asetpts=PTS-STARTPTS[a${i}];`,
+          `[0:a]atrim=start=${seconds(r.startMs)}:end=${seconds(r.endMs)},asetpts=PTS-STARTPTS${
+            keep.length > 1 ? fades(r, i) : ""
+          }[a${i}];`,
         ]
       : []),
   ]);
