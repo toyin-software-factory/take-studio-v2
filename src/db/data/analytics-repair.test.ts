@@ -112,6 +112,17 @@ describe("repair and backfill (spec 0016, AC-6, AC-12)", () => {
     expect((await events(a.id)).some((e) => e.name === "ai_edit_used")).toBe(false);
   });
 
+  it("does not repair ai_edit_used from a succeeded ai_edit step on a failed or running job", async () => {
+    const c = await createCreator(db);
+    const failed = await seedTake(db, c.id, { status: "failed" });
+    const running = await seedTake(db, c.id, { status: "processing" });
+    await step(await job(failed.id, "initial", "failed", new Date()), "succeeded", new Date());
+    await step(await job(running.id, "initial", "running", new Date()), "succeeded", new Date());
+    await repairAll();
+    expect((await events(failed.id)).some((e) => e.name === "ai_edit_used")).toBe(false);
+    expect((await events(running.id)).some((e) => e.name === "ai_edit_used")).toBe(false);
+  });
+
   it("is idempotent, keeps a live event as it is, and does not recover a deleted take", async () => {
     const c = await createCreator(db);
     const live = await seedTake(db, c.id, { status: "ready" });

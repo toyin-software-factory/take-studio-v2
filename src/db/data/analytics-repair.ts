@@ -78,7 +78,7 @@ const STATEMENTS = (limit: number) =>
         from job_step js
         join processing_job pj on pj.id = js.job_id
         where js.name = 'ai_edit' and js.status = 'succeeded' and js.finished_at is not null
-          and pj.kind in (${kindList})
+          and pj.status = 'succeeded' and pj.kind in (${kindList})
           and not exists (select 1 from analytics_event e where e.take_id = pj.take_id and e.name = 'ai_edit_used')
         order by pj.take_id, js.finished_at
       ) s
