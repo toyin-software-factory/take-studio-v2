@@ -20,6 +20,13 @@ function resetLabel(): string {
   return `1 ${MONTHS[(now.getUTCMonth() + 1) % 12]}`;
 }
 
+/** Days to keep a fixture take so it expires before the reset on any UTC day (at most 1 day). */
+function daysBeforeReset(): number {
+  const now = new Date();
+  const reset = Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1);
+  return Math.min(1, (reset - now.getTime()) / 2 / 86_400_000);
+}
+
 let cleanups: (() => Promise<void>)[] = [];
 test.afterEach(async () => {
   await Promise.all(cleanups.map((c) => c()));
@@ -149,7 +156,7 @@ function suite() {
         status: "failed",
         failureCode: "limit_exceeded",
         durationMs: 60_000,
-        expiresInDays: 1,
+        expiresInDays: daysBeforeReset(),
         minutesAgo: 5,
       },
     ]);
@@ -199,7 +206,7 @@ function suite() {
         status: "failed",
         failureCode: "limit_exceeded",
         durationMs: 60_000,
-        expiresInDays: 1,
+        expiresInDays: daysBeforeReset(),
       },
     ]);
     await page.goto(`/takes/${expiring}`);
