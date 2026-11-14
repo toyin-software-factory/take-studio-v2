@@ -17,7 +17,7 @@ export const API_VERSION_NOTE =
   "This is v1. Changes are additive: we add routes and fields, and never remove or rename one. A breaking change gets a new version path.";
 
 export const API_AUTH_STEPS: readonly string[] = [
-  "Make a key on the API keys screen (open your account menu, then API keys).",
+  "Make a key on the API keys screen at /account/api-keys (open your account menu, then API keys).",
   "Copy it when it appears. You won't see it again, so keep it secret like a password.",
   "Send it on every request as `Authorization: Bearer tsk_…`.",
 ];
@@ -26,7 +26,7 @@ export const API_LIMITS: readonly string[] = [
   `Each creator can hold ${API_KEYS.maxPerCreator} keys at once.`,
   `Each key can make ${API_RATE.perMinute} requests a minute. The next one gets 429 \`rate_limited\` with a \`Retry-After\` header in seconds.`,
   `A key can do what you can do: the same ${FREE_MONTHLY_SECONDS_DEFAULT / 60} free minutes a month, ${UPLOAD.perHourLimit} uploads an hour, and the same permissions. Another creator's takes are always 404.`,
-  "Keys can't make keys, list keys or delete your account. Do those in the app.",
+  "Keys can't make keys, list keys, manage connected apps or delete your account. Do those in the app.",
 ];
 
 export type ApiErrorDoc = {
@@ -64,6 +64,39 @@ export const API_ERRORS: readonly ApiErrorDoc[] = [
     meaning: "The upload has already finished or been cancelled.",
   },
   { code: "storage_error", status: 503, meaning: "Storage is having a problem. Try again." },
+  {
+    code: "change_limit",
+    status: 429,
+    meaning: "Too many changes started on this take in a short time. Wait a little and try again.",
+  },
+  {
+    code: "background_change_limit",
+    status: 429,
+    meaning: "Too many background changes started this hour.",
+  },
+  {
+    code: "job_active",
+    status: 409,
+    meaning: "The take is already being worked on. Wait for the job to finish, then try again.",
+  },
+  {
+    code: "not_ready",
+    status: 409,
+    meaning: "The take is not ready for this yet. Read the take and wait for ready.",
+  },
+  {
+    code: "original_gone",
+    status: 409,
+    meaning: "The original video has been deleted, so this needs a new upload.",
+  },
+  { code: "stale", status: 409, meaning: "The take changed since you read it. Read it again." },
+  { code: "expired", status: 410, meaning: "The video has passed its keep time and is gone." },
+  { code: "invalid_cursor", status: 400, meaning: "The page cursor is not one we gave you." },
+  {
+    code: "dispatch_failed",
+    status: 503,
+    meaning: "We could not start the job. Try again in a moment.",
+  },
 ];
 
 export const API_ERROR_SHAPE =

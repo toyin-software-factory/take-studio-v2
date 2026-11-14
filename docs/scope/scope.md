@@ -241,7 +241,7 @@ A documented API so programs and agents can do everything the web app does for a
 - [x] Verify it: `/check verify public API` (`docs/reviews/0018-public-api-verify.md`, B2-T88)
 - [x] Test it: `/test public API` (B2-T90)
 - [x] Review it: `/check review public API` (`docs/reviews/0018-public-api-review.md`, B2-T90)
-- [ ] Document it: `/document public API`
+- [x] Document it: `/document public API` (CHANGELOG.md entry, docs/releases/api-v1.md, /docs/api error table brought up to date, B2-T91)
 Spec [0018](../specs/0018-public-api.md)
 
 ### 14. MCP server for AI agents · in-progress · GA
