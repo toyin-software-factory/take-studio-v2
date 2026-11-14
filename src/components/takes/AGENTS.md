@@ -12,6 +12,7 @@ The library at `/library` (`/` redirects signed in visitors there) and the take 
 
 - Failure wording: media failures use `src/lib/take-messages.ts` and `src/lib/failure-codes.ts`. Do not copy those into this folder. Our own failures are worded in `take-display.ts`.
 - Failed takes: if `take.retryable` show "Try again"; otherwise show "Upload another video", and `failureMessage(take, retryable)` words it to match.
+- Full screen goes through `enterFullscreen` (`src/lib/fullscreen.ts`): `requestFullscreen`, then `webkitRequestFullscreen`, then `webkitEnterFullscreen` (iPhone Safari has only the last on a `<video>`, and opens its native player). Keep `playsInline` on the video, and captions stay a `<track>` so they show in native full screen. `tests/takes.spec.ts` fakes an iPhone video (no `requestFullscreen`) in Chromium; real iOS full screen can only be checked on a device.
 - Expiry: show `effectiveStatus(...)`, not the raw status, so a ready take past its expiry shows as expired. Dates are UTC. The note is "Video expires on 12 Dec", with "(in 3 days)" or "(in less than a day)" added once fewer than `EXPIRY_COUNTDOWN_DAYS` (8) remain, never "today" or "tomorrow". An expired take reads "Video removed on 3 Dec. Your transcript is kept." and its page keeps the transcript, Rename and Delete but offers no video link.
 - Thumbnails come from `/api/takes/{id}/media?kind=thumb` and keep the placeholder when there is none. A card re-asks when its status changes.
 - Pages read the session through `getSession()` in `src/server/request.ts`.

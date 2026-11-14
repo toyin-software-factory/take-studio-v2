@@ -14,6 +14,7 @@ import { playerNotice } from "./player-notice";
 import type { CutReview } from "./use-cut-review";
 import { useRenderLink } from "./use-render-link";
 import { type Resume, useSourceSwitch } from "./use-source-switch";
+import { enterFullscreen } from "@/lib/fullscreen";
 import { useCaptions } from "./use-captions";
 import { usePoster } from "./use-poster";
 import { usePlayerKeys } from "./use-player-keys";
@@ -223,7 +224,7 @@ export function TakePlayer({
           onMute={() => {
             if (video.current) video.current.muted = !video.current.muted;
           }}
-          onFullscreen={() => void video.current?.requestFullscreen?.().catch(() => undefined)}
+          onFullscreen={() => void enterFullscreen(video.current)}
         />
       </div>
     </div>

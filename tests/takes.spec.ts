@@ -365,6 +365,42 @@ test.describe("take page", () => {
     await expect(page).toHaveTitle("Ready · Podcast intro, final · Take Studio");
   });
 
+  test("Full screen works where only webkitEnterFullscreen exists, as on iPhone Safari", async ({
+    page,
+    baseURL,
+  }) => {
+    const user = await signedIn(page, baseURL!);
+    const [id] = await seedTakes(user.id, [
+      {
+        title: "Phone take",
+        status: "ready",
+        durationMs: 20_000,
+        steps: [
+          { name: "trim", status: "succeeded" },
+          { name: "render", status: "succeeded" },
+        ],
+      },
+    ]);
+    await mockPlayback(page);
+    // iPhone Safari has no requestFullscreen on a video, only webkitEnterFullscreen.
+    await page.addInitScript(() => {
+      Object.assign(window, { fullscreenCalls: 0 });
+      Reflect.deleteProperty(Element.prototype, "requestFullscreen");
+      Reflect.deleteProperty(Element.prototype, "webkitRequestFullscreen");
+      Object.defineProperty(HTMLVideoElement.prototype, "webkitEnterFullscreen", {
+        configurable: true,
+        value() {
+          Object.assign(window, { fullscreenCalls: Reflect.get(window, "fullscreenCalls") + 1 });
+        },
+      });
+    });
+    await page.goto(`/takes/${id}`);
+    const player = page.getByRole("group", { name: "Video player" });
+    await expect(player.locator("video")).toHaveAttribute("playsinline", "");
+    await player.getByRole("button", { name: "Full screen" }).click();
+    await expect.poll(() => page.evaluate(() => Reflect.get(window, "fullscreenCalls"))).toBe(1);
+  });
+
   test("ready with no cuts shows the AC-7 note", async ({ page, baseURL }) => {
     const user = await signedIn(page, baseURL!);
     const [id] = await seedTakes(user.id, [
