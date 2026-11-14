@@ -231,3 +231,12 @@ describe("private (AC-13)", () => {
     expect(listed).not.toContain('key"');
   });
 });
+
+describe("POST /api/keys body size (CodeRabbit)", () => {
+  it("refuses a body over 4 KB as invalid and makes no key", async () => {
+    const c = await createCreator(db);
+    const res = await post(c.id, { name: "a".repeat(10_000) });
+    expect(res.status).toBe(422);
+    expect(await db.select().from(apiKey).where(eq(apiKey.creatorId, c.id))).toHaveLength(0);
+  });
+});

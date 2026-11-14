@@ -65,11 +65,43 @@ async function guard(
 
 const bodySchema = z.object({ name: z.string() }).strict();
 
+/** A valid body is a key name of at most 60 characters in JSON, so 4 KB is far above it. */
+const MAX_BODY_BYTES = 4 * 1024;
+
+/** The JSON body read with a byte limit; null when it is too big or not JSON. */
+async function readJsonBody(request: Request): Promise<unknown> {
+  const reader = request.body?.getReader();
+  if (!reader) return null;
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_BODY_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  try {
+    return JSON.parse(new TextDecoder().decode(bytes));
+  } catch {
+    return null;
+  }
+}
+
 /** POST /api/keys `{ name }`: 201 `{ id, name, prefix, key, createdAt }`, the key shown once. */
 export async function handleCreate(request: Request, deps: ApiKeyHttpDeps): Promise<Response> {
   const creator = await guard(request, deps, { checkOrigin: true });
   if (creator instanceof Response) return creator;
-  const body = bodySchema.safeParse(await request.json().catch(() => null));
+  const body = bodySchema.safeParse(await readJsonBody(request));
   const name = body.success ? normalizeKeyName(body.data.name) : null;
   if (name === null) return errorResponse("invalid");
 

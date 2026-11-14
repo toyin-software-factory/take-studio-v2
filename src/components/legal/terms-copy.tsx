@@ -17,6 +17,7 @@ export const TERMS_TOC = [
   { id: "storage", title: "Storage and deleting" },
   { id: "usage", title: "How we count use" },
   { id: "allowance", title: "The free allowance" },
+  { id: "api", title: "Using the API" },
   { id: "service", title: "Availability" },
   { id: "liability", title: "Liability and governing law" },
   { id: "changes", title: "Changes to these terms" },
@@ -81,10 +82,10 @@ export function TermsCopy({
       </LegalSection>
       <LegalSection id="api" title="Using the API">
         <p>
-          You can make an API key and use it to reach your own takes from your own tools. Keep the
-          key secret: anyone who has it can act as you, so revoke it if it leaks. Requests with a
-          key are limited per minute, use the same free allowance as the website, and you may not
-          resell access to Take Studio through a key.
+          Soon you will be able to make an API key and use it to reach your own takes from your own
+          tools. Keep the key secret: anyone who has it can act as you, so revoke it if it leaks.
+          Requests with a key will be limited per minute, will use the same free allowance as the
+          website, and you may not resell access to Take Studio through a key.
         </p>
       </LegalSection>
       <LegalSection id="service" title="Availability">
