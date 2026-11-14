@@ -62,7 +62,7 @@ async function caller(via: Via, creatorId: string): Promise<Caller> {
 }
 
 /** The identity deps for one caller: a session lookup that knows only the session creator. */
-function identity(c: Caller): ApiAuthDeps {
+function identity(c: Caller): ApiAuthDeps & { readonly allowedOrigin: string } {
   return {
     allowedOrigin: ORIGIN,
     getCreator: async () => (c.via === "session" ? { db, creatorId: c.creatorId } : null),
