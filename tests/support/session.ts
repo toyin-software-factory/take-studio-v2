@@ -14,7 +14,7 @@ import type { BrowserContext } from "@playwright/test";
 const localDatabase = "postgres://postgres:postgres@localhost:5432/take_studio";
 
 /** A value from the environment, else from the `.env` the Worker was built with. */
-function setting(name: string): string | undefined {
+export function setting(name: string): string | undefined {
   if (process.env[name]) return process.env[name];
   return existsSync(".env") ? parse(readFileSync(".env"))[name] : undefined;
 }

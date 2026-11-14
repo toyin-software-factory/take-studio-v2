@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
 import type { TakeCard as TakeCardData } from "@/lib/take-api";
-import { effectiveStatus, expiryNote, failureMessage, formatClock } from "@/lib/take-display";
+import { effectiveStatus, expiryNote, formatClock } from "@/lib/take-display";
+import { failedMessage } from "./failed-message";
 import { StatusBadge } from "./status-badge";
 import { TakeThumb } from "./take-thumb";
 import { UPLOAD_INPUT_ID } from "./upload-area";
@@ -41,7 +42,9 @@ export function TakeCard({
   const { retry, pending } = useRetry(take.id, () => onRetried(take.id));
   const status = effectiveStatus(take.status, take.videoExpiresAt, take.expired, now);
   const expired = take.expired || status === "expired";
-  const expiry = expiryNote(take.videoExpiresAt, expired, now);
+  // The limit message already says when the upload is kept until.
+  const expiry =
+    take.failureCode === "limit_exceeded" ? null : expiryNote(take.videoExpiresAt, expired, now);
   const failed = status === "failed";
   const menuButton = useRef<HTMLButtonElement>(null);
 
@@ -93,7 +96,7 @@ export function TakeCard({
             </span>
           ) : null}
         </div>
-        {failed ? <p className="text-small">{failureMessage(take, take.retryable)}</p> : null}
+        {failed ? <p className="text-small">{failedMessage(take, take.retryable, now)}</p> : null}
         {expiry ? <p className="text-small text-muted-foreground">{expiry}</p> : null}
         {failed ? (
           // Above the stretched link, so the button gets the click.
