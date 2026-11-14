@@ -42,17 +42,25 @@ export function usePrompter(script: string, creatorId: string, active: boolean) 
   const reducedMotion = useReducedMotion();
   const position = useRef(0);
   const [lineIndex, setLineIndex] = useState(0);
+  // The latest settings, written the moment they change, so two changes in one tick (the first
+  // use dialog marks it seen and turns follow on) never overwrite each other.
+  const latest = useRef(settings);
   const wpm = useRef(settings.wpm);
   useEffect(() => {
     wpm.current = settings.wpm;
   }, [settings.wpm]);
 
   // Device storage is only readable in the browser, so it is read after hydration.
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- reading an external store
-  useEffect(() => setSettings(loadSettings(deviceStore(), creatorId)), [creatorId]);
+  useEffect(() => {
+    const loaded = loadSettings(deviceStore(), creatorId);
+    latest.current = loaded;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reading an external store
+    setSettings(loaded);
+  }, [creatorId]);
 
   const change = useCallback(
     (next: PrompterSettings, message: string) => {
+      latest.current = next;
       setSettings(next);
       saveSettings(deviceStore(), creatorId, next);
       setAnnouncement(message);
@@ -115,14 +123,15 @@ export function usePrompter(script: string, creatorId: string, active: boolean) 
 
   const setFollow = useCallback(
     (on: boolean) =>
-      change({ ...settings, follow: on }, on ? "Follow my voice on" : "Follow my voice off"),
-    [settings, change],
+      change({ ...latest.current, follow: on }, on ? "Follow my voice on" : "Follow my voice off"),
+    [change],
   );
   const markFollowDisclosed = useCallback(() => {
-    const next = { ...settings, followDisclosed: true };
+    const next = { ...latest.current, followDisclosed: true };
+    latest.current = next;
     setSettings(next);
     saveSettings(deviceStore(), creatorId, next);
-  }, [settings, creatorId]);
+  }, [creatorId]);
 
   return {
     setFollow,
