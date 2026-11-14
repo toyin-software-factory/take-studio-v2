@@ -18,6 +18,19 @@ export function bearerToken(header: string): string | null {
   return match?.[1] ?? null;
 }
 
+/** The client ID in `Authorization: Basic base64(id:secret)` (a confidential client), or null. */
+export function basicClientId(header: string | null): string | null {
+  const match = header === null ? null : /^Basic +([A-Za-z0-9+/=_-]+)$/i.exec(header.trim());
+  if (!match?.[1]) return null;
+  try {
+    const decoded = atob(match[1].replaceAll("-", "+").replaceAll("_", "/"));
+    const id = decoded.split(":")[0] ?? "";
+    return id === "" ? null : decodeURIComponent(id);
+  } catch {
+    return null;
+  }
+}
+
 const SIGNED_QUERY_PARAMS = ["sig", "exp", "ba_iat", "ba_pl"] as const;
 
 /**

@@ -6,6 +6,7 @@ import {
   oauthConsent,
   oauthRateWindow,
   oauthRefreshToken,
+  verification,
 } from "../schema";
 import type { Executor } from "../types";
 
@@ -29,6 +30,12 @@ export async function authenticateOauthToken(
         eq(oauthAccessToken.token, tokenHash),
         isNull(oauthAccessToken.revoked),
         gt(oauthAccessToken.expiresAt, now),
+        // A sender bound (DPoP) token needs a proof of the key, which this bearer only path
+        // never checks: it is refused here, so a copied token cannot be used without its key.
+        or(
+          isNull(oauthAccessToken.confirmation),
+          sql`${oauthAccessToken.confirmation} = 'null'::jsonb`,
+        ),
         sql`${resource}::text = any(${oauthAccessToken.resources})`,
         or(isNull(oauthClient.disabled), eq(oauthClient.disabled, false)),
       ),
@@ -87,6 +94,13 @@ export async function disconnectApp(
   await db
     .delete(oauthRefreshToken)
     .where(and(eq(oauthRefreshToken.userId, creatorId), eq(oauthRefreshToken.clientId, clientId)));
+  // A code the app was given but has not exchanged yet (60 seconds) would still buy new tokens.
+  await db.delete(verification).where(
+    sql`case when ${verification.value} like '{"type":"authorization_code"%'
+      then ${verification.value}::jsonb ->> 'userId' = ${creatorId}
+        and ${verification.value}::jsonb -> 'query' ->> 'client_id' = ${clientId}
+      else false end`,
+  );
   const gone = await db
     .delete(oauthConsent)
     .where(and(eq(oauthConsent.userId, creatorId), eq(oauthConsent.clientId, clientId)))
@@ -123,8 +137,9 @@ export async function revokeGrantOnRefreshReuse(
 }
 
 /**
- * Cleanup sweep: deletes access and refresh tokens that expired or were revoked more than a day
- * ago (the day keeps a reused refresh token detectable). Returns the counts.
+ * Cleanup sweep: deletes access tokens that expired or were revoked more than a day ago, and
+ * refresh tokens that expired more than a day ago (a revoked one is kept until then, so a reused
+ * one is still detected). Returns the counts.
  */
 export async function deleteExpiredOauthRows(
   db: Executor,
@@ -139,9 +154,11 @@ export async function deleteExpiredOauthRows(
     .delete(oauthAccessToken)
     .where(or(lt(oauthAccessToken.expiresAt, cutoff), lt(oauthAccessToken.revoked, cutoff)))
     .returning({ id: oauthAccessToken.id });
+  // A rotated (revoked) refresh token stays until it expires: presenting it again is how a copy
+  // is detected and the grant revoked, so a revoked row is never purged early.
   const refresh = await db
     .delete(oauthRefreshToken)
-    .where(or(lt(oauthRefreshToken.expiresAt, cutoff), lt(oauthRefreshToken.revoked, cutoff)))
+    .where(lt(oauthRefreshToken.expiresAt, cutoff))
     .returning({ id: oauthRefreshToken.id });
   const windows = await db
     .delete(oauthRateWindow)

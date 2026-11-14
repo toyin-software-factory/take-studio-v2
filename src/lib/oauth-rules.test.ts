@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { oauthResumePath, oauthWantsFreshLogin, redirectUriAllowed } from "./oauth-rules";
+import {
+  basicClientId,
+  oauthResumePath,
+  oauthWantsFreshLogin,
+  redirectUriAllowed,
+} from "./oauth-rules";
 
 describe("oauthResumePath", () => {
   it("replays the authorize query without the signature fields", () => {
@@ -60,5 +65,16 @@ describe("redirectUriAllowed", () => {
     ]) {
       expect(redirectUriAllowed(bad)).toBe(false);
     }
+  });
+});
+
+describe("basicClientId", () => {
+  it("reads the client ID from a Basic header and nothing else", () => {
+    const header = `Basic ${btoa("client%201:secret")}`;
+    expect(basicClientId(header)).toBe("client 1");
+    expect(basicClientId(null)).toBeNull();
+    expect(basicClientId("Bearer abc")).toBeNull();
+    expect(basicClientId("Basic !!!")).toBeNull();
+    expect(basicClientId(`Basic ${btoa(":secret")}`)).toBeNull();
   });
 });

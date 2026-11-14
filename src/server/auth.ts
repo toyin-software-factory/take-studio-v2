@@ -12,7 +12,7 @@ import type { EmailSender } from "@/lib/email/send";
 import { signInEmail } from "@/lib/email/templates";
 import { takeSignInEmailSlot } from "./email/sign-in-limits";
 import { revokeGrantOnRefreshReuse } from "@/db/data/oauth";
-import { hashOauthToken, redirectUriAllowed } from "@/lib/oauth-rules";
+import { basicClientId, hashOauthToken, redirectUriAllowed } from "@/lib/oauth-rules";
 import { recordEvent } from "./analytics/record";
 
 type AuthEnv = Pick<
@@ -87,16 +87,16 @@ export function createAuth(
         if (ctx.path === "/oauth2/token") {
           // AC-13: reuse of a rotated refresh token revokes the whole grant, consent included.
           const body = ctx.body as Record<string, unknown> | undefined;
+          const clientId =
+            typeof body?.client_id === "string"
+              ? body.client_id
+              : basicClientId(ctx.headers?.get("authorization") ?? null);
           if (
             body?.grant_type === "refresh_token" &&
             typeof body.refresh_token === "string" &&
-            typeof body.client_id === "string"
+            clientId !== null
           ) {
-            await revokeGrantOnRefreshReuse(
-              db,
-              await hashOauthToken(body.refresh_token),
-              body.client_id,
-            );
+            await revokeGrantOnRefreshReuse(db, await hashOauthToken(body.refresh_token), clientId);
           }
           return;
         }

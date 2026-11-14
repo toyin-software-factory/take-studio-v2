@@ -175,13 +175,17 @@ async function grantCode(cookie: string, clientId: string, challenge: string): P
   return code;
 }
 
-const tokenRequest = async (body: Record<string, string>) => {
+const tokenRequest = async (
+  body: Record<string, string>,
+  extraHeaders: Record<string, string> = {},
+) => {
   const res = await auth.handler(
     new Request(`${ORIGIN}/api/auth/oauth2/token`, {
       method: "POST",
       headers: {
         "content-type": "application/x-www-form-urlencoded",
         "x-forwarded-for": `198.51.100.${(ip += 1)}`,
+        ...extraHeaders,
       },
       body: new URLSearchParams(body),
     }),
@@ -409,6 +413,40 @@ describe("authorize and token (AC-13)", () => {
   });
 });
 
+describe("refresh reuse by a confidential client (Basic)", () => {
+  it("deletes the consent when the client ID comes from the Basic header", async () => {
+    const who = await signIn("basic-reuse@example.test");
+    const res = await jsonPost("/api/auth/oauth2/register", {
+      client_name: "Confidential assistant",
+      redirect_uris: [REDIRECT],
+      token_endpoint_auth_method: "client_secret_basic",
+      grant_types: ["authorization_code", "refresh_token"],
+      response_types: ["code"],
+    });
+    const client = (await res.json()) as Registered & { client_secret: string };
+    const basic = {
+      authorization: `Basic ${Buffer.from(`${client.client_id}:${client.client_secret}`).toString("base64")}`,
+    };
+    const { verifier, challenge } = pkce();
+    const code = await grantCode(who.cookie, client.client_id, challenge);
+    const first = await tokenRequest(
+      { grant_type: "authorization_code", code, redirect_uri: REDIRECT, code_verifier: verifier },
+      basic,
+    );
+    expect(first.status).toBe(200);
+    const rotate = (token: string) =>
+      tokenRequest({ grant_type: "refresh_token", refresh_token: token }, basic);
+    const second = await rotate(first.body.refresh_token ?? "");
+    expect(second.status).toBe(200);
+    expect((await rotate(first.body.refresh_token ?? "")).body.error).toBe("invalid_grant");
+    const consents = await db
+      .select({ id: oauthConsent.id })
+      .from(oauthConsent)
+      .where(eq(oauthConsent.clientId, client.client_id));
+    expect(consents).toHaveLength(0);
+  });
+});
+
 describe("tokens as identity (AC-14)", () => {
   it("reaches only its own creator's takes through /mcp and the API", async () => {
     const a = await signIn("mine@example.test");
@@ -503,6 +541,34 @@ describe("tokens as identity (AC-14)", () => {
       .set({ expiresAt: new Date(Date.now() + 3_600_000), revoked: new Date() })
       .where(eq(oauthAccessToken.token, hash));
     expect(await check(grant.access)).toBe(401);
+    // A sender bound (DPoP) token is refused on this bearer only path.
+    await db
+      .update(oauthAccessToken)
+      .set({ revoked: null, confirmation: { jkt: "x".repeat(43) } })
+      .where(eq(oauthAccessToken.token, hash));
+    expect(await check(grant.access)).toBe(401);
+    await db
+      .update(oauthAccessToken)
+      .set({ confirmation: null })
+      .where(eq(oauthAccessToken.token, hash));
+    expect(await check(grant.access)).toBe(200);
+  });
+
+  it("disconnect also kills a code the app has not exchanged yet", async () => {
+    const who = await signIn("pending-code@example.test");
+    const registered = (await (await register()).json()) as Registered;
+    const { verifier, challenge } = pkce();
+    const code = await grantCode(who.cookie, registered.client_id, challenge);
+    expect(await disconnectApp(db, who.id, registered.client_id)).toBe(true);
+    const late = await tokenRequest({
+      grant_type: "authorization_code",
+      code,
+      client_id: registered.client_id,
+      redirect_uri: REDIRECT,
+      code_verifier: verifier,
+    });
+    expect(late.status).toBe(400);
+    expect(late.body.access_token).toBeUndefined();
   });
 
   it("lists connected apps and disconnect ends the token on the next request", async () => {
@@ -619,5 +685,26 @@ describe("tokens as identity (AC-14)", () => {
       .from(oauthAccessToken)
       .where(eq(oauthAccessToken.userId, who.id));
     expect(left.map((row) => row.token)).toEqual([await hashOauthToken(fresh.access)]);
+  });
+
+  it("cleanup keeps a rotated refresh token until it expires, so reuse is still caught", async () => {
+    const who = await signIn("keep-rotated@example.test");
+    const grant = await connect(who);
+    const hash = await hashOauthToken(grant.refresh);
+    await db
+      .update(oauthRefreshToken)
+      .set({ revoked: new Date(Date.now() - 5 * 86_400_000) })
+      .where(eq(oauthRefreshToken.token, hash));
+    await deleteExpiredOauthRows(db, new Date());
+    const kept = await db.select().from(oauthRefreshToken).where(eq(oauthRefreshToken.token, hash));
+    expect(kept).toHaveLength(1);
+    await db
+      .update(oauthRefreshToken)
+      .set({ expiresAt: new Date(Date.now() - 5 * 86_400_000) })
+      .where(eq(oauthRefreshToken.token, hash));
+    await deleteExpiredOauthRows(db, new Date());
+    expect(
+      await db.select().from(oauthRefreshToken).where(eq(oauthRefreshToken.token, hash)),
+    ).toHaveLength(0);
   });
 });
