@@ -10,7 +10,11 @@ import {
 
 function fakeSocket() {
   const sent: unknown[] = [];
-  const s: SocketLike & { open: () => void; say: (d: unknown) => void } = {
+  const s: Omit<SocketLike, "readyState"> & {
+    readyState: number;
+    open: () => void;
+    say: (d: unknown) => void;
+  } = {
     readyState: 0,
     onopen: null,
     onmessage: null,
