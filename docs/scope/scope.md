@@ -37,7 +37,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 13 | Public API | Slice 7 | planned |
 | 14 | MCP server for AI agents | Slice 7 | planned |
 | 15 | Landing page & SEO | Launch | done |
-| 16 | Privacy & terms pages | Launch | planned |
+| 16 | Privacy & terms pages | Launch | in-progress |
 | 17 | Product analytics | Launch | planned |
 | 18 | Email sign in and take ready email | Slice 1 | done |
 
@@ -247,10 +247,21 @@ A public page that explains Take Studio and leads to sign up, built from Toyin's
 - [x] Verify it: `/check verify landing page & SEO`
 Spec [0010](../specs/0010-landing-page.md) · rules in [design.md](../../design.md) · code in `src/app/page.tsx`, `src/app/library/`, `src/components/home/`
 
-### 16. Privacy & terms pages
+### 16. Privacy & terms pages · in-progress
 Public privacy policy and terms, needed because we store people's videos.
 **Done when:** privacy and terms pages are public, linked from the landing page and sign up, and the privacy page states the 30 day video retention and delete anytime promise. Toyin approves the text.
+- [x] Design it (spec): `/architect privacy & terms pages`
 - [ ] Build it: `/develop privacy & terms pages`
+   - [ ] Facts file, processor registry, entity placeholders and the drift tests (AC-4, AC-5, AC-7, AC-8, AC-9, AC-11, AC-13)
+   - [ ] Privacy page, footer link, sitemap, draft banner (AC-1, AC-3, AC-5, AC-7)
+   - [ ] Terms page (AC-1, AC-6)
+   - [ ] Sign in notice, upload note, user menu links (AC-2)
+   - [ ] Accessibility and print pass, browser tests and axe (AC-12)
+   - [ ] Change checklist, `/sync` flag, launch gate check (AC-8, AC-10)
+   - [ ] Self serve Delete account control, then flip the copy (AC-13)
+   - [ ] Launch gate: Toyin's facts and the lawyer's review filled in, Draft banner removed (AC-8, AC-11)
+- [ ] Verify it: `/check verify privacy & terms pages`
+Spec [0015](../specs/0015-privacy-and-terms.md) · Toyin supplies the legal facts and a lawyer reviews the text before launch
 
 ### 17. Product analytics · needs a decision
 Three events that show whether the core loop works: signup, take uploaded, take downloaded.
