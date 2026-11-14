@@ -343,6 +343,12 @@ export const COLLECTED: readonly Collected[] = [
     kept: "15 minutes.",
     deletedWith: "It expires by itself.",
   },
+  {
+    what: "A hash of the network address of a request that sends a wrong API key or access token",
+    why: "To slow down guessing and floods against the API.",
+    kept: "One hour.",
+    deletedWith: "It expires by itself.",
+  },
 ];
 
 export type CookieFact = {

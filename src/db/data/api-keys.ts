@@ -2,7 +2,7 @@ import { and, count, desc, eq, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { API_KEYS, API_RATE, rateWindowStart } from "@/lib/api-rules";
 import { type Result, err, ok } from "@/lib/result";
-import { apiKey, apiRateWindow, user } from "../schema";
+import { apiKey, apiRateWindow, bearerFailWindow, user } from "../schema";
 import { runTx } from "../tx";
 import type { Executor } from "../types";
 
@@ -163,4 +163,63 @@ export async function countApiRequest(
         : sql<number>`floor(extract(second from now()))::int`,
     });
   return row ?? { count: 1, secondsIntoMinute: 0 };
+}
+
+const windowNow = sql<Date>`date_trunc('minute', clock_timestamp() at time zone 'utc') at time zone 'utc'`;
+
+/**
+ * Failed bearer attempts this address has made in the current UTC minute (B2-T103), and the
+ * second into the minute. A plain read, so it uses `clock_timestamp()` (volatile) to keep
+ * Hyperdrive from serving a cached count. `at` is for tests.
+ */
+export async function bearerFailuresNow(
+  db: Executor,
+  ipHash: string,
+  at?: Date,
+): Promise<{ readonly failures: number; readonly secondsIntoMinute: number }> {
+  const [row] = await db
+    .select({
+      failures: bearerFailWindow.count,
+      secondsIntoMinute: at
+        ? sql<number>`${at.getUTCSeconds()}::int`
+        : sql<number>`floor(extract(second from clock_timestamp()))::int`,
+    })
+    .from(bearerFailWindow)
+    .where(
+      and(
+        eq(bearerFailWindow.ipHash, ipHash),
+        eq(bearerFailWindow.windowStart, at ? rateWindowStart(at) : windowNow),
+      ),
+    );
+  return row ?? { failures: 0, secondsIntoMinute: at ? at.getUTCSeconds() : 0 };
+}
+
+/** Counts one failed bearer attempt in the address's current UTC minute (one atomic upsert). */
+export async function countBearerFailure(db: Executor, ipHash: string, at?: Date): Promise<void> {
+  await db
+    .insert(bearerFailWindow)
+    .values({ ipHash, windowStart: at ? rateWindowStart(at) : windowNow, count: 1 })
+    .onConflictDoUpdate({
+      target: [bearerFailWindow.ipHash, bearerFailWindow.windowStart],
+      set: { count: sql`${bearerFailWindow.count} + 1` },
+    });
+}
+
+/** Deletes one batch of failed bearer rows older than an hour. Returns how many went. */
+export async function purgeOldBearerFailures(
+  db: Executor,
+  now: Date,
+  batch: number = RATE_WINDOW_PURGE_BATCH,
+): Promise<number> {
+  const cutoff = new Date(now.getTime() - API_RATE.keepMs);
+  const old = db
+    .select({ ipHash: bearerFailWindow.ipHash, windowStart: bearerFailWindow.windowStart })
+    .from(bearerFailWindow)
+    .where(lt(bearerFailWindow.windowStart, cutoff))
+    .limit(batch);
+  const removed = await db
+    .delete(bearerFailWindow)
+    .where(sql`(${bearerFailWindow.ipHash}, ${bearerFailWindow.windowStart}) in (${old})`)
+    .returning({ ipHash: bearerFailWindow.ipHash });
+  return removed.length;
 }

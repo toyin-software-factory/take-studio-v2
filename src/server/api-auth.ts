@@ -1,8 +1,16 @@
-import { authenticateApiKey, countApiRequest } from "@/db/data/api-keys";
+import {
+  authenticateApiKey,
+  bearerFailuresNow,
+  countApiRequest,
+  countBearerFailure,
+} from "@/db/data/api-keys";
 import type { Db } from "@/db/types";
 import {
   bearerKey,
+  clientIpOf,
   hashApiKey,
+  hashClientIp,
+  isOverFailLimit,
   isOverRateLimit,
   retryAfterFromSecond,
   retryAfterSeconds,
@@ -56,10 +64,56 @@ function logRejected(reason: "malformed" | "unknown" | "unavailable"): void {
   console.warn("api_key_rejected", { reason });
 }
 
+/**
+ * B2-T103: the per address limit on wrong bearer values. Checked before any key or token lookup
+ * (a plain read), and a failure is counted afterwards, so a good client is never counted. The
+ * address is only ever used as a hash. With no address (local runs) nothing is limited. A limit
+ * that cannot be read or written never blocks a request.
+ */
+async function failureGate(
+  keyAuth: NonNullable<ApiAuthDeps["keyAuth"]>,
+  ip: string | null,
+): Promise<{
+  readonly blocked: ApiAuthError | null;
+  readonly countFailure: () => Promise<void>;
+}> {
+  if (ip === null) return { blocked: null, countFailure: async () => {} };
+  const ipHash = await hashClientIp(ip);
+  const at = keyAuth.now?.();
+  try {
+    const db = await keyAuth.getDb();
+    const { failures, secondsIntoMinute } = await bearerFailuresNow(db, ipHash, at);
+    if (isOverFailLimit(failures)) {
+      console.warn("api_bearer_ip_limited");
+      return {
+        blocked: {
+          kind: "rate_limited",
+          retryAfter: at ? retryAfterSeconds(at) : retryAfterFromSecond(secondsIntoMinute),
+        },
+        countFailure: async () => {},
+      };
+    }
+    return {
+      blocked: null,
+      countFailure: () => countBearerFailure(db, ipHash, at).catch(() => {}),
+    };
+  } catch {
+    return { blocked: null, countFailure: async () => {} };
+  }
+}
+
 async function resolveKey(
   header: string,
   keyAuth: NonNullable<ApiAuthDeps["keyAuth"]>,
+  ip: string | null,
 ): Promise<Resolved> {
+  const gate = await failureGate(keyAuth, ip);
+  if (gate.blocked) return fail(gate.blocked);
+  const rejected = async (reason: "malformed" | "unknown"): Promise<Resolved> => {
+    logRejected(reason);
+    await gate.countFailure();
+    return fail({ kind: "invalid_api_key" });
+  };
   const key = bearerKey(header);
   const token = key === null && keyAuth.oauthResource ? bearerToken(header) : null;
   if (token !== null && keyAuth.oauthResource) {
@@ -72,10 +126,7 @@ async function resolveKey(
       keyAuth.oauthResource,
       keyAuth.now?.(),
     );
-    if (!found) {
-      logRejected("unknown");
-      return fail({ kind: "invalid_api_key" });
-    }
+    if (!found) return rejected("unknown");
     // The same per minute limit as a key, counted for this app and creator.
     const at = keyAuth.now?.();
     const window = await countOauthRequest(db, found.clientId, found.creatorId, at);
@@ -87,16 +138,10 @@ async function resolveKey(
     }
     return ok({ db, creatorId: found.creatorId });
   }
-  if (key === null) {
-    logRejected("malformed");
-    return fail({ kind: "invalid_api_key" });
-  }
+  if (key === null) return rejected("malformed");
   const db = await keyAuth.getDb();
   const found = await authenticateApiKey(db, await hashApiKey(key));
-  if (!found) {
-    logRejected("unknown");
-    return fail({ kind: "invalid_api_key" });
-  }
+  if (!found) return rejected("unknown");
   const at = keyAuth.now?.();
   const window = await countApiRequest(db, found.keyId, at);
   if (isOverRateLimit(window.count)) {
@@ -119,7 +164,7 @@ export async function resolveCreator(
       logRejected("unavailable");
       return fail({ kind: "invalid_api_key" });
     }
-    return resolveKey(header, deps.keyAuth);
+    return resolveKey(header, deps.keyAuth, clientIpOf(request.headers));
   }
   const creator = await deps.getCreator(request);
   return creator ? ok(creator) : fail({ kind: "unauthorized" });

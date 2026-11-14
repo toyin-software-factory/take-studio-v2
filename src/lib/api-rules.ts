@@ -19,6 +19,11 @@ export const API_RATE = {
   keepMs: 60 * 60 * 1000,
 } as const;
 
+export const BEARER_FAIL = {
+  /** Wrong or malformed bearer values one client address may send in a UTC minute (B2-T103). */
+  perMinute: 30,
+} as const;
+
 export const API_KEY_PREFIX = "tsk_";
 const SECRET_BYTES = 32;
 /** 32 bytes in base64url without padding is 43 characters. */
@@ -95,4 +100,24 @@ export function retryAfterFromSecond(secondsIntoMinute: number): number {
 /** True when `count` (after counting this request) is over the per minute limit. */
 export function isOverRateLimit(count: number): boolean {
   return count > API_RATE.perMinute;
+}
+
+/** True once an address has already used up its failed bearer attempts for this minute. */
+export function isOverFailLimit(failures: number): boolean {
+  return failures >= BEARER_FAIL.perMinute;
+}
+
+const IP_PATTERN = /^[0-9a-fA-F:.]{2,45}$/;
+
+/** The client address Cloudflare saw (`cf-connecting-ip`), or null when absent or not an address. */
+export function clientIpOf(headers: Headers): string | null {
+  const value = headers.get("cf-connecting-ip")?.trim() ?? "";
+  return IP_PATTERN.test(value) ? value.toLowerCase() : null;
+}
+
+/** SHA-256 hex of the address with a fixed label, so the address itself is never stored or logged. */
+export async function hashClientIp(ip: string): Promise<string> {
+  const data = new TextEncoder().encode(`bearer-fail-ip:${ip}`);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, "0")).join("");
 }
