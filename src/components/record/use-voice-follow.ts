@@ -3,6 +3,7 @@
 import { useEffect, useReducer, useRef } from "react";
 import { followScript, normaliseWord, scriptWordsOf } from "@/lib/follow-script";
 import { FOLLOW_OFF, followReducer, type FollowStatus } from "@/lib/follow-state";
+import { pipeFailureCode, reportFollowFailure, socketCloseCode } from "@/lib/follow-diagnosis";
 import { PCM_WORKLET_NAME, PCM_WORKLET_SOURCE } from "@/lib/pcm-worklet";
 import {
   connectRealtime,
@@ -21,6 +22,13 @@ export type VoiceFollow = {
 
 type Audio = { readonly ctx: AudioContext; readonly url: string };
 
+/** A pipe failure that knows which stage it came from. */
+class PipeError extends Error {
+  constructor(readonly stage: "audio_context" | "worklet") {
+    super(stage);
+  }
+}
+
 /** Take the microphone only (never the video) and stream it as 16 kHz frames into `conn`. */
 async function pipeMicrophone(
   stream: MediaStream,
@@ -28,7 +36,18 @@ async function pipeMicrophone(
 ): Promise<Audio | null> {
   const tracks = stream.getAudioTracks();
   if (tracks.length === 0) return null;
-  const ctx = new AudioContext({ sampleRate: 16000 });
+  let ctx: AudioContext;
+  try {
+    ctx = new AudioContext({ sampleRate: 16000 });
+  } catch {
+    // Firefox throws when the context rate differs from the microphone's. The worklet resamples
+    // from whatever rate the context runs at, so a native rate context works the same.
+    try {
+      ctx = new AudioContext();
+    } catch {
+      throw new PipeError("audio_context");
+    }
+  }
   const url = URL.createObjectURL(new Blob([PCM_WORKLET_SOURCE], { type: "text/javascript" }));
   try {
     await ctx.audioWorklet.addModule(url);
@@ -39,7 +58,7 @@ async function pipeMicrophone(
   } catch (error) {
     // The caller never gets the handles on failure, so release them here.
     releaseAudio({ ctx, url });
-    throw error;
+    throw error instanceof PipeError ? error : new PipeError("worklet");
   }
 }
 
@@ -104,6 +123,7 @@ export function useVoiceFollow(args: {
       const token = await fetchRealtimeToken(fetch);
       if (cancelled) return;
       if (!token.ok) {
+        reportFollowFailure(token.code);
         dispatch({ type: "unavailable" });
         return;
       }
@@ -115,7 +135,10 @@ export function useVoiceFollow(args: {
             for (const frame of queued.splice(0)) conn?.sendAudio(frame);
             dispatch({ type: "open", now: Date.now() });
           },
-          onClose: () => dispatch({ type: "closed" }),
+          onClose: (code) => {
+            reportFollowFailure(socketCloseCode(code));
+            dispatch({ type: "closed" });
+          },
           onWords: (words) => {
             let next = followScript(scriptWords.current, words, last.current);
             if (!next.advanced) {
@@ -144,9 +167,17 @@ export function useVoiceFollow(args: {
           return;
         }
         audio = piped;
-        if (!audio && !cancelled) dispatch({ type: "unavailable" });
-      } catch {
-        if (!cancelled) dispatch({ type: "unavailable" });
+        if (!audio && !cancelled) {
+          reportFollowFailure("no_audio_track");
+          dispatch({ type: "unavailable" });
+        }
+      } catch (error) {
+        if (!cancelled) {
+          reportFollowFailure(
+            pipeFailureCode(error instanceof PipeError ? error.stage : "worklet"),
+          );
+          dispatch({ type: "unavailable" });
+        }
       }
     })();
 
