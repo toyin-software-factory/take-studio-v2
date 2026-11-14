@@ -2,8 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { RecordingContainer } from "@/lib/recorder-rules";
 import { uploadFile } from "@/lib/upload-client";
 import { checkFile } from "@/lib/upload-rules";
+import { MEDIA_LIMITS } from "@/lib/take-rules";
+import type { Container } from "@/lib/processing";
 import { browserUploadIo } from "./browser-io";
 
 /** The upload area's state (spec 0004, Screen states). */
@@ -38,20 +41,14 @@ export function useUpload() {
 
   useEffect(() => () => controller.current?.abort(), []);
 
-  const start = useCallback(
-    async (file: File, backgroundId?: string) => {
-      if (controller.current) return;
-      const check = checkFile({ name: file.name, size: file.size, type: file.type });
-      if (!check.ok) {
-        setState({ kind: "rejected", message: check.message });
-        return;
-      }
+  const run = useCallback(
+    async (file: File, container: Container | RecordingContainer, backgroundId?: string) => {
       const abort = new AbortController();
       controller.current = abort;
       setState({ kind: "uploading", fileName: file.name, percent: 0 });
       const outcome = await uploadFile(
         file,
-        check.container,
+        container,
         browserUploadIo,
         abort.signal,
         {
@@ -67,18 +64,53 @@ export function useUpload() {
       if (outcome.ok) {
         // Leave the state busy until the take page replaces this one.
         router.push(`/takes/${outcome.takeId}`);
-        return;
+        return outcome;
       }
       setState(
         outcome.reason === "cancelled"
           ? { kind: "cancelled" }
           : { kind: "rejected", message: outcome.message },
       );
+      return outcome;
     },
     [router],
   );
 
+  const start = useCallback(
+    async (file: File, backgroundId?: string) => {
+      if (controller.current) return;
+      const check = checkFile({ name: file.name, size: file.size, type: file.type });
+      if (!check.ok) {
+        setState({ kind: "rejected", message: check.message });
+        return;
+      }
+      await run(file, check.container, backgroundId);
+    },
+    [run],
+  );
+
+  /**
+   * Uploads a take recorded in the browser (spec 0021): the same flow as a chosen file, with
+   * the container the recorder picked. Resolves with the outcome so the recorder can keep the
+   * take when it fails.
+   */
+  const startRecording = useCallback(
+    async (file: File, container: RecordingContainer, backgroundId?: string) => {
+      if (controller.current) return null;
+      if (file.size <= 0 || file.size > MEDIA_LIMITS.maxBytes) {
+        const message =
+          file.size <= 0
+            ? "This recording is empty. Record it again."
+            : "This recording is over 2 GB. Record a shorter one.";
+        setState({ kind: "rejected", message });
+        return { ok: false, reason: "failed", message } as const;
+      }
+      return run(file, container, backgroundId);
+    },
+    [run],
+  );
+
   const cancel = useCallback(() => controller.current?.abort(), []);
 
-  return { state, start, cancel, busy: busy(state) };
+  return { state, start, startRecording, cancel, busy: busy(state) };
 }
