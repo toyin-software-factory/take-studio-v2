@@ -6,7 +6,12 @@ import { Stage, StageLetterbox } from "@/components/stage";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import type { TakeDetail } from "@/lib/take-api";
-import { expiryNote, failureMessage } from "@/lib/take-display";
+import {
+  RETENTION_NOTE,
+  TRANSCRIPT_KEPT,
+  failureMessage,
+  videoRemovedNote,
+} from "@/lib/take-display";
 import type { PlayerBridge } from "./player-bridge";
 import { ProcessingSteps } from "./processing-steps";
 import { CutTimeline } from "./cut-timeline";
@@ -119,9 +124,11 @@ export function TakeStage({
       {take.expired || take.status === "expired" ? (
         <StageMessage
           icon={Clock}
-          title={expiryNote(take.videoExpiresAt, true, new Date()) ?? "Video expired"}
+          title={take.videoExpiresAt ? videoRemovedNote(take.videoExpiresAt) : "Video removed"}
         >
-          <p className="text-stage-text-muted">Videos are kept for 30 days.</p>
+          <p className="text-stage-text-muted">
+            {TRANSCRIPT_KEPT} {RETENTION_NOTE} Delete this take any time.
+          </p>
         </StageMessage>
       ) : take.status === "ready" ? (
         <ReadyStage detail={detail} bridge={bridge} review={review} />

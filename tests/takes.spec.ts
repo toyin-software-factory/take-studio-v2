@@ -123,7 +123,7 @@ test.describe("library", () => {
       .filter({ hasText: "Oldest ready take" });
     await expect(ready.getByText("Ready", { exact: true })).toBeVisible();
     await expect(ready.getByText("1:20")).toHaveClass(/mono/);
-    await expect(ready.getByText("Video expires in 11 days")).toBeVisible();
+    await expect(ready.getByText(/^Video expires on \d{1,2} [A-Z][a-z]{2}$/)).toBeVisible();
     const crashed = page
       .getByRole("main")
       .getByRole("listitem")

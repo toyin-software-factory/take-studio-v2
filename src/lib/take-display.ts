@@ -1,6 +1,7 @@
 import { isMediaFailure } from "./failure-codes";
 import { isVideoExpired } from "./video-expiry";
 import { uploadFailureMessage } from "./take-messages";
+import { VIDEO_RETENTION_DAYS } from "./take-rules";
 
 /**
  * Pure display rules for the library and take pages (spec 0004, AC-1, AC-4, AC-7 to AC-10,
@@ -106,10 +107,25 @@ export function shortDate(iso: string): string {
   return SHORT_DATE.format(new Date(iso)).replace(/\.$/, "");
 }
 
+/** Fewer days than this left: the expiry note adds the days left (spec 0013 AC-1). */
+export const EXPIRY_COUNTDOWN_DAYS = 8;
+
+/** The transcript promise next to every expired video (AC-1, AC-2; the Privacy page says the same). */
+export const TRANSCRIPT_KEPT = "Your transcript is kept.";
+
+/** "Video removed on 3 Dec": the date the video was due to go, in UTC (AC-1, AC-2). */
+export function videoRemovedNote(videoExpiresAt: string): string {
+  return `Video removed on ${shortDate(videoExpiresAt)}`;
+}
+
+/** "Videos are kept for 30 days." from the one retention constant, so it cannot drift. */
+export const RETENTION_NOTE = `Videos are kept for ${VIDEO_RETENTION_DAYS} days.`;
+
 /**
- * Expiry note for a card or page (AC-1, design.md Expired video): "Video expires in 12 days",
- * "Video expires in less than a day" (never "today": the creator's day is not UTC), "Video
- * expired on 3 Dec"; null before the upload completes.
+ * Expiry note for a card or page (AC-1, design.md Expired video): "Video expires on 12 Dec",
+ * with "(in 3 days)", "(in 1 day)" or "(in less than a day)" once fewer than 8 days remain (never
+ * "today": the creator's day is not UTC); after expiry "Video removed on 3 Dec. Your transcript
+ * is kept."; null before the upload completes.
  */
 export function expiryNote(
   videoExpiresAt: string | null,
@@ -117,12 +133,13 @@ export function expiryNote(
   now: Date,
 ): string | null {
   if (!videoExpiresAt) return null;
-  const left = new Date(videoExpiresAt).getTime() - now.getTime();
   if (expired || isVideoExpired(videoExpiresAt, now))
-    return `Video expired on ${shortDate(videoExpiresAt)}`;
-  const days = Math.floor(left / DAY_MS);
-  if (days === 0) return "Video expires in less than a day";
-  return `Video expires in ${days} ${days === 1 ? "day" : "days"}`;
+    return `${videoRemovedNote(videoExpiresAt)}. ${TRANSCRIPT_KEPT}`;
+  const date = `Video expires on ${shortDate(videoExpiresAt)}`;
+  const days = Math.floor((new Date(videoExpiresAt).getTime() - now.getTime()) / DAY_MS);
+  if (days >= EXPIRY_COUNTDOWN_DAYS) return date;
+  if (days === 0) return `${date} (in less than a day)`;
+  return `${date} (in ${days} ${days === 1 ? "day" : "days"})`;
 }
 
 /** "Removed 1:24 of pauses" (AC-9). */

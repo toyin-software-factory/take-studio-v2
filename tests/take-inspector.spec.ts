@@ -59,7 +59,7 @@ test("a ready take has the four tabs, Export first, with its files and the reten
   await expect(files.getByText("Original video")).toBeVisible();
   await expect(files.getByRole("button", { name: "Save edited video" })).toBeVisible();
   await expect(files.getByRole("button", { name: "Save original video" })).toBeVisible();
-  await expect(files.getByText(/Video expires in \d+ days?/)).toBeVisible();
+  await expect(files.getByText(/^Video expires on \d{1,2} [A-Z][a-z]{2}/)).toBeVisible();
   // The summary row keeps its own two buttons.
   await expect(page.getByRole("button", { name: "Download", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Download original" })).toBeVisible();
