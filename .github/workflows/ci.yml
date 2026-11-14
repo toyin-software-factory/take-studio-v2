@@ -305,7 +305,9 @@ jobs:
 
       - name: Put back the pre B2-T105 page code (before variant)
         if: matrix.variant == 'before-t105'
-        run: git checkout d8e57f5 -- src/lib/sign-in-state.ts src/app/library/page.tsx src/app/record/page.tsx 'src/app/takes/[id]/page.tsx'
+        run: |
+          git fetch --depth=1 origin d8e57f5
+          git checkout FETCH_HEAD -- src/lib/sign-in-state.ts src/app/library/page.tsx src/app/record/page.tsx 'src/app/takes/[id]/page.tsx'
 
       - name: Apply migrations
         run: pnpm db:migrate
