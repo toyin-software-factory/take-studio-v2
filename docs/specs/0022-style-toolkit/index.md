@@ -63,9 +63,9 @@ A style is a ready made look for the finished video: how strongly the picture zo
 Fields for later steps (`captions`, `music`, `pace`) are not in version 1. A later version adds them with defaults, so every version 1 recipe stays valid.
 
 **How it works**:
-1. **Where it lives**: the registry and schema are pure code in `src/lib/styles.ts` (`resolveStyle(id)` returns a recipe or a typed error). `renderFilterScript(keeps, recipe)` in `src/lib/trim.ts` reads the numbers from the recipe instead of the `SMOOTH` constant.
+1. **Where it lives**: the registry and schema are pure code in `src/lib/styles.ts` (`resolveStyle(id)` returns a recipe or a typed error). `renderFilterScript(keeps, options, recipe)` in `src/lib/trim.ts` keeps the existing `RenderGraphOptions` (`hdr`, `hasAudio`, `background`, `size`) and reads the numbers from the recipe instead of the `SMOOTH` constant.
 2. **Stored**: `take.style_id text not null default 'natural'` and `render.style_id text` (a snapshot, like `background_id`). An open set validated in code, no database CHECK, like failure codes, so adding a style needs no migration.
-3. **Job**: the re render request carries `styleId`; the route validates it with the registry. The job payload carries IDs only, so the job reads the take's `style_id` and resolves the recipe itself (job code imports `src/lib`, never `src/app` or `src/server`). The take's `style_id` changes only when a render with that style succeeds, the same rule as `background_id` (spec 0008).
+3. **Job**: the re render request carries `styleId`; the route validates it with the registry and writes it to `render.style_id` before the job starts (when no `styleId` is sent, the take's current `style_id` is written). The job payload carries IDs only, so the job reads the render's `style_id` and resolves the recipe itself (job code imports `src/lib`, never `src/app` or `src/server`). The take's `style_id` changes to the render's value only when that render succeeds, the same rule as `background_id` (spec 0008).
 4. **Colour**: applied once after `concat` (and after background compositing, so a background and the person shift together and look like one shot), using `eq` and `colorbalance`. Zoom and push still apply per segment before `concat`, so a background stays still (spec 0020).
 5. **Take page**: a Style tab beside Background. The pick joins `Edits` as `style: string | undefined` (undefined means no change) and the pending bar lists it, then Render applies it with any background and cut changes in one render.
 6. **Limits**: one encode pass, `large-1x`, the `maxDuration` of spec 0004 and the render deadline (`src/lib/deadline.ts`) stay as they are. Style cost is checked by AC-9.
@@ -75,7 +75,7 @@ Fields for later steps (`captions`, `music`, `pace`) are not in version 1. A lat
 
 **Data model sketch**:
 - `take.style_id` text, not null, default `natural`.
-- `render.style_id` text, null for renders made before this spec (read as `natural`).
+- `render.style_id` text, null for renders made before this spec (read as `natural`). It is the input the job reads, written when a render is requested.
 - One migration, backfill by the default.
 
 **State transitions**: none new. A style change is a pending change that becomes a render; the existing render states apply.
@@ -90,8 +90,8 @@ Fields for later steps (`captions`, `music`, `pace`) are not in version 1. A lat
 | Action | Value produced or displayed | Source |
 |---|---|---|
 | Pick a style | The tile name, summary and tags | The registry (`src/lib/styles.ts`) |
-| Render | The recipe numbers | `resolveStyle(take.style_id)` in the job |
-| Render | The style recorded on the render | `take.style_id` at render start (snapshot) |
+| Render | The recipe numbers | `resolveStyle(render.style_id)` in the job |
+| Render | The style recorded on the render | the validated `styleId` at request time, or the take's `style_id` when none is sent (snapshot) |
 | Preview | The CSS filter numbers | The recipe's `look`, the same object the render uses |
 | Take page | The current style | `take.style_id`, or the latest render's `style_id` while a render is running |
 
@@ -105,7 +105,7 @@ Fields for later steps (`captions`, `music`, `pace`) are not in version 1. A lat
 **Configuration required**: none.
 
 **Critical test scenarios**:
-- Golden: `renderFilterScript(keeps, natural)` equals today's script, verifies **AC-1**.
+- Golden: `renderFilterScript(keeps, options, natural)` equals today's script, verifies **AC-1**.
 - Schema: out of range numbers and an unknown id are refused, verifies **AC-1**, **AC-2**.
 - Calm: no `zoompan` or crop in the script, verifies **AC-7**.
 - Colour: the look appears once, after `concat`, verifies **AC-3**, **AC-8**.
@@ -117,7 +117,7 @@ Fields for later steps (`captions`, `music`, `pace`) are not in version 1. A lat
 
 Tracer Bullet: one thin thread through every layer first (registry, storage, job, render), then the picker, then the other recipes.
 
-1. **Jim, thread**: `src/lib/styles.ts` (schema, registry with `natural` only, `resolveStyle`), migration for `take.style_id` and `render.style_id`, `renderFilterScript(keeps, recipe)` with the golden test, `SMOOTH` moved into `natural`. Satisfies **AC-1**, **AC-2**, **AC-3**, **AC-13**.
+1. **Jim, thread**: `src/lib/styles.ts` (schema, registry with `natural` only, `resolveStyle`), migration for `take.style_id` and `render.style_id`, `renderFilterScript(keeps, options, recipe)` with the golden test, `SMOOTH` moved into `natural`. Satisfies **AC-1**, **AC-2**, **AC-3**, **AC-13**.
 2. **Jim, thread end to end**: add `calm`, accept `styleId` on the re render route, the job resolves and applies it, the render records it, `pnpm test:pipeline` renders a synthetic take in `calm`. Satisfies **AC-2**, **AC-3**, **AC-7**, **AC-10**.
 3. **Dwight, picker**: Style tab, tiles, pending bar entry, `Edits.style`, Mobbin references, accessibility and tests. Needs task 2. Satisfies **AC-4**, **AC-5**, **AC-7**.
 4. **Jim, more recipes**: `punchy`, `warm`, the colour look, bounds tests, render time check on the 60 s synthetic take. Satisfies **AC-3**, **AC-8**, **AC-9**.
