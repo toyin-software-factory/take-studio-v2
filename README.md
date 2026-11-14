@@ -104,7 +104,7 @@ The migrate line gives the pipeline's default local database (`take_studio`) its
 
 ## CI and deploy
 
-- **CI** (`.github/workflows/ci.yml`, every PR): install, lint, format check, typecheck, Vitest, a check that `drizzle-kit generate` makes no new migration, Worker build, then Playwright against the built Worker with Postgres as a service container.
+- **CI** (`.github/workflows/ci.yml`, every PR): a `static` job (install, lint, format check, typecheck, Vitest, a check that `drizzle-kit generate` makes no new migration) and four parallel `e2e` shard jobs (each builds the Worker and runs one quarter of Playwright against it, with its own Postgres service container). The `check` job, named "Lint, typecheck, test, build, e2e", waits for all of them and is the one required check.
 - **Deploy** (`.github/workflows/deploy.yml`, push to main, one at a time): migrate Neon, deploy Trigger.dev tasks, deploy the Worker. Migrations must be backward compatible.
 
 Secrets and where each one lives: spec 0001, "Where each key lives".
