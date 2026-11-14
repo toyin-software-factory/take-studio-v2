@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { type TakeDetail, takeDetailSchema } from "@/lib/take-api";
 import {
@@ -13,7 +14,9 @@ import {
   tabTitle,
 } from "@/lib/take-display";
 import { usePublishCurrentTake } from "@/components/shell/current-take";
+import { DELETED_PARAM } from "@/lib/take-delete";
 import { callApi } from "./browser-io";
+import { DeleteTakeDialog } from "./delete-take-dialog";
 import { createPlayerBridge } from "./player-bridge";
 import { TakeHeader } from "./take-header";
 import { TakeResult } from "./take-result";
@@ -51,6 +54,16 @@ export function TakeView({
   const [failures, setFailures] = useState(0);
   // What the player and the transcript panel share (time, seek, caption track).
   const [bridge] = useState(createPlayerBridge);
+  // The delete dialog (spec 0013 AC-4): opened from the header menu or the Details tab; focus
+  // goes back to whichever control opened it. Once deleted, polling stops for good.
+  const router = useRouter();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [gone, setGone] = useState(false);
+  const opener = useRef<HTMLElement | null>(null);
+  const openDelete = useCallback((from: HTMLElement | null) => {
+    opener.current = from;
+    setDeleteOpen(true);
+  }, []);
 
   const load = useCallback(async (): Promise<PollResult> => {
     const reply = await callApi(`/api/takes/${takeId}`, "GET").catch(() => null);
@@ -78,7 +91,7 @@ export function TakeView({
   const polling = detail === null || keepPolling(detail);
   const idle =
     detail !== null && !isInFlight(status) && !backgroundChangeActive(detail.backgroundJob);
-  usePoll(load, idle ? POLL.idleMs : POLL.takeMs, stop === null && polling, {
+  usePoll(load, idle ? POLL.idleMs : POLL.takeMs, stop === null && !gone && polling, {
     immediate: true,
   });
 
@@ -135,6 +148,7 @@ export function TakeView({
           <TakeHeader
             take={detail.take}
             onRenamed={(t) => setDetail((d) => (d ? { ...d, take: t } : d))}
+            onDelete={openDelete}
           />
           <div className="grid gap-6 min-[1200px]:grid-cols-[minmax(0,1fr)_380px] min-[1200px]:items-start">
             <div className="flex min-w-0 flex-col gap-5">
@@ -147,8 +161,26 @@ export function TakeView({
               takeEmails={takeEmails}
               onEmailsSaved={setTakeEmails}
               review={review}
+              onDelete={openDelete}
             />
           </div>
+          <DeleteTakeDialog
+            takeId={takeId}
+            title={detail.take.title}
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            returnFocus={() =>
+              // The opener can be gone (the Details section is replaced when the take becomes
+              // ready while the dialog is open): fall back to the header menu button.
+              opener.current?.isConnected
+                ? opener.current
+                : document.querySelector<HTMLElement>("[aria-label='More actions for this take']")
+            }
+            onDeleted={() => {
+              setGone(true);
+              router.push(`/library?${DELETED_PARAM}=1`);
+            }}
+          />
         </>
       ) : stop === null ? (
         <TakeSkeleton title={initialTitle} />

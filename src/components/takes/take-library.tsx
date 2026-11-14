@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNow } from "./use-now";
 import { Film } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
@@ -15,7 +15,9 @@ import {
 } from "@/lib/take-api";
 import { POLL, isInFlight } from "@/lib/take-display";
 import { callApi } from "./browser-io";
-import { TakeCard } from "./take-card";
+import { afterCardDelete, DELETED_MESSAGE, takeCountText } from "@/lib/take-delete";
+import { DeleteTakeDialog } from "./delete-take-dialog";
+import { TakeCard, takeLinkId } from "./take-card";
 import { UPLOAD_INPUT_ID } from "./upload-area";
 import { usePoll, type PollResult } from "./use-poll";
 
@@ -32,11 +34,44 @@ export function TakeLibrary({
   readonly nowIso: string;
 }) {
   const [takes, setTakes] = useState<readonly TakeCardData[]>(initial.takes);
+  // The latest committed list, for callbacks that outlive the render that created them.
+  const takesRef = useRef(takes);
+  useEffect(() => {
+    takesRef.current = takes;
+  }, [takes]);
   const [cursor, setCursor] = useState(initial.nextCursor);
   const [loadingMore, setLoadingMore] = useState(false);
   const [moreError, setMoreError] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
   const now = useNow(nowIso);
+  // One delete dialog for every card (spec 0013 AC-5): it outlives the card it deletes.
+  const [deleting, setDeleting] = useState<TakeCardData | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const opener = useRef<HTMLElement | null>(null);
+  const openDelete = useCallback((take: TakeCardData, from: HTMLElement | null) => {
+    opener.current = from;
+    // Clear the last message so the next success changes the text and is announced again.
+    setAnnouncement("");
+    setDeleting(take);
+    setDialogOpen(true);
+  }, []);
+  const onDeleted = () => {
+    if (!deleting) return;
+    // The focus target comes from the latest list; the list itself is updated functionally so a
+    // page or poll that landed while DELETE was pending is not overwritten.
+    const { focusId } = afterCardDelete(takesRef.current, deleting.id);
+    const gone = deleting.id;
+    setTakes((list) => list.filter((t) => t.id !== gone));
+    setAnnouncement(DELETED_MESSAGE);
+    // After the dialog has closed (it runs its own focus handling first), move focus on.
+    requestAnimationFrame(() => {
+      const target = focusId
+        ? document.getElementById(takeLinkId(focusId))
+        : document.getElementById(UPLOAD_INPUT_ID)?.closest("section")?.querySelector("button");
+      (target as HTMLElement | null)?.focus();
+    });
+  };
 
   const inFlight = takes.filter((t) => isInFlight(t.status)).map((t) => t.id);
   const pollKey = inFlight.join(",");
@@ -103,23 +138,55 @@ export function TakeLibrary({
     }
   };
 
-  if (takes.length === 0) {
+  const dialog = deleting ? (
+    <DeleteTakeDialog
+      takeId={deleting.id}
+      title={deleting.title}
+      open={dialogOpen}
+      onOpenChange={setDialogOpen}
+      onDeleted={onDeleted}
+      returnFocus={() => opener.current}
+    />
+  ) : null;
+  // Always mounted, so the polite message is announced when its text appears.
+  const status = (
+    <p role="status" className="sr-only">
+      {announcement}
+    </p>
+  );
+
+  if (takes.length === 0 && cursor === null) {
     return (
-      <div className="flex flex-col items-center gap-3 rounded-lg bg-panel px-6 py-12 text-center">
-        <Icon icon={Film} size="empty" className="text-muted-foreground" />
-        <p>No takes yet. Upload your first video.</p>
-        <Button onClick={() => document.getElementById(UPLOAD_INPUT_ID)?.click()}>
-          Choose a video
-        </Button>
+      <div className="flex flex-col gap-4">
+        {status}
+        {dialog}
+        <div className="flex flex-col items-center gap-3 rounded-lg bg-panel px-6 py-12 text-center">
+          <Icon icon={Film} size="empty" className="text-muted-foreground" />
+          <p>No takes yet. Upload your first video.</p>
+          <Button onClick={() => document.getElementById(UPLOAD_INPUT_ID)?.click()}>
+            Choose a video
+          </Button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-6">
+      {status}
+      {dialog}
+      <p className="text-small text-muted-foreground">
+        {takeCountText(takes.length, cursor !== null)}
+      </p>
       <ul className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 min-[1200px]:grid-cols-3">
         {takes.map((take) => (
-          <TakeCard key={take.id} take={take} now={now} onRetried={onRetried} />
+          <TakeCard
+            key={take.id}
+            take={take}
+            now={now}
+            onRetried={onRetried}
+            onDelete={openDelete}
+          />
         ))}
       </ul>
       {sessionEnded ? (

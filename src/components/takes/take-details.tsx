@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import type { TakeData } from "@/lib/take-api";
 import { expiryNote, formatClock, shortDate } from "@/lib/take-display";
 import { EmailSwitch } from "./email-switch";
@@ -7,17 +8,19 @@ import { StatusBadge } from "./status-badge";
 
 /**
  * The Details tab (design.md §4b): what we know about the file (title, upload date, length,
- * format, how long the video is kept) and the "Email me when takes are ready" switch. Only
- * built things: deleting a take arrives with the library (slice 6).
+ * format, how long the video is kept), the "Email me when takes are ready" switch and the
+ * Delete row (spec 0013 AC-4), which opens the confirm dialog.
  */
 export function TakeDetails({
   take,
   takeEmails,
   onEmailsSaved,
+  onDelete,
 }: {
   readonly take: TakeData;
   readonly takeEmails: boolean;
   readonly onEmailsSaved: (value: boolean) => void;
+  readonly onDelete: (from: HTMLElement | null) => void;
 }) {
   const expiry = expiryNote(take.videoExpiresAt, take.expired, new Date());
   const rows: readonly (readonly [string, React.ReactNode])[] = [
@@ -46,6 +49,22 @@ export function TakeDetails({
         ))}
       </dl>
       <EmailSwitch initial={takeEmails} onSaved={onEmailsSaved} />
+      <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
+        <div className="min-w-0 text-small">
+          <p className="font-medium">Delete this take</p>
+          <p className="text-muted-foreground">
+            Video, cuts and transcript. Can&rsquo;t be undone.
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          aria-label={`Delete ${take.title}`}
+          onClick={(event) => onDelete(event.currentTarget)}
+        >
+          Delete
+        </Button>
+      </div>
     </div>
   );
 }
