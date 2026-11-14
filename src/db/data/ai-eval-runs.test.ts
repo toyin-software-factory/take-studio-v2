@@ -29,6 +29,8 @@ describe("saveEvalRun (B2-T72)", () => {
   });
 
   it("returns the newest first and honours the limit", async () => {
+    await db.delete(aiEvalRun);
+    for (let i = 1; i <= 5; i++) await saveEvalRun(db, row(i / 10), 10);
     const latest = await listEvalRuns(db, 2);
     expect(latest.map((r) => r.overallPrecision)).toEqual([0.5, 0.4]);
   });
