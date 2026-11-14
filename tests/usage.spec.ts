@@ -1,10 +1,13 @@
-import AxeBuilder from "@axe-core/playwright";
 import { devices, expect as baseExpect, test, type Page } from "@playwright/test";
+import { expectNoSeriousAxeIssues } from "./support/axe";
 import { signIn } from "./support/session";
 import { seedTakes } from "./support/takes";
 import { setUsage } from "./support/usage";
 
 const expect = baseExpect.configure({ timeout: 15_000 });
+
+// Every test writes the same global usage settings, so the whole file runs on one worker in order.
+test.describe.configure({ mode: "serial" });
 
 // Monthly usage meter, upload area states and the failed take message (spec 0014 AC-9, AC-14).
 // Usage is written straight into Postgres for a fresh test user; the limit switch is the global
@@ -27,16 +30,6 @@ async function setUp(page: Page, baseURL: string, state: Parameters<typeof setUs
   const { user, cleanup } = await signIn(page.context(), baseURL);
   cleanups.push(cleanup, await setUsage(user, state));
   return user;
-}
-
-async function expectNoSeriousAxeIssues(page: Page) {
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  const blocking = results.violations.filter(
-    (v) => v.impact === "serious" || v.impact === "critical",
-  );
-  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
 }
 
 function suite() {
@@ -134,7 +127,7 @@ function suite() {
         status: "failed",
         failureCode: "limit_exceeded",
         durationMs: 60_000,
-        expiresInDays: 20,
+        expiresInDays: 40,
       },
       {
         title: "Going",

@@ -15,14 +15,36 @@ const usageBody = z.object({
 /**
  * The usage numbers for the library (spec 0014 AC-8). The page passes the first read, so the
  * meter is there on first paint; `refreshKey` changing (an upload was refused or cancelled)
- * reads GET /api/usage again. A failed read keeps what is on screen. `enforced` only comes from
+ * or the reset date passing reads GET /api/usage again. A failed read keeps what is on screen. `enforced` only comes from
  * the page, because the endpoint does not tell it.
  */
 export function useUsage(initial: UsageView | null, refreshKey: string): UsageView | null {
   const [usage, setUsage] = useState(initial);
   const enforced = initial?.enforced ?? false;
+  const resetsOn = usage?.resetsOn;
+  const [resetTick, setResetTick] = useState(0);
+  // The allowance resets at the start of the next UTC month: read again then, and when a tab that
+  // was asleep over the boundary comes back, so a blocked creator is not stuck until a reload.
   useEffect(() => {
-    if (refreshKey === "") return;
+    if (!enforced || !resetsOn) return;
+    const resetAt = Date.parse(`${resetsOn}T00:00:00Z`);
+    if (Number.isNaN(resetAt)) return;
+    const check = () => {
+      if (Date.now() >= resetAt) setResetTick((n) => n + 1);
+    };
+    // setTimeout cannot wait longer than 2^31 ms (about 24.8 days): wake early and check again.
+    const timer = setTimeout(check, Math.min(Math.max(resetAt - Date.now(), 0), 2 ** 31 - 1));
+    const onVisible = () => {
+      if (document.visibilityState === "visible") check();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [enforced, resetsOn]);
+  useEffect(() => {
+    if (refreshKey === "" && resetTick === 0) return;
     let live = true;
     void callApi("/api/usage", "GET")
       .then((reply) => {
@@ -33,6 +55,6 @@ export function useUsage(initial: UsageView | null, refreshKey: string): UsageVi
     return () => {
       live = false;
     };
-  }, [refreshKey, enforced]);
+  }, [refreshKey, resetTick, enforced]);
   return usage;
 }
