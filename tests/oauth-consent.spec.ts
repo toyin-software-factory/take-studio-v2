@@ -112,8 +112,11 @@ test("signed out, the page goes to sign in", async ({ browser, baseURL }) => {
   await context.close();
 });
 
+const { viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = devices["Pixel 7"];
+
 test.describe("phone width", () => {
-  test.use({ ...devices["Pixel 7"] });
+  // Context fields only: defaultBrowserType is worker scoped and cannot be set in a describe.
+  test.use({ viewport, userAgent, deviceScaleFactor, isMobile, hasTouch });
   test("no sideways scroll, and Allow and Deny are at least 44 px tall", async ({
     page,
     baseURL,

@@ -103,8 +103,11 @@ test("a failed load shows a message and Try again works", async ({ page, baseURL
   await expect(page.getByText("No apps are connected.")).toBeVisible();
 });
 
+const { viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = devices["Pixel 7"];
+
 test.describe("phone width", () => {
-  test.use({ ...devices["Pixel 7"] });
+  // Context fields only: defaultBrowserType is worker scoped and cannot be set in a describe.
+  test.use({ viewport, userAgent, deviceScaleFactor, isMobile, hasTouch });
   test("no sideways scroll and a 44 px Disconnect button", async ({ page, baseURL }) => {
     await setup(page, baseURL!);
     const button = page.getByRole("button", { name: "Disconnect Synthetic Assistant" });
