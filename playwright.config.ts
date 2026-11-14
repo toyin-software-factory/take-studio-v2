@@ -9,6 +9,8 @@ const port = 8787;
 const production = process.env.E2E_PRODUCTION === "1";
 const galleryVar = production ? "" : " --var DESIGN_GALLERY:1";
 
+// The key flows also run in Safari's and Firefox's engines (B2-T102); only this file does.
+const CROSS_BROWSER_SPEC = /cross-browser\.spec\.ts$/;
 const USAGE_SPECS = [/usage\.spec\.ts$/, /record-a11y\.spec\.ts$/, /record-limits\.spec\.ts$/];
 
 /** The run order between the usage suites (see the note on `projects`). */
@@ -34,6 +36,16 @@ export default defineConfig({
   // runs `usage`, `record-a11y` and `record-limits` one after another, each as its own command.
   // Without E2E_SPLIT (a local `pnpm test:e2e`) the chain keeps them in that order.
   projects: [
+    {
+      name: "webkit",
+      testMatch: CROSS_BROWSER_SPEC,
+      use: { ...devices["Desktop Safari"] },
+    },
+    {
+      name: "firefox",
+      testMatch: CROSS_BROWSER_SPEC,
+      use: { ...devices["Desktop Firefox"] },
+    },
     { name: "chromium", testIgnore: USAGE_SPECS, use: { ...devices["Desktop Chrome"] } },
     {
       name: "usage",
