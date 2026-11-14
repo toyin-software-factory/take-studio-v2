@@ -5,8 +5,12 @@
  * new web action cannot ship without an API decision. Paths use the folder names of the route
  * files with `[name]` written as `{name}` (the OpenAPI form). `request` and `response` are the
  * names of the zod schemas in `src/lib/api-schemas/` (the docs, `/api/openapi.json` and the schema
- * test read them). The docs page, `/api/openapi.json` and the MCP server read this list.
+ * test read them). The docs page, `/api/openapi.json` and the MCP server read this list. A route
+ * with `mcp` is one tool of the MCP server (spec 0019 AC-4); a creator route with no tool is in
+ * `MCP_EXCLUSIONS` with its reason.
  */
+
+import type { McpToolName } from "./mcp-rules";
 
 export const API_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] as const;
 export type ApiMethod = (typeof API_METHODS)[number];
@@ -27,6 +31,8 @@ export type ApiRoute = {
   readonly noContent?: true;
   /** The success answer is a text file, not JSON (the transcript download). */
   readonly text?: true;
+  /** The MCP tool that stands for this route, when it has one (spec 0019 AC-3, AC-4). */
+  readonly mcp?: McpToolName;
 };
 
 /** Why a route is not in the public registry. */
@@ -49,7 +55,7 @@ const route = (method: ApiMethod, path: string, summary: string, shape: Shape = 
   ...shape,
 });
 
-export const API_REGISTRY: readonly ApiRoute[] = [
+const REGISTRY: readonly ApiRoute[] = [
   route("POST", "/api/uploads", "Start an upload: creates the take and the multipart upload.", {
     request: "UploadCreateRequest",
     response: "UploadCreated",
@@ -170,6 +176,74 @@ export const API_REGISTRY: readonly ApiRoute[] = [
   route("GET", "/api/usage", "Your monthly usage against the free allowance.", {
     response: "Usage",
   }),
+];
+
+/** Which tool stands for which route (spec 0019 AC-4): `"METHOD path"` to the tool's name. */
+const MCP_TOOLS: Readonly<Record<string, McpToolName>> = {
+  "GET /api/usage": "get_usage",
+  "GET /api/takes": "list_takes",
+  "GET /api/takes/{id}": "get_take",
+  "PATCH /api/takes/{id}": "rename_take",
+  "DELETE /api/takes/{id}": "delete_take",
+  "POST /api/uploads": "start_upload",
+  "POST /api/uploads/{takeId}/parts": "get_upload_part_links",
+  "POST /api/uploads/{takeId}/complete": "complete_upload",
+  "DELETE /api/uploads/{takeId}": "abort_upload",
+  "POST /api/takes/{id}/retry": "retry_take",
+  "GET /api/takes/{id}/jobs/{jobId}": "get_job",
+  "GET /api/takes/{id}/media": "get_media_link",
+  "GET /api/takes/{id}/transcript": "get_transcript",
+  "POST /api/takes/{id}/transcript": "make_transcript",
+  "GET /api/takes/{id}/transcript/{format}": "get_transcript_file",
+  "PATCH /api/takes/{id}/transcript/edits/{index}": "undo_ai_fix",
+  "GET /api/backgrounds": "list_backgrounds",
+  "PUT /api/takes/{id}/background": "change_background",
+  "POST /api/takes/{id}/background/preview": "preview_background",
+  "GET /api/takes/{id}/background/preview": "get_background_preview",
+  "POST /api/takes/{id}/changes": "apply_changes",
+  "GET /api/takes/{id}/waveform": "get_waveform",
+  "POST /api/takes/{id}/missed": "mark_missed",
+};
+
+/** The public registry, with each route's MCP tool flag (spec 0019 AC-4). */
+export const API_REGISTRY: readonly ApiRoute[] = REGISTRY.map((r) => {
+  const mcp = MCP_TOOLS[`${r.method} ${r.path}`];
+  return mcp === undefined ? r : { ...r, mcp };
+});
+
+/** A registry route that is not a tool, with the reason (spec 0019 AC-4). */
+export type McpExclusion = {
+  readonly method: ApiMethod;
+  readonly path: string;
+  readonly note: string;
+};
+
+export const MCP_EXCLUSIONS: readonly McpExclusion[] = [
+  {
+    method: "POST",
+    path: "/api/backgrounds",
+    note: "Background library upload: the image is sent from the creator's browser, not by an assistant.",
+  },
+  {
+    method: "POST",
+    path: "/api/backgrounds/{id}/complete",
+    note: "Background library upload: the second half of the browser upload.",
+  },
+  {
+    method: "DELETE",
+    path: "/api/backgrounds/{id}",
+    note: "Background library upload: managing uploaded images stays in the web app.",
+  },
+  {
+    method: "GET",
+    path: "/api/account/email-prefs",
+    note: "Email settings belong to the creator, not to an assistant.",
+  },
+  {
+    method: "PATCH",
+    path: "/api/account/email-prefs",
+    note: "Email settings belong to the creator, not to an assistant.",
+  },
 ];
 
 const exclusion = (
