@@ -17,3 +17,19 @@ export function bearerToken(header: string): string | null {
   const match = /^Bearer +([^\s]+)$/i.exec(header.trim());
   return match?.[1] ?? null;
 }
+
+const SIGNED_QUERY_PARAMS = ["sig", "exp", "ba_iat", "ba_pl"] as const;
+
+/**
+ * Where sign in returns to when an OAuth client sent the creator here. Better Auth's login
+ * redirect carries the original authorize query plus signature fields; dropping those and
+ * replaying the rest on the authorize endpoint lets the flow carry on to the consent page.
+ * The path is fixed (never taken from the query), so this cannot be an open redirect. A query
+ * without a `client_id` and `sig` is not an OAuth hand off, so it returns null.
+ */
+export function oauthResumePath(search: URLSearchParams): string | null {
+  if (!search.has("client_id") || !search.has("sig")) return null;
+  const params = new URLSearchParams(search);
+  for (const name of SIGNED_QUERY_PARAMS) params.delete(name);
+  return `/api/auth/oauth2/authorize?${params.toString()}`;
+}

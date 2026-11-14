@@ -7,7 +7,15 @@ import { SignInForm } from "@/components/auth/sign-in-form";
 import { DELETE_ACCOUNT_REASON, DELETE_ACCOUNT_RETURN } from "@/components/shell/delete-account";
 import { SkipLink } from "@/components/shell/skip-link";
 import { Icon } from "@/components/ui/icon";
+import { oauthResumePath } from "@/lib/oauth-rules";
 import { getSession } from "@/server/request";
+
+const toSearchParams = (query: Record<string, string | string[] | undefined>) =>
+  new URLSearchParams(
+    Object.entries(query).flatMap(([k, v]) =>
+      typeof v === "string" ? [[k, v] as [string, string]] : [],
+    ),
+  );
 
 export const dynamic = "force-dynamic";
 
@@ -17,11 +25,15 @@ export const metadata: Metadata = { title: "Sign in · Take Studio" };
 export default async function SignInPage({
   searchParams,
 }: {
-  readonly searchParams: Promise<{ readonly reason?: string | string[] }>;
+  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   // Spec 0015 step 7: a stale session sent here to prove it is you, then back to the dialog.
-  const deleting = (await searchParams).reason === DELETE_ACCOUNT_REASON;
-  if (await getSession(await headers())) redirect(deleting ? DELETE_ACCOUNT_RETURN : "/library");
+  const query = await searchParams;
+  const deleting = query.reason === DELETE_ACCOUNT_REASON;
+  // Spec 0019: an OAuth client sent the creator here; after sign in the flow resumes.
+  const resume = oauthResumePath(toSearchParams(query));
+  const landing = deleting ? DELETE_ACCOUNT_RETURN : (resume ?? "/library");
+  if (await getSession(await headers())) redirect(landing);
   return (
     <>
       <SkipLink />
@@ -43,7 +55,10 @@ export default async function SignInPage({
           <h1 className="text-h2">Sign in to Take Studio</h1>
           <p className="text-muted-foreground">Use Google, or get a one time link by email.</p>
         </div>
-        <SignInForm {...(deleting ? { reason: DELETE_ACCOUNT_REASON } : {})} />
+        <SignInForm
+          {...(deleting ? { reason: DELETE_ACCOUNT_REASON } : {})}
+          {...(resume !== null ? { resumePath: resume } : {})}
+        />
       </main>
     </>
   );
