@@ -102,7 +102,7 @@ export function mcpSetups(url: string): readonly McpSetup[] {
       id: "json",
       title: "Any other client (JSON)",
       intro:
-        "Clients that read an MCP config file take the same shape. The address is the server, and the header carries your key.",
+        "For clients whose config file uses the mcpServers shape. The address is the server, and the header carries your key. VS Code is different: its .vscode/mcp.json uses servers instead of mcpServers, and each server also needs type set to http.",
       code: config(),
     },
   ];
@@ -121,6 +121,7 @@ export const MCP_EXAMPLE: readonly McpExampleStep[] = [
   },
   { say: "Waits for the take to finish processing.", tools: ["get_job", "get_take"] },
   { say: "Reviews the cuts and applies them.", tools: ["get_take", "apply_changes"] },
+  { say: "Waits for the new render to finish.", tools: ["get_job"] },
   {
     say: "Fetches the transcript and a link to the video.",
     tools: ["get_transcript", "get_media_link"],

@@ -43,4 +43,16 @@ describe("the worked example", () => {
     for (const step of MCP_EXAMPLE)
       for (const name of step.tools) expect(MCP_TOOL_NAMES).toContain(name);
   });
+
+  it("waits for the new render before fetching the transcript", () => {
+    const says = MCP_EXAMPLE.map((s) => s.tools.join(","));
+    expect(says.indexOf("get_job")).toBeGreaterThan(says.indexOf("get_take,apply_changes"));
+    expect(says.indexOf("get_job")).toBeLessThan(says.indexOf("get_transcript,get_media_link"));
+  });
+
+  it("labels the JSON for the mcpServers shape and says what VS Code needs", () => {
+    const intro = setups.find((s) => s.id === "json")!.intro;
+    expect(intro).toContain("mcpServers");
+    expect(intro).toContain(".vscode/mcp.json");
+  });
 });

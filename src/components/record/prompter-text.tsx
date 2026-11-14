@@ -26,7 +26,8 @@ export function PrompterText({
   const box = useRef<HTMLDivElement>(null);
   const current = useRef(0);
   const follow = useRef<number | null>(null);
-  // False until the voice target has been applied once since following (re)started or resumed.
+  // The first voice target since following (re)started or resumed, and whether a newer one has arrived.
+  const firstTarget = useRef<number | null>(null);
   const engaged = useRef(false);
   useEffect(() => {
     follow.current = followWordIndex;
@@ -40,12 +41,15 @@ export function PrompterText({
       // Voice following moves the script to the matched word (not while paused); the timed position is only a fallback.
       if (follow.current !== null && !paused) {
         // The first voice target after fallback or a pause never moves the script back from a later
-        // reading position; after that the voice is the truth about where the creator is.
+        // reading position, however many frames pass. Once a new target arrives, the voice is the
+        // truth about where the creator is.
+        if (firstTarget.current === null) firstTarget.current = follow.current;
+        if (follow.current !== firstTarget.current) engaged.current = true;
         position.current = engaged.current
           ? follow.current
           : Math.max(position.current, follow.current);
-        engaged.current = true;
       } else {
+        firstTarget.current = null;
         engaged.current = false;
       }
       const index = lineAt(lines, position.current);
