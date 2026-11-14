@@ -41,7 +41,7 @@ export type McpToolDoc = {
 
 /** The first sentence, so the page stays short; the full text is what the assistant reads. */
 export function firstSentence(text: string): string {
-  const match = /^.*?[.!?](?=\s|$)/s.exec(text.trim());
+  const match = /^[\s\S]*?[.!?](?=\s|$)/.exec(text.trim());
   return match ? match[0] : text.trim();
 }
 
