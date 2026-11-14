@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type ApiAuthDeps, guard as authGuard } from "../api-auth";
 import { dispatchJob } from "@/db/data/dispatch";
 import type { Db } from "@/db/types";
 import { removedRanges } from "@/lib/cut-rules";
@@ -27,6 +28,8 @@ export type TakeHttpDeps = {
   readonly getCreator: (request: Request) => Promise<Creator | null>;
   /** The only origin allowed to change takes (the app's own). */
   readonly allowedOrigin: string;
+  /** Lets a bearer key through the shared guard (spec 0018); tests leave it out. */
+  readonly keyAuth?: ApiAuthDeps["keyAuth"];
   /** USAGE_HASH_SECRET, read only when a retry starts a job. */
   readonly usageSecret: () => string;
   /** Triggers `process-take` for a job (idempotent per job ID). */
@@ -96,17 +99,13 @@ export function errorResponse(code: TakeError): Response {
   return json({ error: code, message: MESSAGES[code] }, STATUS[code]);
 }
 
-/** Session check (and, for changes, the Origin check); a Response means stop. */
+/** The shared identity guard (bearer key, else session, Origin for session writes); a Response means stop. */
 export async function guard(
   request: Request,
-  deps: Pick<TakeHttpDeps, "getCreator" | "allowedOrigin">,
+  deps: Pick<TakeHttpDeps, "getCreator" | "allowedOrigin" | "keyAuth">,
   options: { readonly checkOrigin: boolean },
 ): Promise<Creator | Response> {
-  if (options.checkOrigin && request.headers.get("origin") !== deps.allowedOrigin) {
-    return errorResponse("forbidden");
-  }
-  const creator = await deps.getCreator(request);
-  return creator ?? errorResponse("unauthorized");
+  return authGuard(request, deps, options);
 }
 
 const LIST_PAGE_SIZE = 24;
