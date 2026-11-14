@@ -240,6 +240,7 @@ export async function handleRetry(
     creatorId: creator.creatorId,
     takeId: take.id,
     usageSecret,
+    now: deps.now?.() ?? new Date(),
   });
   if (!started.ok) {
     if (started.error === "limit_exceeded") {
@@ -271,14 +272,22 @@ async function limitExceededResponse(
     creatorId: creator.creatorId,
     usageSecret,
     now: at,
-  });
-  if (!usage.ok) return errorResponse("limit_exceeded");
+  }).catch(() => null);
+  if (!usage?.ok) return limitFallback();
   return Response.json(
     {
       error: "limit_exceeded",
       message: limitExceededMessage({ resetsOn: usage.data.resetsOn, videoExpiresAt }),
       ...usageNumbers(usage.data),
     },
+    { status: STATUS.limit_exceeded, headers: PRIVATE_NO_STORE },
+  );
+}
+
+/** The plain limit message, still `private, no-store` like every other limit_exceeded body. */
+function limitFallback(): Response {
+  return Response.json(
+    { error: "limit_exceeded", message: MESSAGES.limit_exceeded },
     { status: STATUS.limit_exceeded, headers: PRIVATE_NO_STORE },
   );
 }
