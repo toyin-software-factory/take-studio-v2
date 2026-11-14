@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { ANALYTICS_EVENT_NAMES, ANALYTICS_RETENTION_MONTHS } from "./analytics-events";
 import { DEEPGRAM_OPTIONS, deepgramUrl } from "./deepgram";
 import {
   aiEditEnvSchema,
@@ -327,5 +328,16 @@ describe("launch gate wiring and drift flag (spec 0015 AC-8, AC-10)", () => {
       expect(text, file).toContain("legal-facts.ts");
       expect(text, file).toContain("legal:drift");
     }
+  });
+});
+
+describe("product events (spec 0016, AC-11)", () => {
+  const row = COLLECTED.find((c) => c.what.startsWith("Product events"));
+
+  it("lists every event name, the retention and deletion with the account", () => {
+    expect(row).toBeDefined();
+    for (const name of ANALYTICS_EVENT_NAMES) expect(row?.what).toContain(name);
+    expect(row?.kept).toContain(`${ANALYTICS_RETENTION_MONTHS} months`);
+    expect(row?.deletedWith).toMatch(/account/i);
   });
 });

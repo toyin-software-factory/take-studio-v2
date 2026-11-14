@@ -9,6 +9,7 @@ import { beforeDeleteUser } from "./account";
 import type { EmailSender } from "@/lib/email/send";
 import { signInEmail } from "@/lib/email/templates";
 import { takeSignInEmailSlot } from "./email/sign-in-limits";
+import { recordEvent } from "./analytics/record";
 
 type AuthEnv = Pick<
   WebEnv,
@@ -97,6 +98,17 @@ export function createAuth(
         },
       }),
     ],
+    databaseHooks: {
+      user: {
+        // Spec 0016 AC-4: one `signup` event per creator, after the user row is written. Best
+        // effort: `recordEvent` never throws, so a failed insert cannot break sign up.
+        create: {
+          after: async (created) => {
+            await recordEvent(db, { name: "signup", creatorId: created.id });
+          },
+        },
+      },
+    },
     user: {
       // Declared so a later schema regeneration keeps the column; `input: false` means a
       // sign up or update body can never set it (only the signed link and the switch do).

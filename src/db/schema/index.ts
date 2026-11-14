@@ -12,3 +12,4 @@ export * from "./storage-deletion";
 export * from "./email";
 export * from "./transcript";
 export * from "./usage";
+export * from "./analytics";
