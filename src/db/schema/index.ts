@@ -13,3 +13,4 @@ export * from "./email";
 export * from "./transcript";
 export * from "./usage";
 export * from "./analytics";
+export * from "./api-key";
