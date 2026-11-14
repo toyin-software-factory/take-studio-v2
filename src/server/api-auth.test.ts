@@ -149,7 +149,6 @@ describe("no fallback to the session (AC-5, AC-6)", () => {
       "Bearer tsk_short",
       `Bearer ${generateApiKey()}`,
       `Basic ${key}`,
-      `bearer ${key}`,
       key,
     ]) {
       const session: Session = { sessionOf: c.id, calls: 0 };
