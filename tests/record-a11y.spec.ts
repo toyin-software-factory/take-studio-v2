@@ -17,6 +17,14 @@ test.use({
   },
 });
 
+declare global {
+  interface Window {
+    __sockets: unknown[];
+    __say: (t: string) => void;
+    __drop: () => void;
+  }
+}
+
 const SCRIPT = Array.from({ length: 10 }, (_, i) => `Line ${i + 1} of my script is here.`).join(
   "\n",
 );
@@ -54,6 +62,51 @@ async function toRecording(page: Page) {
   await page.getByRole("button", { name: "Turn on camera" }).click();
   await page.getByRole("button", { name: "Record" }).click();
   await expect(page.getByTestId("record-timer")).toBeVisible();
+}
+
+/** A fake Deepgram socket (as in record-follow-voice.spec.ts): no audio leaves the browser. */
+const FAKE_SOCKET = `
+  (() => {
+    const sockets = [];
+    window.__sockets = sockets;
+    class FakeSocket {
+      constructor() {
+        this.readyState = 0; this.onopen = null; this.onmessage = null; this.onclose = null;
+        sockets.push(this);
+        setTimeout(() => { this.readyState = 1; this.onopen && this.onopen({}); }, 20);
+      }
+      send() {}
+      close() { this.readyState = 3; this.onclose && this.onclose({}); }
+    }
+    FakeSocket.CONNECTING = 0; FakeSocket.OPEN = 1; FakeSocket.CLOSING = 2; FakeSocket.CLOSED = 3;
+    window.WebSocket = FakeSocket;
+    window.__say = (transcript) => {
+      const s = sockets[sockets.length - 1];
+      s.onmessage && s.onmessage({ data: JSON.stringify({
+        type: "Results", is_final: false,
+        channel: { alternatives: [{ transcript, words: transcript.split(" ").map((w) => ({ word: w, punctuated_word: w })) }] },
+      }) });
+    };
+    window.__drop = () => sockets[sockets.length - 1].close();
+  })();
+`;
+
+/** /record with the camera on and the token route and socket mocked, ready to press Record. */
+async function readyWithVoice(page: Page, baseURL: string) {
+  await signedIn(page, baseURL);
+  await page.addInitScript(FAKE_SOCKET);
+  await page.route("**/api/realtime/token", (r) =>
+    r.fulfill({ json: { token: "test-token", expiresInSeconds: 60 } }),
+  );
+  await page.goto("/record");
+  await page.getByLabel("Script (optional)").fill(SCRIPT);
+  await page.getByRole("button", { name: "Turn on camera" }).click();
+  await expect(page.getByRole("button", { name: "Record" })).toBeVisible();
+}
+
+async function turnOnFollowing(page: Page) {
+  await page.getByRole("switch", { name: "Follow my voice" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Turn on" }).click();
 }
 
 for (const scheme of SCHEMES) {
@@ -149,6 +202,64 @@ for (const scheme of SCHEMES) {
       await page.goto("/record");
       await toRecording(page);
       await expect(page.getByText(/left\. The recording stops by itself/)).toBeVisible();
+      await expectNoSeriousAxeIssues(page);
+    });
+
+    test("voice following: the toggle and its first time disclosure", async ({ page, baseURL }) => {
+      await readyWithVoice(page, baseURL!);
+      const toggle = page.getByRole("switch", { name: "Follow my voice" });
+      await expect(toggle).not.toBeChecked();
+      await expectNoSeriousAxeIssues(page);
+
+      await toggle.click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toContainText("Deepgram");
+      await expectNoSeriousAxeIssues(page);
+      await dialog.getByRole("button", { name: "Not now" }).click();
+      await expect(dialog).toHaveCount(0);
+      await expect(toggle).not.toBeChecked();
+
+      await turnOnFollowing(page);
+      await expect(toggle).toBeChecked();
+      await expectNoSeriousAxeIssues(page);
+    });
+
+    test("voice following: connecting and following", async ({ page, baseURL }) => {
+      await readyWithVoice(page, baseURL!);
+      await turnOnFollowing(page);
+      await page.getByRole("button", { name: "Record", exact: true }).click();
+      await expect(page.getByTestId("record-timer")).toBeVisible();
+      await expect.poll(() => page.evaluate(() => window.__sockets.length)).toBe(1);
+      await page.evaluate(() => window.__say("line 1 of my script is here"));
+      await expect(page.getByText("Following your voice.")).toBeVisible();
+      await expectNoSeriousAxeIssues(page);
+    });
+
+    test("voice following: the fallback note after no match", async ({ page, baseURL }) => {
+      await readyWithVoice(page, baseURL!);
+      await turnOnFollowing(page);
+      await page.getByRole("button", { name: "Record", exact: true }).click();
+      await expect(page.getByTestId("record-timer")).toBeVisible();
+      // Nothing is said: after the no match time the note says it is on the timer.
+      const note = page.getByRole("status").filter({ hasText: /timer/i });
+      await expect(note).toBeVisible({ timeout: 20_000 });
+      await expect(page.getByTestId("script-scroll")).toBeVisible();
+      await expectNoSeriousAxeIssues(page);
+    });
+
+    test("voice following: the fallback note after a dropped connection", async ({
+      page,
+      baseURL,
+    }) => {
+      await readyWithVoice(page, baseURL!);
+      await turnOnFollowing(page);
+      await page.getByRole("button", { name: "Record", exact: true }).click();
+      await expect(page.getByTestId("record-timer")).toBeVisible();
+      await expect.poll(() => page.evaluate(() => window.__sockets.length)).toBe(1);
+      await page.evaluate(() => window.__say("line 1 of my script is here"));
+      await expect(page.getByText("Following your voice.")).toBeVisible();
+      await page.evaluate(() => window.__drop());
+      await expect(page.getByText(/disconnected/i)).toBeVisible();
       await expectNoSeriousAxeIssues(page);
     });
 
@@ -337,3 +448,20 @@ for (const scheme of SCHEMES) {
     await expectNoSeriousAxeIssues(page);
   });
 }
+
+test("Follow my voice works from the keyboard: focus ring, Space, the disclosure and Escape (AC-9)", async ({
+  page,
+  baseURL,
+}) => {
+  await readyWithVoice(page, baseURL!);
+  const toggle = page.getByRole("switch", { name: "Follow my voice" });
+  await tabTo(page, toggle);
+  await expectVisibleFocus(page);
+  await page.keyboard.press("Space");
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(toggle).toBeFocused();
+  await expect(toggle).not.toBeChecked();
+});
