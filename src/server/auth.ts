@@ -120,6 +120,8 @@ export function createAuth(
         loginPage: "/sign-in",
         consentPage: "/oauth/consent",
         allowDynamicClientRegistration: true,
+        // A registration without application_type and with a loopback redirect is a native app.
+        clientRegistrationDefaultApplicationType: "infer",
         allowUnauthenticatedClientRegistration: true,
         resources: [mcpResource(env)],
         // Every dynamically registered client may ask for the /mcp resource, or the token

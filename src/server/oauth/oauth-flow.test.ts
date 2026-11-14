@@ -253,6 +253,12 @@ describe("discovery and registration (AC-13)", () => {
     expect(custom.status).toBeGreaterThanOrEqual(400);
     const loopback = await register("http://127.0.0.1:8123/cb");
     expect(loopback.status).toBe(201);
+    // No application_type sent: a loopback redirect still registers (inferred as native).
+    const bare = await jsonPost("/api/auth/oauth2/register", {
+      client_name: "Bare assistant",
+      redirect_uris: ["http://127.0.0.1:8124/cb"],
+    });
+    expect(bare.status).toBe(201);
   });
 });
 
