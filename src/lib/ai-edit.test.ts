@@ -564,6 +564,10 @@ describe("cut quality fixture 1: hesitation sounds and both stutters", () => {
     expect(system).toContain("never content: cut every one");
     expect(system).toContain("including a long drawn out one");
     expect(system).toContain("cut every time it happens");
+    expect(system).toContain("sort of, kind of, basically, you know");
+    expect(system).toContain("what kind of soil");
+    expect(system).toContain("i like that rule");
+    expect(system).toContain("never an earlier attempt");
     expect(system).toContain("to the end");
     // The old blanket line made the model keep the sounds and the first stutter.
     expect(system).not.toContain("when in doubt, keep it");

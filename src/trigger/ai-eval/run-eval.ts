@@ -38,10 +38,10 @@ export type EvalIo = {
     signal: AbortSignal,
   ) => Promise<AiCallResult>;
   readonly now: () => number;
-  /** One log line: a fixed message and numbers, flags and IDs only. */
+  /** One log line: a fixed message and numbers, flags, IDs and span strings (times and kinds) only. */
   readonly log: (
     message: string,
-    fields: Readonly<Record<string, string | number | boolean>>,
+    fields: Readonly<Record<string, string | number | boolean | readonly string[]>>,
   ) => void;
 };
 
@@ -226,7 +226,8 @@ export async function evalCase(
   return { score, report, summary: buildCaseSummary(report, c.expected, scored) };
 }
 
-function logCase(io: EvalIo, r: CaseReport): void {
+/** Times and kinds only (`start-end kind`), the same strings as the run output, so the trace shows them. */
+function logCase(io: EvalIo, r: CaseReport, summary: CaseSummary): void {
   io.log("ai-eval: case", {
     caseId: r.caseId,
     holdout: r.holdout,
@@ -237,6 +238,9 @@ function logCase(io: EvalIo, r: CaseReport): void {
     outputTokens: r.outputTokens,
     seconds: r.seconds,
     fallback: r.fallback ?? "none",
+    missed: summary.missed,
+    wrongKeepSpans: summary.wrongKeeps,
+    cuts: summary.cuts,
   });
 }
 
@@ -287,7 +291,7 @@ export async function runAiEval(
       io.log("ai-eval: case skipped", { reason: "bad_case" });
       continue;
     }
-    logCase(io, result.report);
+    logCase(io, result.report, result.summary);
     done.push(result);
   }
   const pick = (holdout: boolean | null) =>

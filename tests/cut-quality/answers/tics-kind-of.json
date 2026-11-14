@@ -1,0 +1,19 @@
+{
+  "keepPauses": [],
+  "wordCuts": [
+    {
+      "fromWord": 4,
+      "toWord": 7,
+      "kind": "filler",
+      "reason": "Habit phrases with no meaning"
+    },
+    {
+      "fromWord": 17,
+      "toWord": 17,
+      "kind": "filler",
+      "reason": "Habit word with no meaning"
+    }
+  ],
+  "fixes": [],
+  "background": null
+}

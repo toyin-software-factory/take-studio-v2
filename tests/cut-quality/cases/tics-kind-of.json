@@ -1,0 +1,196 @@
+{
+  "id": "tics-kind-of",
+  "note": "Invented: kind of and you know as tics, basically as a tic, while kind of in a question and know as a verb are meaning.",
+  "durationMs": 11600,
+  "words": [
+    {
+      "w": "Alright,",
+      "startMs": 400,
+      "endMs": 720,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 800,
+      "endMs": 1120,
+      "filler": false
+    },
+    {
+      "w": "kiln",
+      "startMs": 1200,
+      "endMs": 1520,
+      "filler": false
+    },
+    {
+      "w": "is",
+      "startMs": 1600,
+      "endMs": 1920,
+      "filler": false
+    },
+    {
+      "w": "kind",
+      "startMs": 2000,
+      "endMs": 2320,
+      "filler": false
+    },
+    {
+      "w": "of",
+      "startMs": 2400,
+      "endMs": 2720,
+      "filler": false
+    },
+    {
+      "w": "you",
+      "startMs": 2800,
+      "endMs": 3120,
+      "filler": false
+    },
+    {
+      "w": "know",
+      "startMs": 3200,
+      "endMs": 3520,
+      "filler": false
+    },
+    {
+      "w": "hot",
+      "startMs": 3600,
+      "endMs": 3920,
+      "filler": false
+    },
+    {
+      "w": "by",
+      "startMs": 4000,
+      "endMs": 4320,
+      "filler": false
+    },
+    {
+      "w": "noon.",
+      "startMs": 4400,
+      "endMs": 4720,
+      "filler": false
+    },
+    {
+      "w": "What",
+      "startMs": 4800,
+      "endMs": 5120,
+      "filler": false
+    },
+    {
+      "w": "kind",
+      "startMs": 5200,
+      "endMs": 5520,
+      "filler": false
+    },
+    {
+      "w": "of",
+      "startMs": 5600,
+      "endMs": 5920,
+      "filler": false
+    },
+    {
+      "w": "clay",
+      "startMs": 6000,
+      "endMs": 6320,
+      "filler": false
+    },
+    {
+      "w": "works",
+      "startMs": 6400,
+      "endMs": 6720,
+      "filler": false
+    },
+    {
+      "w": "best?",
+      "startMs": 6800,
+      "endMs": 7120,
+      "filler": false
+    },
+    {
+      "w": "Basically",
+      "startMs": 7200,
+      "endMs": 7520,
+      "filler": false
+    },
+    {
+      "w": "it",
+      "startMs": 7600,
+      "endMs": 7920,
+      "filler": false
+    },
+    {
+      "w": "is",
+      "startMs": 8000,
+      "endMs": 8320,
+      "filler": false
+    },
+    {
+      "w": "red",
+      "startMs": 8400,
+      "endMs": 8720,
+      "filler": false
+    },
+    {
+      "w": "clay",
+      "startMs": 8800,
+      "endMs": 9120,
+      "filler": false
+    },
+    {
+      "w": "and",
+      "startMs": 9200,
+      "endMs": 9520,
+      "filler": false
+    },
+    {
+      "w": "I",
+      "startMs": 9600,
+      "endMs": 9920,
+      "filler": false
+    },
+    {
+      "w": "know",
+      "startMs": 10000,
+      "endMs": 10320,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 10400,
+      "endMs": 10720,
+      "filler": false
+    },
+    {
+      "w": "supplier.",
+      "startMs": 10800,
+      "endMs": 11120,
+      "filler": false
+    }
+  ],
+  "pauses": [],
+  "expected": [
+    {
+      "startMs": 2000,
+      "endMs": 3600,
+      "kind": "filler",
+      "verdict": "cut"
+    },
+    {
+      "startMs": 5200,
+      "endMs": 6000,
+      "kind": "filler",
+      "verdict": "keep"
+    },
+    {
+      "startMs": 7200,
+      "endMs": 7600,
+      "kind": "filler",
+      "verdict": "cut"
+    },
+    {
+      "startMs": 9600,
+      "endMs": 10400,
+      "kind": "filler",
+      "verdict": "keep"
+    }
+  ]
+}

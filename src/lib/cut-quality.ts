@@ -42,9 +42,19 @@ const expectedSchema = z
     ...spanFields,
     kind: z.enum(CUT_KINDS),
     verdict: z.enum(["cut", "keep"]),
+    /**
+     * A `cut` span with an equal copy elsewhere (a word said twice: either copy may go, one stays).
+     * The scorer uses whichever of the two the cuts covered more; a tie uses the span itself.
+     */
+    either: z
+      .object(spanFields)
+      .strict()
+      .refine(orderedSpan, "either must end after it starts")
+      .optional(),
   })
   .strict()
-  .refine(orderedSpan, "span must end after it starts");
+  .refine(orderedSpan, "span must end after it starts")
+  .refine((s) => s.either === undefined || s.verdict === "cut", "only a cut span has an either");
 
 export const cutCaseSchema = z
   .object({
@@ -71,7 +81,9 @@ export const cutCaseSchema = z
       if (prev && pause.startMs < prev.endMs) fail(`pause ${i} overlaps the pause before it`);
       if (pause.endMs > c.durationMs) fail(`pause ${i} ends after the take`);
     });
-    const sorted = [...c.expected].sort((a, b) => a.startMs - b.startMs);
+    const sorted = c.expected
+      .flatMap((e) => (e.either ? [e, { ...e, ...e.either, either: undefined }] : [e]))
+      .sort((a, b) => a.startMs - b.startMs);
     sorted.forEach((span, i) => {
       const prev = sorted[i - 1];
       if (prev && span.startMs < prev.endMs) fail("expected spans must not overlap");
@@ -193,11 +205,26 @@ const addTally = (a: Tally, b: Tally): Tally => ({
   wrongKeeps: a.wrongKeeps + b.wrongKeeps,
 });
 
-function tallyOf(
+/**
+ * Settles each span that has an `either` copy: the copy the cuts covered more stands for it (the
+ * span itself on a tie), so cutting either copy of a doubled word is right.
+ */
+function settleEither(
   expected: readonly ExpectedSpan[],
+  actual: readonly ScoredCut[],
+): ExpectedSpan[] {
+  const cutAll = union(actual);
+  return expected.map(({ either, ...span }) =>
+    either && coveredMs(either, cutAll) > coveredMs(span, cutAll) ? { ...span, ...either } : span,
+  );
+}
+
+function tallyOf(
+  allExpected: readonly ExpectedSpan[],
   actual: readonly ScoredCut[],
   expectedKind?: CutKind,
 ): Tally {
+  const expected = settleEither(allExpected, actual);
   const rightToCut = union(expected.filter((e) => e.verdict === "cut"));
   const cutAll = union(actual);
   // Precision looks at what was cut (by the kind the pipeline gave it); recall at what had to be cut.
@@ -367,9 +394,10 @@ export type SpanRef = { readonly startMs: number; readonly endMs: number; readon
  * spans it missed, and the keep spans it cut. Times and kinds only, no words.
  */
 export function missesOf(
-  expected: readonly ExpectedSpan[],
+  allExpected: readonly ExpectedSpan[],
   actual: readonly ScoredCut[],
 ): { readonly missed: readonly SpanRef[]; readonly wrongKeeps: readonly SpanRef[] } {
+  const expected = settleEither(allExpected, actual);
   const cutAll = union(actual);
   const ref = (e: ExpectedSpan): SpanRef => ({ startMs: e.startMs, endMs: e.endMs, kind: e.kind });
   return {
