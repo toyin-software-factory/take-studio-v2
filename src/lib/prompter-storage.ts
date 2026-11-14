@@ -19,7 +19,12 @@ export const draftKey = (creatorId: string) => `ts.scriptDraft.${creatorId}`;
 
 type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-const settingsSchema = z.object({ wpm: z.number(), size: z.number() });
+const settingsSchema = z.object({
+  wpm: z.number(),
+  size: z.number(),
+  follow: z.boolean().optional(),
+  followDisclosed: z.boolean().optional(),
+});
 
 export function loadSettings(store: Store | null, creatorId: string): PrompterSettings {
   try {
@@ -27,7 +32,12 @@ export function loadSettings(store: Store | null, creatorId: string): PrompterSe
     if (!raw) return DEFAULT_SETTINGS;
     const parsed = settingsSchema.safeParse(JSON.parse(raw));
     if (!parsed.success) return DEFAULT_SETTINGS;
-    return { wpm: clampWpm(parsed.data.wpm), size: clampSize(parsed.data.size) };
+    return {
+      wpm: clampWpm(parsed.data.wpm),
+      size: clampSize(parsed.data.size),
+      follow: parsed.data.follow ?? false,
+      followDisclosed: parsed.data.followDisclosed ?? false,
+    };
   } catch {
     return DEFAULT_SETTINGS;
   }

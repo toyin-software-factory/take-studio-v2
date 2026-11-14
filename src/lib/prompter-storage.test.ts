@@ -38,8 +38,13 @@ describe("prompter storage", () => {
   });
   it("round trips settings and ignores another creator's", () => {
     const s = memory();
-    saveSettings(s, "a", { wpm: 180, size: 54 });
-    expect(loadSettings(s, "a")).toEqual({ wpm: 180, size: 54 });
+    saveSettings(s, "a", { wpm: 180, size: 54, follow: true, followDisclosed: true });
+    expect(loadSettings(s, "a")).toEqual({
+      wpm: 180,
+      size: 54,
+      follow: true,
+      followDisclosed: true,
+    });
     expect(loadSettings(s, "b")).toEqual(DEFAULT_SETTINGS);
   });
   it("falls back on bad data and clamps values", () => {
@@ -47,7 +52,12 @@ describe("prompter storage", () => {
     s.map.set(settingsKey("a"), "not json");
     expect(loadSettings(s, "a")).toEqual(DEFAULT_SETTINGS);
     s.map.set(settingsKey("a"), JSON.stringify({ wpm: 9999, size: 50 }));
-    expect(loadSettings(s, "a")).toEqual({ wpm: 260, size: 54 });
+    expect(loadSettings(s, "a")).toEqual({
+      wpm: 260,
+      size: 54,
+      follow: false,
+      followDisclosed: false,
+    });
     s.map.set(settingsKey("a"), JSON.stringify({ wpm: "x" }));
     expect(loadSettings(s, "a")).toEqual(DEFAULT_SETTINGS);
   });
