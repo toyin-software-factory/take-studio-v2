@@ -301,8 +301,8 @@ export const COLLECTED: readonly Collected[] = [
   {
     what: "A draft of your script and your teleprompter settings, saved in this browser only (local storage keys ts.scriptDraft and ts.prompter, not cookies)",
     why: "So a draft is not lost and the teleprompter looks the way you left it.",
-    kept: "On your device until you clear it or the take is made. It is never sent to us until you start the upload.",
-    deletedWith: "Clearing your browser data.",
+    kept: "On your device until the take is made or you sign out (the draft goes then; the teleprompter settings stay). It is never sent to us until you start the upload.",
+    deletedWith: "Signing out (the draft), or clearing your browser data.",
   },
   {
     what: "Backgrounds you upload (images)",

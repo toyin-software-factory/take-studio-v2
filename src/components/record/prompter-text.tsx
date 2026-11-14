@@ -5,6 +5,9 @@ import { cn } from "@/lib/utils";
 import { lineAt } from "@/lib/teleprompter";
 import type { Prompter } from "./use-prompter";
 
+/** Text rows are about this many times the font size tall (leading-snug plus the padding). */
+const ROW_HEIGHT = 1.375;
+
 /**
  * The script over the top of the preview (near the lens on a laptop, at the top of a phone
  * screen). It is display only and never in the recording. It scrolls with the prompter's
@@ -25,9 +28,13 @@ export function PrompterText({ prompter }: { readonly prompter: Prompter }) {
       const line = lines[index];
       const node = el.children[index] as HTMLElement | undefined;
       if (line && node) {
-        // Smooth: inside the line by the words passed. Reduced motion: the line's top.
-        const inside = reducedMotion ? 0 : (position.current - line.startWord) / line.words;
-        el.scrollTop = node.offsetTop - el.offsetTop + inside * node.offsetHeight;
+        // Smooth: inside the line by the words passed. Reduced motion: no smooth movement, but a
+        // paragraph taller than the box steps through its wrapped rows so none stays hidden.
+        const inside = (position.current - line.startWord) / line.words;
+        const rows = Math.max(1, Math.round(node.offsetHeight / (settings.size * ROW_HEIGHT)));
+        const shown = reducedMotion ? (Math.floor(inside * rows) / rows) * node.offsetHeight : 0;
+        el.scrollTop =
+          node.offsetTop - el.offsetTop + (reducedMotion ? shown : inside * node.offsetHeight);
       }
       if (index !== current.current) {
         current.current = index;

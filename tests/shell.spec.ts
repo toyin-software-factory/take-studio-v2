@@ -142,6 +142,26 @@ test("sign out from the user menu returns to the signed out page", async ({ page
   await expect(signIn).toBeVisible();
 });
 
+test("sign out clears this creator's script draft and keeps the settings (spec 0021)", async ({
+  page,
+}) => {
+  await page.goto("/library");
+  await page.evaluate((id) => {
+    localStorage.setItem(`ts.scriptDraft.${id}`, "my private script");
+    localStorage.setItem(`ts.prompter.${id}`, '{"wpm":150}');
+  }, userId);
+  await page.getByRole("button", { name: /Account menu/ }).click();
+  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  await expect(page.getByRole("banner").getByRole("link", { name: "Sign in" })).toBeVisible();
+  const kept = await page.evaluate((id) => {
+    return [
+      localStorage.getItem(`ts.scriptDraft.${id}`),
+      localStorage.getItem(`ts.prompter.${id}`),
+    ];
+  }, userId);
+  expect(kept).toEqual([null, '{"wpm":150}']);
+});
+
 test.describe("on a phone", () => {
   const { viewport, deviceScaleFactor } = devices["Pixel 7"];
   test.use({ viewport, deviceScaleFactor, isMobile: true, hasTouch: true });

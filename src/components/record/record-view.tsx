@@ -41,7 +41,9 @@ export function RecordView({
   const { state, dispatch } = recorder;
   // Links and Back ask first too, not only closing the tab (the recorder warns for that).
   useLeaveGuard(wouldLoseWork(state), LEAVE_MESSAGE);
-  const prompter = usePrompter(script, creatorId, state.kind === "recording");
+  const onStage =
+    state.kind === "ready" || state.kind === "countdown" || state.kind === "recording";
+  const prompter = usePrompter(script, creatorId, state.kind === "recording", onStage);
 
   // The script draft is remembered on this device and cleared once the take is created.
   // eslint-disable-next-line react-hooks/set-state-in-effect -- reading device storage after hydration

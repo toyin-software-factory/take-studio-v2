@@ -16,6 +16,7 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { API_KEYS_PATH } from "@/lib/api-keys-screen";
 import { LEGAL_LINKS } from "@/lib/legal-links";
+import { clearDraft, deviceStore } from "@/lib/prompter-storage";
 import { notify } from "@/components/ui/sonner";
 import { DELETE_ACCOUNT_PARAM } from "./delete-account";
 import { DeleteAccountDialog } from "./delete-account-dialog";
@@ -29,9 +30,10 @@ export type ShellUser = {
 
 /**
  * Signs out, goes to the public homepage and refreshes so server components see the signed out state.
- * The Better Auth client is imported when you sign out, so it is not part of every signed in page's first load.
+ * The script draft saved in this browser goes too, so the next person on a shared device cannot read it
+ * (spec 0021). The Better Auth client is imported when you sign out, so it is not part of every signed in page's first load.
  */
-function useSignOut() {
+function useSignOut(creatorId: string) {
   const router = useRouter();
   return async () => {
     const failed = () =>
@@ -44,6 +46,7 @@ function useSignOut() {
       const { error } = await authClient.signOut();
       if (error) failed();
       else {
+        clearDraft(deviceStore(), creatorId);
         // /library signed out goes to /sign-in, so land on the public page first.
         router.replace("/");
         router.refresh();
@@ -65,7 +68,7 @@ function visibleFocusTarget(button: HTMLElement | null): HTMLElement | null {
 
 /** The user menu at the bottom of the sidebar (and the phone sheet): who you are, sign out. */
 export function UserMenu({ user }: { readonly user: ShellUser }) {
-  const signOut = useSignOut();
+  const signOut = useSignOut(user.id);
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);

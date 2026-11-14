@@ -30,10 +30,11 @@ function useReducedMotion(): boolean {
 /**
  * The teleprompter's state (spec 0021 task 2). The position is kept as words passed in a ref
  * and only grows by the time of each frame at the speed in force then, so changing the speed
- * never makes the text jump, and paused time adds nothing. Pausing never touches the recorder.
+ * never makes the text jump, and paused time adds nothing. Shortcuts only work while the stage shows
+ * the prompter (`onStage`, with a script), so they never act on a hidden one. Pausing never touches the recorder.
  * Speed and size are remembered per creator on the device.
  */
-export function usePrompter(script: string, creatorId: string, active: boolean) {
+export function usePrompter(script: string, creatorId: string, active: boolean, onStage: boolean) {
   const lines = useMemo(() => splitLines(script), [script]);
   const total = useMemo(() => countWords(script), [script]);
   const [settings, setSettings] = useState<PrompterSettings>(DEFAULT_SETTINGS);
@@ -80,6 +81,7 @@ export function usePrompter(script: string, creatorId: string, active: boolean) 
 
   // Keyboard shortcuts; never while a text field has focus.
   useEffect(() => {
+    if (!onStage || total === 0) return;
     const onKey = (event: KeyboardEvent) => {
       const target = event.target instanceof HTMLElement ? event.target : null;
       const command = commandForKey(event.key, target, {
@@ -93,12 +95,16 @@ export function usePrompter(script: string, creatorId: string, active: boolean) 
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [run]);
+  }, [run, onStage, total]);
 
   // The clock: one frame at a time, each step at the speed in force during it.
   const running = active && !paused;
   useEffect(() => {
-    if (!active) position.current = 0;
+    if (!active) {
+      position.current = 0;
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- the highlight restarts with the position
+      setLineIndex(0);
+    }
   }, [active]);
   useEffect(() => {
     if (!running) return;
