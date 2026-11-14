@@ -10,12 +10,18 @@ import { runTx } from "@/db/tx";
 import { ok } from "@/lib/result";
 import type { FailureCode } from "@/lib/failure-codes";
 import { parseJobEnv } from "@/lib/env";
-import { isBackgroundKind, isFinalJobStatus, type StepName } from "@/lib/processing";
+import {
+  isBackgroundKind,
+  isFinalJobStatus,
+  isTranscribeKind,
+  type StepName,
+} from "@/lib/processing";
 import { type R2, createR2 } from "@/lib/r2";
 import { downloadToFile } from "@/lib/r2-file-upload";
 import { deadlineMs, isDeadlineExceeded, runWithDeadline } from "@/lib/deadline";
 import { JOB_ERROR_NAMES, hasJobErrorName } from "@/lib/job-errors";
 import { PROCESS_TAKE_LIMITS } from "@/lib/cleanup-rules";
+import { recordTakeFailed } from "./analytics/record";
 import { queueTakeEmail } from "./email/queue";
 import { BackgroundMissingError } from "./keying";
 import { MediaToolError, probeFile } from "./media";
@@ -75,11 +81,24 @@ export const processTakeTask = task({
           failureCode: code,
         });
       }
-      await finish(d, { jobId: payload.jobId, status: "failed", failureCode: code });
+      const finished = await finish(d, {
+        jobId: payload.jobId,
+        status: "failed",
+        failureCode: code,
+      });
       const [row] = await d
-        .select({ kind: processingJob.kind })
+        .select({ kind: processingJob.kind, takeId: processingJob.takeId })
         .from(processingJob)
         .where(eq(processingJob.id, payload.jobId));
+      // Spec 0016 AC-4: only a video job that this call really failed; a background change or a
+      // transcribe job leaves the take as it was. Best effort, never throws.
+      if (finished.ok && row && !isBackgroundKind(row.kind) && !isTranscribeKind(row.kind)) {
+        const [owner] = await d
+          .select({ id: take.id, creatorId: take.creatorId })
+          .from(take)
+          .where(eq(take.id, row.takeId));
+        if (owner) await recordTakeFailed(d, owner, code);
+      }
       return row?.kind ?? null;
     });
     if (kind) await queueTakeEmail(payload.jobId, kind);

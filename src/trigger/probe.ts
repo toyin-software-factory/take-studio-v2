@@ -12,6 +12,7 @@ import { createR2 } from "@/lib/r2";
 import { thumbnailKey } from "@/lib/take-rules";
 import { triggerForJob } from "@/lib/trigger-runs";
 import { ACTIVE_JOB_STATUSES } from "@/lib/processing";
+import { recordTakeFailed } from "./analytics/record";
 import { MediaToolError, probeUrl, thumbnailFromUrl } from "./media";
 import { queueTakeEmail } from "./email/queue";
 
@@ -110,6 +111,9 @@ export const probeTask = task({
           return { takeId: found.id, outcome: marked.error };
         }
         if (marked.data.status === "failed") {
+          if (marked.data.failureCode) {
+            await recordTakeFailed(db, found, marked.data.failureCode);
+          }
           return {
             takeId: found.id,
             outcome: "rejected" as const,
@@ -141,7 +145,10 @@ export const probeTask = task({
         failureCode: "internal_error",
         uploadId: null,
       });
-      if (fromUploading.ok) return;
+      if (fromUploading.ok) {
+        await recordFailedById(db, payload.takeId, "internal_error");
+        return;
+      }
       // Probed but no job ever started (start or dispatch kept failing): fail it with a
       // refundable code so the creator gets "Try again". A take that has a job keeps it.
       const [job] = await db
@@ -150,9 +157,10 @@ export const probeTask = task({
         .where(eq(processingJob.takeId, payload.takeId))
         .limit(1);
       if (!job) {
-        await transitionTake(db, payload.takeId, "uploaded", "failed", {
+        const moved = await transitionTake(db, payload.takeId, "uploaded", "failed", {
           failureCode: "internal_error",
         });
+        if (moved.ok) await recordFailedById(db, payload.takeId, "internal_error");
       }
     });
   },
@@ -216,7 +224,21 @@ export async function startAndDispatch(
       failureCode: "limit_exceeded",
     });
     logger.info("probe: allowance used up, take kept", { takeId, moved: failed.ok });
+    if (failed.ok) await recordTakeFailed(db, { id: takeId, creatorId }, "limit_exceeded");
     return { takeId, outcome: "limit_exceeded" as const };
   }
   return { takeId, outcome: "not_started" as const, reason: started.error };
+}
+
+/** Records `take_failed` for a take known only by ID (the creator is read here). Never throws. */
+async function recordFailedById(db: Db, takeId: string, code: string): Promise<void> {
+  try {
+    const [row] = await db
+      .select({ id: take.id, creatorId: take.creatorId })
+      .from(take)
+      .where(eq(take.id, takeId));
+    if (row) await recordTakeFailed(db, row, code);
+  } catch {
+    logger.error("analytics event failed", { name: "take_failed", takeId });
+  }
 }

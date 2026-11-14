@@ -100,3 +100,27 @@ export type AnalyticsEventInput = {
 export function hasRequiredTakeId(name: AnalyticsEventName, takeId: string | null | undefined) {
   return ANALYTICS_EVENTS[name].oncePer !== "take" || (typeof takeId === "string" && takeId !== "");
 }
+
+/** Validates one event's properties against its strict schema; `null` means refused (AC-2, AC-3). */
+export function parseEventProps(
+  name: AnalyticsEventName,
+  props: unknown,
+): Readonly<Record<string, unknown>> | null {
+  const parsed = ANALYTICS_EVENTS[name].props.safeParse(props ?? {});
+  return parsed.success ? parsed.data : null;
+}
+
+export type AiEditOutcome = (typeof AI_EDIT_OUTCOMES)[number];
+
+/**
+ * How a job's AI edit ended, read from its persisted `ai_edit` step row (never from a return
+ * value): succeeded is `done`, skipped with `ai_unavailable` is `unavailable`, anything else
+ * (another status or code, or no row) is `none`. Same rule as `aiEditState` in the take detail.
+ */
+export function aiEditOutcome(
+  step: { readonly status: string; readonly failureCode: string | null } | undefined,
+): AiEditOutcome {
+  if (step?.status === "succeeded") return "done";
+  if (step?.status === "skipped" && step.failureCode === "ai_unavailable") return "unavailable";
+  return "none";
+}

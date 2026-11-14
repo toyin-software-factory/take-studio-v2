@@ -1,5 +1,6 @@
 import { logger } from "@trigger.dev/sdk";
 import { finish } from "@/db/data/jobs";
+import { recordTakeReady } from "../analytics/record";
 import { queueTakeEmail } from "../email/queue";
 import { type RunContext, type RunResult, setStep } from "./context";
 import { startTranscript } from "./transcript";
@@ -28,6 +29,7 @@ export async function finishWithoutRender(
     });
     return { jobId: job.id, takeId: take.id, outcome: "not_finished" };
   }
+  await recordTakeReady(client, job, take);
   await queueTakeEmail(job.id, job.kind);
   if (options.withTranscript) await startTranscript(client, take.id);
   return { jobId: job.id, takeId: take.id, outcome };

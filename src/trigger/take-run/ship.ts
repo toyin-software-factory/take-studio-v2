@@ -4,6 +4,7 @@ import { completeLatest } from "@/db/data/renders";
 import { renderKey } from "@/lib/cut-rules";
 import { uploadFileMultipart } from "@/lib/r2-file-upload";
 import { RENDER_UPLOAD } from "@/lib/uploads";
+import { recordTakeReady } from "../analytics/record";
 import { queueTakeEmail } from "../email/queue";
 import { MediaToolError, probeFile } from "../media";
 import { type RunContext, type RunResult, setStep } from "./context";
@@ -57,6 +58,7 @@ export async function ship(
   signal.throwIfAborted();
   const finished = await finish(client, { jobId: job.id, status: "succeeded" });
   if (!finished.ok) throw new Error(`finish failed: ${finished.error}`);
+  await recordTakeReady(client, job, t);
   await queueTakeEmail(job.id, job.kind);
   if (options.withTranscript) await startTranscript(client, t.id);
 
