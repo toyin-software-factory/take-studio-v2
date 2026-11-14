@@ -194,3 +194,27 @@ export function blockRect(
     hitWidth,
   };
 }
+
+/**
+ * Roving focus along the timeline: Left and Up go to the previous cut, Right and Down to the next,
+ * Home and End to the first and last. The ends stop (no wrap), so End then Right stays on the last
+ * cut. Null for any other key or when there are no cuts, so the key keeps its usual job.
+ */
+export function nextCutIndex(key: string, index: number, count: number): number | null {
+  if (count <= 0) return null;
+  const last = count - 1;
+  switch (key) {
+    case "ArrowLeft":
+    case "ArrowUp":
+      return Math.max(0, index - 1);
+    case "ArrowRight":
+    case "ArrowDown":
+      return Math.min(last, index + 1);
+    case "Home":
+      return 0;
+    case "End":
+      return last;
+    default:
+      return null;
+  }
+}
