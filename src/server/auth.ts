@@ -6,6 +6,7 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "@/db/schema";
 import type { WebEnv } from "@/lib/env";
 import { beforeDeleteUser } from "./account";
+import { ACCOUNT_DELETE_FRESH_SECONDS } from "./account/policy";
 import type { EmailSender } from "@/lib/email/send";
 import { signInEmail } from "@/lib/email/templates";
 import { takeSignInEmailSlot } from "./email/sign-in-limits";
@@ -53,6 +54,8 @@ export function createAuth(
         clientSecret: env.GOOGLE_CLIENT_SECRET,
       },
     },
+    // Spec 0015 step 7: deleting an account needs a sign in within the last 10 minutes.
+    session: { freshAge: ACCOUNT_DELETE_FRESH_SECONDS },
     account: {
       // AC-3: the same email via Google and via a link is one account, never two.
       accountLinking: { enabled: true, trustedProviders: ["google"] },

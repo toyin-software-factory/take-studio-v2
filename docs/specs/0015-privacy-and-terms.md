@@ -1,7 +1,7 @@
 # 0015. Privacy and terms pages
 
 **Date**: 2026-11-14
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 
@@ -158,6 +158,7 @@ Tracer Bullet: one thin thread first (a real page from the facts file, linked an
 5. Accessibility and print pass with axe and browser tests, satisfies **AC-12**
 6. The change checklist in `src/lib/AGENTS.md` and root `AGENTS.md`, the `/sync` flag, and `pnpm test:legal-launch`, satisfies **AC-10**, **AC-8**
 7. Separate task, after the pages: the self serve Delete account control (confirm dialog, fresh session guard, signed out redirect, test that nothing is left) and the flag flip, satisfies **AC-13**
+   - Decision (Michael, 2026-11-14): the fresh session guard is Better Auth's own `deleteUser` check with `session.freshAge` = 10 minutes (`ACCOUNT_DELETE_FRESH_SECONDS`). Deletion cannot be undone, and the default of one day is too loose; 10 minutes is long enough to read the dialog and short enough that a borrowed or forgotten session cannot erase an account. A stale session is signed out and sent to `/sign-in?reason=delete-account`, which says "For safety, sign in again to delete your account" and returns to `/library?delete-account=1`, where the dialog opens again.
 8. Launch gate, when Toyin has the lawyer's sign off and the facts: fill `LEGAL_ENTITY` and `REVIEW` (including the reviewed versions and hashes), remove the draft banner, run `pnpm test:legal-launch`, satisfies **AC-8**, **AC-11**
 
 ## Consequences

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Clapperboard } from "lucide-react";
 import { SignInForm } from "@/components/auth/sign-in-form";
+import { DELETE_ACCOUNT_REASON, DELETE_ACCOUNT_RETURN } from "@/components/shell/delete-account";
 import { SkipLink } from "@/components/shell/skip-link";
 import { Icon } from "@/components/ui/icon";
 import { getSession } from "@/server/request";
@@ -13,8 +14,14 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = { title: "Sign in · Take Studio" };
 
 /** Sign in (spec 0006, AC-1): Google or an emailed link. Signed in creators go to the library. */
-export default async function SignInPage() {
-  if (await getSession(await headers())) redirect("/library");
+export default async function SignInPage({
+  searchParams,
+}: {
+  readonly searchParams: Promise<{ readonly reason?: string | string[] }>;
+}) {
+  // Spec 0015 step 7: a stale session sent here to prove it is you, then back to the dialog.
+  const deleting = (await searchParams).reason === DELETE_ACCOUNT_REASON;
+  if (await getSession(await headers())) redirect(deleting ? DELETE_ACCOUNT_RETURN : "/library");
   return (
     <>
       <SkipLink />
@@ -36,7 +43,7 @@ export default async function SignInPage() {
           <h1 className="text-h2">Sign in to Take Studio</h1>
           <p className="text-muted-foreground">Use Google, or get a one time link by email.</p>
         </div>
-        <SignInForm />
+        <SignInForm {...(deleting ? { reason: DELETE_ACCOUNT_REASON } : {})} />
       </main>
     </>
   );
