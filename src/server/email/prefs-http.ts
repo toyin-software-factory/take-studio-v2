@@ -2,7 +2,7 @@ import { z } from "zod";
 import { getTakeEmails, setTakeEmails } from "@/db/data/email-prefs";
 import { errorResponse, guard, json, type TakeHttpDeps } from "../takes/http";
 
-type Deps = Pick<TakeHttpDeps, "getCreator" | "allowedOrigin">;
+type Deps = Pick<TakeHttpDeps, "getCreator" | "allowedOrigin" | "keyAuth">;
 
 const bodySchema = z.object({ takeEmails: z.boolean() });
 
