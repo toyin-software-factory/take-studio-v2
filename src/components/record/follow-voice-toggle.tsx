@@ -59,11 +59,11 @@ export function FollowVoiceToggle({
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-3">
         <Switch id={id} checked={enabled} onCheckedChange={toggle} />
-        <Label htmlFor={id} className="text-small text-on-dark">
+        <Label htmlFor={id} className="text-small">
           Follow my voice
         </Label>
       </div>
-      <p role="status" aria-live="polite" className="min-h-5 text-small text-on-dark">
+      <p role="status" aria-live="polite" className="min-h-5 text-small">
         {enabled && follow.status === "connecting" ? "Connecting to follow your voice…" : null}
         {enabled && follow.status === "following" ? "Following your voice." : null}
         {enabled && follow.status === "fallback" ? follow.note : null}
