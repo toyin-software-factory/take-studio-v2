@@ -160,6 +160,30 @@ describe("transport (AC-1)", () => {
     expect((await json(bad)).error?.code).toBe(-32700);
   });
 
+  it("stops reading a stream with no Content-Length at the limit", async () => {
+    const { key } = await newCaller();
+    let pulled = 0;
+    const chunk = new Uint8Array(65_536).fill(120);
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += 1;
+        if (pulled > 1000) controller.close();
+        else controller.enqueue(chunk);
+      },
+    });
+    const response = await handleMcp(
+      new Request(`${ORIGIN}/mcp`, {
+        method: "POST",
+        headers: { authorization: `Bearer ${key}`, "content-type": "application/json" },
+        body,
+        duplex: "half",
+      } as RequestInit),
+      deps(),
+    );
+    expect(response.status).toBe(413);
+    expect(pulled).toBeLessThan(20);
+  });
+
   it("answers 405 to GET and DELETE", async () => {
     for (const method of ["GET", "DELETE"]) {
       const response = await handleMcp(new Request(`${ORIGIN}/mcp`, { method }), deps());
