@@ -128,6 +128,10 @@ test("Record again brings the camera back; a refused upload keeps the take (AC-1
   await expect(page.getByText("This take wasn't uploaded")).toBeVisible();
   await expect(page.getByLabel("Your recording")).toBeVisible();
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+  const save = page.getByRole("link", { name: "Save to your device" });
+  await expect(save).toHaveAttribute("download", /\.(webm|mp4)$/);
+  const [download] = await Promise.all([page.waitForEvent("download"), save.click()]);
+  expect(download.suggestedFilename()).toMatch(/\.(webm|mp4)$/);
 
   await page.getByRole("button", { name: "Record again" }).click();
   await expect(page.getByLabel("Camera preview")).toBeVisible();
@@ -145,6 +149,44 @@ test("a blocked camera says so and offers a file upload (AC-5)", async ({ page, 
   await expect(page.getByText("Camera or microphone is blocked")).toBeVisible();
   await expect(page.getByRole("link", { name: "Upload a file instead" })).toBeVisible();
   await expectNoSeriousAxeIssues(page);
+});
+
+test("a busy camera says so; Try again works without a reload (AC-5)", async ({
+  page,
+  baseURL,
+}) => {
+  await setup(page, baseURL!);
+  await page.addInitScript(() => {
+    const real = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    let calls = 0;
+    navigator.mediaDevices.getUserMedia = (c) =>
+      calls++ === 0 ? Promise.reject(new DOMException("busy", "NotReadableError")) : real(c);
+  });
+  await page.goto("/record");
+  await page.getByRole("button", { name: "Turn on camera" }).click();
+  await expect(page.getByText("Your camera or microphone is busy")).toBeVisible();
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByLabel("Camera preview")).toBeVisible();
+  await expect(page.getByRole("img", { name: /Microphone level:/ })).toBeVisible();
+});
+
+test("the failure screen has no sideways scroll on a phone (AC-5, AC-10)", async ({
+  page,
+  baseURL,
+}) => {
+  await page.setViewportSize({ width: 412, height: 915 });
+  await setup(page, baseURL!);
+  await page.addInitScript(() => {
+    navigator.mediaDevices.getUserMedia = () =>
+      Promise.reject(new DOMException("blocked", "NotAllowedError"));
+  });
+  await page.goto("/record");
+  await page.getByRole("button", { name: "Turn on camera" }).click();
+  await expect(page.getByText("Camera or microphone is blocked")).toBeVisible();
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
 });
 
 test("the library has a Record button beside Choose a video", async ({ page, baseURL }) => {

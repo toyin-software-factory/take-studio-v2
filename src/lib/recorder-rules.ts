@@ -94,7 +94,7 @@ export function shouldAutoStop(elapsedMs: number, limitMs: number): boolean {
 }
 
 /** Why the camera could not start (AC-5). */
-export type SetupFailure = "denied" | "unavailable" | "in_use" | "unsupported";
+export type SetupFailure = "denied" | "unavailable" | "in_use" | "insecure" | "unsupported";
 
 /** The words for each setup failure; each ends with the way out, "Upload a file instead". */
 export const SETUP_MESSAGES: Readonly<Record<SetupFailure, { title: string; body: string }>> = {
@@ -110,9 +110,13 @@ export const SETUP_MESSAGES: Readonly<Record<SetupFailure, { title: string; body
     title: "Your camera or microphone is busy",
     body: "Close other apps or tabs that use it, then try again.",
   },
+  insecure: {
+    title: "This page isn't secure",
+    body: "Browsers only allow the camera on a secure (https) page. Open Take Studio at its https address.",
+  },
   unsupported: {
     title: "This browser can't record here",
-    body: "Recording needs a secure page and a recent browser.",
+    body: "Recording needs a recent browser (Chrome, Safari, Edge or Firefox).",
   },
 };
 

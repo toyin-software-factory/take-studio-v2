@@ -264,7 +264,7 @@ test.describe("record page (spec 0021 AC-6)", () => {
     await start(page);
     await expect(page.getByTestId("record-limit")).toHaveText("Up to 0:06");
     await page.getByRole("button", { name: "Record" }).click();
-    await expect(page.getByRole("status")).toHaveText("One minute left");
+    await expect(page.locator("p[role=status].sr-only")).toHaveText("One minute left");
     await expect(page.getByText(/left\. The recording stops by itself/)).toBeVisible();
     await expectNoSeriousAxeIssues(page);
     // Nobody pressed Stop: the take is in review.
@@ -280,8 +280,10 @@ test.describe("record page (spec 0021 AC-6)", () => {
     await expect(page.getByTestId("record-limit")).toHaveText("Up to 1:06");
     await page.getByRole("button", { name: "Record" }).click();
     await expect(page.getByTestId("record-timer")).toBeVisible();
-    await expect(page.getByRole("status")).toHaveText("Recording");
-    await expect(page.getByRole("status")).toHaveText("One minute left", { timeout: 20_000 });
+    await expect(page.locator("p[role=status].sr-only")).toHaveText("Recording");
+    await expect(page.locator("p[role=status].sr-only")).toHaveText("One minute left", {
+      timeout: 20_000,
+    });
     await page.getByRole("button", { name: "Stop" }).click();
   });
 
