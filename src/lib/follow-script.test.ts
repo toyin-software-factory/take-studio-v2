@@ -118,3 +118,13 @@ describe("followScript repeat flag", () => {
     });
   });
 });
+
+describe("followScript overlapping tail", () => {
+  const script = "welcome to the studio and welcome to the show".split(" ");
+  it("lets the tail overlap the last match so a repeated phrase does not jump ahead", () => {
+    const first = followScript(script, ["welcome"], -1);
+    expect(first.matchIndex).toBe(0);
+    const second = followScript(script, ["welcome", "to"], first.matchIndex);
+    expect(second).toEqual({ matchIndex: 1, advanced: true });
+  });
+});
