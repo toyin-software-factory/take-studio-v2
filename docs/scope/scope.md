@@ -38,7 +38,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 14 | MCP server for AI agents | Slice 7 | planned |
 | 15 | Landing page & SEO | Launch | done |
 | 16 | Privacy & terms pages | Launch | in-progress |
-| 17 | Product analytics | Launch | planned |
+| 17 | Product analytics | Launch | in-progress |
 | 18 | Email sign in and take ready email | Slice 1 | done |
 
 ## Foundations
@@ -263,11 +263,22 @@ Public privacy policy and terms, needed because we store people's videos.
 - [ ] Verify it: `/check verify privacy & terms pages`
 Spec [0015](../specs/0015-privacy-and-terms.md) · Toyin supplies the legal facts and a lawyer reviews the text before launch
 
-### 17. Product analytics · needs a decision
+### 17. Product analytics · in-progress
 Three events that show whether the core loop works: signup, take uploaded, take downloaded.
 **Done when:** the three events are recorded per creator, with no video content or transcript text in the events.
 - Note (2026-11-13): Toyin and Michael recommend building this first, so the growth ideas under Deferred can be measured: signups, first upload, first download and second take. Not repeated there.
-- [ ] Design it (spec): `/architect product analytics`
+- [x] Design it (spec): `/architect product analytics`
+- [ ] Build it: `/develop product analytics`
+   - [ ] Table, record function, signup event, drift and privacy tests (AC-1, AC-2, AC-3, AC-4, AC-6)
+   - [ ] Insights page with the viewer gate (AC-7, AC-8)
+   - [ ] Upload and job events, second take and founding member counts (AC-4, AC-7, AC-12)
+   - [ ] Download, transcript, change and limit events (AC-4, AC-5)
+   - [ ] Backfill from existing users and takes (AC-12)
+   - [ ] Retention sweep and delete tests (AC-9, AC-10)
+   - [ ] Legal facts entry and copy bump (AC-11)
+   - [ ] Docs and deploy env list for the viewer secret
+- [ ] Verify it: `/check verify product analytics`
+Spec [0016](../specs/0016-product-analytics.md) · Toyin answers seven open questions (tool, visits, who sees it, retention, deletion, founding member rule, event list)
 
 ## Deferred
 Out of scope for this build pass, kept so the plan stays honest.
