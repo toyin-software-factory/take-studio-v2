@@ -259,7 +259,7 @@ Public privacy policy and terms, needed because we store people's videos.
    - [x] Privacy page, footer link, sitemap, draft banner (AC-1, AC-3, AC-5, AC-7)
    - [x] Terms page (AC-1, AC-6)
    - [x] Sign in notice, upload note, user menu links (AC-2)
-   - [ ] Accessibility and print pass, browser tests and axe (AC-12)
+   - [x] Accessibility and print pass, browser tests and axe (AC-12)
    - [x] Change checklist, `/sync` flag, launch gate check (AC-8, AC-10)
    - [ ] Self serve Delete account control, then flip the copy (AC-13)
    - [ ] Launch gate: Toyin's facts and the lawyer's review filled in, Draft banner removed (AC-8, AC-11)

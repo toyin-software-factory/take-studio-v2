@@ -498,3 +498,27 @@
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * Print (spec 0015 AC-12): the legal pages print as plain black on white, the chrome (header,
+ * table of contents) is hidden in the markup with `print:hidden`, headings stay with their text,
+ * and an external link shows its address on paper.
+ */
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+    font-size: 11pt;
+  }
+  [data-legal-copy] h2 {
+    break-after: avoid;
+  }
+  [data-legal-copy] li,
+  [data-legal-copy] p {
+    break-inside: avoid;
+  }
+  [data-legal-copy] a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    overflow-wrap: anywhere;
+  }
+}
