@@ -13,8 +13,9 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    name: Lint, typecheck, test, build, e2e
+  # The fast checks. Everything that does not need a browser, in one job.
+  static:
+    name: Lint, typecheck, test
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
@@ -32,7 +33,6 @@ jobs:
           --health-timeout 3s
           --health-retries 20
     env:
-      PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.65.0-noble
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/take_studio
       DATABASE_URL_DIRECT: postgres://postgres:postgres@localhost:5432/take_studio
       CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: postgres://postgres:postgres@localhost:5432/take_studio
@@ -116,6 +116,57 @@ jobs:
       - name: Apply migrations
         run: pnpm db:migrate
 
+  # The browser tests, split over parallel jobs (B2-T100: one job ran all ~400 tests on 2 workers
+  # and hit its 10 minute step limit). Four shards split the chromium project and a fifth job runs
+  # the usage suites in order (Playwright cannot shard a project chain, see playwright.config.ts).
+  # Each job has its own Postgres service, so the specs that share monthly usage settings cannot
+  # touch another job. Shard 1 also runs the production mode check. The build runs once per shard
+  # (OpenNext bundles .env into the Worker, so it is not shared).
+  e2e:
+    name: E2E ${{ matrix.shard == 'usage' && 'usage suites' || format('shard {0}', matrix.shard) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        # 1 to 4 split the chromium project; `usage` runs the suites that write the shared monthly
+        # usage settings, one after another.
+        shard: [1, 2, 3, 4, usage]
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: take_studio
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d take_studio"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.65.0-noble
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/take_studio
+      DATABASE_URL_DIRECT: postgres://postgres:postgres@localhost:5432/take_studio
+      CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: postgres://postgres:postgres@localhost:5432/take_studio
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        run: pnpm db:migrate
+
       - name: Dummy env for the preview Worker
         # Not secrets: placeholders so the env schema passes. R2 is checked on the deployed Worker only.
         # Must run before the build: OpenNext bundles .env into the Worker at build time.
@@ -147,7 +198,10 @@ jobs:
         run: docker pull "$PLAYWRIGHT_IMAGE"
 
       - name: E2E smoke
-        timeout-minutes: 10
+        timeout-minutes: 15
+        env:
+          SHARD: ${{ matrix.shard }}
+          SHARDS: "4"
         # Host networking keeps the Postgres service on localhost (the seed guard needs that)
         # and the preview Worker on 127.0.0.1:8787. Runs as the runner's user so no root owned
         # files are left in the workspace. The built Worker and node_modules come from the
@@ -160,10 +214,10 @@ jobs:
           node_dir="$(dirname "$(dirname "$(command -v node)")")"
           docker run --rm --network host --ipc=host --init \
             --user "$(id -u):$(id -g)" -e HOME=/tmp \
-            -e CI -e PNPM_HOME -e NODE_DIR="$node_dir" -e DATABASE_URL -e DATABASE_URL_DIRECT \
+            -e CI -e E2E_SPLIT=1 -e SHARD -e SHARDS -e PNPM_HOME -e NODE_DIR="$node_dir" -e DATABASE_URL -e DATABASE_URL_DIRECT \
             -e CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE -e NEXT_TELEMETRY_DISABLED \
             -v "$GITHUB_WORKSPACE":/work -v "$pnpm_dir":"$pnpm_dir":ro -v "$node_dir":"$node_dir":ro -w /work \
-            "$PLAYWRIGHT_IMAGE" bash -c 'export PATH="$NODE_DIR/bin:$PNPM_HOME:$PATH" && node --version && pnpm exec playwright test'
+            "$PLAYWRIGHT_IMAGE" bash -c 'export PATH="$NODE_DIR/bin:$PNPM_HOME:$PATH" && node --version && if [ "$SHARD" = usage ]; then for p in usage record-a11y record-limits; do pnpm exec playwright test --project=$p || exit 1; done; else pnpm exec playwright test --project=chromium --shard=$SHARD/$SHARDS; fi'
 
       # The production check: the same built Worker, served as production serves it (no
       # `--var DESIGN_GALLERY:1`, which the normal run adds; the build is the same, the gallery is
@@ -171,6 +225,7 @@ jobs:
       # E2E_PRODUCTION=1 that check is skipped, so this step runs it and fails on any skipped
       # test or if it did not report exactly 1 passed.
       - name: E2E production mode (the gallery is not found)
+        if: matrix.shard == '1'
         timeout-minutes: 5
         shell: bash
         run: |
@@ -195,6 +250,22 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: playwright-report
+          name: playwright-report-${{ matrix.shard }}
           path: playwright-report/
           retention-days: 7
+
+  # The one required check. Its name is what branch protection waits for, so it stays
+  # "Lint, typecheck, test, build, e2e" and reports one result for all of the jobs above.
+  check:
+    name: Lint, typecheck, test, build, e2e
+    runs-on: ubuntu-24.04
+    needs: [static, e2e]
+    if: always()
+    timeout-minutes: 5
+    steps:
+      - name: Every job passed
+        env:
+          RESULTS: ${{ needs.static.result }} ${{ needs.e2e.result }}
+        run: |
+          echo "static and e2e: $RESULTS"
+          [ "$RESULTS" = "success success" ] || { echo "::error::A required job did not pass."; exit 1; }
