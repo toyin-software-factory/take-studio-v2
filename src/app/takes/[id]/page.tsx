@@ -8,6 +8,7 @@ import { tabTitle } from "@/lib/take-display";
 import { getTakeEmails } from "@/db/data/email-prefs";
 import { getDb, getSession } from "@/server/request";
 import { getForCreator } from "@/server/takes";
+import { awaitRead, startRead, type SettledRead } from "@/lib/settled-read";
 
 export const dynamic = "force-dynamic";
 
@@ -39,14 +40,14 @@ async function TakeViewWithEmails({
   readonly takeId: string;
   readonly title: string;
   readonly status: Parameters<typeof TakeView>[0]["initialStatus"];
-  readonly takeEmails: Promise<boolean>;
+  readonly takeEmails: Promise<SettledRead<boolean>>;
 }) {
   return (
     <TakeView
       takeId={takeId}
       initialTitle={title}
       initialStatus={status}
-      takeEmails={await takeEmails}
+      takeEmails={await awaitRead(takeEmails)}
     />
   );
 }
@@ -60,9 +61,11 @@ export default async function TakePage({ params }: Props) {
   const { session, take } = await loadTake((await params).id);
   if (!session) redirect("/");
   if (!take) notFound();
-  const takeEmails = getDb()
-    .then((db) => getTakeEmails(db, session.user.id))
-    .then((value) => value ?? true);
+  const takeEmails = startRead(
+    getDb()
+      .then((db) => getTakeEmails(db, session.user.id))
+      .then((value) => value ?? true),
+  );
 
   return (
     <AppShell

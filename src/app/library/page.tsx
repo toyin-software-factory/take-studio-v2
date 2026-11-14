@@ -13,6 +13,7 @@ import { listForCreator } from "@/server/takes";
 import { cardView } from "@/server/takes/views";
 import { usageForCreator } from "@/server/usage";
 import { parseUsageEnv } from "@/lib/env";
+import { awaitRead, startRead, type SettledRead } from "@/lib/settled-read";
 
 export const dynamic = "force-dynamic";
 
@@ -60,8 +61,12 @@ async function firstUsage(creatorId: string) {
  * its own) and is awaited here, so the two database reads run side by side instead of one after
  * the other. No `Suspense` around it: nothing about the first paint changes.
  */
-async function UploadWithUsage({ usage }: { readonly usage: ReturnType<typeof firstUsage> }) {
-  return <UploadArea usage={await usage} />;
+async function UploadWithUsage({
+  usage,
+}: {
+  readonly usage: Promise<SettledRead<Awaited<ReturnType<typeof firstUsage>>>>;
+}) {
+  return <UploadArea usage={await awaitRead(usage)} />;
 }
 
 /** The library (spec 0004 AC-1): upload area on top, takes below. Signed out goes to sign in. */
@@ -73,7 +78,7 @@ export default async function LibraryPage({
   const deleted = (await searchParams)[DELETED_PARAM] === "1";
   const session = await getSession(await headers());
   if (!session) redirect("/sign-in");
-  const usage = firstUsage(session.user.id);
+  const usage = startRead(firstUsage(session.user.id));
 
   return (
     <AppShell user={{ id: session.user.id, name: session.user.name, email: session.user.email }}>

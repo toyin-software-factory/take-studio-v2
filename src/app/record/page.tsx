@@ -6,6 +6,7 @@ import { RecordView } from "@/components/record/record-view";
 import { parseUsageEnv } from "@/lib/env";
 import { getDb, getSession } from "@/server/request";
 import { usageForCreator } from "@/server/usage";
+import { awaitRead, startRead, type SettledRead } from "@/lib/settled-read";
 
 export const dynamic = "force-dynamic";
 
@@ -37,17 +38,17 @@ async function RecordWithUsage({
   usage,
   creatorId,
 }: {
-  readonly usage: ReturnType<typeof firstUsage>;
+  readonly usage: Promise<SettledRead<Awaited<ReturnType<typeof firstUsage>>>>;
   readonly creatorId: string;
 }) {
-  return <RecordView usage={await usage} creatorId={creatorId} />;
+  return <RecordView usage={await awaitRead(usage)} creatorId={creatorId} />;
 }
 
 /** Record a take in the browser (spec 0021). Signed out goes to sign in. */
 export default async function RecordPage() {
   const session = await getSession(await headers());
   if (!session) redirect("/sign-in");
-  const usage = firstUsage(session.user.id);
+  const usage = startRead(firstUsage(session.user.id));
   return (
     <AppShell user={{ id: session.user.id, name: session.user.name, email: session.user.email }}>
       <div className="flex max-w-3xl flex-col gap-6">
