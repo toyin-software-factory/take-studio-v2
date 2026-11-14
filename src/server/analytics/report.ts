@@ -1,4 +1,6 @@
+import { listEvalRuns } from "@/db/data/ai-eval-runs";
 import type { Executor } from "@/db/types";
+import { type EvalRunRow, type StoredCase, storedCasesSchema } from "@/lib/ai-eval-record";
 import type { InsightsWindow } from "@/lib/analytics-events";
 import { type CutQuality, summariseCutQuality } from "@/lib/cut-quality";
 import {
@@ -101,4 +103,31 @@ export async function cutQuality(
     eventCount(db, "cut_missed", since),
   ]);
   return summariseCutQuality(snapshots, missed);
+}
+
+/** One saved `ai-eval` run for the page: scores, and the cases (unreadable ones become none). */
+export type CutTestRun = Omit<EvalRunRow, "summary"> & {
+  readonly ranAt: Date;
+  readonly summary: readonly StoredCase[];
+};
+
+/** The last five `ai-eval` runs, newest first (B2-T72). Scores, case ids and cut kinds only. */
+export async function cutTest(db: Executor, limit = 5): Promise<readonly CutTestRun[]> {
+  const rows = await listEvalRuns(db, limit);
+  return rows.map((r) => {
+    const parsed = storedCasesSchema.safeParse(r.summary);
+    return {
+      ranAt: r.ranAt,
+      model: r.model,
+      cases: r.cases,
+      overallPrecision: r.overallPrecision,
+      overallRecall: r.overallRecall,
+      mainPrecision: r.mainPrecision,
+      mainRecall: r.mainRecall,
+      holdoutPrecision: r.holdoutPrecision,
+      holdoutRecall: r.holdoutRecall,
+      wrongKeeps: r.wrongKeeps,
+      summary: parsed.success ? parsed.data : [],
+    };
+  });
 }

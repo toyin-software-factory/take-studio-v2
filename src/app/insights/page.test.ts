@@ -14,6 +14,7 @@ vi.mock("@/server/analytics/report", () => ({
   }),
   foundingMembers: vi.fn(),
   cutQuality: vi.fn(),
+  cutTest: vi.fn(),
 }));
 
 const page = async () => {
