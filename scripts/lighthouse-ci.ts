@@ -62,8 +62,6 @@ const SETTINGS = {
     uploadThroughputKbps: 675,
     cpuSlowdownMultiplier: 4,
   },
-  // The test session cookie must stay: Lighthouse would otherwise reset storage before the load.
-  disableStorageReset: true,
 };
 
 function median(values: readonly number[]): number {
@@ -83,6 +81,7 @@ function documentStatus(lhr: Lhr): number | null {
 function loadProblem(lhr: Lhr, page: Page): string | null {
   if (lhr.runtimeError) return `Lighthouse error ${lhr.runtimeError.code}`;
   const final = new URL(lhr.finalDisplayedUrl);
+  if (final.origin !== new URL(BASE).origin) return `redirected to ${final.origin}`;
   if (final.pathname !== page.path) return `redirected to ${final.pathname}`;
   const status = documentStatus(lhr);
   if (status !== null && status >= 400) return `HTTP ${status}`;
