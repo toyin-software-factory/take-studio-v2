@@ -93,7 +93,9 @@ test("records with a script, reviews, uploads and opens the take (AC-1, AC-3, AC
   await expectNoSeriousAxeIssues(page);
 
   await page.getByRole("button", { name: "Record" }).click();
-  await expect(page.getByRole("status")).toHaveText("Recording starts in 3");
+  await expect(page.getByRole("status").filter({ hasText: "Recording starts" })).toHaveText(
+    "Recording starts in 3",
+  );
   await expect(page.getByTestId("record-timer")).toBeVisible();
   await expect(page.getByTestId("script-scroll")).toBeVisible();
   await page.waitForTimeout(2000);
