@@ -9,7 +9,7 @@ Run on 2026-11-14 on branch `b2-t40-verify-analytics` (main at `9448e7d`), again
 | AC | Result | Coverage |
 | --- | --- | --- |
 | AC-1 server only, nothing added to pages | Pass | `analytics.test.ts` (rows come from `recordEvent` only); no script, pixel, cookie or storage key is added (`legal-facts.test.ts` "sets no cookie besides the session cookie"); the page is a server component that returns tables |
-| AC-2 closed list, strict schemas | Pass (spec drift, Notes 1) | `analytics-events.test.ts` ("is the closed list of eleven names", "rejects an extra key and free text where a code is expected"); `migration.test.ts` "closes the name list and sets the delete rules" |
+| AC-2 closed list, strict schemas | Pass | `analytics-events.test.ts` ("is the closed list of eleven names", "rejects an extra key and free text where a code is expected"); `migration.test.ts` "closes the name list and sets the delete rules" |
 | AC-3 no free text, blocklist | Pass | `analytics-events.test.ts` "allows only enums, numbers and booleans, and no blocklisted key" (walks every event, now including the nested `cuts_reviewed` counts and `cut_missed`); `analytics.test.ts` "refuses bad props without writing"; `signup-hook.test.ts` "records one signup with the creator ID and no personal field" |
 | AC-4 milestone events, once each | Pass | `analytics.test.ts` (signup once per creator, a milestone once per take and name, once per take needs a take ID); `uploads.test.ts` (`take_uploaded` once per take, a retry adds none); `record.test.ts` (`take_ready` with `aiEdit` from the persisted step row, a skipped retry still `done`, `ai_edit_used` once, nothing for a background change or a transcribe job); `migration.test.ts` partial unique indexes |
 | AC-5 downloads and transcripts | Pass | `takes/routes.test.ts` ("records take_downloaded for a download link only, every time"), `transcripts/routes.test.ts` ("records transcript_downloaded with the format, and nothing for a refused one"); `funnel.test.ts` counts distinct creators |
@@ -28,7 +28,7 @@ Run on 2026-11-14 on branch `b2-t40-verify-analytics` (main at `9448e7d`), again
 
 ## Notes
 
-1. **Spec drift:** AC-2 lists nine event names; the code has eleven (`cuts_reviewed` and `cut_missed` came with spec 0017). The code and the tests are right; the spec text is behind. No other behavior differs.
+1. **Spec drift fixed in this PR:** AC-2 listed nine event names while the code has eleven (`cuts_reviewed` and `cut_missed` came with spec 0017). AC-2 now lists all eleven with a pointer to spec 0017 (the lead approved the edit).
 2. **Prod `/insights` and headers: not checked here.** `INSIGHTS_VIEWER_USER_ID` is not ours to set or look up, so the page cannot be opened on prod. The viewer secret may not be set yet (C-35); record prod `/insights` as "pending Toyin's check". The `private, no-store` header read from the Worker is pending a test sign-in, with the other prod checks the lead will hand over.
 3. `/insights` is not in `PRIVATE_PATHS` for `robots.txt`; it is `noindex, nofollow` and not in the sitemap. AC-8 does not ask for more.
 4. **Sandbox limits.** Local `pnpm typecheck` runs out of memory and the Worker build crashes here, so CI is the proof for both. Browser checks ran on `next dev`, not a built Worker.
