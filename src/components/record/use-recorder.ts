@@ -151,6 +151,8 @@ export function useRecorder(limitSeconds: number | null = null) {
   /** Counts device changes, so only the newest answer is used. */
   const selection = useRef(0);
   const [deviceNote, setDeviceNote] = useState<string | null>(null);
+  /** True while a device change is in flight: the old stream may already be let go. */
+  const [switching, setSwitching] = useState(false);
 
   /**
    * Switch camera or microphone while the preview is on. A device that has gone away falls
@@ -178,26 +180,33 @@ export function useRecorder(limitSeconds: number | null = null) {
         return true;
       };
       setDeviceNote(null);
+      setSwitching(true);
       try {
-        settle(await openMedia(next.camera, next.mic));
-        return;
-      } catch {
-        if (!current()) return;
-      }
-      try {
-        live.current?.getTracks().forEach((track) => track.stop());
-        settle(await openMedia(next.camera, next.mic));
-        return;
-      } catch {
-        if (!current()) return;
-      }
-      try {
-        settle(await openMedia(previous.camera, previous.mic));
-        if (current()) setDeviceNote("That camera or microphone could not be turned on.");
-      } catch (error) {
-        if (!current()) return;
-        const name = error instanceof Error ? error.name : "";
-        dispatch({ type: "failed", failure: classifyMediaError(name) });
+        try {
+          settle(await openMedia(next.camera, next.mic));
+          return;
+        } catch {
+          if (!current()) return;
+        }
+        try {
+          live.current?.getTracks().forEach((track) => track.stop());
+          settle(await openMedia(next.camera, next.mic));
+          return;
+        } catch {
+          if (!current()) return;
+        }
+        try {
+          settle(await openMedia(previous.camera, previous.mic));
+          if (current()) setDeviceNote("That camera or microphone could not be turned on.");
+        } catch {
+          if (!current()) return;
+          setDeviceNote(
+            "Neither the new nor the previous camera or microphone could be turned on. Choose again.",
+          );
+        }
+      } finally {
+        // Only the newest change decides when switching is over.
+        if (mounted.current && selection.current === mine) setSwitching(false);
       }
     },
     [devices, cameraId, micId, commit],
@@ -219,10 +228,14 @@ export function useRecorder(limitSeconds: number | null = null) {
     return acquire(cameraId, micId);
   }, [acquire, cameraId, micId]);
 
-  const begin = useCallback(
-    () => dispatch({ type: "start", seconds: RECORDER.countdownSeconds }),
-    [],
-  );
+  const begin = useCallback(() => {
+    // Never start a countdown on a stream that was let go (a device change that failed).
+    if (!live.current?.getVideoTracks().some((track) => track.readyState === "live")) {
+      setDeviceNote("The camera is off. Choose a camera again.");
+      return;
+    }
+    dispatch({ type: "start", seconds: RECORDER.countdownSeconds });
+  }, []);
 
   const stop = useCallback(() => {
     stoppedByPerson.current = true;
@@ -377,6 +390,7 @@ export function useRecorder(limitSeconds: number | null = null) {
     stop,
     devices,
     deviceNote,
+    switching,
     cameraId,
     micId,
     chooseCamera: (id: string) => void choose(id, micId),

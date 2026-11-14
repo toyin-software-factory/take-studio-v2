@@ -30,6 +30,7 @@ export function RecordStage({
   onStop,
   devices,
   deviceNote,
+  switching,
   cameraId,
   micId,
   onCamera,
@@ -45,6 +46,8 @@ export function RecordStage({
   readonly onStop: () => void;
   readonly devices: DeviceChoices;
   readonly deviceNote: string | null;
+  /** A camera or microphone change is in flight: Record waits for it. */
+  readonly switching: boolean;
   readonly cameraId: string | null;
   readonly micId: string | null;
   readonly onCamera: (id: string) => void;
@@ -131,7 +134,7 @@ export function RecordStage({
             <Icon icon={Square} /> Stop
           </Button>
         ) : (
-          <Button size="lg" disabled={countdown || limitMs <= 0} onClick={onRecord}>
+          <Button size="lg" disabled={countdown || switching || limitMs <= 0} onClick={onRecord}>
             <Icon icon={Circle} /> {countdown ? "Starting…" : "Record"}
           </Button>
         )}

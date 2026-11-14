@@ -104,6 +104,7 @@ export function RecordView({
         onStop={recorder.stop}
         devices={recorder.devices}
         deviceNote={recorder.deviceNote}
+        switching={recorder.switching}
         cameraId={recorder.cameraId}
         micId={recorder.micId}
         onCamera={recorder.chooseCamera}
