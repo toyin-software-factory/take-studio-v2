@@ -24,7 +24,7 @@ type Audio = { readonly ctx: AudioContext; readonly url: string };
 /** Take the microphone only (never the video) and stream it as 16 kHz frames into `conn`. */
 async function pipeMicrophone(
   stream: MediaStream,
-  conn: RealtimeConnection,
+  send: (frame: ArrayBuffer) => void,
 ): Promise<Audio | null> {
   const tracks = stream.getAudioTracks();
   if (tracks.length === 0) return null;
@@ -33,7 +33,7 @@ async function pipeMicrophone(
   try {
     await ctx.audioWorklet.addModule(url);
     const node = new AudioWorkletNode(ctx, PCM_WORKLET_NAME, { numberOfOutputs: 0 });
-    node.port.onmessage = (event: MessageEvent<ArrayBuffer>) => conn.sendAudio(event.data);
+    node.port.onmessage = (event: MessageEvent<ArrayBuffer>) => send(event.data);
     ctx.createMediaStreamSource(new MediaStream(tracks)).connect(node);
     return { ctx, url };
   } catch (error) {
@@ -42,6 +42,9 @@ async function pipeMicrophone(
     throw error;
   }
 }
+
+/** Frames kept while the socket is still opening (about 100 ms each), oldest dropped first. */
+const STARTUP_QUEUE_MAX = 100;
 
 function releaseAudio(audio: Audio): void {
   URL.revokeObjectURL(audio.url);
@@ -59,7 +62,7 @@ export function useVoiceFollow(args: {
   readonly stream: MediaStream | null;
   readonly enabled: boolean;
   readonly recording: boolean;
-  /** The prompter's current position in words, read once when following starts (0 for a new take). */
+  /** The prompter's current position in words, read when following starts and again when a heard phrase matches nothing near the last match (0 for a new take). */
   readonly startWord: () => number;
 }): VoiceFollow {
   const { script, stream, enabled, recording } = args;
@@ -80,6 +83,17 @@ export function useVoiceFollow(args: {
     let cancelled = false;
     let conn: RealtimeConnection | null = null;
     let audio: Audio | null = null;
+    let open = false;
+    const queued: ArrayBuffer[] = [];
+    // Frames made before the socket opens wait here (bounded) so the opening words are not lost.
+    const send = (frame: ArrayBuffer) => {
+      if (open && conn) {
+        conn.sendAudio(frame);
+        return;
+      }
+      queued.push(frame);
+      if (queued.length > STARTUP_QUEUE_MAX) queued.shift();
+    };
     // Start matching where the prompter already is, so following turned on mid script can match
     // the words ahead instead of searching from the top.
     last.current = Math.max(-1, Math.floor(startWord.current()) - 1);
@@ -96,11 +110,22 @@ export function useVoiceFollow(args: {
       conn = connectRealtime(
         token.token,
         {
-          onOpen: () => dispatch({ type: "open", now: Date.now() }),
+          onOpen: () => {
+            open = true;
+            for (const frame of queued.splice(0)) conn?.sendAudio(frame);
+            dispatch({ type: "open", now: Date.now() });
+          },
           onClose: () => dispatch({ type: "closed" }),
           onWords: (words) => {
-            const next = followScript(scriptWords.current, words, last.current);
-            if (!next.advanced) return;
+            let next = followScript(scriptWords.current, words, last.current);
+            if (!next.advanced) {
+              // Timed scrolling may have carried the script past the match window while the voice
+              // was lost: try again from the word the prompter now shows (forward only).
+              const shown = Math.floor(startWord.current()) - 1;
+              if (shown <= last.current) return;
+              next = followScript(scriptWords.current, words, shown);
+              if (!next.advanced) return;
+            }
             last.current = next.matchIndex;
             dispatch({ type: "match", index: next.matchIndex, now: Date.now() });
           },
@@ -112,7 +137,7 @@ export function useVoiceFollow(args: {
         },
       );
       try {
-        const piped = await pipeMicrophone(stream, conn);
+        const piped = await pipeMicrophone(stream, send);
         if (piped && cancelled) {
           // Follow was turned off while the worklet loaded: cleanup has run, so release now.
           releaseAudio(piped);
