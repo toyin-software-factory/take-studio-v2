@@ -115,7 +115,9 @@ export async function callTool(
     return refused(
       400,
       "confirmation_required",
-      "Nothing was deleted. Ask the creator whether to delete this take, and only if they say yes call this again with confirm set to true.",
+      tool.name === "abort_upload"
+        ? "Nothing was cancelled. Ask the creator whether to cancel this upload, and only if they say yes call this again with confirm set to true."
+        : "Nothing was deleted. Ask the creator whether to delete this take, and only if they say yes call this again with confirm set to true.",
       takeId,
     );
   }

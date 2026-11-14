@@ -38,6 +38,8 @@ export type McpToolSource = {
     readonly destructiveHint: boolean;
   };
   readonly route: { readonly method: string; readonly path: string };
+  /** The tool does nothing until the input says `confirm: true`. */
+  readonly confirm: boolean;
 };
 
 export type McpToolKind = "read only" | "changes things" | "destructive";
@@ -49,6 +51,8 @@ export type McpToolDoc = {
   readonly summary: string;
   readonly kind: McpToolKind;
   readonly route: string;
+  /** The assistant must ask you first (`confirm: true`). */
+  readonly asksFirst: boolean;
 };
 
 /** The first sentence, so the page stays short; the full text is what the assistant reads. */
@@ -69,6 +73,7 @@ export function describeTools(tools: readonly McpToolSource[]): readonly McpTool
     summary: firstSentence(tool.description),
     kind: kindOf(tool),
     route: `${tool.route.method} ${tool.route.path}`,
+    asksFirst: tool.confirm,
   }));
 }
 

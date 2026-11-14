@@ -4,6 +4,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   countOauthRequest,
   deleteExpiredOauthRows,
+  deleteUnusedOauthClients,
+  disconnectConsent,
   disconnectApp,
   getConsentClient,
   listConnectedApps,
@@ -829,6 +831,43 @@ describe("tokens as identity (AC-14)", () => {
       .from(oauthAccessToken)
       .where(eq(oauthAccessToken.userId, who.id));
     expect(left.map((row) => row.token)).toEqual([await hashOauthToken(fresh.access)]);
+  });
+
+  it("cleanup deletes unused clients over 30 days old and keeps used or newer ones (B2-T104)", async () => {
+    const who = await signIn("cleanup-clients@example.test");
+    const used = await connect(who);
+    const unusedOld = ((await (await register()).json()) as Registered).client_id;
+    const unusedNew = ((await (await register()).json()) as Registered).client_id;
+    const now = new Date();
+    const aged = (days: number) => new Date(now.getTime() - days * 86_400_000);
+    await db
+      .update(oauthClient)
+      .set({ createdAt: aged(31) })
+      .where(eq(oauthClient.clientId, unusedOld));
+    await db
+      .update(oauthClient)
+      .set({ createdAt: aged(29) })
+      .where(eq(oauthClient.clientId, unusedNew));
+    // A grant that is old keeps its client: it has a consent row and tokens.
+    await db
+      .update(oauthClient)
+      .set({ createdAt: aged(90) })
+      .where(eq(oauthClient.clientId, used.clientId));
+    expect(await deleteUnusedOauthClients(db, now)).toBeGreaterThanOrEqual(1);
+    const ids = async () =>
+      (await db.select({ id: oauthClient.clientId }).from(oauthClient)).map((r) => r.id);
+    const left = await ids();
+    expect(left).not.toContain(unusedOld);
+    expect(left).toContain(unusedNew);
+    expect(left).toContain(used.clientId);
+    // Once the consent and tokens are gone too, the old client is unused and is removed.
+    await disconnectConsent(
+      db,
+      who.id,
+      (await db.select().from(oauthConsent).where(eq(oauthConsent.clientId, used.clientId)))[0]!.id,
+    );
+    expect(await deleteUnusedOauthClients(db, now)).toBeGreaterThanOrEqual(1);
+    expect(await ids()).not.toContain(used.clientId);
   });
 
   it("cleanup deletes a token revoked over a day ago, keeps one revoked an hour ago, and old rate windows", async () => {

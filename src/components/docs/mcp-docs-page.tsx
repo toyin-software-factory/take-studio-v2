@@ -143,6 +143,9 @@ export function McpDocsPage({
               </span>
               <span className="flex flex-col gap-1">
                 <span>{tool.summary}</span>
+                {tool.asksFirst ? (
+                  <span className="text-sm">The assistant must ask you first.</span>
+                ) : null}
                 <span className="text-sm">
                   Uses <code className="font-mono break-all">{tool.route}</code>
                 </span>
