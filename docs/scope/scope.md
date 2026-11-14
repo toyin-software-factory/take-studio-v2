@@ -42,6 +42,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 18 | Email sign in and take ready email | Slice 1 | done |
 | 19 | Cut quality measurement | Launch | done |
 | 20 | Record with script | Slice 8 | in-progress |
+| 21 | Style toolkit | Slice 8 | planned |
 
 ## Foundations
 
@@ -338,6 +339,21 @@ Record a take inside Take Studio (phone or laptop camera and mic) while a telepr
 - [ ] Verify it: `/check verify Record with script`
 - [ ] Test it: `/test Record with script`
 Spec [0021](../specs/0021-record-with-script/index.md)
+
+### 21. Style toolkit · planned
+Ready made named styles for the finished video (zoom and push at cuts, sound fades, a light colour look). The creator picks one on the take page and presses Render; Natural, today's look, stays the default. Toyin's plan C-47, step 1; the later reference clip recipe fills the same format. Caption styles, a music bed and pace are follow ups.
+**Done when:** a creator can pick Natural, Calm, Punchy or Warm on the take page, render, and get that look, with Natural identical to today and no style adding a second render pass.
+- [x] Design it (spec): `/architect Style toolkit`
+- [ ] Build it: `/develop Style toolkit`
+   - [ ] Registry, storage and filter script thread (task 1)
+   - [ ] Calm through the re render route and job (task 2)
+   - [ ] Style picker on the take page (task 3)
+   - [ ] Punchy, Warm and the colour look, render time check (task 4)
+   - [ ] Look preview and end to end check (task 5)
+   - [ ] API and MCP parity, legal drift check (task 6)
+- [ ] Verify it: `/check verify Style toolkit`
+- [ ] Test it: `/test Style toolkit`
+Spec [0022](../specs/0022-style-toolkit/index.md)
 
 ## Deferred
 Out of scope for this build pass, kept so the plan stays honest.
