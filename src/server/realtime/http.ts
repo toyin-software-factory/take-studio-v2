@@ -1,3 +1,4 @@
+import { guard } from "../api-auth";
 import { reserveMint } from "@/db/data/realtime-mints";
 import type { Db } from "@/db/types";
 import {
@@ -23,7 +24,7 @@ export type Creator = { readonly db: Db; readonly creatorId: string };
 export type RealtimeHttpDeps = {
   readonly getCreator: (request: Request) => Promise<Creator | null>;
   /** The only origin allowed to mint (the app's own). */
-  readonly allowedOrigin: string;
+  readonly allowedOrigin?: string;
   /** The separate capped Deepgram key, or null when it is not set. Never the transcription key. */
   readonly deepgramKey: () => string | null;
   /** USAGE_HASH_SECRET, or null when it is not set (the usage check is then skipped). */
@@ -116,10 +117,8 @@ async function usageRefusal(creator: Creator, deps: RealtimeHttpDeps, now: Date)
 }
 
 export async function handleToken(request: Request, deps: RealtimeHttpDeps): Promise<Response> {
-  if (request.headers.get("origin") !== deps.allowedOrigin) return refuse("forbidden");
-  if (request.headers.has("authorization")) return refuse("session_required");
-  const creator = await deps.getCreator(request);
-  if (!creator) return refuse("unauthorized");
+  const creator = await guard(request, deps, { checkOrigin: true, sessionOnly: true });
+  if (creator instanceof Response) return creator;
   const key = deps.deepgramKey();
   if (!key) return refuse("unavailable");
   const now = deps.now?.() ?? new Date();
