@@ -15,15 +15,14 @@ import {
 const API_DIR = join(process.cwd(), "src", "app", "api");
 
 /**
- * Exclusions whose route file has not landed on this branch yet: `keys` (step 2) and
- * `openapi.json` (step 6). Delete an entry here when its route exists; the staleness check below
+ * Exclusions whose route file has not landed on this branch yet: `keys` (step 2).
+ * Delete an entry here when its route exists; the staleness check below
  * then covers it.
  */
 const NOT_BUILT_YET: ReadonlySet<string> = new Set([
   "GET /api/keys",
   "POST /api/keys",
   "DELETE /api/keys/{id}",
-  "GET /api/openapi.json",
 ]);
 
 function routeFiles(dir: string): readonly string[] {
