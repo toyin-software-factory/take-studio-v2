@@ -84,7 +84,7 @@ const TEXT: Readonly<Record<McpToolName, Text>> = {
   start_upload: {
     title: "Start an upload",
     description:
-      "Create a take and start an upload for a video file. The answer has the take ID, the part size and the part count (no links yet). If you can run commands, call get_upload_part_links before sending any parts, send each part with an HTTP PUT to its link, keep each ETag response header, then call complete_upload. If you cannot send files (a plain chat), tell the creator to open their library in the web app and drop the file there, then continue with list_takes.",
+      "Create a take and start an upload for a video file. The answer has the take ID, the part size, the part count, presigned links for the first parts (15 minutes) and plain steps. If you can run commands, send each part with an HTTP PUT to its link, keep each ETag response header, then call complete_upload. Call get_upload_part_links for more links. If you cannot send files (a plain chat), tell the creator to open the returned library link and drop the file in the web app, then continue with list_takes.",
     annotations: CHANGE,
   },
   get_upload_part_links: {

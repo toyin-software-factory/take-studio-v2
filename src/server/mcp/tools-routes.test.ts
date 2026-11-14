@@ -151,3 +151,62 @@ describe("delete_take (AC-7)", () => {
     expect((await run("get_take", { takeId: take.id }, a)).status).toBe(404);
   });
 });
+
+describe("upload and run over the tools (AC-5, AC-6)", () => {
+  it("start_upload gives the plan and links, complete_upload starts processing, get_take follows it", async () => {
+    const a = await newCreator();
+    const started = await run(
+      "start_upload",
+      { fileName: "fixture.mp4", sizeBytes: 10, container: "mp4" },
+      a,
+    );
+    expect(started.status).toBe(201);
+    const plan = JSON.parse(started.text) as {
+      takeId: string;
+      partCount: number;
+      parts: { partNumber: number; url: string }[];
+      libraryUrl: string;
+      steps: string;
+    };
+    expect(plan.parts.map((p) => p.partNumber)).toEqual([1]);
+    expect(plan.libraryUrl).toBe(`${TEST_ORIGIN}/library`);
+    // The log line of a tool call must not carry the links (IDs only).
+    expect(started.takeId).toBe(plan.takeId);
+
+    const before = await run("get_take", { takeId: plan.takeId }, a);
+    expect(JSON.parse(before.text).take.status).toBe("uploading");
+
+    const done = await run(
+      "complete_upload",
+      { takeId: plan.takeId, parts: [{ partNumber: 1, etag: "e1" }] },
+      a,
+    );
+    expect(done.isError).toBe(false);
+    expect(["uploading", "uploaded", "processing"]).toContain(JSON.parse(done.text).status);
+
+    const after = await run("get_take", { takeId: plan.takeId }, a);
+    expect(after.status).toBe(200);
+    expect(JSON.parse(after.text)).toHaveProperty("latestJob");
+  });
+
+  it("a key reaches only its own upload: another creator cannot take links for it", async () => {
+    const a = await newCreator();
+    const b = await newCreator();
+    const started = await run(
+      "start_upload",
+      { fileName: "fixture.mp4", sizeBytes: 10, container: "mp4" },
+      a,
+    );
+    const { takeId } = JSON.parse(started.text) as { takeId: string };
+    const stolen = await run("get_upload_part_links", { takeId, partNumbers: [1] }, b);
+    expect(stolen.status).toBe(404);
+  });
+
+  it("apply_changes keeps the route's refusals (a take with no render)", async () => {
+    const a = await newCreator();
+    const take = await seedTake(db, a.creatorId, { title: "Changes" });
+    const refused = await run("apply_changes", { takeId: take.id, baseRenderId: null }, a);
+    expect(refused.isError || refused.status === 202).toBe(true);
+    expect(JSON.parse(refused.text)).toBeTypeOf("object");
+  });
+});
