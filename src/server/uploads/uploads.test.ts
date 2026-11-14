@@ -1,5 +1,5 @@
 import { and, eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { analyticsEvent, storageDeletion, take } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
@@ -175,6 +175,25 @@ describe("POST /api/uploads (AC-3, AC-12)", () => {
     expect(bad.status).toBe(422);
     const rows = await db.select().from(take).where(eq(take.creatorId, creator.id));
     expect(rows).toHaveLength(1);
+  });
+
+  it("never writes the script to a log, on success or refusal (spec 0021 AC-8)", async () => {
+    const spies = (["log", "info", "warn", "error", "debug"] as const).map((m) =>
+      vi.spyOn(console, m).mockImplementation(() => undefined),
+    );
+    try {
+      const { r2 } = fakeR2();
+      const creator = await createCreator(db);
+      const deps = httpDeps(creator.id, r2);
+      const word = "Quince synthetic script words";
+      await handleCreate(request("POST", { ...file, script: word }), deps);
+      await handleCreate(request("POST", { ...file, script: `${word} `.repeat(2000) }), deps);
+      await handleCreate(request("POST", { ...file, script: word, source: "camera" }), deps);
+      const logged = JSON.stringify(spies.flatMap((spy) => spy.mock.calls));
+      expect(logged).not.toContain("Quince");
+    } finally {
+      spies.forEach((spy) => spy.mockRestore());
+    }
   });
 
   it("allows 10 uploads per creator per hour, then answers 429; older takes don't count", async () => {

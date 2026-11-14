@@ -52,6 +52,7 @@ export const BLOCKED_PROP_KEYS = [
   "title",
   "text",
   "transcript",
+  "script",
   "url",
   "ip",
   "file",

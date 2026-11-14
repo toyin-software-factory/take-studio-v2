@@ -27,3 +27,5 @@
 - `tests/missed-button.spec.ts` (spec 0017 AC-3): stubs `POST /api/takes/*/missed` over a seeded ready take; keyboard press and the polite note, a failed answer, 44 px height, focus ring, axe, and a Pixel 7 run with no sideways scroll.
 
 _Drafted by /sync from a catch up over the merged work, worth a quick human pass._
+
+- `record-limits.spec.ts` (spec 0021 AC-6, AC-7): the recorder's limit comes from the monthly allowance set with `support/usage.ts` `setUsage` (a short limit instead of the 10 minute cap, which a unit test covers), so the timer, the one minute warning, the automatic stop, the used up state, a refused upload (403) that keeps the take, and the leave confirmation (link dialog, `beforeunload`) all wait on page state, never fixed waits. `seedTakes` in `support/takes.ts` takes an optional `script`.

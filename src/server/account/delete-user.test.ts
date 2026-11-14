@@ -135,6 +135,19 @@ describe("self serve Delete account (spec 0015 AC-13)", () => {
     expect((await deleteWith(auth, bystander)).status).toBe(200);
   });
 
+  it("deleting the account removes the script of every take (spec 0021 AC-8)", async () => {
+    const { auth, sent } = setup();
+    const email = "scripted@example.test";
+    const cookie = await signInByLink(auth, sent, email);
+    const id = await userIdOf(email);
+    const script = "Marble synthetic script text for the account delete check";
+    await seedTake(db, id, { script });
+
+    expect((await deleteWith(auth, cookie)).status).toBe(200);
+
+    expect(await db.select().from(take).where(eq(take.script, script))).toEqual([]);
+  });
+
   it("a stale session is refused with SESSION_EXPIRED and nothing is deleted, then a fresh link works", async () => {
     const { auth, sent } = setup();
     const email = "stale@example.test";

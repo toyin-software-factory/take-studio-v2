@@ -5,6 +5,7 @@ import type { TakeData } from "@/lib/take-api";
 import { expiryNote, formatClock, shortDate } from "@/lib/take-display";
 import { EmailSwitch } from "./email-switch";
 import { StatusBadge } from "./status-badge";
+import { TakeScript } from "./take-script";
 
 /**
  * The Details tab (design.md §4b): what we know about the file (title, upload date, length,
@@ -48,6 +49,7 @@ export function TakeDetails({
           </div>
         ))}
       </dl>
+      <TakeScript script={take.script ?? null} />
       <EmailSwitch initial={takeEmails} onSaved={onEmailsSaved} />
       <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
         <div className="min-w-0 text-small">

@@ -25,6 +25,8 @@ export type TakeSeed = {
   readonly steps?: readonly StepSeed[];
   /** A succeeded latest render removing these ranges. */
   readonly removedRanges?: readonly { readonly startMs: number; readonly endMs: number }[];
+  /** The creator's script (spec 0021); null or absent for none. Synthetic text only. */
+  readonly script?: string | null;
   /** Minutes ago the take was created, for ordering. */
   readonly minutesAgo?: number;
 };
@@ -53,10 +55,10 @@ export async function seedTakes(creatorId: string, seeds: readonly TakeSeed[]): 
           : new Date(now + (seed.expiresInDays ?? 30) * 24 * 60 * 60 * 1000);
       await sql`insert into take (id, creator_id, title, status, original_key, original_bytes,
                   container, duration_ms, width, height, video_expires_at, failure_code,
-                  created_at, updated_at)
+                  script, created_at, updated_at)
                 values (${id}, ${creatorId}, ${seed.title}, ${seed.status},
                   ${`originals/${id}/source.mp4`}, 30754, 'mp4', ${seed.durationMs ?? null},
-                  320, 180, ${expires}, ${seed.failureCode ?? null}, ${created}, ${created})`;
+                  320, 180, ${expires}, ${seed.failureCode ?? null}, ${seed.script ?? null}, ${created}, ${created})`;
       if (!seed.steps) continue;
       const jobId = randomUUID();
       await sql`insert into processing_job (id, take_id, kind, status, seconds_charged, failure_code, created_at, updated_at)
