@@ -103,7 +103,13 @@ describe("job events (spec 0016, AC-4, AC-6)", () => {
 
   it("refuses a once per take event with no take ID", async () => {
     const c = await createCreator(db);
-    expect(await recordJobEvent(db, { name: "take_ready", creatorId: c.id } as never)).toBe(false);
+    expect(
+      await recordJobEvent(db, {
+        name: "take_ready",
+        creatorId: c.id,
+        props: { aiEdit: "none", cuts: 0 },
+      } as never),
+    ).toBe(false);
   });
 
   it("never throws on a failed insert", async () => {

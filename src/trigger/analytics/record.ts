@@ -28,6 +28,7 @@ export async function recordJobEvent(db: Executor, event: AnalyticsEventInput): 
       creatorId: event.creatorId,
       takeId: event.takeId ?? null,
       props,
+      ...(event.occurredAt ? { occurredAt: event.occurredAt } : {}),
     });
   } catch {
     logger.error("analytics event failed", { name: event.name, takeId: event.takeId ?? null });

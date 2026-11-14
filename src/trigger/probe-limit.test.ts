@@ -1,11 +1,21 @@
 import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { appSetting, processingJob, take, usageMonth } from "@/db/schema";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { analyticsEvent, appSetting, processingJob, take, usageMonth } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { chargedMonth } from "@/lib/billing";
 import { usageAccountHash } from "@/lib/usage-hash";
 import { startAndDispatch } from "./probe";
+
+// The trigger is replaced so no real run starts; `failTrigger` makes it throw (dispatch fails).
+const trigger = vi.hoisted(() => ({ fail: false }));
+vi.mock("@/lib/trigger-runs", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/trigger-runs")>()),
+  triggerForJob: () => async () => {
+    if (trigger.fail) throw new Error("trigger down");
+    return { id: "run_test" };
+  },
+}));
 
 /** Spec 0014 AC-6, AC-13: the probe ends a refused first charge as failed `limit_exceeded`. */
 const SECRET = "x".repeat(40);
@@ -53,5 +63,18 @@ describe("probe ending at the limit", () => {
     ).toHaveLength(0);
     const [m] = await db.select().from(usageMonth).where(eq(usageMonth.accountHash, x.hash));
     expect(m?.secondsUsed).toBe(80);
+  });
+
+  it("records take_failed trigger_failed when the dispatch fails (CodeRabbit, #221)", async () => {
+    trigger.fail = true;
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id, { durationMs: 5_000, status: "uploaded" });
+    const out = await startAndDispatch(db, t.id, creator.id, SECRET);
+    expect(out).toMatchObject({ outcome: "started", dispatched: false });
+    trigger.fail = false;
+    const events = await db.select().from(analyticsEvent).where(eq(analyticsEvent.takeId, t.id));
+    expect(events.map((e) => [e.name, e.props])).toEqual([
+      ["take_failed", { code: "trigger_failed" }],
+    ]);
   });
 });
