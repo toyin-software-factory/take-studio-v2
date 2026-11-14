@@ -69,7 +69,7 @@ export const ACCOUNT_DELETE_EMAIL_DAYS = 30;
 
 /** ISO dates, bumped by hand whenever the page text changes (the text hash test forces it). */
 export const LEGAL_VERSION = {
-  privacy: "2026-11-15",
+  privacy: "2026-11-16",
   terms: "2026-11-15",
 } as const;
 
@@ -258,6 +258,12 @@ export const COLLECTED: readonly Collected[] = [
     what: `Product events: a count of what you do (${ANALYTICS_EVENT_NAMES.join(", ")}). They hold no video, words, titles or email, only small codes and numbers`,
     why: "To learn how Take Studio is used and where it fails. We use our own database, no cookie and no third party for this.",
     kept: `While the account exists. Download, change, failure and limit events are removed after ${ANALYTICS_RETENTION_MONTHS} months.`,
+    deletedWith: "Deleting the account.",
+  },
+  {
+    what: "Cut counts: when you download a video, how many cuts of each kind were kept, undone or added (numbers only), and a mark with a time when you tell us a cut was missed (cuts_reviewed, cut_missed)",
+    why: "To measure how well automatic cuts work. They hold no words, video or reason for a cut.",
+    kept: `While the account exists. Removed after ${ANALYTICS_RETENTION_MONTHS} months.`,
     deletedWith: "Deleting the account.",
   },
   {

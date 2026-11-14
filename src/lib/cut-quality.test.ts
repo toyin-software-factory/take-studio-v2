@@ -4,6 +4,10 @@ import { CASE_ENTRIES } from "../../tests/cut-quality/cases";
 import { aiEditAnswerSchema, validateAiEdit } from "./ai-edit";
 import {
   CUT_QUALITY_MIN_TAKES,
+  countCuts,
+  cutRate,
+  summariseCutQuality,
+  type CutRow,
   combineScores,
   cutCaseSchema,
   scoreCuts,
@@ -196,5 +200,45 @@ describe("the written cut quality test set", () => {
 
   it("the minimum takes constant is 5", () => {
     expect(CUT_QUALITY_MIN_TAKES).toBe(5);
+  });
+});
+
+describe("countCuts, summariseCutQuality and cutRate (spec 0017, AC-5, AC-6)", () => {
+  const kept = "Kept: deliberate pause";
+  const row = (o: Partial<CutRow>): CutRow => ({
+    kind: "filler",
+    proposedBy: "ai",
+    reason: null,
+    applied: true,
+    creatorChangedAt: null,
+    ...o,
+  });
+
+  it("counts undone, restored kept pauses and creator added cuts", () => {
+    const c = countCuts(
+      [
+        row({}),
+        row({ applied: false, creatorChangedAt: new Date() }),
+        row({ kind: "pause", reason: kept, creatorChangedAt: new Date() }),
+        row({ kind: "pause", reason: kept, applied: false }),
+        row({ kind: "manual", proposedBy: "creator" }),
+      ],
+      kept,
+    );
+    expect(c.ai.filler).toMatchObject({ proposed: 2, undone: 1 });
+    expect(c.ai.pause).toMatchObject({ proposed: 2, restored: 1, kept: 2 });
+    expect(c.creator.manual.added).toBe(1);
+  });
+
+  it("sums one snapshot per take and hides rates below the minimum", () => {
+    const one = countCuts([row({}), row({ applied: false, creatorChangedAt: new Date() })], kept);
+    const q = summariseCutQuality([one, one], 3);
+    expect(q.reviewedTakes).toBe(2);
+    expect(q.missed).toBe(3);
+    expect(q.rows).toHaveLength(1);
+    expect(q.rows[0]?.tally).toMatchObject({ proposed: 4, undone: 2 });
+    expect(cutRate(2, 4, 2)).toBeNull();
+    expect(cutRate(2, 4, CUT_QUALITY_MIN_TAKES)).toBe(50);
+    expect(cutRate(0, 0, CUT_QUALITY_MIN_TAKES)).toBeNull();
   });
 });

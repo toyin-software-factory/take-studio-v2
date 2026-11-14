@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { MEDIA_KINDS, type MediaKind, chooseMedia, downloadFileName } from "@/lib/take-media";
 import { MEDIA_LINKS } from "@/lib/uploads";
+import { recordCutsReviewed } from "../analytics/cuts-reviewed";
 import { recordEvent } from "../analytics/record";
 import { getForCreator } from "../takes";
 import { type Creator, errorResponse, guard, json } from "../takes/http";
@@ -75,6 +76,8 @@ export async function handleMedia(
       takeId: take.id,
       props: { kind: "video" },
     });
+    // Spec 0017 AC-1: the same moment, a counts only snapshot of kept, undone and added cuts.
+    await recordCutsReviewed(creator.db, creator.creatorId, take.id);
   }
   return json({
     url,

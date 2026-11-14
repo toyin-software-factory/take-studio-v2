@@ -12,11 +12,19 @@ import {
 /** True when a schema field can hold free text (a string that is not an enum or literal). */
 function allowsFreeText(field: z.ZodType): boolean {
   const type = (field as { _zod: { def: { type: string } } })._zod.def.type;
+  if (type === "object") {
+    // A nested object (the cut counts, spec 0017): every key and every leaf is checked too.
+    const shape = (field as unknown as { shape: Record<string, z.ZodType> }).shape;
+    return Object.entries(shape).some(
+      ([key, child]) =>
+        (BLOCKED_PROP_KEYS as readonly string[]).includes(key) || allowsFreeText(child),
+    );
+  }
   return !["enum", "literal", "number", "boolean"].includes(type);
 }
 
 describe("analytics events (spec 0016, AC-2, AC-3)", () => {
-  it("is the closed list of nine names", () => {
+  it("is the closed list of eleven names", () => {
     expect([...ANALYTICS_EVENT_NAMES]).toEqual([
       "signup",
       "take_uploaded",
@@ -26,6 +34,8 @@ describe("analytics events (spec 0016, AC-2, AC-3)", () => {
       "take_downloaded",
       "transcript_downloaded",
       "take_failed",
+      "cuts_reviewed",
+      "cut_missed",
       "limit_hit",
     ]);
   });

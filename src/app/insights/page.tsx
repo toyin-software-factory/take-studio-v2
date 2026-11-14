@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { AppShell } from "@/components/shell/app-shell";
+import { CutQualityTable } from "@/components/insights/cut-quality-table";
 import { FunnelTable, WindowLinks } from "@/components/insights/funnel-table";
 import { insightsWindowSchema } from "@/lib/analytics-events";
 import { isInsightsViewer } from "@/lib/env";
-import { foundingMembers, funnel } from "@/server/analytics/report";
+import { cutQuality, foundingMembers, funnel } from "@/server/analytics/report";
 import { getDb, getSession } from "@/server/request";
 
 export const dynamic = "force-dynamic";
@@ -27,7 +28,11 @@ export default async function InsightsPage({
   if (!isInsightsViewer(session?.user.id)) notFound();
   const window = insightsWindowSchema.parse((await searchParams).window);
   const db = await getDb();
-  const [counts, founding] = await Promise.all([funnel(db, window), foundingMembers(db)]);
+  const [counts, founding, quality] = await Promise.all([
+    funnel(db, window),
+    foundingMembers(db),
+    cutQuality(db, window),
+  ]);
 
   return (
     <AppShell user={{ id: session!.user.id, name: session!.user.name, email: session!.user.email }}>
@@ -35,6 +40,7 @@ export default async function InsightsPage({
         <h1 className="text-h2">Insights</h1>
         <WindowLinks current={window} />
         <FunnelTable funnel={counts} founding={founding} />
+        <CutQualityTable quality={quality} />
         <p className="text-sm text-muted-foreground">
           Counts come from recorded events and can miss a few.
         </p>
