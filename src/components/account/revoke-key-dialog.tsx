@@ -39,6 +39,11 @@ export function RevokeKeyDialog({
   const alertRef = useRef<HTMLParagraphElement>(null);
   const revoked = useRef(false);
 
+  // A new opening starts fresh; the flag is left alone while closing, so the close callback sees it.
+  useEffect(() => {
+    if (open) revoked.current = false;
+  }, [open]);
+
   useEffect(() => {
     if (error) alertRef.current?.focus();
   }, [error]);

@@ -35,6 +35,8 @@ export type ApiKeysState = {
   readonly keys: readonly ApiKeyView[];
   /** The raw key of the key just made: component state only, cleared by `dismiss`. */
   readonly rawKey: string | null;
+  /** The ID of that key, so the panel names the right one and revoking it clears the panel. */
+  readonly madeId: string | null;
   readonly pending: boolean;
   readonly nameError: string | null;
   readonly createError: string | null;
@@ -51,7 +53,8 @@ export type ApiKeysState = {
  */
 export function useApiKeys(initial: readonly ApiKeyView[]): ApiKeysState {
   const [keys, setKeys] = useState(initial);
-  const [rawKey, setRawKey] = useState<string | null>(null);
+  const [made, setMade] = useState<{ readonly id: string; readonly key: string } | null>(null);
+  const rawKey = made?.key ?? null;
   const [pending, setPending] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
@@ -77,7 +80,7 @@ export function useApiKeys(initial: readonly ApiKeyView[]): ApiKeysState {
           return false;
         }
         const { key, ...view } = parsed.data;
-        setRawKey(key);
+        setMade({ id: view.id, key });
         setKeys((current) => withNewKey(current, { ...view, lastUsedAt: null }));
         return true;
       } finally {
@@ -92,14 +95,26 @@ export function useApiKeys(initial: readonly ApiKeyView[]): ApiKeysState {
     const { status } = await call(`/api/keys/${encodeURIComponent(id)}`, "DELETE");
     if (!revokeDone(status)) return false;
     setKeys((current) => current.filter((key) => key.id !== id));
+    setMade((current) => (current?.id === id ? null : current));
     return true;
   }, []);
 
-  const dismiss = useCallback(() => setRawKey(null), []);
+  const dismiss = useCallback(() => setMade(null), []);
   const clearErrors = useCallback(() => {
     setNameError(null);
     setCreateError(null);
   }, []);
 
-  return { keys, rawKey, pending, nameError, createError, create, dismiss, revoke, clearErrors };
+  return {
+    keys,
+    rawKey,
+    madeId: made?.id ?? null,
+    pending,
+    nameError,
+    createError,
+    create,
+    dismiss,
+    revoke,
+    clearErrors,
+  };
 }

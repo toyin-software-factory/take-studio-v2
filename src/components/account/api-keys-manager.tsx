@@ -20,7 +20,7 @@ export function ApiKeysManager({ initial }: { readonly initial: readonly ApiKeyV
   const [confirmOpen, setConfirmOpen] = useState(false);
   const nameInput = useRef<HTMLInputElement>(null);
   const listHeading = useRef<HTMLHeadingElement>(null);
-  const justMade = state.rawKey ? state.keys[0] : undefined;
+  const justMade = state.rawKey ? state.keys.find((key) => key.id === state.madeId) : undefined;
 
   return (
     <div className="grid gap-10">

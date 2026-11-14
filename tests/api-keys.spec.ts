@@ -191,6 +191,43 @@ test("revoke: Escape and Keep it return focus; Revoke removes the row", async ({
   await expect(page.getByRole("listitem").filter({ hasText: "Old key" })).toHaveCount(0);
 });
 
+test("revoking the key whose panel is open clears the panel and unlocks creating", async ({
+  page,
+}) => {
+  await page.goto("/account/api-keys");
+  await makeKey(page, "First key");
+  await dismiss(page);
+  await makeKey(page, "Second key");
+  // The panel belongs to "Second key"; revoking the other key leaves it alone.
+  await page.getByRole("button", { name: "Revoke key First key" }).click();
+  const dialog = page.getByRole("dialog", { name: "Revoke this key?" });
+  await dialog.getByRole("button", { name: "Revoke key" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByLabel("New API key")).toBeVisible();
+  // Revoking the shown key drops the panel, so the secret is not left beside no key.
+  await page.getByRole("button", { name: "Revoke key Second key" }).click();
+  await dialog.getByRole("button", { name: "Revoke key" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByLabel("New API key")).toHaveCount(0);
+  await expect(page.getByLabel("Key name")).toBeEnabled();
+});
+
+test("after a revoke, Keep it on the next key still returns focus to its row", async ({ page }) => {
+  await page.goto("/account/api-keys");
+  await makeKey(page, "Alpha");
+  await dismiss(page);
+  await makeKey(page, "Beta");
+  await dismiss(page);
+  const dialog = page.getByRole("dialog", { name: "Revoke this key?" });
+  await page.getByRole("button", { name: "Revoke key Alpha" }).click();
+  await dialog.getByRole("button", { name: "Revoke key" }).click();
+  await expect(dialog).toHaveCount(0);
+  const beta = page.getByRole("button", { name: "Revoke key Beta" });
+  await beta.click();
+  await dialog.getByRole("button", { name: "Keep it" }).click();
+  await expect(beta).toBeFocused();
+});
+
 test("a failed revoke keeps the dialog open with an alert", async ({ page }) => {
   await page.goto("/account/api-keys");
   await makeKey(page, "Stubborn");
