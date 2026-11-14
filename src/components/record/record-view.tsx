@@ -44,7 +44,8 @@ export function RecordView({
   const [script, setScript] = useState("");
   const { state, dispatch } = recorder;
   // Links and Back ask first too, not only closing the tab (the recorder warns for that).
-  useLeaveGuard(wouldLoseWork(state), LEAVE_MESSAGE);
+  // A phone's own camera file uploading (upload.busy) is lost on leaving too.
+  useLeaveGuard(wouldLoseWork(state) || upload.busy, LEAVE_MESSAGE);
   const onStage =
     state.kind === "ready" || state.kind === "countdown" || state.kind === "recording";
   const prompter = usePrompter(script, creatorId, state.kind === "recording", onStage);
