@@ -32,7 +32,7 @@ Turn VoiceOver on in Settings, Accessibility. Swipe right and left to move, doub
 | 1.8 | During a recording, press the Back button of the browser. | A leave confirmation appears before you lose the take (AC-7). | |
 | 1.9 | Open your test take. Swipe through the player, the cut timeline and the cut list. | Each cut is announced with its time range and reason. Undo and Redo are announced and the change is spoken. Arrow keys are not needed. | |
 | 1.10 | In Settings, Safari, deny the camera for the site and open `/record` again. | A plain message says the camera is blocked and how to fix it, and Upload a file instead is offered (AC-5). | |
-| 1.10a | In Settings, Safari, set the site's Camera and Microphone back to Ask or Allow, then reload `/record`. | The camera turns on again, so the recording rows below can run. | |
+| 1.10a | In Settings, Safari, set the site's Camera and Microphone back to Ask or Allow, reload `/record` and press Turn on camera. | The camera turns on again, so the recording rows below can run. | |
 | 1.11 | Turn the phone sideways on `/record` and on the take page. | Nothing is cut off and nothing scrolls sideways. Turn back to portrait when done. | |
 | 1.12 | Motion: open `/` and scroll the page, open `/record` and go through the countdown and recording, open your test take and press Undo and Redo on a cut. Then turn Reduce Motion on in Settings, Accessibility, Motion and repeat. | No movement feels too large, too fast or distracting, and with Reduce Motion on the movement is gone or much calmer. Write down any motion that felt too much. | |
 
@@ -50,7 +50,7 @@ Turn TalkBack on in Settings, Accessibility. Swipe right and left to move, doubl
 | 2.6 | Turn on airplane mode just before pressing Use this take, then turn it off. | The upload fails with a plain message, the take is kept, Try again and Save to your device are offered, and Try again works (AC-7). | |
 | 2.7 | Open your test take. Swipe through the cut timeline and cut list, press Undo on a cut. | Same as 1.9. | |
 | 2.8 | In Chrome site settings, block the camera for the site and open `/record`. | Blocked message and Upload a file instead (AC-5). | |
-| 2.8a | In Chrome site settings, set the site's Camera and Microphone back to Ask or Allow, then reload `/record`. | The camera turns on again, so the recording rows below can run. | |
+| 2.8a | In Chrome site settings, set the site's Camera and Microphone back to Ask or Allow, reload `/record` and press Turn on camera. | The camera turns on again, so the recording rows below can run. | |
 | 2.9 | Rotate to landscape on `/record` and the take page, then back. | Nothing is cut off, no sideways scroll. | |
 | 2.10 | Open the take you recorded on the iPhone in step 1.6 (sign in as the same test account on this phone) and press Play. | It plays with sound and picture, in portrait (AC-10). | |
 | 2.11 | Start a recording and do not touch the phone for longer than its screen timeout (Settings, Display, Screen timeout; set it to 30 seconds first). | The screen stays on and the recording keeps running (AC-7, the wake lock). Set the timeout back afterwards. | |
