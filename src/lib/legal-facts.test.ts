@@ -7,6 +7,7 @@ import {
   aiEditEnvSchema,
   emailEnvSchema,
   jobEnvSchema,
+  realtimeEnvSchema,
   transcriptEnvSchema,
   usageEnvSchema,
   webEnvSchema,
@@ -50,6 +51,7 @@ const SECRET_SCHEMAS = [
   emailEnvSchema,
   transcriptEnvSchema,
   aiEditEnvSchema,
+  realtimeEnvSchema,
 ];
 const schemaNames = new Set(SECRET_SCHEMAS.flatMap((s) => Object.keys(s.shape)));
 const registryEnv = new Set(PROCESSORS.flatMap((p) => p.envNames));

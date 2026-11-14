@@ -157,10 +157,10 @@ export const PROCESSORS: readonly Processor[] = [
     role: "Turns your audio into a transcript.",
     receives: "The audio of your take.",
     doesNotReceive:
-      "Your video, your name or your email. We ask Deepgram not to use your audio to train its models.",
+      "Your video, your name or your email. We ask Deepgram not to use your audio to train its models. The short lived access token we ask Deepgram for, so your browser can connect while you record, carries no personal data.",
     location: "Deepgram cloud.",
     trainsOnContent: false,
-    envNames: ["DEEPGRAM_API_KEY"],
+    envNames: ["DEEPGRAM_API_KEY", "DEEPGRAM_REALTIME_API_KEY"],
     packages: [],
   },
   {

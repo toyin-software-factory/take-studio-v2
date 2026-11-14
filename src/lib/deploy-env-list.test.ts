@@ -35,7 +35,11 @@ describe("deploy preflight secret list", () => {
   });
 
   it("only warns for optional names, and a missing required one skips the deploy", () => {
-    expect(names("optional")).toEqual(["SENTRY_DSN", "INSIGHTS_VIEWER_USER_ID"]);
+    expect(names("optional")).toEqual([
+      "SENTRY_DSN",
+      "INSIGHTS_VIEWER_USER_ID",
+      "DEEPGRAM_REALTIME_API_KEY",
+    ]);
     expect(names("optional").filter((n) => names("required").includes(n))).toEqual([]);
     expect(workflow).toContain('skip "Missing Worker secrets on take-studio:$missing"');
     expect(workflow).toMatch(/for name in \$optional; do[\s\S]*?::warning::Optional Worker secret/);
