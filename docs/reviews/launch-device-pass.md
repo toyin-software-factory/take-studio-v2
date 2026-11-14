@@ -81,7 +81,7 @@ If you only have a Mac, run steps 4.1 to 4.5 without a screen reader and mark 4.
 | 4.2a | Open the take you recorded on the iPhone in step 1.6 and press Play. | It plays with sound and picture in Firefox (AC-10). | |
 | 4.3 | Block the camera for the site (the address bar permission icon) and reload `/record`. | Blocked message and Upload a file instead (AC-5). | |
 | 4.4 | Unplug or disable the camera (or use a machine with none) and open `/record`. | No camera found message and Upload a file instead (AC-5). | |
-| 4.5 | Open your test take, use the keyboard on the cut timeline and the cut list. | Arrow keys move between cuts, focus is visible, Undo and Redo work. | |
+| 4.5 | Open your test take, use the keyboard on the cut timeline and the cut list. The automatic accessibility scan of the take page crashes Playwright's Firefox, so also look for anything unreadable or out of order on this page. | Arrow keys move between cuts, focus is visible, Undo and Redo work. | |
 | 4.6 | NVDA on: repeat 4.5 and the `/record` flow. | Cuts, buttons, the countdown, the timer and errors are all announced in a way that makes sense. | |
 
 ## What only a real device can confirm
