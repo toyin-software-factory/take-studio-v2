@@ -29,3 +29,4 @@
 _Drafted by /sync from a catch up over the merged work, worth a quick human pass._
 
 - `record-limits.spec.ts` (spec 0021 AC-6, AC-7): the recorder's limit comes from the monthly allowance set with `support/usage.ts` `setUsage` (a short limit instead of the 10 minute cap, which a unit test covers), so the timer, the one minute warning, the automatic stop, the used up state, a refused upload (403) that keeps the take, and the leave confirmation (link dialog, `beforeunload`) all wait on page state, never fixed waits. `seedTakes` in `support/takes.ts` takes an optional `script`.
+- Playwright projects: `usage.spec.ts` and `record-limits.spec.ts` write the same global usage settings, so `playwright.config.ts` runs them as their own projects (`usage`, then `record-limits`) after `chromium` finishes, never in parallel with other tests. `setUsage` also takes a Postgres advisory lock and restores the settings and releases the lock even when its setup throws.
