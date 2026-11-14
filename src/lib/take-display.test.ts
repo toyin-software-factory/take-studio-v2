@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { isMediaFailure } from "./failure-codes";
+import { VIDEO_RETENTION_DAYS } from "./take-rules";
 import {
   POLL,
   keepPolling,
   effectiveStatus,
   expiryNote,
+  RETENTION_NOTE,
   shortDate,
   failureMessage,
   formatClock,
@@ -62,14 +64,20 @@ describe("formatClock (design.md Voice: mm:ss, h:mm:ss from an hour)", () => {
 describe("expiryNote (AC-1)", () => {
   const now = new Date("2026-11-11T12:00:00Z");
   it.each([
-    ["2026-11-23T13:00:00Z", false, "Video expires in 12 days"],
-    ["2026-11-12T13:00:00Z", false, "Video expires in 1 day"],
-    ["2026-11-11T18:00:00Z", false, "Video expires in less than a day"],
-    ["2026-11-12T10:00:00Z", false, "Video expires in less than a day"],
-    ["2026-11-10T09:00:00Z", false, "Video expired on 10 Nov"],
-    ["2026-12-03T09:00:00Z", true, "Video expired on 3 Dec"],
+    ["2026-12-12T13:00:00Z", false, "Video expires on 12 Dec"],
+    ["2026-11-19T13:00:00Z", false, "Video expires on 19 Nov"],
+    ["2026-11-18T13:00:00Z", false, "Video expires on 18 Nov (in 7 days)"],
+    ["2026-11-14T13:00:00Z", false, "Video expires on 14 Nov (in 3 days)"],
+    ["2026-11-12T13:00:00Z", false, "Video expires on 12 Nov (in 1 day)"],
+    ["2026-11-11T18:00:00Z", false, "Video expires on 11 Nov (in less than a day)"],
+    ["2026-11-10T09:00:00Z", false, "Video removed on 10 Nov. Your transcript is kept."],
+    ["2026-12-03T09:00:00Z", true, "Video removed on 3 Dec. Your transcript is kept."],
   ])("%s (expired %s) → %s", (at, expired, text) => {
     expect(expiryNote(at, expired, now)).toBe(text);
+  });
+
+  it("uses the retention constant in the retention line", () => {
+    expect(RETENTION_NOTE).toBe(`Videos are kept for ${VIDEO_RETENTION_DAYS} days.`);
   });
 
   it("has no note before the upload completes", () => {

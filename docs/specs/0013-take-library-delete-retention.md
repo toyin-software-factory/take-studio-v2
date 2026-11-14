@@ -160,7 +160,7 @@ Tracer Bullet: one real thread first (route, then the button, then proven throug
 
 ## Follow-up
 
-- [ ] Decisions for Toyin, sent to Michael as numbered options (this spec builds the recommended default of each until she says otherwise): reminder email before a video expires; the time saved counter; search or filters in the library; the lifecycle days.
+- [x] Decisions for Toyin (C-30, 2026-11-14, she took the recommended option of each): no reminder email before a video expires; the time saved counter stays Deferred; no search or filters in the library; the R2 lifecycle backstop is 35 days.
 - [ ] Nightly check that lists storage and compares it with the database, to catch an orphan the lifecycle rules do not (deferred, the lifecycle rules cover the promise).
 - [ ] Feature 16 (privacy and terms) quotes this behaviour: 30 days, transcripts kept until deleted, delete any time.
 - [ ] `/sync` adds the delete route and the lifecycle script to `src/server/AGENTS.md`, `src/components/takes/AGENTS.md` and `scripts/AGENTS.md` once built.
