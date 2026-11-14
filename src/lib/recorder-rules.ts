@@ -63,12 +63,29 @@ export function recordingFileName(now: Date, container: RecordingContainer): str
 
 /**
  * How long this recording may run: the 10 minute cap, or less when the monthly allowance is
- * lower. Usage is only used when it is switched on (`enforced`); the usage limit itself comes
- * in spec 0021 task 4, so this takes null until then.
+ * lower. Pass `usageLimitSeconds(usage)`: null when the limit is off or unknown.
  */
 export function recordingLimitMs(remainingSeconds: number | null): number {
   if (remainingSeconds === null) return MEDIA_LIMITS.maxDurationMs;
   return Math.max(0, Math.min(MEDIA_LIMITS.maxDurationMs, remainingSeconds * 1000));
+}
+
+/** The usage numbers the recorder needs: whether the limit is on and the seconds left. */
+export type RecorderUsage = { readonly enforced: boolean; readonly remainingSeconds: number };
+
+/** AC-6: the seconds that cap this recording, or null when the limit is off or unknown. */
+export function usageLimitSeconds(usage: RecorderUsage | null): number | null {
+  return usage?.enforced ? Math.max(0, usage.remainingSeconds) : null;
+}
+
+/** AC-6: with the limit on and nothing left, Record cannot start. */
+export function isUsedUp(usage: RecorderUsage | null): boolean {
+  return usageLimitSeconds(usage) === 0;
+}
+
+/** AC-6: true from `warnSecondsLeft` before the stop (and for a limit shorter than that). */
+export function shouldWarn(elapsedMs: number, limitMs: number): boolean {
+  return limitMs - elapsedMs <= RECORDER.warnSecondsLeft * 1000;
 }
 
 /** True when the recording has reached the point where it must stop by itself. */

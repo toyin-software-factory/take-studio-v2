@@ -131,6 +131,15 @@ describe("uploadFile (AC-3)", () => {
     });
   });
 
+  it("sends the recorded length as the duration hint (spec 0021 AC-6)", async () => {
+    const fake = fakeIo({});
+    await uploadFile(file(), "mp4", fake.io, new AbortController().signal, {}, undefined, {
+      script: "",
+      durationMs: 12_345.6,
+    });
+    expect(fake.calls[0]?.body).toMatchObject({ source: "recording", durationHintMs: 12_346 });
+  });
+
   it("leaves the script out when it is blank", async () => {
     const fake = fakeIo({});
     await uploadFile(file(), "mp4", fake.io, new AbortController().signal, {}, undefined, {
