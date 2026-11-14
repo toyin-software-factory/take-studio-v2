@@ -180,6 +180,13 @@ jobs:
           # Explicit opt in for the migration guard (scripts/db-guard.ts); CI=true also allows it.
           MIGRATE_TARGET: prod
 
+      - name: 2b. Backfill analytics events (idempotent; counts only)
+        if: steps.order.outputs.stale != 'true'
+        run: pnpm analytics:backfill
+        env:
+          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
+          MIGRATE_TARGET: prod
+
       - name: 3. Deploy Trigger.dev tasks (prod)
         if: steps.order.outputs.stale != 'true'
         run: pnpm deploy:trigger --env prod
