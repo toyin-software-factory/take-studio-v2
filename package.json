@@ -45,6 +45,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.8.0",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@opennextjs/cloudflare": "1.20.16",
     "@sentry/core": "11.12.0",
     "@sentry/nextjs": "11.12.0",

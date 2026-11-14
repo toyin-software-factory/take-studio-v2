@@ -225,6 +225,7 @@ export const NON_PROCESSOR_ENV: readonly string[] = [
  * in a processor's `packages`, so an analytics or payments SDK cannot slip in unseen.
  */
 export const NON_DATA_PACKAGES: readonly string[] = [
+  "@modelcontextprotocol/sdk",
   "better-auth",
   "class-variance-authority",
   "clsx",

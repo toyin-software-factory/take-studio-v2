@@ -85,7 +85,9 @@ export function TermsCopy({
           You can make an API key and use it to reach your own takes from your own tools. Keep the
           key secret: anyone who has it can act as you, so revoke it if it leaks. Requests with a
           key are limited per minute, use the same free allowance as the website, and you may not
-          resell access to Take Studio through a key.
+          resell access to Take Studio through a key. You can also connect an AI assistant to your
+          account with a key. What it does there counts as done by you, so connect only assistants
+          you trust.
         </p>
       </LegalSection>
       <LegalSection id="service" title="Availability">
