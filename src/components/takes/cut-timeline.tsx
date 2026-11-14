@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { StagePanel } from "@/components/stage";
 import { reasonLine, summaryLine, timelineWidth } from "@/lib/cut-review";
 import { CutBlock } from "./cut-block";
+import { CutList } from "./cut-list";
 import { type PlayerBridge, useHead } from "./player-bridge";
 import type { CutReview } from "./use-cut-review";
 import { useWaveform } from "./use-waveform";
@@ -49,7 +50,7 @@ export function CutTimeline({
   const values = useWaveform(takeId, review.waveformKey);
   const cutMs = review.numbered
     .filter((c) => review.applied(c.id))
-    .map((c) => ({ ms: c.endMs - c.startMs }));
+    .map((c) => ({ ms: c.endMs - c.startMs, kind: c.kind }));
   const focused = review.numbered.find((c) => c.id === focusedId);
   const reason = reasonLine(focused);
   // Room for the line only when some cut has a reason, so a take without any adds no height (the
@@ -109,11 +110,14 @@ export function CutTimeline({
           </span>
         ) : null,
       )}
-      {aiEdit === "unavailable" ? (
-        <p data-testid="ai-unavailable" className="text-small text-stage-text-muted">
-          AI edit wasn&apos;t available for this take.
-        </p>
-      ) : null}
+      <CutList
+        review={review}
+        aiEdit={aiEdit}
+        onSeek={(cut) => {
+          setFocusedId(cut.id);
+          bridge.seekOriginal(Math.max(0, cut.startMs - 1000));
+        }}
+      />
     </StagePanel>
   );
 }
