@@ -8,7 +8,7 @@ import { legalDriftFlag } from "../src/lib/legal-facts";
 
 const git = (...args: string[]): string => execFileSync("git", args, { encoding: "utf8" }).trim();
 
-const base = (() => {
+const base: string | null = (() => {
   for (const ref of ["origin/main", "main"]) {
     try {
       return git("merge-base", ref, "HEAD");
@@ -16,11 +16,20 @@ const base = (() => {
       /* try the next ref */
     }
   }
-  return "HEAD";
+  return null;
 })();
 
+// No main reference: a diff against HEAD would miss every committed change, so say so instead of
+// printing a clean result. Still exit 0 (advisory).
+if (base === null) {
+  console.log(
+    "legal drift: could not check, neither origin/main nor main exists here. Run `git fetch origin main` and try again.",
+  );
+  process.exit(0);
+}
+
 const changed = new Set([
-  ...git("diff", "--name-only", base).split("\n"),
+  ...git("diff", "--name-only", "--no-renames", base).split("\n"),
   ...git("ls-files", "--others", "--exclude-standard").split("\n"),
 ]);
 changed.delete("");
