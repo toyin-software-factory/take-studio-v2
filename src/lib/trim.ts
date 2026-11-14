@@ -355,6 +355,16 @@ export function renderFilterScript(keep: readonly Range[], options: RenderGraphO
   return lines.join("\n");
 }
 
+/**
+ * The length the render must have, in seconds for ffmpeg's `-t`: the kept ranges added up, so the
+ * file is the original minus what was cut. Without it the file is as long as its longest stream:
+ * a browser MP4 (Safari) has audio running about 20 ms past its video, and the last piece's audio
+ * then made the render longer than the plan (B2-T96, 8065 ms against 8020).
+ */
+export function renderLengthSeconds(keep: readonly Range[]): string {
+  return seconds(keep.reduce((sum, r) => sum + (r.endMs - r.startMs), 0));
+}
+
 /** The output frame rate argument: the source's average, rounded to 3 decimals (CFR). */
 export function outputFps(fps: number | null): string {
   return String(Math.round((fps ?? 30) * 1000) / 1000);

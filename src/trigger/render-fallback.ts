@@ -8,7 +8,7 @@ import {
   isOnlyBackground,
 } from "@/lib/background-preview";
 import type { HdrTransfer } from "@/lib/probe";
-import { type Range, outputFps, renderFilterScript } from "@/lib/trim";
+import { type Range, outputFps, renderFilterScript, renderLengthSeconds } from "@/lib/trim";
 import { MediaToolError, runFfmpeg, runFfmpegBytes } from "./media";
 
 /** What the one render ffmpeg run needs; the same plan is used keyed and plain. */
@@ -95,6 +95,9 @@ export async function encodeRender(
         ? ["-color_primaries", "bt709", "-color_trc", "bt709", "-colorspace", "bt709"]
         : []),
       ...(facts.hasAudio ? ["-c:a", "aac", "-b:a", "192k"] : []),
+      // End the file at the plan's length: the longest stream would otherwise set it (B2-T96).
+      "-t",
+      renderLengthSeconds(plan.keep),
       "-movflags",
       "+faststart",
       plan.output,
