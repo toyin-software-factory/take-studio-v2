@@ -24,7 +24,10 @@ import {
   PUBLIC_VIEWER,
   REVIEW,
   type Review,
+  LEGAL_FACTS_PATH,
+  LEGAL_WATCHED_PATHS,
   draftReasons,
+  legalDriftFlag,
   legalTextHash,
   missingEntityFields,
   normalizeLegalText,
@@ -265,6 +268,13 @@ describe("version and review", () => {
     expect(reasons({ allowance: { minutes: 60, limitEnabled: false } }).length).toBe(1);
   });
 
+  it("never passes while a page text hash is unavailable (the pages are not built yet)", () => {
+    expect(reasons({ privacyTextHash: null, termsTextHash: null })).toEqual([
+      "privacy text hash is not available",
+      "terms text hash is not available",
+    ]);
+  });
+
   it("never passes when the allowance could not be read", () => {
     expect(reasons({ allowance: null })).toContain("allowance could not be read");
   });
@@ -278,5 +288,44 @@ describe("contact and account deletion", () => {
 
   it("says to email for deletion until the self serve control ships", () => {
     expect(ACCOUNT_DELETE_SELF_SERVE).toBe(false);
+  });
+});
+
+describe("launch gate wiring and drift flag (spec 0015 AC-8, AC-10)", () => {
+  const scripts = (
+    JSON.parse(readFileSync("package.json", "utf8")) as { scripts: Record<string, string> }
+  ).scripts;
+
+  it("has a launch gate script that the normal test run never includes", () => {
+    expect(scripts["test:legal-launch"]).toContain("scripts/vitest.legal-launch.config.ts");
+    expect(scripts["legal:drift"]).toContain("scripts/legal-drift.ts");
+    const normal = readFileSync("vitest.config.ts", "utf8");
+    expect(normal).toContain('include: ["src/**/*.test.ts"]');
+    const gate = readFileSync("scripts/vitest.legal-launch.config.ts", "utf8");
+    expect(gate).toContain("tests/legal-launch/*.check.ts");
+    expect(readFileSync("tests/legal-launch/legal-launch.check.ts", "utf8")).toContain(
+      "draftReasons",
+    );
+  });
+
+  it("flags a watched file changed without legal-facts.ts, and only then", () => {
+    expect(legalDriftFlag(["package.json", "src/app/page.tsx"])).toEqual(["package.json"]);
+    expect(legalDriftFlag(["src/db/schema/take.ts", "src/lib/email/send.ts"])).toHaveLength(2);
+    expect(legalDriftFlag(["package.json", LEGAL_FACTS_PATH])).toEqual([]);
+    expect(legalDriftFlag(["src/components/home/content.ts"])).toEqual([]);
+  });
+
+  it("watches only files and folders that exist", () => {
+    for (const path of LEGAL_WATCHED_PATHS) {
+      expect(() => statSync(path), `${path} was moved: update LEGAL_WATCHED_PATHS`).not.toThrow();
+    }
+  });
+
+  it("documents the change checklist in both AGENTS.md files", () => {
+    for (const file of ["AGENTS.md", "src/lib/AGENTS.md"]) {
+      const text = readFileSync(file, "utf8");
+      expect(text, file).toContain("legal-facts.ts");
+      expect(text, file).toContain("legal:drift");
+    }
   });
 });

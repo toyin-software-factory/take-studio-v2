@@ -369,8 +369,9 @@ export function missingEntityFields(entity: LegalEntity): readonly string[] {
 
 /** What the live pages show now, to compare with what was reviewed. */
 export type LegalNow = {
-  readonly privacyTextHash: string;
-  readonly termsTextHash: string;
+  /** `null` until the pages exist to hash (spec 0015 step 2); the gate then fails. */
+  readonly privacyTextHash: string | null;
+  readonly termsTextHash: string | null;
   /** `null` when the allowance setting could not be read. */
   readonly allowance: { readonly minutes: number; readonly limitEnabled: boolean } | null;
 };
@@ -392,8 +393,10 @@ export function draftReasons(input: {
   }
   if (review.privacyVersion !== version.privacy) reasons.push("privacy version was not reviewed");
   if (review.termsVersion !== version.terms) reasons.push("terms version was not reviewed");
-  if (review.privacyTextHash !== now.privacyTextHash) reasons.push("privacy text changed");
-  if (review.termsTextHash !== now.termsTextHash) reasons.push("terms text changed");
+  if (now.privacyTextHash === null) reasons.push("privacy text hash is not available");
+  else if (review.privacyTextHash !== now.privacyTextHash) reasons.push("privacy text changed");
+  if (now.termsTextHash === null) reasons.push("terms text hash is not available");
+  else if (review.termsTextHash !== now.termsTextHash) reasons.push("terms text changed");
   if (now.allowance === null) {
     reasons.push("allowance could not be read");
   } else if (
@@ -403,4 +406,37 @@ export function draftReasons(input: {
     reasons.push("allowance differs from the reviewed one");
   }
   return reasons;
+}
+
+/* ------------------------------------------------------------------ */
+/* Drift flag for /sync and review (AC-10).                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Files whose change can alter what the pages promise: dependencies, env names, the rules and
+ * options the copy quotes, the stored fields, sign in and cookies, what the AI and email send.
+ * A diff touching any of them without `legal-facts.ts` is flagged by `pnpm legal:drift`.
+ */
+export const LEGAL_WATCHED_PATHS: readonly string[] = [
+  "package.json",
+  "src/lib/env.ts",
+  "src/lib/take-rules.ts",
+  "src/lib/usage-rules.ts",
+  "src/lib/deepgram.ts",
+  "src/lib/ai-edit.ts",
+  "src/lib/sentry-options.ts",
+  "src/lib/storage-lifecycle.ts",
+  "src/server/auth.ts",
+  "src/db/schema/",
+  "src/lib/email/",
+];
+
+export const LEGAL_FACTS_PATH = "src/lib/legal-facts.ts";
+
+/** The watched files this diff touches, or none when `legal-facts.ts` changed too. */
+export function legalDriftFlag(changedPaths: readonly string[]): readonly string[] {
+  if (changedPaths.includes(LEGAL_FACTS_PATH)) return [];
+  return changedPaths.filter((path) =>
+    LEGAL_WATCHED_PATHS.some((w) => (w.endsWith("/") ? path.startsWith(w) : path === w)),
+  );
 }
