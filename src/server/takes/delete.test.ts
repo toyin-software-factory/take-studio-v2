@@ -15,7 +15,13 @@ import {
   transcript,
 } from "@/db/schema";
 import { previewKey } from "@/lib/background-preview";
-import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
+import {
+  type TestDb,
+  createCreator,
+  openTestDb,
+  seedTake,
+  builtInTracker,
+} from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { thumbnailKey } from "@/lib/take-rules";
 import { ok } from "@/lib/result";
@@ -33,7 +39,11 @@ beforeAll(async () => {
   testDb = await openTestDb();
   db = testDb.db;
 });
-afterAll(() => testDb?.close());
+const built = builtInTracker();
+afterAll(async () => {
+  if (testDb) await built.clean(testDb.db);
+  await testDb?.close();
+});
 
 /** Records the post commit side effects instead of calling Trigger.dev. */
 function spyAfter() {
@@ -134,7 +144,7 @@ describe("deleteTake removes everything (spec 0013 AC-6)", () => {
     await setTranscriptEdits(db, t.id, [
       { index: 0, old: "hello", new: "Hello", reason: "case", undone: false },
     ]);
-    const bgId = crypto.randomUUID();
+    const bgId = built.track({ id: crypto.randomUUID() }).id;
     await db.insert(background).values({
       id: bgId,
       creatorId: null,

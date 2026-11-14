@@ -162,7 +162,12 @@ export const probeTask = task({
  * Starts processing for an uploaded take and dispatches it. If the take already has an active
  * job that was never dispatched (a rerun after a crash), dispatches that one instead.
  */
-async function startAndDispatch(db: Db, takeId: string, creatorId: string, usageSecret: string) {
+export async function startAndDispatch(
+  db: Db,
+  takeId: string,
+  creatorId: string,
+  usageSecret: string,
+) {
   const trigger = triggerForJob("process-take");
   // The probe only ever starts the first job of a freshly uploaded take; re runs and
   // retries are the creator's call. Checked again inside startJob's lock.
@@ -202,6 +207,16 @@ async function startAndDispatch(db: Db, takeId: string, creatorId: string, usage
       };
     }
     return { takeId, outcome: "already_processing" as const };
+  }
+  if (started.error === "limit_exceeded") {
+    // Spec 0014 AC-6: the first charge does not fit. No job, nothing charged; the take is
+    // kept (original and expiry untouched) and the creator can retry after the reset. An
+    // expected result: logged with IDs only, never sent to the error tracker.
+    const failed = await transitionTake(db, takeId, "uploaded", "failed", {
+      failureCode: "limit_exceeded",
+    });
+    logger.info("probe: allowance used up, take kept", { takeId, moved: failed.ok });
+    return { takeId, outcome: "limit_exceeded" as const };
   }
   return { takeId, outcome: "not_started" as const, reason: started.error };
 }

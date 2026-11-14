@@ -33,12 +33,12 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 9 | Cut review timeline | Slice 4 | done |
 | 10 | AI editing agents | Slice 5 | in-progress |
 | 11 | Take library, delete & retention | Slice 6 | in-progress |
-| 12 | Monthly usage limit | Slice 6 | planned |
+| 12 | Monthly usage limit | Slice 6 | in-progress |
 | 13 | Public API | Slice 7 | planned |
 | 14 | MCP server for AI agents | Slice 7 | planned |
 | 15 | Landing page & SEO | Launch | done |
-| 16 | Privacy & terms pages | Launch | planned |
-| 17 | Product analytics | Launch | planned |
+| 16 | Privacy & terms pages | Launch | in-progress |
+| 17 | Product analytics | Launch | in-progress |
 | 18 | Email sign in and take ready email | Slice 1 | done |
 
 ## Foundations
@@ -199,15 +199,25 @@ A proper library of past takes with status and expiry date; delete a take at any
    - [x] Delete route and proof of full removal (AC-3, AC-6, AC-7)
    - [x] Delete dialog on the take page (AC-4, AC-11, AC-12)
    - [ ] Delete on library cards and the clearer expired states and take page (AC-1, AC-2, AC-5, AC-8)
-   - [ ] R2 lifecycle rules as a backstop, then account deletion and browser tests (AC-9, AC-10, AC-12)
+   - [x] R2 lifecycle rules as a backstop and the account deletion test (AC-9, AC-10) (B2-T06; the deploy skips the step with a warning until `R2_LIFECYCLE_TOKEN` is a CI secret)
+   - [ ] Browser tests and axe for the delete dialog and library (AC-12)
 - [ ] Verify it: `/check verify take library, delete & retention`
 - [ ] Test it: `/test take library, delete & retention`
 Spec [0013](../specs/0013-take-library-delete-retention.md)
 
-### 12. Monthly usage limit · needs a decision
+### 12. Monthly usage limit · in-progress
 Free accounts get a monthly allowance of processed minutes, keeping costs safe until billing exists.
 **Done when:** the creator sees minutes used and left this month; an upload that would go over the limit is refused with a clear message; the allowance resets monthly.
-- [ ] Design it (spec): `/architect monthly usage limit`
+- [x] Design it (spec): `/architect monthly usage limit`
+- [ ] Build it: `/develop monthly usage limit`
+   - [x] Usage rules, the `limit_exceeded` code and message, the `usage_month` and `app_setting` migration with backfill (AC-2, AC-3, AC-9, AC-11, AC-12)
+   - [x] The atomic check in `startJob`, the refund and the probe ending (AC-1, AC-4, AC-5, AC-6, AC-10)
+   - [x] Usage route, early refusal at upload create and the duration hint (AC-7, AC-8, AC-13)
+   - [ ] Usage meter, upload area states and failed take message, browser tests and axe (AC-9, AC-14)
+   - [x] Real pipeline check of a refused take and its retry (AC-4, AC-6)
+- [ ] Verify it: `/check verify monthly usage limit`
+- [ ] Test it: `/test monthly usage limit`
+Spec [0014](../specs/0014-monthly-usage-limit.md)
 
 ## Slice 7: Usable by AI agents
 
@@ -237,16 +247,38 @@ A public page that explains Take Studio and leads to sign up, built from Toyin's
 - [x] Verify it: `/check verify landing page & SEO`
 Spec [0010](../specs/0010-landing-page.md) · rules in [design.md](../../design.md) · code in `src/app/page.tsx`, `src/app/library/`, `src/components/home/`
 
-### 16. Privacy & terms pages
+### 16. Privacy & terms pages · in-progress
 Public privacy policy and terms, needed because we store people's videos.
 **Done when:** privacy and terms pages are public, linked from the landing page and sign up, and the privacy page states the 30 day video retention and delete anytime promise. Toyin approves the text.
+- [x] Design it (spec): `/architect privacy & terms pages`
 - [ ] Build it: `/develop privacy & terms pages`
+   - [ ] Facts file, processor registry, entity placeholders and the drift tests (AC-4, AC-5, AC-7, AC-8, AC-9, AC-11, AC-13)
+   - [ ] Privacy page, footer link, sitemap, draft banner (AC-1, AC-3, AC-5, AC-7)
+   - [ ] Terms page (AC-1, AC-6)
+   - [ ] Sign in notice, upload note, user menu links (AC-2)
+   - [ ] Accessibility and print pass, browser tests and axe (AC-12)
+   - [ ] Change checklist, `/sync` flag, launch gate check (AC-8, AC-10)
+   - [ ] Self serve Delete account control, then flip the copy (AC-13)
+   - [ ] Launch gate: Toyin's facts and the lawyer's review filled in, Draft banner removed (AC-8, AC-11)
+- [ ] Verify it: `/check verify privacy & terms pages`
+Spec [0015](../specs/0015-privacy-and-terms.md) · Toyin supplies the legal facts and a lawyer reviews the text before launch
 
-### 17. Product analytics · needs a decision
+### 17. Product analytics · in-progress
 Three events that show whether the core loop works: signup, take uploaded, take downloaded.
 **Done when:** the three events are recorded per creator, with no video content or transcript text in the events.
 - Note (2026-11-13): Toyin and Michael recommend building this first, so the growth ideas under Deferred can be measured: signups, first upload, first download and second take. Not repeated there.
-- [ ] Design it (spec): `/architect product analytics`
+- [x] Design it (spec): `/architect product analytics`
+- [ ] Build it: `/develop product analytics`
+   - [ ] Table, record function, signup event, drift and privacy tests (AC-1, AC-2, AC-3, AC-4, AC-6)
+   - [ ] Insights page with the viewer gate (AC-7, AC-8)
+   - [ ] Upload and job events, second take and founding member counts (AC-4, AC-7, AC-12)
+   - [ ] Download, transcript, change and limit events (AC-4, AC-5)
+   - [ ] Backfill from existing users and takes (AC-12)
+   - [ ] Retention sweep and delete tests (AC-9, AC-10)
+   - [ ] Legal facts entry and copy bump (AC-11)
+   - [ ] Docs and deploy env list for the viewer secret
+- [ ] Verify it: `/check verify product analytics`
+Spec [0016](../specs/0016-product-analytics.md) · Toyin answers seven open questions (tool, visits, who sees it, retention, deletion, founding member rule, event list)
 
 ## Deferred
 Out of scope for this build pass, kept so the plan stays honest.
