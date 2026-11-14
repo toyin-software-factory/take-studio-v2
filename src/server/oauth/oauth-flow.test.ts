@@ -15,6 +15,7 @@ import {
   oauthClient,
   oauthClientResource,
   oauthConsent,
+  oauthRateWindow,
   oauthRefreshToken,
   rateLimit,
   session,
@@ -463,6 +464,55 @@ describe("authorize and token (AC-13)", () => {
       .where(eq(oauthConsent.clientId, grant.clientId));
     expect(consents).toHaveLength(0);
   });
+
+  it("reuse of a rotated refresh token also ends the access tokens of that grant", async () => {
+    const who = await signIn("family@example.test");
+    const grant = await connect(who);
+    const first = await tokenRequest({
+      grant_type: "refresh_token",
+      refresh_token: grant.refresh,
+      client_id: grant.clientId,
+    });
+    const deps = { getCreator: async () => null, keyAuth: identity() };
+    const status = async (token: string) => {
+      const res = await guard(bearer(token), deps, { checkOrigin: false });
+      return res instanceof Response ? res.status : 200;
+    };
+    expect(await status(first.body.access_token ?? "")).toBe(200);
+    await tokenRequest({
+      grant_type: "refresh_token",
+      refresh_token: grant.refresh,
+      client_id: grant.clientId,
+    });
+    expect(await status(grant.access)).toBe(401);
+    expect(await status(first.body.access_token ?? "")).toBe(401);
+  });
+
+  it("an expired refresh token is refused and mints nothing", async () => {
+    const who = await signIn("old-refresh@example.test");
+    const grant = await connect(who);
+    await db
+      .update(oauthRefreshToken)
+      .set({ expiresAt: new Date(Date.now() - 60_000) })
+      .where(eq(oauthRefreshToken.token, await hashOauthToken(grant.refresh)));
+    const before = await db
+      .select({ id: oauthAccessToken.id })
+      .from(oauthAccessToken)
+      .where(eq(oauthAccessToken.userId, who.id));
+    const res = await tokenRequest({
+      grant_type: "refresh_token",
+      refresh_token: grant.refresh,
+      client_id: grant.clientId,
+    });
+    expect(res.status).toBeGreaterThanOrEqual(400);
+    expect(res.body.error).toBe("invalid_grant");
+    expect(res.body.access_token).toBeUndefined();
+    const after = await db
+      .select({ id: oauthAccessToken.id })
+      .from(oauthAccessToken)
+      .where(eq(oauthAccessToken.userId, who.id));
+    expect(after).toHaveLength(before.length);
+  });
 });
 
 describe("refresh reuse by a confidential client (Basic)", () => {
@@ -737,6 +787,37 @@ describe("tokens as identity (AC-14)", () => {
       .from(oauthAccessToken)
       .where(eq(oauthAccessToken.userId, who.id));
     expect(left.map((row) => row.token)).toEqual([await hashOauthToken(fresh.access)]);
+  });
+
+  it("cleanup deletes a token revoked over a day ago, keeps one revoked an hour ago, and old rate windows", async () => {
+    const who = await signIn("cleanup-revoked@example.test");
+    const stale = await connect(who);
+    const recent = await connect(who);
+    const now = new Date();
+    await db
+      .update(oauthAccessToken)
+      .set({ revoked: new Date(now.getTime() - 2 * 86_400_000) })
+      .where(eq(oauthAccessToken.token, await hashOauthToken(stale.access)));
+    await db
+      .update(oauthAccessToken)
+      .set({ revoked: new Date(now.getTime() - 3_600_000) })
+      .where(eq(oauthAccessToken.token, await hashOauthToken(recent.access)));
+    await countOauthRequest(db, stale.clientId, who.id, new Date(now.getTime() - 3 * 3_600_000));
+    await countOauthRequest(db, recent.clientId, who.id, now);
+    const counts = await deleteExpiredOauthRows(db, now);
+    expect(counts.rateWindows).toBeGreaterThanOrEqual(1);
+    const left = await db
+      .select({ token: oauthAccessToken.token })
+      .from(oauthAccessToken)
+      .where(eq(oauthAccessToken.userId, who.id));
+    const tokens = left.map((row) => row.token);
+    expect(tokens).toContain(await hashOauthToken(recent.access));
+    expect(tokens).not.toContain(await hashOauthToken(stale.access));
+    const windows = await db
+      .select()
+      .from(oauthRateWindow)
+      .where(eq(oauthRateWindow.userId, who.id));
+    expect(windows.map((row) => row.clientId)).toEqual([recent.clientId]);
   });
 
   it("cleanup keeps a rotated refresh token until it expires, so reuse is still caught", async () => {
