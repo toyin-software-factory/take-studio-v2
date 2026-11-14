@@ -12,6 +12,9 @@ const sideways = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
 test.describe("/insights", () => {
+  // Both viewer tests insert the same made up user id, so they must not run at the same time
+  // (fullyParallel would give a primary key clash). Default mode keeps them in order on one worker.
+  test.describe.configure({ mode: "default" });
   test.beforeEach(() => {
     if (process.env.CI)
       expect(viewerConfigured, "CI .env must set INSIGHTS_VIEWER_USER_ID").toBe(true);
