@@ -1,3 +1,4 @@
+import { takeRenameSchema } from "@/lib/api-schemas/requests";
 import { z } from "zod";
 import { type ApiAuthDeps, guard as authGuard } from "../api-auth";
 import { dispatchJob } from "@/db/data/dispatch";
@@ -176,8 +177,6 @@ export async function handleGet(
   });
 }
 
-const renameBody = z.object({ title: z.string() });
-
 /** PATCH /api/takes/{id} { title }: rename (any status, including expired). */
 export async function handleRename(
   request: Request,
@@ -186,7 +185,7 @@ export async function handleRename(
 ): Promise<Response> {
   const creator = await guard(request, deps, { checkOrigin: true });
   if (creator instanceof Response) return creator;
-  const parsed = renameBody.safeParse(await readBody(request));
+  const parsed = takeRenameSchema.safeParse(await readBody(request));
   if (!parsed.success) return errorResponse("invalid");
   const renamed = await rename(creator.db, creator.creatorId, takeId, parsed.data.title);
   if (!renamed.ok) return errorResponse(renamed.error);

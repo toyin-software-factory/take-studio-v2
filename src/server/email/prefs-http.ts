@@ -1,10 +1,9 @@
+import { emailPrefsSchema } from "@/lib/api-schemas/requests";
 import { z } from "zod";
 import { getTakeEmails, setTakeEmails } from "@/db/data/email-prefs";
 import { errorResponse, guard, json, type TakeHttpDeps } from "../takes/http";
 
 type Deps = Pick<TakeHttpDeps, "getCreator" | "allowedOrigin" | "keyAuth">;
-
-const bodySchema = z.object({ takeEmails: z.boolean() });
 
 /** GET /api/account/email-prefs: whether take emails are on for the signed in creator. */
 export async function handleGetPrefs(request: Request, deps: Deps): Promise<Response> {
@@ -18,7 +17,7 @@ export async function handleGetPrefs(request: Request, deps: Deps): Promise<Resp
 export async function handleSetPrefs(request: Request, deps: Deps): Promise<Response> {
   const creator = await guard(request, deps, { checkOrigin: true });
   if (creator instanceof Response) return creator;
-  const body = bodySchema.safeParse(await request.json().catch(() => null));
+  const body = emailPrefsSchema.safeParse(await request.json().catch(() => null));
   if (!body.success) return errorResponse("invalid");
   const done = await setTakeEmails(creator.db, creator.creatorId, body.data.takeEmails);
   return done ? json({ takeEmails: body.data.takeEmails }) : errorResponse("unauthorized");

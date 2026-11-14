@@ -1,3 +1,4 @@
+import { missedSchema } from "@/lib/api-schemas/requests";
 import { and, eq, gte, sql } from "drizzle-orm";
 import { z } from "zod";
 import { runTx } from "@/db/tx";
@@ -8,8 +9,6 @@ import { isExpired, removedMs } from "@/lib/take-media";
 import { recordEvent } from "../analytics/record";
 import { getForCreator } from "./index";
 import { type TakeHttpDeps, errorResponse, guard, readBody } from "./http";
-
-const body = z.object({ atMs: z.number().int().min(0) }).strict();
 
 /** 00:00 UTC of the day `now` falls in. */
 export function utcDayStart(now: Date): Date {
@@ -35,7 +34,7 @@ export async function handleMissed(
   const { take } = found.data;
   const at = deps.now?.() ?? new Date();
   if (take.status !== "ready" || isExpired(take, at)) return errorResponse("not_markable");
-  const parsed = body.safeParse(await readBody(request));
+  const parsed = missedSchema.safeParse(await readBody(request));
   if (!parsed.success) return errorResponse("invalid");
 
   const cuts = await creator.db

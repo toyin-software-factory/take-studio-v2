@@ -1,3 +1,4 @@
+import { backgroundChangeSchema } from "@/lib/api-schemas/requests";
 import { z } from "zod";
 import { NO_GREEN_SCREEN_NOTE } from "@/lib/take-display";
 import { type TakeHttpDeps, guard, json } from "../takes/http";
@@ -46,8 +47,6 @@ export const BACKGROUND_MESSAGES: Readonly<Record<ChangeBackgroundError | "inval
 export const TRANSCRIPT_RUNNING_MESSAGE =
   "Your transcript is still being made. Try again in a moment.";
 
-const body = z.object({ backgroundId: z.union([z.uuid(), z.literal("original")]) });
-
 /**
  * PUT /api/takes/{id}/background `{ backgroundId }` (an ID, or `"original"`): starts a re render
  * of the take's current cuts onto that background. Checks run in order: Origin (403), session
@@ -61,7 +60,7 @@ export async function handleChangeBackground(
 ): Promise<Response> {
   const creator = await guard(request, deps, { checkOrigin: true });
   if (creator instanceof Response) return creator;
-  const parsed = body.safeParse(await request.json().catch(() => null));
+  const parsed = backgroundChangeSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
     return json({ error: "invalid", message: BACKGROUND_MESSAGES.invalid }, STATUS.invalid);
   }
