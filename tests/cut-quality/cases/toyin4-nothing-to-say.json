@@ -1,0 +1,253 @@
+{
+  "id": "toyin4-nothing-to-say",
+  "note": "Invented pattern: an opening tic, a whole sentence that only says the speaker has nothing to say, then an um beside pauses. Cut all three as filler, keep the rest. Long enough to stay under the 40% word cut cap.",
+  "durationMs": 17120,
+  "words": [
+    {
+      "w": "So,",
+      "startMs": 400,
+      "endMs": 720,
+      "filler": false
+    },
+    {
+      "w": "yeah,",
+      "startMs": 800,
+      "endMs": 1120,
+      "filler": false
+    },
+    {
+      "w": "this",
+      "startMs": 1200,
+      "endMs": 1520,
+      "filler": false
+    },
+    {
+      "w": "is",
+      "startMs": 1600,
+      "endMs": 1920,
+      "filler": false
+    },
+    {
+      "w": "my",
+      "startMs": 2000,
+      "endMs": 2320,
+      "filler": false
+    },
+    {
+      "w": "tomato",
+      "startMs": 2400,
+      "endMs": 2720,
+      "filler": false
+    },
+    {
+      "w": "patch.",
+      "startMs": 2800,
+      "endMs": 3120,
+      "filler": false
+    },
+    {
+      "w": "I",
+      "startMs": 3680,
+      "endMs": 4000,
+      "filler": false
+    },
+    {
+      "w": "have",
+      "startMs": 4080,
+      "endMs": 4400,
+      "filler": false
+    },
+    {
+      "w": "no",
+      "startMs": 4480,
+      "endMs": 4800,
+      "filler": false
+    },
+    {
+      "w": "idea",
+      "startMs": 4880,
+      "endMs": 5200,
+      "filler": false
+    },
+    {
+      "w": "what",
+      "startMs": 5280,
+      "endMs": 5600,
+      "filler": false
+    },
+    {
+      "w": "to",
+      "startMs": 5680,
+      "endMs": 6000,
+      "filler": false
+    },
+    {
+      "w": "even",
+      "startMs": 6080,
+      "endMs": 6400,
+      "filler": false
+    },
+    {
+      "w": "say",
+      "startMs": 6480,
+      "endMs": 6800,
+      "filler": false
+    },
+    {
+      "w": "here.",
+      "startMs": 6880,
+      "endMs": 7200,
+      "filler": false
+    },
+    {
+      "w": "Um,",
+      "startMs": 8000,
+      "endMs": 8320,
+      "filler": true
+    },
+    {
+      "w": "the",
+      "startMs": 9120,
+      "endMs": 9440,
+      "filler": false
+    },
+    {
+      "w": "vines",
+      "startMs": 9520,
+      "endMs": 9840,
+      "filler": false
+    },
+    {
+      "w": "grow",
+      "startMs": 9920,
+      "endMs": 10240,
+      "filler": false
+    },
+    {
+      "w": "best",
+      "startMs": 10320,
+      "endMs": 10640,
+      "filler": false
+    },
+    {
+      "w": "in",
+      "startMs": 10720,
+      "endMs": 11040,
+      "filler": false
+    },
+    {
+      "w": "July.",
+      "startMs": 11120,
+      "endMs": 11440,
+      "filler": false
+    },
+    {
+      "w": "so",
+      "startMs": 11520,
+      "endMs": 11840,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 11920,
+      "endMs": 12240,
+      "filler": false
+    },
+    {
+      "w": "shade",
+      "startMs": 12320,
+      "endMs": 12640,
+      "filler": false
+    },
+    {
+      "w": "cloth",
+      "startMs": 12720,
+      "endMs": 13040,
+      "filler": false
+    },
+    {
+      "w": "goes",
+      "startMs": 13120,
+      "endMs": 13440,
+      "filler": false
+    },
+    {
+      "w": "up",
+      "startMs": 13520,
+      "endMs": 13840,
+      "filler": false
+    },
+    {
+      "w": "in",
+      "startMs": 13920,
+      "endMs": 14240,
+      "filler": false
+    },
+    {
+      "w": "June",
+      "startMs": 14320,
+      "endMs": 14640,
+      "filler": false
+    },
+    {
+      "w": "and",
+      "startMs": 14720,
+      "endMs": 15040,
+      "filler": false
+    },
+    {
+      "w": "comes",
+      "startMs": 15120,
+      "endMs": 15440,
+      "filler": false
+    },
+    {
+      "w": "down",
+      "startMs": 15520,
+      "endMs": 15840,
+      "filler": false
+    },
+    {
+      "w": "in",
+      "startMs": 15920,
+      "endMs": 16240,
+      "filler": false
+    },
+    {
+      "w": "September",
+      "startMs": 16320,
+      "endMs": 16640,
+      "filler": false
+    }
+  ],
+  "pauses": [
+    {
+      "startMs": 7450,
+      "endMs": 7750
+    },
+    {
+      "startMs": 8570,
+      "endMs": 8870
+    }
+  ],
+  "expected": [
+    {
+      "startMs": 400,
+      "endMs": 1200,
+      "kind": "filler",
+      "verdict": "cut"
+    },
+    {
+      "startMs": 3680,
+      "endMs": 8000,
+      "kind": "filler",
+      "verdict": "cut"
+    },
+    {
+      "startMs": 8000,
+      "endMs": 9120,
+      "kind": "filler",
+      "verdict": "cut"
+    }
+  ]
+}

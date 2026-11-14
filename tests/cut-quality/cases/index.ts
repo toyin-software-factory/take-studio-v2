@@ -9,6 +9,7 @@ import c_plain_fillers from "./plain-fillers.json";
 import c_restart from "./restart.json";
 import c_stammered_repeat from "./stammered-repeat.json";
 import c_toyin3_pattern from "./toyin3-pattern.json";
+import c_toyin4_nothing_to_say from "./toyin4-nothing-to-say.json";
 import h_drawn_out_hesitation from "./holdout/drawn-out-hesitation.json";
 import h_earlier_attempt from "./holdout/earlier-attempt.json";
 import h_like_and_trailing_filler from "./holdout/like-and-trailing-filler.json";
@@ -23,6 +24,7 @@ import a_plain_fillers from "../answers/plain-fillers.json";
 import a_restart from "../answers/restart.json";
 import a_stammered_repeat from "../answers/stammered-repeat.json";
 import a_toyin3_pattern from "../answers/toyin3-pattern.json";
+import a_toyin4_nothing_to_say from "../answers/toyin4-nothing-to-say.json";
 import a_drawn_out_hesitation from "../answers/drawn-out-hesitation.json";
 import a_earlier_attempt from "../answers/earlier-attempt.json";
 import a_like_and_trailing_filler from "../answers/like-and-trailing-filler.json";
@@ -47,6 +49,7 @@ export const CASE_ENTRIES: readonly CaseEntry[] = [
   { holdout: false, raw: c_restart, answer: a_restart },
   { holdout: false, raw: c_stammered_repeat, answer: a_stammered_repeat },
   { holdout: false, raw: c_toyin3_pattern, answer: a_toyin3_pattern },
+  { holdout: false, raw: c_toyin4_nothing_to_say, answer: a_toyin4_nothing_to_say },
   { holdout: true, raw: h_drawn_out_hesitation, answer: a_drawn_out_hesitation },
   { holdout: true, raw: h_earlier_attempt, answer: a_earlier_attempt },
   { holdout: true, raw: h_like_and_trailing_filler, answer: a_like_and_trailing_filler },
