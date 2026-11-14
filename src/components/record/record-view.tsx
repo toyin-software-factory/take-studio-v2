@@ -19,6 +19,10 @@ import { useRecorder } from "./use-recorder";
 const containerOf = (fileName: string): RecordingContainer =>
   fileName.endsWith(".mp4") ? "mp4" : "webm";
 
+/** A touch screen as the main input (a phone or tablet). Read in the browser only. */
+const isTouchDevice = (): boolean =>
+  typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
+
 const LEAVE_MESSAGE = "Your recording hasn't been uploaded. Leave without it?";
 
 /**
@@ -98,6 +102,12 @@ export function RecordView({
         limitMs={recorder.limitMs}
         onRecord={recorder.begin}
         onStop={recorder.stop}
+        devices={recorder.devices}
+        cameraId={recorder.cameraId}
+        micId={recorder.micId}
+        onCamera={recorder.chooseCamera}
+        onMic={recorder.chooseMic}
+        onFlip={recorder.flip}
       />
     );
   }
@@ -108,7 +118,9 @@ export function RecordView({
       onScript={editScript}
       failure={state.kind === "failed" ? state.failure : null}
       busy={state.kind === "requesting"}
+      touch={isTouchDevice()}
       onStart={() => void recorder.request()}
+      onNativeFile={(file) => void upload.start(file)}
     />
   );
 }
