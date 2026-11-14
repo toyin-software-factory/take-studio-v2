@@ -1,11 +1,15 @@
 import { logger, task } from "@trigger.dev/sdk";
+import { withJobDb } from "@/db/client/job";
+import { saveEvalRun } from "@/db/data/ai-eval-runs";
+import { toRunRow } from "@/lib/ai-eval-record";
+import { parseJobEnv } from "@/lib/env";
 import { realEvalIo, runAiEval } from "./run-eval";
 
 /**
  * Cut quality check with the real model (spec 0017, AC-10). Manual only: Toyin starts it from the
  * Trigger.dev dashboard with the payload `{ "token": "<AI_EVAL_TOKEN>" }`. It runs only when the
  * payload token equals `AI_EVAL_TOKEN` of the Trigger.dev environment (constant time compare);
- * in every other case it makes no model call. It logs numbers only and never writes a file.
+ * in every other case it makes no model call. It logs numbers only and never writes a file; at the end it saves the run's scores and per case misses (numbers, case ids, cut kinds) to `ai_eval_run` for /insights.
  */
 export const aiEvalTask = task({
   id: "ai-eval",
@@ -21,6 +25,9 @@ export const aiEvalTask = task({
         AI_EVAL_TOKEN: process.env.AI_EVAL_TOKEN,
         ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
       },
-      realEvalIo((message, fields) => logger.info(message, fields)),
+      realEvalIo(
+        (message, fields) => logger.info(message, fields),
+        (run) => withJobDb(parseJobEnv().DATABASE_URL, (db) => saveEvalRun(db, toRunRow(run))),
+      ),
     ),
 });

@@ -17,6 +17,7 @@ import {
   missesOf,
   scoreCuts,
 } from "@/lib/cut-quality";
+import type { EvalRunInput, GroupTotals } from "@/lib/ai-eval-record";
 import { sentryCheckAllowed } from "@/lib/sentry-check";
 import { type AiCallResult, callClaude, classifyAiError } from "../take-run/ai-call";
 
@@ -38,17 +39,20 @@ export type EvalIo = {
     signal: AbortSignal,
   ) => Promise<AiCallResult>;
   readonly now: () => number;
-  /** One log line: a fixed message and numbers, flags and IDs only. */
+  /** One log line: a fixed message and numbers, flags, IDs and span strings (times and kinds) only. */
   readonly log: (
     message: string,
-    fields: Readonly<Record<string, string | number | boolean>>,
+    fields: Readonly<Record<string, string | number | boolean | readonly string[]>>,
   ) => void;
+  /** Keeps the finished run for /insights (B2-T72). Optional so tests can leave it out. */
+  readonly save?: (run: EvalRunInput) => Promise<void>;
 };
 
-export const realEvalIo = (log: EvalIo["log"]): EvalIo => ({
+export const realEvalIo = (log: EvalIo["log"], save?: EvalIo["save"]): EvalIo => ({
   call: callClaude,
   now: () => Date.now(),
   log,
+  save,
 });
 
 /** One case's numbers. `fallback` names why the model's answer was not used (then the rules cuts are scored). */
@@ -87,6 +91,8 @@ export type EvalOutcome =
       readonly outcome: "done";
       readonly cases: number;
       readonly summary: readonly CaseSummary[];
+      /** Whether the run was kept for /insights (false: no save step, or it failed). */
+      readonly saved: boolean;
     };
 
 const round = (n: number): number => Math.round(n * 1000) / 1000;
@@ -226,7 +232,8 @@ export async function evalCase(
   return { score, report, summary: buildCaseSummary(report, c.expected, scored) };
 }
 
-function logCase(io: EvalIo, r: CaseReport): void {
+/** Times and kinds only (`start-end kind`), the same strings as the run output, so the trace shows them. */
+function logCase(io: EvalIo, r: CaseReport, summary: CaseSummary): void {
   io.log("ai-eval: case", {
     caseId: r.caseId,
     holdout: r.holdout,
@@ -237,6 +244,9 @@ function logCase(io: EvalIo, r: CaseReport): void {
     outputTokens: r.outputTokens,
     seconds: r.seconds,
     fallback: r.fallback ?? "none",
+    missed: summary.missed,
+    wrongKeepSpans: summary.wrongKeeps,
+    cuts: summary.cuts,
   });
 }
 
@@ -245,7 +255,7 @@ function logTotal(
   group: "main" | "holdout" | "all",
   reports: readonly CaseReport[],
   scores: readonly CutScore[],
-): void {
+): GroupTotals {
   const total = combineScores(scores);
   io.log("ai-eval: total", {
     group,
@@ -258,6 +268,12 @@ function logTotal(
     outputTokens: reports.reduce((sum, r) => sum + r.outputTokens, 0),
     seconds: round(reports.reduce((sum, r) => sum + r.seconds, 0)),
   });
+  return {
+    cases: reports.length,
+    precision: round(total.precision),
+    recall: round(total.recall),
+    wrongKeeps: total.wrongKeeps,
+  };
 }
 
 /**
@@ -287,23 +303,41 @@ export async function runAiEval(
       io.log("ai-eval: case skipped", { reason: "bad_case" });
       continue;
     }
-    logCase(io, result.report);
+    logCase(io, result.report, result.summary);
     done.push(result);
   }
   const pick = (holdout: boolean | null) =>
     done.filter((d) => holdout === null || d.report.holdout === holdout);
-  for (const [group, holdout] of [
-    ["main", false],
-    ["holdout", true],
-    ["all", null],
-  ] as const) {
-    const chosen = pick(holdout);
-    logTotal(
-      io,
-      group,
-      chosen.map((d) => d.report),
-      chosen.map((d) => d.score),
-    );
+  const totals = Object.fromEntries(
+    (
+      [
+        ["main", false],
+        ["holdout", true],
+        ["all", null],
+      ] as const
+    ).map(([group, holdout]) => {
+      const chosen = pick(holdout);
+      return [
+        group,
+        logTotal(
+          io,
+          group,
+          chosen.map((d) => d.report),
+          chosen.map((d) => d.score),
+        ),
+      ];
+    }),
+  ) as Record<"main" | "holdout" | "all", GroupTotals>;
+  const summary = done.map((d) => d.summary);
+  let saved = false;
+  if (io.save && done.length > 0) {
+    try {
+      await io.save({ model: AI_EDIT.model, ...totals, summary });
+      saved = true;
+    } catch {
+      // The run output still has everything; only the fact that saving failed is logged.
+      io.log("ai-eval: save failed", {});
+    }
   }
-  return { outcome: "done", cases: done.length, summary: done.map((d) => d.summary) };
+  return { outcome: "done", cases: done.length, summary, saved };
 }
