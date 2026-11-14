@@ -116,12 +116,14 @@ export function needsPacketEnd(json: unknown): boolean {
 }
 
 /**
- * The end of the last packet in seconds from `ffprobe -select_streams v:0 -show_entries
- * packet=pts_time,duration_time -of csv=p=0`: the largest `pts_time + duration_time` (the
- * duration may be missing, then just the time). Null when there are no usable packets.
+ * The playable length in seconds from `ffprobe -select_streams v:0 -show_entries
+ * packet=pts_time,duration_time -of csv=p=0`: the largest `pts_time + duration_time` minus the
+ * smallest `pts_time` (the duration may be missing, then just the time), so a file whose first
+ * packet starts late is not counted as longer. Null when the span is not positive.
  */
 export function parsePacketEnd(csv: string): number | null {
   let end: number | null = null;
+  let start: number | null = null;
   for (const line of csv.split("\n")) {
     const [time, duration] = line.trim().split(",");
     const pts = Number(time);
@@ -129,9 +131,10 @@ export function parsePacketEnd(csv: string): number | null {
       continue;
     const length = Number(duration);
     const to = pts + (Number.isFinite(length) && length > 0 ? length : 0);
+    if (start === null || pts < start) start = pts;
     if (end === null || to > end) end = to;
   }
-  return end !== null && end > 0 ? end : null;
+  return end !== null && start !== null && end > start ? end - start : null;
 }
 
 /** The seek point for a thumbnail: 1 s in, or the start for clips of 2 s or less. */

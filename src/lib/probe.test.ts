@@ -167,7 +167,11 @@ describe("WebM from a browser (spec 0021)", () => {
     expect(
       parsePacketEnd("0.000000,0.033000\nN/A,N/A\n\n1.000000,0.033000\n0.500000,\n"),
     ).toBeCloseTo(1.033);
-    expect(parsePacketEnd("2.5,N/A")).toBe(2.5);
+    expect(parsePacketEnd("2.5,N/A\n3.5,N/A")).toBe(1);
+    // One packet has no span: the file falls back to its header length.
+    expect(parsePacketEnd("2.5,N/A")).toBeNull();
+    // A first packet that starts late is not counted as extra length.
+    expect(parsePacketEnd("600.000,0.033\n609.967,0.033")).toBeCloseTo(10);
     expect(parsePacketEnd("")).toBeNull();
     expect(parsePacketEnd("N/A,N/A")).toBeNull();
   });
