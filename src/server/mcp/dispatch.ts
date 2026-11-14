@@ -91,7 +91,7 @@ function reportToolFailure(tool: string, takeId: string | null, error: unknown):
   captureMessage("mcp_tool_failed", {
     level: "error",
     tags: { service: "web", tool },
-    extra: { takeId, errorName: error instanceof Error ? error.name : "unknown" },
+    extra: { takeId, errorName: error instanceof Error ? error.constructor.name : "unknown" },
   });
 }
 
