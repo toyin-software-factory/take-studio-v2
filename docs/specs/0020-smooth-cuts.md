@@ -23,7 +23,8 @@ Toyin heard from a viewer that our cuts feel too sharp, "obvious and not smooth"
 1. **Audio fades.** Every keep segment gets `afade=t=in` at its start and `afade=t=out` at its end, `SMOOTH.audioFadeMs` = 30 ms each, but only on edges that touch a cut (not the very start or end of the take). A segment shorter than twice the fade gets fades of half its length.
 2. **Word cut edges in the gaps.** After the AI word cuts are merged (`mergeCuts`), each word cut edge that borders a kept word moves into the gap between the words: the start becomes the midpoint between the previous kept word's end and the cut's start, and the end becomes the midpoint between the cut's end and the next kept word's start. Each move is limited to `SMOOTH.wordEdgeMaxMs` = 80 ms, and an edge never moves into a kept word. Edges that border a pause cut or the take's start or end don't move. This is a pure function in `src/lib/ai-edit.ts`, which has the word list.
 3. **Alternating zoom.** In the render graph, kept pieces alternate between 100% and `SMOOTH.zoomScale` = 1.08 (centre crop then scale back to the source size, even dimensions). Pieces shorter than `SMOOTH.zoomMinPieceMs` = 1000 ms keep the zoom of the piece before them, so short pieces don't flicker. The zoom applies per segment before `concat`, so with a background (spec 0008) only the keyed person zooms, not the background. The first piece is always 100%.
-4. Settings live in one exported `SMOOTH` constant in `src/lib/trim.ts`, next to `TRIM`.
+4. **Slow push (second PR).** Toyin approved this on top of step 3 (2026-11-14). Each kept piece of at least `SMOOTH.zoomMinPieceMs` that follows a cut zooms in smoothly and linearly from its base scale (1.00 or 1.08) to base plus `SMOOTH.pushScale` = 0.04 over the piece's length, centred, output size unchanged, per frame (`eval=frame`). Shorter pieces and a take with no cuts get no push. Like the zoom, it applies per segment before `concat`, so a background stays still.
+5. Settings live in one exported `SMOOTH` constant in `src/lib/trim.ts`, next to `TRIM`.
 
 ## Acceptance criteria
 
@@ -32,11 +33,14 @@ Toyin heard from a viewer that our cuts feel too sharp, "obvious and not smooth"
 - **AC-3**: Kept pieces alternate 100% and 108% zoom with the 1000 ms rule, first piece 100%, output size unchanged, with and without a background. Unit tests on the filter script plus the existing render tests stay green.
 - **AC-4**: A take with no cuts renders exactly as before (no fades, no zoom).
 - **AC-5**: Audio and video stay in sync after the change (the existing frame alignment in `alignToFrames` still runs last on the keep ranges).
+- **AC-7**: Slow push: pieces of 1000 ms or more after a cut scale linearly from their base to base + 0.04 across the piece, centred, output size unchanged; shorter pieces and uncut takes have none. Unit tests on the filter script, plus a render test that the output dimensions and duration match, and a render time check on a 60 s test take noted in the PR.
 - **AC-6**: The cut-quality scorer (spec 0017) still passes; its baseline is updated only if moved edges change the scores, with the reason noted.
 
 ## Build plan
 
-One task, one PR: steps 1, 2 and 3 with their tests. Then a real render check on a test take after deploy, and Toyin tries a take.
+1. First PR: Decision steps 1, 2 and 3 with their tests (AC-1 to AC-6).
+2. Second PR: Decision step 4, the slow push (AC-7).
+3. A real render check on a test take after deploy, then Toyin tries a take.
 
 ## Consequences
 
@@ -45,5 +49,6 @@ One task, one PR: steps 1, 2 and 3 with their tests. Then a real render check on
 
 ## Follow-up
 
-- Per take switch for the zoom, if Toyin or creators ask.
+- A per take "Cut style" choice: Natural (sound fades only), Two camera (zoom), Dynamic (zoom plus slow push), as offered to Toyin.
+- Caption pop at cuts, once burned in captions exist.
 - Retune the three numbers with Toyin after the first real takes.
