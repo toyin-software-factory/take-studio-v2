@@ -62,7 +62,7 @@ describe("a flood of wrong bearers from one address", () => {
     expect((await rows(ip))[0]?.count).toBe(BEARER_FAIL.perMinute);
   });
 
-  it("admits only the budget when 100 wrong requests arrive at the same moment", async () => {
+  it("answers 401 only to the budget when 100 wrong requests arrive at the same moment", async () => {
     const ip = "203.0.113.13";
     const outs = await Promise.all(
       Array.from({ length: 100 }, (_, i) => call(`Bearer nope${i}`, ip)),
@@ -70,7 +70,8 @@ describe("a flood of wrong bearers from one address", () => {
     const kinds = outs.map((o) => (o.ok ? "ok" : o.error.kind));
     expect(kinds.filter((k) => k === "invalid_api_key")).toHaveLength(BEARER_FAIL.perMinute);
     expect(kinds.filter((k) => k === "rate_limited")).toHaveLength(100 - BEARER_FAIL.perMinute);
-    expect((await rows(ip))[0]?.count).toBe(BEARER_FAIL.perMinute);
+    // Every one was past the read, so each failure is counted (the overshoot is what was in flight).
+    expect((await rows(ip))[0]?.count).toBe(100);
   });
 
   it("counts malformed values and unknown OAuth tokens too", async () => {
@@ -117,6 +118,21 @@ describe("good clients and other addresses", () => {
       expect(out.ok && out.data.creatorId).toBe(creatorId);
     }
     expect((await rows(ip))[0]?.count).toBe(BEARER_FAIL.perMinute - 1);
+  });
+
+  it("40 valid requests at once from one address all succeed and are never counted", async () => {
+    const ip = "203.0.113.21";
+    const { id: creatorId } = await createCreator(db);
+    const key = generateApiKey();
+    await createApiKey(db, {
+      creatorId,
+      name: "burst",
+      prefix: apiKeyPrefix(key),
+      keyHash: await hashApiKey(key),
+    });
+    const outs = await Promise.all(Array.from({ length: 40 }, () => call(`Bearer ${key}`, ip)));
+    expect(outs.every((o) => o.ok && o.data.creatorId === creatorId)).toBe(true);
+    expect(await rows(ip)).toHaveLength(0);
   });
 
   it("another address is not affected by a flood", async () => {

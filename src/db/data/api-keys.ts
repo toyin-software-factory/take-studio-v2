@@ -168,20 +168,42 @@ export async function countApiRequest(
 const windowNow = sql<Date>`date_trunc('minute', clock_timestamp() at time zone 'utc') at time zone 'utc'`;
 
 /**
- * B2-T103: reserves one slot in the address's current UTC minute with a single atomic upsert that
- * returns the new count, so concurrent requests each see a different number and cannot all pass
- * on the same stale read. The row is written, so Hyperdrive never caches it. `at` is for tests.
- * The caller releases the slot when the bearer value turns out to be good.
+ * Failed bearer attempts this address has made in the current UTC minute (B2-T103), and the
+ * second into the minute. A plain read, so it uses `clock_timestamp()` (volatile) to keep
+ * Hyperdrive from serving a cached count. `at` is for tests.
  */
-export async function reserveBearerSlot(
+export async function bearerFailuresNow(
   db: Executor,
   ipHash: string,
   at?: Date,
-): Promise<{
-  readonly count: number;
-  readonly windowStart: Date;
-  readonly secondsIntoMinute: number;
-}> {
+): Promise<{ readonly failures: number; readonly secondsIntoMinute: number }> {
+  const [row] = await db
+    .select({
+      failures: bearerFailWindow.count,
+      secondsIntoMinute: at
+        ? sql<number>`${at.getUTCSeconds()}::int`
+        : sql<number>`floor(extract(second from clock_timestamp()))::int`,
+    })
+    .from(bearerFailWindow)
+    .where(
+      and(
+        eq(bearerFailWindow.ipHash, ipHash),
+        eq(bearerFailWindow.windowStart, at ? rateWindowStart(at) : windowNow),
+      ),
+    );
+  return row ?? { failures: 0, secondsIntoMinute: at ? at.getUTCSeconds() : 0 };
+}
+
+/**
+ * Counts one failed bearer attempt in the address's current UTC minute with one atomic upsert
+ * that returns the new count, so parallel failures each get their own number (no lost counts, and
+ * each one learns whether it went over the limit).
+ */
+export async function countBearerFailure(
+  db: Executor,
+  ipHash: string,
+  at?: Date,
+): Promise<{ readonly count: number; readonly secondsIntoMinute: number }> {
   const [row] = await db
     .insert(bearerFailWindow)
     .values({ ipHash, windowStart: at ? rateWindowStart(at) : windowNow, count: 1 })
@@ -191,25 +213,11 @@ export async function reserveBearerSlot(
     })
     .returning({
       count: bearerFailWindow.count,
-      windowStart: bearerFailWindow.windowStart,
       secondsIntoMinute: at
         ? sql<number>`${at.getUTCSeconds()}::int`
         : sql<number>`floor(extract(second from clock_timestamp()))::int`,
     });
-  if (!row) throw new Error("bearer slot not reserved");
-  return row;
-}
-
-/** Gives back a slot taken by `reserveBearerSlot` (a good request, or one that was refused). */
-export async function releaseBearerSlot(
-  db: Executor,
-  ipHash: string,
-  windowStart: Date,
-): Promise<void> {
-  await db
-    .update(bearerFailWindow)
-    .set({ count: sql`greatest(${bearerFailWindow.count} - 1, 0)` })
-    .where(and(eq(bearerFailWindow.ipHash, ipHash), eq(bearerFailWindow.windowStart, windowStart)));
+  return row ?? { count: 1, secondsIntoMinute: 0 };
 }
 
 /** Deletes one batch of failed bearer rows older than an hour. Returns how many went. */

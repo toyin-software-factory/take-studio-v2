@@ -1,8 +1,8 @@
 import {
   authenticateApiKey,
   countApiRequest,
-  releaseBearerSlot,
-  reserveBearerSlot,
+  bearerFailuresNow,
+  countBearerFailure,
 } from "@/db/data/api-keys";
 import type { Db } from "@/db/types";
 import {
@@ -10,6 +10,7 @@ import {
   clientIpOf,
   hashApiKey,
   hashClientIp,
+  failureWentOver,
   isOverFailLimit,
   isOverRateLimit,
   retryAfterFromSecond,
@@ -65,39 +66,50 @@ function logRejected(reason: "malformed" | "unknown" | "unavailable"): void {
 }
 
 /**
- * B2-T103: the per address limit on wrong bearer values. A slot is reserved with one atomic
- * upsert before any key or token lookup, so a burst of parallel requests cannot all pass on the
- * same count. A failure keeps its slot; a good request (or one refused here) gives it back, so
- * only failures use the budget. The address is only ever used as a hash. With no address (local
- * runs) nothing is limited. A limit that cannot be read or written never blocks a request.
+ * B2-T103: the per address limit on wrong bearer values. Before any key or token lookup the
+ * committed failures of this address are read (a plain read); at the limit the request is a 429
+ * and no lookup happens. A wrong value is counted afterwards with one atomic upsert that returns
+ * the new count, so parallel failures each get their own number and one that lands past the
+ * limit answers 429 too. A good request never touches the counter, so valid traffic alone can
+ * never trip the limit. Deliberate trade: requests already past the read when the limit is
+ * reached still do their lookup, so a burst can overshoot by at most what one address has in
+ * flight at once (their failures still count and answer 429).
+ * The address is only ever used as a hash. With no address (local runs) nothing is limited. A
+ * limit that cannot be read or written never blocks a request.
  */
 async function failureGate(
   keyAuth: NonNullable<ApiAuthDeps["keyAuth"]>,
   ip: string | null,
 ): Promise<{
   readonly blocked: ApiAuthError | null;
-  readonly release: () => Promise<void>;
+  readonly countFailure: () => Promise<ApiAuthError | null>;
 }> {
-  const none = { blocked: null, release: async () => {} };
+  const none = { blocked: null, countFailure: async () => null };
   if (ip === null) return none;
   const ipHash = await hashClientIp(ip);
   const at = keyAuth.now?.();
+  const limited = (secondsIntoMinute: number): ApiAuthError => ({
+    kind: "rate_limited",
+    retryAfter: at ? retryAfterSeconds(at) : retryAfterFromSecond(secondsIntoMinute),
+  });
   try {
     const db = await keyAuth.getDb();
-    const slot = await reserveBearerSlot(db, ipHash, at);
-    const release = () => releaseBearerSlot(db, ipHash, slot.windowStart).catch(() => {});
-    if (isOverFailLimit(slot.count)) {
+    const { failures, secondsIntoMinute } = await bearerFailuresNow(db, ipHash, at);
+    if (isOverFailLimit(failures)) {
       console.warn("api_bearer_ip_limited");
-      await release();
-      return {
-        blocked: {
-          kind: "rate_limited",
-          retryAfter: at ? retryAfterSeconds(at) : retryAfterFromSecond(slot.secondsIntoMinute),
-        },
-        release: async () => {},
-      };
+      return { blocked: limited(secondsIntoMinute), countFailure: async () => null };
     }
-    return { blocked: null, release };
+    return {
+      blocked: null,
+      countFailure: async () => {
+        try {
+          const counted = await countBearerFailure(db, ipHash, at);
+          return failureWentOver(counted.count) ? limited(counted.secondsIntoMinute) : null;
+        } catch {
+          return null;
+        }
+      },
+    };
   } catch {
     return none;
   }
@@ -110,27 +122,19 @@ async function resolveKey(
 ): Promise<Resolved> {
   const gate = await failureGate(keyAuth, ip);
   if (gate.blocked) return fail(gate.blocked);
-  let failed = false;
-  try {
-    return await lookupBearer(header, keyAuth, () => {
-      failed = true;
-    });
-  } finally {
-    // Only a wrong value keeps its slot; anything else (good, rate limited, error) gives it back.
-    if (!failed) await gate.release();
-  }
+  return lookupBearer(header, keyAuth, async (reason) => {
+    logRejected(reason);
+    const over = await gate.countFailure();
+    return fail(over ?? { kind: "invalid_api_key" });
+  });
 }
 
 async function lookupBearer(
   header: string,
   keyAuth: NonNullable<ApiAuthDeps["keyAuth"]>,
-  markFailed: () => void,
+  onRejected: (reason: "malformed" | "unknown") => Promise<Resolved>,
 ): Promise<Resolved> {
-  const rejected = (reason: "malformed" | "unknown"): Resolved => {
-    logRejected(reason);
-    markFailed();
-    return fail({ kind: "invalid_api_key" });
-  };
+  const rejected = onRejected;
   const key = bearerKey(header);
   const token = key === null && keyAuth.oauthResource ? bearerToken(header) : null;
   if (token !== null && keyAuth.oauthResource) {
@@ -143,7 +147,7 @@ async function lookupBearer(
       keyAuth.oauthResource,
       keyAuth.now?.(),
     );
-    if (!found) return rejected("unknown");
+    if (!found) return await rejected("unknown");
     // The same per minute limit as a key, counted for this app and creator.
     const at = keyAuth.now?.();
     const window = await countOauthRequest(db, found.clientId, found.creatorId, at);
@@ -155,10 +159,10 @@ async function lookupBearer(
     }
     return ok({ db, creatorId: found.creatorId });
   }
-  if (key === null) return rejected("malformed");
+  if (key === null) return await rejected("malformed");
   const db = await keyAuth.getDb();
   const found = await authenticateApiKey(db, await hashApiKey(key));
-  if (!found) return rejected("unknown");
+  if (!found) return await rejected("unknown");
   const at = keyAuth.now?.();
   const window = await countApiRequest(db, found.keyId, at);
   if (isOverRateLimit(window.count)) {

@@ -102,8 +102,13 @@ export function isOverRateLimit(count: number): boolean {
   return count > API_RATE.perMinute;
 }
 
-/** True when `count` (after reserving this request's slot) is over the failed bearer budget. */
-export function isOverFailLimit(count: number): boolean {
+/** True once an address has used up its failed bearer attempts for this minute (a read). */
+export function isOverFailLimit(failures: number): boolean {
+  return failures >= BEARER_FAIL.perMinute;
+}
+
+/** True when a failure just counted (`count` includes it) went past the budget. */
+export function failureWentOver(count: number): boolean {
   return count > BEARER_FAIL.perMinute;
 }
 
