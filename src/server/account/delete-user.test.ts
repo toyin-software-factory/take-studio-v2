@@ -2,6 +2,8 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import {
   account,
+  apiKey,
+  apiRateWindow,
   rateLimit,
   session,
   signInEmailAttempt,
@@ -146,6 +148,24 @@ describe("self serve Delete account (spec 0015 AC-13)", () => {
     expect((await deleteWith(auth, cookie)).status).toBe(200);
 
     expect(await db.select().from(take).where(eq(take.script, script))).toEqual([]);
+  });
+
+  it("deleting the account removes its API keys and rate windows (spec 0018 AC-14)", async () => {
+    const { auth, sent } = setup();
+    const cookie = await signInByLink(auth, sent, "keyed@example.test");
+    const id = await userIdOf("keyed@example.test");
+    const [row] = await db
+      .insert(apiKey)
+      .values({ creatorId: id, name: "agent", prefix: "AAAAAAAA", keyHash: "h".repeat(64) })
+      .returning({ id: apiKey.id });
+    await db.insert(apiRateWindow).values({ keyId: row!.id, windowStart: new Date(), count: 1 });
+
+    expect((await deleteWith(auth, cookie)).status).toBe(200);
+
+    expect(await db.select().from(apiKey).where(eq(apiKey.creatorId, id))).toEqual([]);
+    expect(await db.select().from(apiRateWindow).where(eq(apiRateWindow.keyId, row!.id))).toEqual(
+      [],
+    );
   });
 
   it("a stale session is refused with SESSION_EXPIRED and nothing is deleted, then a fresh link works", async () => {

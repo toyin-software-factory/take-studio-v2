@@ -102,6 +102,12 @@ describe("the cleanup task", () => {
     expect(source).not.toMatch(/local:\s*true/);
   });
 
+  it("purges old API rate windows on every sweep (spec 0018 AC-9)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const source = readFileSync(new URL("./cleanup.ts", import.meta.url), "utf8");
+    expect(source).toContain("purgeOldRateWindows(db, now)");
+  });
+
   it("ships the studio images with the Trigger.dev deploy", async () => {
     const { readFileSync } = await import("node:fs");
     const config = readFileSync(new URL("../../trigger.config.ts", import.meta.url), "utf8");

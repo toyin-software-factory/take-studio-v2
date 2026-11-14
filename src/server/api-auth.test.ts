@@ -168,6 +168,20 @@ describe("no fallback to the session (AC-5, AC-6)", () => {
   });
 });
 
+describe("header only (AC-2)", () => {
+  it("never reads a key from the query string: it is treated as no credential", async () => {
+    const owner = await createCreator(db);
+    const { key } = await makeKey(owner.id);
+    const session = noSession();
+    const res = await handleUsage(new Request(`${URL_BASE}/api/usage?key=${key}&api_key=${key}`), {
+      ...authDeps(session),
+      usageSecret: () => "x".repeat(40),
+    });
+    expect(res.status).toBe(401);
+    expect(((await res.json()) as { error?: string }).error).toBe("unauthorized");
+  });
+});
+
 describe("a revoked key (AC-3, AC-5)", () => {
   it("is refused on the very next request", async () => {
     const c = await createCreator(db);
