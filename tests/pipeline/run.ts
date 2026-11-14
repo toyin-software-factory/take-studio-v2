@@ -167,12 +167,12 @@ type Expect = {
   readonly sync?: boolean;
   readonly messageIncludes?: string;
   /** A recorded take (spec 0021): created with `source: "recording"`, cuts checked by range. */
-  readonly recording?: { readonly cutWithinMs: readonly [number, number] };
+  readonly recording?: { readonly cutMs: readonly [number, number] };
 };
 
 const FIXTURES: ReadonlyArray<readonly [string, string, "mp4" | "mov" | "webm", Expect]> = [
   // Spec 0021 AC-4, AC-14: what a browser recording makes, created as `source: "recording"`
-  // through the same route. Each is 10 s of a synthetic tone with the 2.5 s pause 3.0 to 5.5 s.
+  // through the same route. Each is 10 s of a synthetic tone with the 2.5 s pause 3.0 to 5.5 s, so one cut with the 250 ms margins is 3250 to 5250 ms.
   [
     "recorded WebM (Chrome, no duration in the header)",
     "recorded-chrome.webm",
@@ -180,7 +180,7 @@ const FIXTURES: ReadonlyArray<readonly [string, string, "mp4" | "mov" | "webm", 
     {
       status: "ready",
       render: { width: 320, height: 180 },
-      recording: { cutWithinMs: [2_900, 5_600] },
+      recording: { cutMs: [3_250, 5_250] },
     },
   ],
   [
@@ -190,7 +190,7 @@ const FIXTURES: ReadonlyArray<readonly [string, string, "mp4" | "mov" | "webm", 
     {
       status: "ready",
       render: { width: 320, height: 180 },
-      recording: { cutWithinMs: [2_900, 5_600] },
+      recording: { cutMs: [3_250, 5_250] },
     },
   ],
   [
@@ -281,7 +281,7 @@ async function fixtureScenario(
 
   const cuts = await cutsOf(takeId);
   if (want.recording) {
-    const [from, to] = want.recording.cutWithinMs;
+    const [from, to] = want.recording.cutMs;
     const [row] = await db.select().from(schema.take).where(eq(schema.take.id, takeId));
     check(label, "stored as a recording (AC-14)", row?.source === "recording", row?.source);
     check(
@@ -292,8 +292,9 @@ async function fixtureScenario(
     );
     check(
       label,
-      "the pause is cut",
-      cuts.length >= 1 && cuts.every(([x, y]) => x >= from && y <= to),
+      "the pause is cut with its margins (one cut, 150 ms codec tolerance)",
+      cuts.length === 1 &&
+        cuts.every(([x, y]) => Math.abs(x - from) <= 150 && Math.abs(y - to) <= 150),
       cuts,
     );
     const steps = new Map((t.latestJob?.steps ?? []).map((s) => [s.name, s.status]));

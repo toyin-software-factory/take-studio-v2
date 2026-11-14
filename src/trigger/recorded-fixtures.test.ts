@@ -1,4 +1,5 @@
 import { statSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
 import { describeWithFfmpeg } from "@/test/ffmpeg";
 import { probeFile } from "./media";
@@ -7,7 +8,7 @@ import { probeFile } from "./media";
 // `tests/fixtures/make-recorded-media.sh` writes them: a Chrome style WebM with no duration in the
 // header (so the length has to come from the packets) and a Safari style fragmented MP4.
 const file = (name: string) =>
-  new URL(`../../tests/fixtures/media/${name}`, import.meta.url).pathname;
+  fileURLToPath(new URL(`../../tests/fixtures/media/${name}`, import.meta.url));
 
 describeWithFfmpeg("recorded take fixtures (spec 0021 AC-4)", () => {
   it("reads a WebM with no duration in its header from the last packet", async () => {
