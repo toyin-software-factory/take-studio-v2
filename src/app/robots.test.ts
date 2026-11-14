@@ -23,12 +23,14 @@ describe("robots and sitemap (spec 0010, AC-3)", () => {
     }));
     expect(out.sitemap.map((entry) => entry.url)).toEqual([
       "https://take.example.com/",
+      "https://take.example.com/docs/api",
       "https://take.example.com/privacy",
       "https://take.example.com/terms",
     ]);
     expect(out.robots.sitemap).toBe("https://take.example.com/sitemap.xml");
-    const rules = out.robots.rules as { allow: string; disallow: string[] };
-    expect(rules.allow).toBe("/");
+    const rules = out.robots.rules as { allow: string[]; disallow: string[] };
+    // Spec 0018 AC-11: `/api/` is closed, but the OpenAPI file is open (the longer path wins).
+    expect(rules.allow).toEqual(["/", "/api/openapi.json"]);
     for (const path of ["/takes", "/library", "/design", "/api/"])
       expect(rules.disallow).toContain(path);
     expect(rules.disallow).toEqual([...PRIVATE_PATHS]);
