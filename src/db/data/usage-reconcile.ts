@@ -1,5 +1,6 @@
 import { and, eq, isNotNull, or, sql } from "drizzle-orm";
-import { processingJob } from "../schema";
+import { USAGE_LIMIT_ENABLED_KEY } from "@/lib/usage-rules";
+import { appSetting, processingJob } from "../schema";
 import { runTx } from "../tx";
 import type { Executor } from "../types";
 import { chargeUsage, returnUsage } from "./usage";
@@ -8,6 +9,8 @@ export type ReconcileSummary = {
   readonly added: number;
   readonly subtracted: number;
   readonly jobs: number;
+  /** Jobs whose transaction failed: they stay owed, so a switch on must wait for a clean run. */
+  readonly failed: number;
 };
 
 /**
@@ -47,8 +50,10 @@ export async function reconcileUsage(db: Executor): Promise<ReconcileSummary> {
   let added = 0;
   let subtracted = 0;
   let jobs = 0;
+  let failed = 0;
   for (const { id } of pending) {
-    const delta = await runTx(db, async (tx) => {
+    // A thrown database error counts as failed too, and must not stop the sweep.
+    const delta = await runTx<number, "tx_failed">(db, async (tx) => {
       const [job] = await tx
         .select()
         .from(processingJob)
@@ -77,11 +82,26 @@ export async function reconcileUsage(db: Executor): Promise<ReconcileSummary> {
         return { ok: true as const, data: -job.secondsCharged };
       }
       return { ok: true as const, data: 0 };
-    });
-    if (!delta.ok || delta.data === 0) continue;
+    }).catch(() => ({ ok: false as const, error: "tx_failed" as const }));
+    if (!delta.ok) {
+      failed += 1;
+      continue;
+    }
+    if (delta.data === 0) continue;
     jobs += 1;
     if (delta.data > 0) added += delta.data;
     else subtracted += -delta.data;
   }
-  return { added, subtracted, jobs };
+  return { added, subtracted, jobs, failed };
+}
+
+/** Sets `usage_limit_enabled` to true (spec 0014 AC-11), inserting the row if it is missing. Safe to repeat. */
+export async function enableUsageLimit(db: Executor): Promise<void> {
+  await db
+    .insert(appSetting)
+    .values({ key: USAGE_LIMIT_ENABLED_KEY, value: true })
+    .onConflictDoUpdate({
+      target: appSetting.key,
+      set: { value: true, updatedAt: sql`now()` },
+    });
 }

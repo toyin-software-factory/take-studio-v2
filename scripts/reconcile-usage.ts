@@ -36,7 +36,7 @@ const db = drizzle(client, { schema });
 try {
   const summary = await reconcileUsage(db);
   console.log(
-    `reconcile-usage: ${summary.jobs} jobs, ${summary.added} seconds added, ${summary.subtracted} seconds subtracted`,
+    `reconcile-usage: ${summary.jobs} jobs, ${summary.added} seconds added, ${summary.subtracted} seconds subtracted, ${summary.failed} failed`,
   );
 } finally {
   await client.end();
