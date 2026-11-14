@@ -168,6 +168,18 @@ describe("POST /api/realtime/token", () => {
     expect((await call(deps(c.id))).status).toBe(200);
   });
 
+  it("refuses with 503 and never mints when the usage read fails", async () => {
+    const c = await createCreator(db);
+    const d = deps(c.id);
+    const broken = {
+      ...d,
+      getCreator: async () => ({ db: {} as typeof db, creatorId: c.id }),
+    };
+    const res = await call(broken);
+    expect(res.status).toBe(503);
+    expect(d.fetch).not.toHaveBeenCalled();
+  });
+
   it("answers 503 and logs a code only when Deepgram fails, never the token or the key", async () => {
     const c = await createCreator(db);
     const log = vi.fn();

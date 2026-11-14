@@ -90,7 +90,7 @@ async function grant(
   }
 }
 
-/** The usage refusal, or null. A missing secret or any read trouble lets the mint go on. */
+/** The usage refusal, or null. A missing secret lets the mint go on; a failed read refuses it. */
 async function usageRefusal(creator: Creator, deps: RealtimeHttpDeps, now: Date) {
   const secret = deps.usageSecret?.() ?? null;
   if (!secret) return null;
@@ -100,7 +100,8 @@ async function usageRefusal(creator: Creator, deps: RealtimeHttpDeps, now: Date)
       usageSecret: secret,
       now,
     });
-    if (!usage.ok || !usage.data.enforced || usage.data.remainingSeconds > 0) return null;
+    if (!usage.ok) return refuse("unavailable");
+    if (!usage.data.enforced || usage.data.remainingSeconds > 0) return null;
     return reply(
       {
         error: "limit_exceeded",
@@ -110,7 +111,7 @@ async function usageRefusal(creator: Creator, deps: RealtimeHttpDeps, now: Date)
       STATUS.limit_exceeded,
     );
   } catch {
-    return null;
+    return refuse("unavailable");
   }
 }
 

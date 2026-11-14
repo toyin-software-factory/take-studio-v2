@@ -1,19 +1,12 @@
 import { parseUsageEnv, parseWebEnv, realtimeEnvSchema } from "@/lib/env";
-import { createAuth } from "../auth";
-import { getDb } from "../request";
+import { sessionCreator } from "../api-auth-deps";
 import type { RealtimeHttpDeps } from "./http";
 
 /** The real dependencies of the token route: the cookie session over the request's database. */
 export function realtimeHttpDeps(): RealtimeHttpDeps {
   return {
     allowedOrigin: new URL(parseWebEnv().BETTER_AUTH_URL).origin,
-    getCreator: async (request) => {
-      const db = await getDb();
-      const session = await createAuth(db, parseWebEnv()).api.getSession({
-        headers: request.headers,
-      });
-      return session ? { db, creatorId: session.user.id } : null;
-    },
+    getCreator: sessionCreator,
     deepgramKey: () => {
       const parsed = realtimeEnvSchema.safeParse(process.env);
       return parsed.success ? parsed.data.DEEPGRAM_REALTIME_API_KEY : null;
