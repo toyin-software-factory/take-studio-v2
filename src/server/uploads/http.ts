@@ -1,4 +1,7 @@
+import { z } from "zod";
 import type { Db } from "@/db/types";
+import { shortDate } from "@/lib/usage-rules";
+import { PRIVATE_NO_STORE, usageForCreator, usageNumbers } from "../usage";
 import {
   type UploadDeps,
   type UploadError,
@@ -22,6 +25,9 @@ export type HttpDeps = {
   /** The only origin allowed to call these routes (the app's own). */
   readonly allowedOrigin: string;
   readonly uploadDeps: (db: Db) => UploadDeps;
+  /** USAGE_HASH_SECRET for the early allowance refusal (spec 0014 AC-7); left out or throwing skips it. */
+  readonly usageSecret?: () => string;
+  readonly now?: () => Date;
 };
 
 const STATUS: Readonly<Record<UploadError, number>> = {
@@ -83,15 +89,54 @@ async function body(request: Request): Promise<unknown> {
   }
 }
 
+const hintSchema = z.object({ durationHintMs: z.number().positive().finite().optional() });
+
+/**
+ * Early refusal (spec 0014 AC-7): 403 `limit_exceeded` before any take or file exists, when the
+ * limit is on and no seconds are left, or the optional duration hint is more than what is left.
+ * The hint is advisory (the probe's real duration decides), so a missing secret or any trouble
+ * reading usage lets the upload go on.
+ */
+async function earlyRefusal(
+  creator: { readonly db: Db; readonly creatorId: string },
+  input: unknown,
+  deps: HttpDeps,
+): Promise<Response | null> {
+  if (!deps.usageSecret) return null;
+  try {
+    const usage = await usageForCreator(creator.db, {
+      creatorId: creator.creatorId,
+      usageSecret: deps.usageSecret(),
+      now: deps.now?.() ?? new Date(),
+    });
+    if (!usage.ok || !usage.data.enforced) return null;
+    const hint = hintSchema.safeParse(input);
+    const hintSeconds = hint.success ? hint.data.durationHintMs : undefined;
+    const tooLong =
+      hintSeconds !== undefined && Math.ceil(hintSeconds / 1000) > usage.data.remainingSeconds;
+    if (usage.data.remainingSeconds > 0 && !tooLong) return null;
+    const when = shortDate(usage.data.resetsOn);
+    const message =
+      usage.data.remainingSeconds > 0
+        ? `This video is longer than the minutes you have left this month. Try a shorter one, or come back on ${when}.`
+        : `This month's allowance is used up. Your minutes come back on ${when}.`;
+    return Response.json(
+      { error: "limit_exceeded", message, ...usageNumbers(usage.data) },
+      { status: 403, headers: PRIVATE_NO_STORE },
+    );
+  } catch {
+    return null;
+  }
+}
+
 /** `POST /api/uploads` */
 export async function handleCreate(request: Request, deps: HttpDeps): Promise<Response> {
   const creator = await guard(request, deps);
   if (creator instanceof Response) return creator;
-  const result = await createUpload(
-    deps.uploadDeps(creator.db),
-    creator.creatorId,
-    await body(request),
-  );
+  const input = await body(request);
+  const refused = await earlyRefusal(creator, input, deps);
+  if (refused) return refused;
+  const result = await createUpload(deps.uploadDeps(creator.db), creator.creatorId, input);
   return result.ok ? json(result.data, 201) : errorResponse(result.error);
 }
 

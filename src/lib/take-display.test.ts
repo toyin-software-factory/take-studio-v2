@@ -231,3 +231,12 @@ describe("previewStatusText (S3S-T14)", () => {
     );
   });
 });
+
+describe("failureMessage limit_exceeded (spec 0014 AC-6)", () => {
+  it("says the allowance is used up and the upload is kept, never 'something went wrong'", async () => {
+    const { failureMessage } = await import("./take-display");
+    const text = failureMessage({ failureCode: "limit_exceeded", durationMs: 30_000 });
+    expect(text).toContain("allowance is used up");
+    expect(text).not.toContain("went wrong");
+  });
+});

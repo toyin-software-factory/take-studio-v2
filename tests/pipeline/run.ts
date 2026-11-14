@@ -34,6 +34,7 @@ import { aiEditMeasure } from "./ai-edit";
 import { backgroundScenarios } from "./background";
 import { changeScenarios } from "./changes";
 import { transcriptScenarios } from "./transcript";
+import { usageScenarios } from "./usage";
 
 type Check = { scenario: string; check: string; ok: boolean; detail: string };
 const checks: Check[] = [];
@@ -325,6 +326,7 @@ async function main() {
   const b = await createCreator("b");
   const t = await createCreator("transcripts");
   const bg = await createCreator("backgrounds");
+  const u = await createCreator("usage");
   // The built in studios are in the local database and R2 (idempotent, like the deploy step).
   await ensureBuiltInBackgrounds(db, r2, { local: true });
   const takes: Record<string, string> = {};
@@ -332,6 +334,12 @@ async function main() {
   // PIPELINE_ONLY=background runs just the background scenarios (a lighter run for small machines).
   if (process.env.PIPELINE_ONLY === "background") {
     await backgroundScenarios({ c: bg, b, check, upload, waitFinal, downloadRender, media });
+    return;
+  }
+
+  // PIPELINE_ONLY=usage runs just the monthly usage limit checks (spec 0014).
+  if (process.env.PIPELINE_ONLY === "usage") {
+    await usageScenarios({ c: u, check, upload, waitFinal });
     return;
   }
 
@@ -547,6 +555,9 @@ async function main() {
     downloadRender,
     media,
   });
+
+  // Spec 0014: the monthly usage limit (the setting is restored at the end).
+  await usageScenarios({ c: u, check, upload, waitFinal });
 
   await transcriptScenarios({
     a,

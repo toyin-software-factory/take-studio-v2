@@ -3,10 +3,12 @@ import { dispatchJob } from "@/db/data/dispatch";
 import type { Db } from "@/db/types";
 import { removedRanges } from "@/lib/cut-rules";
 import { isExpired, isRetryable, removedMs, takeNote } from "@/lib/take-media";
+import { limitExceededMessage } from "@/lib/usage-rules";
 import { type AfterDelete, deleteTake, getForCreator, listForCreator, rename } from ".";
 import { listForTake } from "../cuts";
 import { hasActiveTranscribe } from "../transcripts";
 import { start } from "../jobs";
+import { PRIVATE_NO_STORE, usageForCreator, usageNumbers } from "../usage";
 import { cardView, cutView, jobView, renderView, takeView } from "./views";
 
 /**
@@ -46,7 +48,7 @@ export type TakeError =
   | "unavailable"
   | "expired"
   | "storage_error"
-  /** Spec 0014: the monthly allowance is used up (the message with the dates is step 4). */
+  /** Spec 0014: the monthly allowance is used up (the retry route sends the dated message). */
   | "limit_exceeded";
 
 const STATUS: Readonly<Record<TakeError, number>> = {
@@ -240,6 +242,9 @@ export async function handleRetry(
     usageSecret,
   });
   if (!started.ok) {
+    if (started.error === "limit_exceeded") {
+      return limitExceededResponse(creator, take.videoExpiresAt, usageSecret, deps.now);
+    }
     return errorResponse(started.error === "invalid_transition" ? "not_retryable" : started.error);
   }
   const dispatched = await dispatchJob(creator.db, {
@@ -248,6 +253,34 @@ export async function handleRetry(
   });
   if (!dispatched.ok) return errorResponse("dispatch_failed");
   return json({ job: jobView(started.data) }, 202);
+}
+
+/**
+ * A retry refused at the allowance (spec 0014 AC-6, AC-8): 403 with the dated message and the
+ * four usage numbers, `private, no-store`. Nothing was charged. Falls back to the plain message
+ * when the numbers can't be read.
+ */
+async function limitExceededResponse(
+  creator: Creator,
+  videoExpiresAt: Date | null,
+  usageSecret: string,
+  now: (() => Date) | undefined,
+): Promise<Response> {
+  const at = now?.() ?? new Date();
+  const usage = await usageForCreator(creator.db, {
+    creatorId: creator.creatorId,
+    usageSecret,
+    now: at,
+  });
+  if (!usage.ok) return errorResponse("limit_exceeded");
+  return Response.json(
+    {
+      error: "limit_exceeded",
+      message: limitExceededMessage({ resetsOn: usage.data.resetsOn, videoExpiresAt }),
+      ...usageNumbers(usage.data),
+    },
+    { status: STATUS.limit_exceeded, headers: PRIVATE_NO_STORE },
+  );
 }
 
 /** The request's JSON body, or undefined when it isn't JSON (the schema then rejects it). */
