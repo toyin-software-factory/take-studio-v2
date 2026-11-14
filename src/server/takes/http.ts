@@ -222,10 +222,13 @@ export async function handleRetry(
   const found = await getForCreator(creator.db, creator.creatorId, takeId);
   if (!found.ok) return errorResponse("not_found");
   const { take } = found.data;
+  // One clock read per request (spec 0014): retryability, the charge and the usage numbers
+  // all use the same instant, so a month boundary can't split them.
+  const at = deps.now?.() ?? new Date();
   // Spec 0007: any job start waits for a running transcript, with its own message.
   if (await hasActiveTranscribe(creator.db, take.id)) return errorResponse("transcript_running");
   if (take.status === "processing") return errorResponse("job_in_progress");
-  if (!isRetryable(take, deps.now?.() ?? new Date())) return errorResponse("not_retryable");
+  if (!isRetryable(take, at)) return errorResponse("not_retryable");
 
   // A missing USAGE_HASH_SECRET is a configuration problem: a friendly 503 before any job
   // starts (so nothing is charged), never a 500.
@@ -240,11 +243,11 @@ export async function handleRetry(
     creatorId: creator.creatorId,
     takeId: take.id,
     usageSecret,
-    now: deps.now?.() ?? new Date(),
+    now: at,
   });
   if (!started.ok) {
     if (started.error === "limit_exceeded") {
-      return limitExceededResponse(creator, take.videoExpiresAt, usageSecret, deps.now);
+      return limitExceededResponse(creator, take.videoExpiresAt, usageSecret, at);
     }
     return errorResponse(started.error === "invalid_transition" ? "not_retryable" : started.error);
   }
@@ -265,9 +268,8 @@ async function limitExceededResponse(
   creator: Creator,
   videoExpiresAt: Date | null,
   usageSecret: string,
-  now: (() => Date) | undefined,
+  at: Date,
 ): Promise<Response> {
-  const at = now?.() ?? new Date();
   const usage = await usageForCreator(creator.db, {
     creatorId: creator.creatorId,
     usageSecret,
