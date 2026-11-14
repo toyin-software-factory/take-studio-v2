@@ -25,6 +25,11 @@ export const RECORDER = {
   warnSecondsLeft: 60,
   /** Shorter than this is not a take (a tap on Stop by mistake). */
   minDurationMs: 1000,
+  /**
+   * The automatic stop comes this early, so the finished file is never over the upload limit
+   * (the timer only looks every 250 ms and the recorder flushes a little after it is stopped).
+   */
+  stopMarginMs: 1000,
 } as const;
 
 export type RecordingContainer = "mp4" | "webm";
@@ -64,6 +69,11 @@ export function recordingFileName(now: Date, container: RecordingContainer): str
 export function recordingLimitMs(remainingSeconds: number | null): number {
   if (remainingSeconds === null) return MEDIA_LIMITS.maxDurationMs;
   return Math.max(0, Math.min(MEDIA_LIMITS.maxDurationMs, remainingSeconds * 1000));
+}
+
+/** True when the recording has reached the point where it must stop by itself. */
+export function shouldAutoStop(elapsedMs: number, limitMs: number): boolean {
+  return elapsedMs >= Math.max(0, limitMs - RECORDER.stopMarginMs);
 }
 
 /** Why the camera could not start (AC-5). */

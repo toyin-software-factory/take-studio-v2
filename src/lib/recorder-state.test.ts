@@ -101,3 +101,18 @@ describe("derived flags", () => {
     expect(wouldLoseWork({ kind: "done" })).toBe(false);
   });
 });
+
+describe("start_failed", () => {
+  it("moves a countdown to a failure the person can retry from", () => {
+    const failed = recorderReducer(
+      { kind: "countdown", secondsLeft: 0 },
+      { type: "start_failed", failure: "unavailable" },
+    );
+    expect(failed).toEqual({ kind: "failed", failure: "unavailable" });
+    expect(recorderReducer(failed, { type: "request" })).toEqual({ kind: "requesting" });
+  });
+  it("is ignored outside the countdown", () => {
+    const s = { kind: "recording" } as const;
+    expect(recorderReducer(s, { type: "start_failed", failure: "unavailable" })).toBe(s);
+  });
+});

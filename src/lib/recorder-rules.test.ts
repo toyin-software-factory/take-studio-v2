@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  RECORDER,
+  shouldAutoStop,
   baseType,
   classifyMediaError,
   isLongEnough,
@@ -94,5 +96,14 @@ describe("scroll and length", () => {
   it("needs a second to count as a take", () => {
     expect(isLongEnough(999)).toBe(false);
     expect(isLongEnough(1000)).toBe(true);
+  });
+});
+
+describe("shouldAutoStop", () => {
+  it("stops a margin before the limit so the file stays under it", () => {
+    const limit = 600_000;
+    expect(shouldAutoStop(limit - RECORDER.stopMarginMs - 1, limit)).toBe(false);
+    expect(shouldAutoStop(limit - RECORDER.stopMarginMs, limit)).toBe(true);
+    expect(shouldAutoStop(limit, limit)).toBe(true);
   });
 });

@@ -7,7 +7,9 @@ import { Icon } from "@/components/ui/icon";
 import { RECORDER } from "@/lib/recorder-rules";
 import { formatClock } from "@/lib/take-display";
 import type { RecorderState } from "@/lib/recorder-state";
-import { ScriptScroll } from "./script-scroll";
+import { PrompterControls } from "./prompter-controls";
+import { PrompterText } from "./prompter-text";
+import type { Prompter } from "./use-prompter";
 
 /**
  * The live preview (mirrored, display only: the file is never mirrored), the script over it,
@@ -17,7 +19,7 @@ import { ScriptScroll } from "./script-scroll";
 export function RecordStage({
   state,
   stream,
-  script,
+  prompter,
   elapsedMs,
   limitMs,
   onRecord,
@@ -25,7 +27,7 @@ export function RecordStage({
 }: {
   readonly state: RecorderState;
   readonly stream: MediaStream | null;
-  readonly script: string;
+  readonly prompter: Prompter;
   readonly elapsedMs: number;
   readonly limitMs: number;
   readonly onRecord: () => void;
@@ -60,8 +62,8 @@ export function RecordStage({
           aria-label="Camera preview"
           className="size-full -scale-x-100 object-cover"
         />
-        <div className="absolute inset-x-3 top-3 flex flex-col gap-2">
-          <ScriptScroll script={script} elapsedMs={elapsedMs} active={recording} />
+        <div className="pointer-events-none absolute inset-x-3 top-3 bottom-12 flex flex-col gap-2">
+          <PrompterText prompter={prompter} />
         </div>
         {countdown && state.secondsLeft > 0 ? (
           <div
@@ -80,6 +82,7 @@ export function RecordStage({
           </span>
         ) : null}
       </div>
+      {prompter.total > 0 ? <PrompterControls prompter={prompter} /> : null}
       <p role="status" className="sr-only">
         {status}
       </p>
