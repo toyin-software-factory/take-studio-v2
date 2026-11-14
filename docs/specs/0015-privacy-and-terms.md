@@ -38,9 +38,9 @@ Forces: copy that drifts from the product is worse than no copy, because it is a
 - **AC-6**: The Terms page covers: who may use it (age floor from the decision below), the account and magic link rules, what the creator owns (the creator keeps all rights in their videos and transcripts and gives us only the right to process and show them to the creator), what is not allowed to upload, the 30 day and delete rules, the free monthly allowance and that it can change, availability without a guarantee, and a limit of liability and governing law that read from the facts Toyin supplies. Wording is plain, short sentences, and marked as a draft until the legal review is recorded (AC-11).
 - **AC-7**: Every page shows a "Last updated" date and a version from `LEGAL_VERSION` (`privacy` and `terms` each hold an ISO date). A change to the page text without a new date fails a test (AC-9). Changes that matter (a new processor, a longer retention, a new use of content) also require a visible notice to signed in creators through the existing email path, decided with Michael when it happens (not built here).
 - **AC-8**: Legal facts that only Toyin can supply (company name, postal address, contact email for privacy requests, governing law and venue, effective date) live in one place (`LEGAL_ENTITY` in `legal-facts.ts`, with `null` until supplied). While any is `null` the build still works, the page shows no invented value, the pages carry a visible "Draft, pending review" banner, and a test fails the launch gate (a separate `pnpm test:legal-launch` check, run before the switch to launch, not in the normal suite) until every value is filled and the review is recorded.
-- **AC-9**: The copy stays true by test. A unit test fails when: a processor secret group in the env schemas has no registry entry (mirrors `deploy-env-list.test.ts`), a new runtime dependency in `package.json` is neither in an allowlist of known non data tools nor in the registry (so an analytics or payments SDK cannot slip in), `DEEPGRAM_OPTIONS.mip_opt_out` is not `"true"`, Sentry options set `sendDefaultPii` true, the retention or limits numbers shown differ from the rule constants, or the rendered text of a page changed while its `LEGAL_VERSION` date did not (a stored hash of the normalized text).
+- **AC-9**: The copy stays true by test. A unit test fails when: a processor secret group in the env schemas has no registry entry (mirrors `deploy-env-list.test.ts`), a new runtime dependency in `package.json` is neither in an allowlist of known non data tools nor in the registry (so an analytics or payments SDK cannot slip in), `DEEPGRAM_OPTIONS.mip_opt_out` is not `"true"`, Sentry options set `sendDefaultPii` true, the retention or limits numbers shown differ from the rule constants, or the rendered text of a page changed while its `LEGAL_VERSION` date did not (a stored hash of the normalized text, with the allowance minutes replaced by a placeholder so changing the setting does not change the hash).
 - **AC-10**: A change checklist in `src/lib/AGENTS.md` and in the PR template area of `AGENTS.md` says: a change that adds a service, a cookie, a stored field, a retention change, a new event or a payment step must update `legal-facts.ts` and the copy, and bump the date. `/sync` is told to flag a diff that touches the listed files without touching `legal-facts.ts`.
-- **AC-11**: The legal review is a recorded gate, not an assumption: the spec's Follow up and `legal-facts.ts` carry `REVIEW = { reviewedBy: null, reviewedOn: null }`; the "Draft" banner shows until both are set, by a small PR Michael merges after Toyin sends the lawyer's sign off.
+- **AC-11**: The legal review is a recorded gate, not an assumption, and it is bound to the text that was reviewed. `legal-facts.ts` carries `REVIEW = { reviewedBy, reviewedOn, privacyVersion, privacyTextHash, termsVersion, termsTextHash }`, all `null` until a lawyer signs off. The Draft banner goes, and `pnpm test:legal-launch` passes, only when every field is set and `privacyVersion` and `termsVersion` equal the current `LEGAL_VERSION` dates and both text hashes equal the hashes of the current normalized page text (the same hashes AC-9 uses). A copy change after sign off therefore brings the banner back and fails the launch check until the changed page is reviewed again. A small PR that Michael merges sets the fields after Toyin sends the lawyer's sign off.
 - **AC-12**: Both pages meet WCAG AA: one `h1`, ordered headings, a table of contents with anchors on the long page, AA contrast on the light and dark themes, visible focus, readable line length, and print friendly. They use the existing design tokens (design.md) and the landing footer and header, not new components.
 - **AC-13**: Account deletion is honest. Until a self serve Delete account control exists, the Privacy page says how to ask by email and that it is done within 30 days; the copy reads that state from `ACCOUNT_DELETE_SELF_SERVE` in `legal-facts.ts`. When the control ships (decision 4) the flag flips and the copy changes with it, proven by the same test.
 
@@ -106,7 +106,7 @@ A notice line instead of a checkbox follows from the product: it is free, accoun
 
 **Files**:
 - `src/lib/legal-facts.ts` (pure, no side effects): `LEGAL_ENTITY`, `LEGAL_VERSION`, `REVIEW`, `ACCOUNT_DELETE_SELF_SERVE`, `PROCESSORS` (id, name, role, receives, doesNotReceive, location, trainsOnContent: false, envGroups), `COLLECTED` (what, why, kept, deletedWith). Numbers are imported from `take-rules`, `usage-rules`, `deepgram` and `site` (the contact email), never retyped.
-- `src/app/privacy/page.tsx`, `src/app/terms/page.tsx` (force dynamic is not needed: static render; named default exports for pages only), with copy components in `src/components/legal/` (one section per component, past 150 lines split).
+- `src/app/privacy/page.tsx`, `src/app/terms/page.tsx` (`dynamic = "force-dynamic"` because the allowance is read from the setting at request time; the rest of the text is fixed; default exports for pages only), with copy components in `src/components/legal/` (one section per component, past 150 lines split).
 - `src/components/auth/sign-in-form.tsx` notice; the upload area note; the landing footer Legal column in `content.ts`; the user menu links in `src/components/shell/user-menu.tsx`; sitemap and robots.
 
 **Value sourcing** (every value the pages show, and where it comes from):
@@ -114,7 +114,7 @@ A notice line instead of a checkbox follows from the product: it is free, accoun
 |---|---|
 | Video retention days | `VIDEO_RETENTION_DAYS` (`take-rules`) |
 | Upload limits (minutes, GB, resolution, types) | `MEDIA_LIMITS` (`take-rules`) |
-| Monthly allowance in minutes | `FREE_MONTHLY_SECONDS_DEFAULT` (`usage-rules`) divided by 60; the page says "currently" and that it can change |
+| Monthly allowance in minutes | The effective value, not the constant: the page reads the `free_monthly_seconds` setting (`app_setting`) through the same `readUsageSettings` and `monthlyAllowanceSeconds(settings, account)` the upload check uses (spec 0014 AC-2), divided by 60. `FREE_MONTHLY_SECONDS_DEFAULT` (3600) is only the fallback the settings read already applies when the setting is missing or invalid. The page says "currently" and that it can change. If the read fails the page shows the default with the same wording. |
 | Processor names, purpose, data received | `PROCESSORS` in `legal-facts.ts`, checked against env schemas and `package.json` (AC-9) |
 | Deepgram does not train | `DEEPGRAM_OPTIONS.mip_opt_out` (`src/lib/deepgram.ts`), asserted by test |
 | Anthropic receives words and positions only | spec 0012 AC-8 (the request builder's input type), named in the registry and linked to its test |
@@ -129,7 +129,7 @@ A notice line instead of a checkbox follows from the product: it is free, accoun
 **Key invariants**:
 - No number, service name or retention period in the copy is typed by hand when a constant exists.
 - No new processor, cookie, stored personal field or analytics event reaches main without a `legal-facts.ts` change and a version bump (tests plus checklist).
-- The pages never log, store or personalise anything about the reader; they are static and public.
+- The pages never log, store or personalise anything about the reader; they are public, and the only thing read per request is the allowance setting.
 
 **Security model**: public read only pages; no new route accepts input. The sign in notice adds no data collection. Contact details come from the facts file, never from user input.
 
@@ -140,6 +140,8 @@ A notice line instead of a checkbox follows from the product: it is free, accoun
 - Links: footer, sign in notice, upload note and user menu each link to both pages, verifies **AC-2**.
 - Processor drift: add an env group or a dependency not in the registry and the test fails; set `mip_opt_out` false and it fails, verifies **AC-4**, **AC-9**.
 - Version drift: edit the normalized text without a date change and the hash test fails, verifies **AC-7**, **AC-9**.
+- Review binding: with `REVIEW` filled, editing a page's text (or its date) brings the banner back and fails `pnpm test:legal-launch`, verifies **AC-11**.
+- Allowance: change the `free_monthly_seconds` setting in a test database and the page shows the new minutes, verifies **AC-3**.
 - Draft state: with `LEGAL_ENTITY` values null the banner shows and no invented value appears; `pnpm test:legal-launch` fails until filled and reviewed, verifies **AC-8**, **AC-11**.
 - Account deletion honesty: with the flag false the page says to email; true, it names the control, verifies **AC-13**.
 - Accessibility: axe on both pages in light and dark, keyboard focus order, verifies **AC-12**.
@@ -155,7 +157,7 @@ Tracer Bullet: one thin thread first (a real page from the facts file, linked an
 5. Accessibility and print pass with axe and browser tests, satisfies **AC-12**
 6. The change checklist in `src/lib/AGENTS.md` and root `AGENTS.md`, the `/sync` flag, and `pnpm test:legal-launch`, satisfies **AC-10**, **AC-8**
 7. Separate task, after the pages: the self serve Delete account control (confirm dialog, fresh session guard, signed out redirect, test that nothing is left) and the flag flip, satisfies **AC-13**
-8. Launch gate, when Toyin has the lawyer's sign off and the facts: fill `LEGAL_ENTITY` and `REVIEW`, remove the draft banner, run `pnpm test:legal-launch`, satisfies **AC-8**, **AC-11**
+8. Launch gate, when Toyin has the lawyer's sign off and the facts: fill `LEGAL_ENTITY` and `REVIEW` (including the reviewed versions and hashes), remove the draft banner, run `pnpm test:legal-launch`, satisfies **AC-8**, **AC-11**
 
 ## Consequences
 
