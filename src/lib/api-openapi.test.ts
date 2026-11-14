@@ -127,7 +127,11 @@ describe("buildOpenApi (spec 0018 AC-11)", () => {
       ],
       schemas: (name) =>
         name === "MediaQuery"
-          ? z.object({ kind: z.enum(["download", "preview"]), page: z.number().optional() })
+          ? z.object({
+              kind: z.enum(["download", "preview"]),
+              page: z.number().optional(),
+              limit: z.number().default(20),
+            })
           : undefined,
     });
     const op = doc.paths["/api/takes/{id}/media"]?.get as {
@@ -139,6 +143,7 @@ describe("buildOpenApi (spec 0018 AC-11)", () => {
       ["id", "path", true],
       ["kind", "query", true],
       ["page", "query", false],
+      ["limit", "query", false],
     ]);
   });
 

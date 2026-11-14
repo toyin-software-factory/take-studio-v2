@@ -35,10 +35,14 @@ export function pathParams(path: string): readonly string[] {
   return [...path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1] ?? "");
 }
 
-function jsonSchemaOf(schema: z.ZodType | undefined): Json | undefined {
+/** Requests read as input (a defaulted field may be left out), responses as output. */
+function jsonSchemaOf(
+  schema: z.ZodType | undefined,
+  io: "input" | "output" = "output",
+): Json | undefined {
   if (!schema) return undefined;
   return Object.fromEntries(
-    Object.entries(z.toJSONSchema(schema) as Json).filter(([key]) => key !== "$schema"),
+    Object.entries(z.toJSONSchema(schema, { io }) as Json).filter(([key]) => key !== "$schema"),
   );
 }
 
@@ -56,7 +60,7 @@ function queryParameters(schema: Json | undefined): readonly Json[] {
 }
 
 function operation(route: ApiRoute, lookup: ApiSchemaLookup): Json {
-  const request = jsonSchemaOf(route.request ? lookup(route.request) : undefined);
+  const request = jsonSchemaOf(route.request ? lookup(route.request) : undefined, "input");
   const response = jsonSchemaOf(route.response ? lookup(route.response) : undefined);
   const hasBody = route.method === "POST" || route.method === "PUT" || route.method === "PATCH";
   const params = pathParams(route.path);
