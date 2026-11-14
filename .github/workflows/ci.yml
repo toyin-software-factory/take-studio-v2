@@ -298,7 +298,7 @@ jobs:
         with:
           persist-credentials: false
           # The before variant needs the old commit, so it takes the full history.
-          fetch-depth: ${{ matrix.variant == 'before-t105' && 0 || 1 }}
+          fetch-depth: ${{ matrix.variant == 'before-t105' && '0' || '1' }}
 
       - uses: pnpm/action-setup@v4
 

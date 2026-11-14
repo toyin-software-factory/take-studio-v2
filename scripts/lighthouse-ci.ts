@@ -24,6 +24,10 @@ import { seedTakes, seedTranscript } from "../tests/support/takes";
 
 const BASE = process.env.LH_BASE_URL ?? "http://127.0.0.1:8787";
 const RUNS = Number(process.env.LH_RUNS ?? "3");
+if (!Number.isInteger(RUNS) || RUNS < 1) {
+  console.error(`::error::LH_RUNS must be a positive whole number, got "${process.env.LH_RUNS}".`);
+  process.exit(1);
+}
 const PORT = 9333;
 const OUT = "lighthouse-reports";
 
@@ -85,6 +89,7 @@ function loadProblem(lhr: Lhr, page: Page): string | null {
   if (final.pathname !== page.path) return `redirected to ${final.pathname}`;
   const status = documentStatus(lhr);
   if (status !== null && status >= 400) return `HTTP ${status}`;
+  if (typeof lhr.categories.performance.score !== "number") return "no performance score";
   for (const { audit } of METRICS) {
     if (typeof lhr.audits[audit]?.numericValue !== "number") return `no ${audit} value`;
   }
@@ -98,7 +103,7 @@ function sample(lhr: Lhr): Sample {
     cls: read("cumulative-layout-shift"),
     tbt: read("total-blocking-time"),
     fcp: read("first-contentful-paint"),
-    score: lhr.categories.performance.score ?? 0,
+    score: lhr.categories.performance.score!,
   };
 }
 
