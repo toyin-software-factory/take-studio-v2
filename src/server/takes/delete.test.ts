@@ -1,5 +1,5 @@
 import { eq, inArray } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { whileJobActive } from "@/db/data/jobs";
 import { queueDeletions } from "@/db/data/jobs/render-files";
 import { setTranscriptEdits, upsertTranscript } from "@/db/data/transcripts";
@@ -204,6 +204,36 @@ describe("deleteTake removes everything (spec 0013 AC-6)", () => {
     expect(queued).toHaveLength(1);
   });
 
+  it("logs the take ID only when a step after the commit fails (AC-11)", async () => {
+    const creator = await createCreator(db);
+    const { take: t } = await richTake(creator.id);
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      const after: AfterDelete = {
+        cancelRuns: async () => {
+          throw new Error(`boom ${t.title} ${t.originalKey} https://r2.example/presigned?sig=abc`);
+        },
+        requestStorageDrain: async () => {
+          throw new Error("trigger down");
+        },
+      };
+      await deleteTake(db, creator.id, t.id, after);
+      expect(spy).toHaveBeenCalledTimes(2);
+      for (const call of spy.mock.calls) {
+        const [message, details] = call as [string, Record<string, unknown>];
+        expect(Object.keys(details).sort()).toEqual(["reason", "step", "takeId"]);
+        expect(details.takeId).toBe(t.id);
+        expect(details.reason).toBe("Error");
+        const text = JSON.stringify(call);
+        expect(text).not.toContain(t.title);
+        expect(text).not.toContain(t.originalKey);
+        expect(text).not.toContain("presigned");
+        expect(message).not.toContain(t.id);
+      }
+    } finally {
+      spy.mockRestore();
+    }
+  });
   it("leaves nothing behind when the take is deleted during a running job (AC-7)", async () => {
     const creator = await createCreator(db);
     const { take: t, jobIds } = await richTake(creator.id);
