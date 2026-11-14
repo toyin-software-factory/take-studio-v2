@@ -26,7 +26,7 @@ import { type TestDb, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { hashOauthToken } from "@/lib/oauth-rules";
 import { guard } from "../api-auth";
-import { createAuth } from "../auth";
+import { OAUTH_REGISTER_PER_HOUR, createAuth } from "../auth";
 import { handleMcp } from "../mcp/http";
 import { TEST_NOW, TEST_ORIGIN, testMcpDeps } from "../mcp/test-wiring";
 import { protectedResourceMetadata } from "./metadata";
@@ -267,6 +267,39 @@ describe("discovery and registration (AC-13)", () => {
   });
 });
 
+describe("registration rate limit (AC-13)", () => {
+  it("allows 20 registrations an hour from one address and answers 429 to the 21st", async () => {
+    // Same wiring as the Worker: the caller's address comes from cf-connecting-ip.
+    const withIp = createAuth(db, ENV, {
+      clientIpHeader: "cf-connecting-ip",
+      sendEmail: async () => ({ ok: true, data: { id: "em_1" } }),
+    });
+    const registerFrom = (address: string) =>
+      withIp.handler(
+        new Request(`${ORIGIN}/api/auth/oauth2/register`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            origin: ORIGIN,
+            "cf-connecting-ip": address,
+          },
+          body: JSON.stringify({
+            client_name: "Rate test assistant",
+            redirect_uris: [REDIRECT],
+            token_endpoint_auth_method: "none",
+            application_type: "native",
+          }),
+        }),
+      );
+    for (let n = 0; n < OAUTH_REGISTER_PER_HOUR; n += 1) {
+      expect((await registerFrom("198.18.0.77")).status).toBe(201);
+    }
+    expect((await registerFrom("198.18.0.77")).status).toBe(429);
+    // Another address is not held back by it.
+    expect((await registerFrom("198.18.0.78")).status).toBe(201);
+  });
+});
+
 describe("authorize and token (AC-13)", () => {
   it("a minimal registration is a public client: PKCE exchange with no secret", async () => {
     const who = await signIn("minimal@example.test");
@@ -288,6 +321,25 @@ describe("authorize and token (AC-13)", () => {
     });
     expect(token.status).toBe(200);
     expect(token.body.access_token).toBeTruthy();
+  });
+
+  it("Deny sends the client back with access_denied, the state and no code", async () => {
+    const who = await signIn("denier@example.test");
+    const registered = (await (await register()).json()) as Registered;
+    const { challenge } = pkce();
+    const { url } = await authorize(who.cookie, registered.client_id, challenge);
+    expect(url).toContain("/consent");
+    const res = await jsonPost(
+      "/api/auth/oauth2/consent",
+      { accept: false, oauth_query: new URL(url, ORIGIN).search.slice(1) },
+      { cookie: who.cookie },
+    );
+    const back = new URL(((await res.json()) as { url: string }).url);
+    expect(back.origin + back.pathname).toBe(REDIRECT);
+    expect(back.searchParams.get("error")).toBe("access_denied");
+    expect(back.searchParams.get("state")).toBe("st1");
+    expect(back.searchParams.get("code")).toBeNull();
+    expect(await db.select().from(oauthConsent).where(eq(oauthConsent.userId, who.id))).toEqual([]);
   });
 
   it("issues a one time code and a hashed token pair; the code needs the right verifier", async () => {
