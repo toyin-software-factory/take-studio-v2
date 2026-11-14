@@ -1,0 +1,13 @@
+{
+  "keepPauses": [],
+  "wordCuts": [
+    {
+      "fromWord": 0,
+      "toWord": 11,
+      "kind": "false_start",
+      "reason": "Said again, a cleaner take follows"
+    }
+  ],
+  "fixes": [],
+  "background": null
+}

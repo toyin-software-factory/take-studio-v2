@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SCRIPT_MAX_CHARS } from "./processing";
 import { CUT_KINDS, CUT_PROPOSERS, type CutKind, type CutProposer } from "./cuts";
 
 /**
@@ -51,6 +52,8 @@ export const cutCaseSchema = z
     /** Why the case exists, in plain words about the pattern. Never real speech. */
     note: z.string().min(1).max(300),
     durationMs: z.number().int().positive().max(3_600_000),
+    /** Spec 0021: the invented script of a take read from one. Omitted for a take with none. */
+    script: z.string().trim().min(1).max(SCRIPT_MAX_CHARS).optional(),
     words: z.array(wordSchema).min(1),
     pauses: z.array(pauseSchema),
     expected: z.array(expectedSchema),

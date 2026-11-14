@@ -104,7 +104,14 @@ function answerToCuts(
   }
   const answer = aiEditAnswerSchema.safeParse(json);
   if (!answer.success) return { kind: "fallback", cause: "invalid" };
-  const valid = validateAiEdit(answer.data, c.words, candidates, c.durationMs);
+  const valid = validateAiEdit(
+    answer.data,
+    c.words,
+    candidates,
+    c.durationMs,
+    [],
+    Boolean(c.script),
+  );
   if (!valid.ok) return { kind: "fallback", cause: "invalid" };
   return {
     kind: "cuts",
@@ -132,6 +139,7 @@ export async function evalCase(
     words: c.words,
     candidates,
     durationMs: c.durationMs,
+    script: c.script,
   });
 
   const started = io.now();

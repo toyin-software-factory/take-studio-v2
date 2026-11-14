@@ -47,14 +47,26 @@ for (const entry of CASE_ENTRIES) {
   const c = parsed.data;
   if (only !== null && c.id !== only) continue;
   const candidates = c.pauses.map((p) => ({ ...p, reason: "Pause" }));
-  const request = buildAiRequest({ words: c.words, candidates, durationMs: c.durationMs });
+  const request = buildAiRequest({
+    words: c.words,
+    candidates,
+    durationMs: c.durationMs,
+    script: c.script,
+  });
   const verdict = await (async (): Promise<string> => {
     try {
       const result = await callClaude(request, apiKey, AbortSignal.timeout(AI_EDIT.deadlineMs));
       if (result.stopReason !== "end_turn" || result.text === null) return "unusable_answer";
       const answer = aiEditAnswerSchema.safeParse(JSON.parse(result.text));
       if (!answer.success) return "unusable_answer";
-      const valid = validateAiEdit(answer.data, c.words, candidates, c.durationMs);
+      const valid = validateAiEdit(
+        answer.data,
+        c.words,
+        candidates,
+        c.durationMs,
+        [],
+        Boolean(c.script),
+      );
       if (!valid.ok || valid.data.dropped > 0) return "refused_by_validator";
       writeFileSync(
         resolve(answersDir, `${c.id}.json`),

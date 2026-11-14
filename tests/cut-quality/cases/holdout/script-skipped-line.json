@@ -1,0 +1,58 @@
+{
+  "id": "script-skipped-line",
+  "note": "The speaker skips a scripted line; nothing is repeated, so nothing is cut and nothing is added.",
+  "script": "Sand the board first.\nWipe off the dust.\nThen paint it white.",
+  "durationMs": 4000,
+  "words": [
+    {
+      "w": "Sand",
+      "startMs": 400,
+      "endMs": 720,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 800,
+      "endMs": 1120,
+      "filler": false
+    },
+    {
+      "w": "board",
+      "startMs": 1200,
+      "endMs": 1520,
+      "filler": false
+    },
+    {
+      "w": "first",
+      "startMs": 1600,
+      "endMs": 1920,
+      "filler": false
+    },
+    {
+      "w": "Then",
+      "startMs": 2000,
+      "endMs": 2320,
+      "filler": false
+    },
+    {
+      "w": "paint",
+      "startMs": 2400,
+      "endMs": 2720,
+      "filler": false
+    },
+    {
+      "w": "it",
+      "startMs": 2800,
+      "endMs": 3120,
+      "filler": false
+    },
+    {
+      "w": "white",
+      "startMs": 3200,
+      "endMs": 3520,
+      "filler": false
+    }
+  ],
+  "pauses": [],
+  "expected": []
+}
