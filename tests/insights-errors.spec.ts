@@ -84,7 +84,7 @@ test("signed out, /insights is not found too", async ({ page }) => {
 // The app error page (src/app/error.tsx), reached through /design/error, which throws while
 // rendering and exists only where the /design gallery does (404 in production).
 test.describe("the app error page", () => {
-  test("heading, Retry by keyboard recovers, 44 px target", async ({ browser, baseURL }) => {
+  test("heading, Retry by keyboard recovers, 44 px target", async ({ browser }) => {
     const context = await browser.newContext({ ...devices["Pixel 7"] });
     const page = await context.newPage();
     try {
@@ -95,7 +95,7 @@ test.describe("the app error page", () => {
       const retry = page.getByRole("button", { name: "Retry" });
       const box = await retry.boundingBox();
       expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
-      await context.addCookies([{ name: "error-check-ok", value: "1", url: baseURL ?? "" }]);
+      await context.setExtraHTTPHeaders({ "x-error-check-ok": "1" });
       await retry.focus();
       await page.keyboard.press("Enter");
       await expect(page.getByRole("heading", { level: 1, name: "Recovered" })).toBeVisible();

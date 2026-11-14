@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { isGalleryEnabled } from "../gallery";
 
@@ -9,8 +9,8 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-/** The cookie a test sets so the next render succeeds, which shows Retry recovering. */
-const ERROR_CHECK_COOKIE = "error-check-ok";
+/** A request header a test sets so the next render succeeds, which shows Retry recovering. */
+const ERROR_CHECK_HEADER = "x-error-check-ok";
 
 /**
  * Test only: throws while rendering, so the app error page (`src/app/error.tsx`) can be checked
@@ -26,7 +26,7 @@ export default async function ErrorCheckPage() {
   ) {
     notFound();
   }
-  const recovered = (await cookies()).get(ERROR_CHECK_COOKIE)?.value === "1";
+  const recovered = (await headers()).get(ERROR_CHECK_HEADER) === "1";
   if (!recovered) throw new Error("error page check: a render failure on purpose");
   return (
     <main id="content" className="mx-auto max-w-content px-4 py-8">
