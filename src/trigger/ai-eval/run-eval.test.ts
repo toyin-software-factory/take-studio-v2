@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { CASE_ENTRIES } from "../../../tests/cut-quality/cases";
 import type { AiCallResult } from "../take-run/ai-call";
-import { type EvalIo, runAiEval } from "./run-eval";
+import { type EvalIo, buildCaseSummary, runAiEval } from "./run-eval";
 
 // Test values only; the real ones are AI_EVAL_TOKEN and ANTHROPIC_API_KEY in the Trigger.dev environment.
 const TOKEN = "eval-token-0123456789";
@@ -75,7 +75,7 @@ describe("runAiEval run", () => {
     const call = vi.fn(async () => answerFor(emptyAnswer));
     const { io, lines } = harness(call);
     const out = await runAiEval({ token: TOKEN }, ENV, io);
-    expect(out).toEqual({ outcome: "done", cases: CASE_ENTRIES.length });
+    expect(out).toMatchObject({ outcome: "done", cases: CASE_ENTRIES.length });
     expect(call).toHaveBeenCalledTimes(CASE_ENTRIES.length);
     expect(lines.filter((l) => l.message === "ai-eval: case")).toHaveLength(CASE_ENTRIES.length);
     const totals = lines.filter((l) => l.message === "ai-eval: total");
@@ -166,5 +166,75 @@ describe("runAiEval run", () => {
     // Only numbers, flags and short names appear as values.
     for (const l of lines)
       for (const v of Object.values(l.fields)) expect(String(v).length).toBeLessThan(40);
+  });
+});
+
+describe("buildCaseSummary (spec 0017 AC-10, the run output)", () => {
+  const report = { caseId: "c1", holdout: true, precision: 0.5, recall: 0.25, fallback: null };
+  const expected = [
+    { startMs: 1000, endMs: 2000, verdict: "cut", kind: "filler" },
+    { startMs: 3000, endMs: 4000, verdict: "cut", kind: "pause" },
+    { startMs: 5000, endMs: 6000, verdict: "keep", kind: "filler" },
+  ] as const;
+
+  it("names the missed must cut spans and the wrongly cut keep spans by time and kind", () => {
+    const cuts = [
+      { startMs: 1000, endMs: 2000, kind: "filler" },
+      { startMs: 5000, endMs: 5900, kind: "filler" },
+    ] as const;
+    expect(buildCaseSummary(report, expected, cuts)).toEqual({
+      id: "c1",
+      holdout: true,
+      precision: 0.5,
+      recall: 0.25,
+      fallback: null,
+      missed: ["3000-4000 pause"],
+      wrongKeeps: ["5000-6000 filler"],
+      cuts: ["1000-2000 filler", "5000-5900 filler"],
+    });
+  });
+
+  it("counts a span as hit at 60% like the scorer, and lists cuts in time order", () => {
+    const cuts = [
+      { startMs: 3000, endMs: 3600, kind: "pause" },
+      { startMs: 1000, endMs: 1500, kind: "filler" },
+    ] as const;
+    const summary = buildCaseSummary(report, expected, cuts);
+    expect(summary.missed).toEqual(["1000-2000 filler"]);
+    expect(summary.wrongKeeps).toEqual([]);
+    expect(summary.cuts).toEqual(["1000-1500 filler", "3000-3600 pause"]);
+  });
+
+  it("a perfect answer has no misses and no wrong keeps", () => {
+    const cuts = [
+      { startMs: 1000, endMs: 2000, kind: "filler" },
+      { startMs: 3000, endMs: 4000, kind: "pause" },
+    ] as const;
+    const summary = buildCaseSummary(report, expected, cuts);
+    expect(summary.missed).toEqual([]);
+    expect(summary.wrongKeeps).toEqual([]);
+  });
+
+  it("the run output has one summary per case and holds no transcript text or reason", async () => {
+    const reason = "A distinctive reason the model wrote";
+    const answer = JSON.stringify({
+      keepPauses: [],
+      wordCuts: [{ fromWord: 0, toWord: 0, kind: "filler", reason }],
+      fixes: [],
+      background: null,
+    });
+    const { io } = harness(vi.fn(async () => answerFor(answer)));
+    const out = await runAiEval({ token: TOKEN }, ENV, io);
+    if (out.outcome !== "done") throw new Error("expected a done run");
+    expect(out.summary.map((c) => c.id)).toEqual(
+      CASE_ENTRIES.map((e) => (e.raw as { id: string }).id),
+    );
+    const text = JSON.stringify(out);
+    expect(text).not.toContain(reason);
+    expect(text).not.toContain(TOKEN);
+    expect(text).not.toContain(KEY);
+    for (const secret of secretsOfCases().filter((w) => w.length >= 7)) {
+      expect(text).not.toContain(secret);
+    }
   });
 });

@@ -10,6 +10,7 @@ import {
   type CutRow,
   combineScores,
   cutCaseSchema,
+  missesOf,
   scoreCuts,
   type CutCase,
   type ExpectedSpan,
@@ -264,5 +265,26 @@ describe("countCuts, summariseCutQuality and cutRate (spec 0017, AC-5, AC-6)", (
     expect(cutRate(2, 4, 2)).toBeNull();
     expect(cutRate(2, 4, CUT_QUALITY_MIN_TAKES)).toBe(50);
     expect(cutRate(0, 0, CUT_QUALITY_MIN_TAKES)).toBeNull();
+  });
+});
+
+describe("missesOf (spec 0017 AC-10)", () => {
+  const expected = [
+    { startMs: 0, endMs: 1000, verdict: "cut", kind: "filler" },
+    { startMs: 2000, endMs: 3000, verdict: "keep", kind: "filler" },
+  ] as const;
+
+  it("lists a cut span below 60% and a keep span cut at 60% or more", () => {
+    const r = missesOf(expected, [
+      { startMs: 0, endMs: 500, kind: "filler" },
+      { startMs: 2000, endMs: 2600, kind: "filler" },
+    ]);
+    expect(r.missed).toEqual([{ startMs: 0, endMs: 1000, kind: "filler" }]);
+    expect(r.wrongKeeps).toEqual([{ startMs: 2000, endMs: 3000, kind: "filler" }]);
+  });
+
+  it("is empty for a clean answer", () => {
+    const r = missesOf(expected, [{ startMs: 0, endMs: 1000, kind: "filler" }]);
+    expect(r).toEqual({ missed: [], wrongKeeps: [] });
   });
 });

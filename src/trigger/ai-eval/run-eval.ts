@@ -10,8 +10,11 @@ import {
 import {
   type CutScore,
   type ScoredCut,
+  type ExpectedSpan,
+  type SpanRef,
   combineScores,
   cutCaseSchema,
+  missesOf,
   scoreCuts,
 } from "@/lib/cut-quality";
 import { sentryCheckAllowed } from "@/lib/sentry-check";
@@ -20,8 +23,9 @@ import { type AiCallResult, callClaude, classifyAiError } from "../take-run/ai-c
 /**
  * The `ai-eval` run (spec 0017, AC-10): the real model over every written case, scored with
  * `scoreCuts`. Everything it reports is a number, a flag or a case ID (the cases are invented, so
- * their IDs are safe). It never reports or logs a prompt, a word, a reason or an answer, and an
- * error is reduced to a cause name. Apart from Trigger.dev so tests can fake the model and the clock.
+ * their IDs are safe). It never reports or logs a prompt, a word or a reason, and an error is
+ * reduced to a cause name. The run output also carries a per case summary (`CaseSummary`): times,
+ * kinds and counts only, so one copy of the dashboard Output shows which spans each case missed. Apart from Trigger.dev so tests can fake the model and the clock.
  */
 
 export const payloadSchema = z.object({ token: z.string().min(1) });
@@ -60,12 +64,53 @@ export type CaseReport = {
   readonly fallback: AiCause | null;
 };
 
+/**
+ * One case for the run output (spec 0017 AC-10): the scores, the must cut spans the answer missed
+ * and the keep spans it cut (`start-end kind`, in ms), and the cuts it applied (`start-end kind`).
+ * Times and kinds only: no word, reason or prompt, and no creator data (the cases are invented).
+ */
+export type CaseSummary = {
+  readonly id: string;
+  readonly holdout: boolean;
+  readonly precision: number;
+  readonly recall: number;
+  readonly fallback: AiCause | null;
+  readonly missed: readonly string[];
+  readonly wrongKeeps: readonly string[];
+  readonly cuts: readonly string[];
+};
+
 export type EvalOutcome =
   | { readonly outcome: "skipped" }
   | { readonly outcome: "no_key" }
-  | { readonly outcome: "done"; readonly cases: number };
+  | {
+      readonly outcome: "done";
+      readonly cases: number;
+      readonly summary: readonly CaseSummary[];
+    };
 
 const round = (n: number): number => Math.round(n * 1000) / 1000;
+
+const spanText = (s: SpanRef): string => `${s.startMs}-${s.endMs} ${s.kind}`;
+
+/** The per case summary for the run output: pure, from the report, the marked spans and the cuts scored. */
+export function buildCaseSummary(
+  report: Pick<CaseReport, "caseId" | "holdout" | "precision" | "recall" | "fallback">,
+  expected: readonly ExpectedSpan[],
+  cuts: readonly ScoredCut[],
+): CaseSummary {
+  const { missed, wrongKeeps } = missesOf(expected, cuts);
+  return {
+    id: report.caseId,
+    holdout: report.holdout,
+    precision: report.precision,
+    recall: report.recall,
+    fallback: report.fallback,
+    missed: missed.map(spanText),
+    wrongKeeps: wrongKeeps.map(spanText),
+    cuts: [...cuts].sort((a, b) => a.startMs - b.startMs).map(spanText),
+  };
+}
 
 /** One call with the production single retry for 429, 5xx and network errors. */
 async function callOnce(
@@ -129,7 +174,11 @@ export async function evalCase(
   entry: CaseEntry,
   apiKey: string,
   io: EvalIo,
-): Promise<{ readonly report: CaseReport; readonly score: CutScore } | null> {
+): Promise<{
+  readonly report: CaseReport;
+  readonly score: CutScore;
+  readonly summary: CaseSummary;
+} | null> {
   const parsed = cutCaseSchema.safeParse(entry.raw);
   if (!parsed.success) return null;
   const c = parsed.data;
@@ -161,21 +210,20 @@ export async function evalCase(
     }
   }
   const seconds = round((io.now() - started) / 1000);
-  const score = scoreCuts(c.expected, answered.kind === "cuts" ? answered.cuts : rules);
-  return {
-    score,
-    report: {
-      caseId: c.id,
-      holdout: entry.holdout,
-      precision: round(score.precision),
-      recall: round(score.recall),
-      wrongKeeps: score.wrongKeeps,
-      inputTokens,
-      outputTokens,
-      seconds,
-      fallback: answered.kind === "fallback" ? answered.cause : null,
-    },
+  const scored = answered.kind === "cuts" ? answered.cuts : rules;
+  const score = scoreCuts(c.expected, scored);
+  const report: CaseReport = {
+    caseId: c.id,
+    holdout: entry.holdout,
+    precision: round(score.precision),
+    recall: round(score.recall),
+    wrongKeeps: score.wrongKeeps,
+    inputTokens,
+    outputTokens,
+    seconds,
+    fallback: answered.kind === "fallback" ? answered.cause : null,
   };
+  return { score, report, summary: buildCaseSummary(report, c.expected, scored) };
 }
 
 function logCase(io: EvalIo, r: CaseReport): void {
@@ -232,7 +280,7 @@ export async function runAiEval(
   }
   if (!env.ANTHROPIC_API_KEY) return { outcome: "no_key" };
 
-  const done: { report: CaseReport; score: CutScore }[] = [];
+  const done: { report: CaseReport; score: CutScore; summary: CaseSummary }[] = [];
   for (const entry of entries) {
     const result = await evalCase(entry, env.ANTHROPIC_API_KEY, io);
     if (!result) {
@@ -257,5 +305,5 @@ export async function runAiEval(
       chosen.map((d) => d.score),
     );
   }
-  return { outcome: "done", cases: done.length };
+  return { outcome: "done", cases: done.length, summary: done.map((d) => d.summary) };
 }

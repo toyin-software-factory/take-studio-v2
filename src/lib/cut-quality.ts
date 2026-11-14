@@ -125,6 +125,11 @@ function coveredMs(span: Span, merged: readonly Span[]): number {
   );
 }
 
+/** A span counts as hit (a `cut` span cut, a `keep` span wrongly cut) at 60% coverage. */
+function isHit(span: Span, merged: readonly Span[]): boolean {
+  return coveredMs(span, merged) >= HIT_SHARE * (span.endMs - span.startMs);
+}
+
 // ----- Scoring -----
 
 /** Counts that add up across cases; the ratios are derived from them. */
@@ -200,7 +205,7 @@ function tallyOf(
   const mine = expected.filter((e) => expectedKind === undefined || e.kind === expectedKind);
   const mustCut = mine.filter((e) => e.verdict === "cut");
   const keeps = mine.filter((e) => e.verdict === "keep");
-  const share60 = (e: Span) => coveredMs(e, cutAll) >= HIT_SHARE * (e.endMs - e.startMs);
+  const share60 = (e: Span) => isHit(e, cutAll);
   return {
     cutMs: lengthMs(cutOfKind),
     rightCutMs: cutOfKind.reduce((sum, c) => sum + coveredMs(c, rightToCut), 0),
@@ -353,3 +358,22 @@ export function cutRate(part: number, whole: number, takes: number): number | nu
 
 /** The "Missed something?" mark (spec 0017 AC-3): at most this many are recorded per take per UTC day. */
 export const MISSED_MARK = { perTakePerDay: 20 } as const;
+
+/** A marked span named by its time and kind only. */
+export type SpanRef = { readonly startMs: number; readonly endMs: number; readonly kind: CutKind };
+
+/**
+ * Which marked spans a pipeline got wrong, by the same 60% rule as `scoreCuts`: the must cut
+ * spans it missed, and the keep spans it cut. Times and kinds only, no words.
+ */
+export function missesOf(
+  expected: readonly ExpectedSpan[],
+  actual: readonly ScoredCut[],
+): { readonly missed: readonly SpanRef[]; readonly wrongKeeps: readonly SpanRef[] } {
+  const cutAll = union(actual);
+  const ref = (e: ExpectedSpan): SpanRef => ({ startMs: e.startMs, endMs: e.endMs, kind: e.kind });
+  return {
+    missed: expected.filter((e) => e.verdict === "cut" && !isHit(e, cutAll)).map(ref),
+    wrongKeeps: expected.filter((e) => e.verdict === "keep" && isHit(e, cutAll)).map(ref),
+  };
+}
