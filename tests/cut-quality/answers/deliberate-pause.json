@@ -1,0 +1,11 @@
+{
+  "keepPauses": [
+    {
+      "candidate": 0,
+      "reason": "Deliberate pause before the point"
+    }
+  ],
+  "wordCuts": [],
+  "fixes": [],
+  "background": null
+}

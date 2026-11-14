@@ -1,0 +1,82 @@
+{
+  "id": "restart",
+  "note": "A restart: the speaker begins a sentence, drops it and says it again.",
+  "durationMs": 5320,
+  "words": [
+    {
+      "w": "I",
+      "startMs": 400,
+      "endMs": 720,
+      "filler": false
+    },
+    {
+      "w": "was",
+      "startMs": 800,
+      "endMs": 1120,
+      "filler": false
+    },
+    {
+      "w": "I",
+      "startMs": 1200,
+      "endMs": 1520,
+      "filler": false
+    },
+    {
+      "w": "was",
+      "startMs": 1600,
+      "endMs": 1920,
+      "filler": false
+    },
+    {
+      "w": "going",
+      "startMs": 2000,
+      "endMs": 2320,
+      "filler": false
+    },
+    {
+      "w": "to",
+      "startMs": 2400,
+      "endMs": 2720,
+      "filler": false
+    },
+    {
+      "w": "say",
+      "startMs": 2800,
+      "endMs": 3120,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 3200,
+      "endMs": 3520,
+      "filler": false
+    },
+    {
+      "w": "kettle",
+      "startMs": 3600,
+      "endMs": 3920,
+      "filler": false
+    },
+    {
+      "w": "is",
+      "startMs": 4000,
+      "endMs": 4320,
+      "filler": false
+    },
+    {
+      "w": "loud",
+      "startMs": 4400,
+      "endMs": 4720,
+      "filler": false
+    }
+  ],
+  "pauses": [],
+  "expected": [
+    {
+      "startMs": 400,
+      "endMs": 1200,
+      "kind": "false_start",
+      "verdict": "cut"
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "keepPauses": [
+    {
+      "candidate": 1,
+      "reason": "Deliberate pause before the point"
+    }
+  ],
+  "wordCuts": [
+    {
+      "fromWord": 1,
+      "toWord": 1,
+      "kind": "filler",
+      "reason": "Hesitation sound or filler with no meaning"
+    },
+    {
+      "fromWord": 3,
+      "toWord": 4,
+      "kind": "false_start",
+      "reason": "Repeated or dropped words, one clean copy stays"
+    },
+    {
+      "fromWord": 7,
+      "toWord": 8,
+      "kind": "false_start",
+      "reason": "Repeated or dropped words, one clean copy stays"
+    },
+    {
+      "fromWord": 16,
+      "toWord": 17,
+      "kind": "false_start",
+      "reason": "Repeated or dropped words, one clean copy stays"
+    }
+  ],
+  "fixes": [],
+  "background": null
+}

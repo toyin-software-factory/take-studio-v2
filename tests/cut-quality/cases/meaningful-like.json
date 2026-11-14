@@ -1,0 +1,100 @@
+{
+  "id": "meaningful-like",
+  "note": "The word like and a real you know question are meaning, not filler.",
+  "durationMs": 5720,
+  "words": [
+    {
+      "w": "I",
+      "startMs": 400,
+      "endMs": 720,
+      "filler": false
+    },
+    {
+      "w": "like",
+      "startMs": 800,
+      "endMs": 1120,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 1200,
+      "endMs": 1520,
+      "filler": false
+    },
+    {
+      "w": "blue",
+      "startMs": 1600,
+      "endMs": 1920,
+      "filler": false
+    },
+    {
+      "w": "door",
+      "startMs": 2000,
+      "endMs": 2320,
+      "filler": false
+    },
+    {
+      "w": "you",
+      "startMs": 2400,
+      "endMs": 2720,
+      "filler": false
+    },
+    {
+      "w": "know",
+      "startMs": 2800,
+      "endMs": 3120,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 3200,
+      "endMs": 3520,
+      "filler": false
+    },
+    {
+      "w": "one",
+      "startMs": 3600,
+      "endMs": 3920,
+      "filler": false
+    },
+    {
+      "w": "by",
+      "startMs": 4000,
+      "endMs": 4320,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 4400,
+      "endMs": 4720,
+      "filler": false
+    },
+    {
+      "w": "well",
+      "startMs": 4800,
+      "endMs": 5120,
+      "filler": false
+    }
+  ],
+  "pauses": [],
+  "expected": [
+    {
+      "startMs": 800,
+      "endMs": 1200,
+      "kind": "filler",
+      "verdict": "keep"
+    },
+    {
+      "startMs": 2400,
+      "endMs": 2800,
+      "kind": "filler",
+      "verdict": "keep"
+    },
+    {
+      "startMs": 2800,
+      "endMs": 3200,
+      "kind": "filler",
+      "verdict": "keep"
+    }
+  ]
+}

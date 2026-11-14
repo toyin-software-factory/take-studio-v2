@@ -1,0 +1,81 @@
+{
+  "id": "drawn-out-hesitation",
+  "note": "A drawn out ummm with a gap and a missed er (the model skips one).",
+  "durationMs": 5340,
+  "words": [
+    {
+      "w": "We",
+      "startMs": 400,
+      "endMs": 720,
+      "filler": false
+    },
+    {
+      "w": "meet",
+      "startMs": 800,
+      "endMs": 1120,
+      "filler": false
+    },
+    {
+      "w": "at",
+      "startMs": 1200,
+      "endMs": 1520,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 1600,
+      "endMs": 1920,
+      "filler": false
+    },
+    {
+      "w": "ummm",
+      "startMs": 2000,
+      "endMs": 2320,
+      "filler": true
+    },
+    {
+      "w": "station",
+      "startMs": 3220,
+      "endMs": 3540,
+      "filler": false
+    },
+    {
+      "w": "er",
+      "startMs": 3620,
+      "endMs": 3940,
+      "filler": true
+    },
+    {
+      "w": "before",
+      "startMs": 4020,
+      "endMs": 4340,
+      "filler": false
+    },
+    {
+      "w": "noon",
+      "startMs": 4420,
+      "endMs": 4740,
+      "filler": false
+    }
+  ],
+  "pauses": [
+    {
+      "startMs": 2570,
+      "endMs": 2970
+    }
+  ],
+  "expected": [
+    {
+      "startMs": 2000,
+      "endMs": 3220,
+      "kind": "filler",
+      "verdict": "cut"
+    },
+    {
+      "startMs": 3620,
+      "endMs": 4020,
+      "kind": "filler",
+      "verdict": "cut"
+    }
+  ]
+}

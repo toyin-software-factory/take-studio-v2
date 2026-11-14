@@ -1,0 +1,76 @@
+{
+  "id": "placeholder-words",
+  "note": "Placeholder speech that carries no meaning.",
+  "durationMs": 4920,
+  "words": [
+    {
+      "w": "Today",
+      "startMs": 400,
+      "endMs": 720,
+      "filler": false
+    },
+    {
+      "w": "I",
+      "startMs": 800,
+      "endMs": 1120,
+      "filler": false
+    },
+    {
+      "w": "will",
+      "startMs": 1200,
+      "endMs": 1520,
+      "filler": false
+    },
+    {
+      "w": "blah",
+      "startMs": 1600,
+      "endMs": 1920,
+      "filler": false
+    },
+    {
+      "w": "blah",
+      "startMs": 2000,
+      "endMs": 2320,
+      "filler": false
+    },
+    {
+      "w": "show",
+      "startMs": 2400,
+      "endMs": 2720,
+      "filler": false
+    },
+    {
+      "w": "you",
+      "startMs": 2800,
+      "endMs": 3120,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 3200,
+      "endMs": 3520,
+      "filler": false
+    },
+    {
+      "w": "lantern",
+      "startMs": 3600,
+      "endMs": 3920,
+      "filler": false
+    },
+    {
+      "w": "kit",
+      "startMs": 4000,
+      "endMs": 4320,
+      "filler": false
+    }
+  ],
+  "pauses": [],
+  "expected": [
+    {
+      "startMs": 1600,
+      "endMs": 2400,
+      "kind": "false_start",
+      "verdict": "cut"
+    }
+  ]
+}
