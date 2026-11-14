@@ -45,7 +45,12 @@ export async function handleMissed(
   const durationMs = Math.max(0, (take.durationMs ?? 0) - removedMs(cuts));
   if (parsed.data.atMs > durationMs) return errorResponse("invalid");
 
-  const atMs = Math.min(Math.round(parsed.data.atMs / 100) * 100, durationMs);
+  // Rounded to 100 ms, then held to the last 100 ms boundary inside the video, so a length that
+  // is not a multiple of 100 never stores an off-grid time.
+  const atMs = Math.min(
+    Math.round(parsed.data.atMs / 100) * 100,
+    Math.floor(durationMs / 100) * 100,
+  );
   try {
     // The take row lock serializes presses of one take, so the count and the insert cannot
     // interleave and two presses at 19 marks never make 21. Locking only the take follows the

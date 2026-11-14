@@ -129,4 +129,12 @@ describe("POST /api/takes/{id}/missed (spec 0017, AC-2 to AC-4)", () => {
     expect(statuses.every((s) => s === 204)).toBe(true);
     expect(await marks(t.id)).toHaveLength(20);
   });
+
+  it("keeps the stored time on a 100 ms boundary when the length is not a multiple of 100", async () => {
+    const c = await createCreator(db);
+    const t = await seedTake(db, c.id, { status: "ready", durationMs: 1_050 });
+    expect((await handleMissed(post({ atMs: 1_050 }), t.id, deps(c.id))).status).toBe(204);
+    const [mark] = await marks(t.id);
+    expect((mark?.props as { atMs: number }).atMs).toBe(1_000);
+  });
 });
