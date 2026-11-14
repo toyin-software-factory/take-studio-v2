@@ -1,4 +1,4 @@
-import { ORIGINAL_INPUT } from "@/lib/ffmpeg-input";
+import { originalInput } from "@/lib/ffmpeg-input";
 import { reanalyse } from "@/db/data/cuts";
 import { whileJobActive } from "@/db/data/jobs";
 import { EDIT_DEADLINE_MS } from "@/lib/processing";
@@ -59,7 +59,17 @@ export async function fullRun(ctx: RunContext): Promise<RunResult> {
   if (facts.hasAudio) {
     const trimProgress = throttledProgress((p) => setStep(ctx, "trim", "running", p));
     const stderr = await runFfmpeg(
-      [...ORIGINAL_INPUT, "-i", source, "-vn", "-af", silencedetectFilter(), "-f", "null", "-"],
+      [
+        ...originalInput(source),
+        "-i",
+        source,
+        "-vn",
+        "-af",
+        silencedetectFilter(),
+        "-f",
+        "null",
+        "-",
+      ],
       {
         timeoutMs: 15 * 60_000,
         signal,

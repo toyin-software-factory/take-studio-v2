@@ -4,9 +4,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { z } from "zod";
 import type { ImageFacts } from "@/lib/background-rules";
-import { ORIGINAL_INPUT, imageInput } from "@/lib/ffmpeg-input";
+import { originalInput, imageInput } from "@/lib/ffmpeg-input";
 import { JOB_ERROR_NAMES } from "@/lib/job-errors";
-import { type ProbeFacts, parseFfprobe, thumbnailSeconds } from "@/lib/probe";
+import {
+  type ProbeFacts,
+  needsPacketEnd,
+  parseFfprobe,
+  parsePacketEnd,
+  thumbnailSeconds,
+} from "@/lib/probe";
 import { progressOutTimeMs, toneMapFilter } from "@/lib/trim";
 
 export { toneMapFilter };
@@ -70,27 +76,60 @@ const HTTP_INPUT = ["-rw_timeout", "30000000", "-reconnect", "1", "-reconnect_st
  * failed, so the caller can tell a bad file from a flaky read.
  */
 export async function probeUrl(url: string, signal?: AbortSignal): Promise<ProbeFacts | null> {
+  return probeInput(url, HTTP_INPUT, signal);
+}
+
+/**
+ * ffprobe of one stored original (MP4, MOV or WebM). A WebM from a browser has no duration
+ * header, so for it a second pass reads the packet times and the last one gives the length.
+ */
+async function probeInput(
+  input: string,
+  network: readonly string[],
+  signal?: AbortSignal,
+): Promise<ProbeFacts | null> {
   const stdout = await runTool(
     "ffprobe",
     [
       "-v",
       "error",
-      ...HTTP_INPUT,
-      ...ORIGINAL_INPUT,
+      ...network,
+      ...originalInput(input),
       "-print_format",
       "json",
       "-show_format",
       "-show_streams",
-      url,
+      input,
     ],
     60_000,
     signal,
   );
+  let json: unknown;
   try {
-    return parseFfprobe(JSON.parse(stdout));
+    json = JSON.parse(stdout);
   } catch {
     return null;
   }
+  if (!needsPacketEnd(json)) return parseFfprobe(json);
+  const packets = await runTool(
+    "ffprobe",
+    [
+      "-v",
+      "error",
+      ...network,
+      ...originalInput(input),
+      "-select_streams",
+      "v:0",
+      "-show_entries",
+      "packet=pts_time,duration_time",
+      "-of",
+      "csv=p=0",
+      input,
+    ],
+    60_000,
+    signal,
+  );
+  return parseFfprobe(json, { packetEndSeconds: parsePacketEnd(packets) });
 }
 
 /**
@@ -115,7 +154,7 @@ export async function thumbnailFromUrl(
         "error",
         "-y",
         ...HTTP_INPUT,
-        ...ORIGINAL_INPUT,
+        ...originalInput(url),
         "-ss",
         String(thumbnailSeconds(facts.durationMs)),
         "-i",
@@ -194,26 +233,7 @@ export function runFfmpeg(
 
 /** Probes a local file (no network options). */
 export async function probeFile(path: string, signal?: AbortSignal): Promise<ProbeFacts | null> {
-  const stdout = await runTool(
-    "ffprobe",
-    [
-      "-v",
-      "error",
-      ...ORIGINAL_INPUT,
-      "-print_format",
-      "json",
-      "-show_format",
-      "-show_streams",
-      path,
-    ],
-    60_000,
-    signal,
-  );
-  try {
-    return parseFfprobe(JSON.parse(stdout));
-  } catch {
-    return null;
-  }
+  return probeInput(path, [], signal);
 }
 
 /**

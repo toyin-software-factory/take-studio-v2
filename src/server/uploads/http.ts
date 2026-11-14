@@ -33,6 +33,7 @@ export type HttpDeps = {
 
 const STATUS: Readonly<Record<UploadError, number>> = {
   invalid: 422,
+  script_too_long: 422,
   too_large: 422,
   rate_limited: 429,
   not_found: 404,
@@ -47,6 +48,7 @@ const STATUS: Readonly<Record<UploadError, number>> = {
 
 const MESSAGES: Readonly<Record<UploadError, string>> = {
   invalid: "That file can't be uploaded. Choose an MP4 or MOV video.",
+  script_too_long: "Your script is over 20,000 characters. Shorten it and try again.",
   too_large: "This video is over 2 GB. The limit is 2 GB.",
   rate_limited: "You've started 10 uploads in the last hour. Try again a little later.",
   not_found: "We couldn't find that take.",

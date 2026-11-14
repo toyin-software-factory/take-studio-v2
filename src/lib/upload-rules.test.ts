@@ -11,13 +11,15 @@ describe("checkFile (AC-2: refused in the browser before upload)", () => {
     ["take.mp4", "", "mp4"],
     // AC-2 accepts either video MIME with a valid extension; the MIME names the container.
     ["take.mov", "video/mp4", "mp4"],
+    // Spec 0021: a browser recording is WebM, with or without a codecs suffix on the MIME.
+    ["take.webm", "video/webm", "webm"],
+    ["take.webm", "video/webm;codecs=vp9,opus", "webm"],
+    ["take.WEBM", "", "webm"],
   ])("accepts %s (%s)", (name, type, container) => {
     expect(checkFile({ name, size: 1000, type })).toEqual({ ok: true, container });
   });
 
   it.each([
-    ["take.webm", "video/webm"],
-    ["take.mp4", "video/webm"],
     ["take.mkv", ""],
     ["take", ""],
     ["photo.jpg", "image/jpeg"],

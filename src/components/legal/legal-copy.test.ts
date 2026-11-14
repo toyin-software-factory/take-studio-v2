@@ -53,7 +53,7 @@ describe("the Terms copy", () => {
   const text = legalCopyText("terms");
   it("covers the age floor, ownership, the 30 day rule and liability (AC-6)", () => {
     expect(text).toContain(`at least ${MINIMUM_AGE} years old`);
-    expect(text).toContain("You keep all rights in your videos and transcripts");
+    expect(text).toContain("You keep all rights in your videos, transcripts and scripts");
     expect(text).toContain(`${LEGAL_NUMBERS.retentionDays} days`);
     expect(text).toContain("not liable");
     expect(text).toContain("do not promise it will always be available");

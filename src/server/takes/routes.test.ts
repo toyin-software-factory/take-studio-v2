@@ -164,6 +164,26 @@ describe("session and Origin (spec 0004 API surface)", () => {
     }
   });
 
+  it("returns source and script on the take GET, and none for another creator (spec 0021)", async () => {
+    const creator = await createCreator(db);
+    const t = await seedTake(db, creator.id);
+    await db.update(take).set({ source: "recording", script: "My line." }).where(eq(take.id, t.id));
+    const res = await handleGet(req("GET", "/x"), t.id, takeDeps(creator.id));
+    expect(((await res.json()) as { take: unknown }).take).toMatchObject({
+      source: "recording",
+      script: "My line.",
+    });
+    const plain = await seedTake(db, creator.id);
+    const body = (await (
+      await handleGet(req("GET", "/x"), plain.id, takeDeps(creator.id))
+    ).json()) as { take: unknown };
+    expect(body.take).toMatchObject({ source: "file", script: null });
+    const other = await createCreator(db);
+    const denied = await handleGet(req("GET", "/x"), t.id, takeDeps(other.id));
+    expect(denied.status).toBe(404);
+    expect(await denied.text()).not.toContain("My line.");
+  });
+
   it("checks Origin on PATCH and POST only", async () => {
     const creator = await createCreator(db);
     const t = await seedTake(db, creator.id);

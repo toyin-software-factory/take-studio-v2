@@ -25,7 +25,7 @@ export type Probe = {
   readonly durationMs: number;
   readonly width: number;
   readonly height: number;
-  /** Normalised container name (`mp4` or `mov` when acceptable). */
+  /** Normalised container name (`mp4`, `mov` or `webm` when acceptable). */
   readonly container: string;
 };
 
@@ -84,14 +84,14 @@ const UNSAFE_CHARS = new RegExp("[\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029]"
 
 /**
  * Cleans a title: drops control characters, collapses whitespace, trims, and removes a
- * trailing `.mp4` / `.mov` (titles come from file names). May return an empty string.
+ * trailing `.mp4` / `.mov` / `.webm` (titles come from file names). May return an empty string.
  */
 export function cleanTitle(raw: string): string {
   return raw
     .replace(UNSAFE_CHARS, " ")
     .replace(/\s+/g, " ")
     .trim()
-    .replace(/\.(mp4|mov)$/i, "")
+    .replace(/\.(mp4|mov|webm)$/i, "")
     .trim();
 }
 

@@ -5,7 +5,7 @@
  * replace it later without touching the data model or the UI.
  */
 
-import { ORIGINAL_INPUT } from "./ffmpeg-input";
+import { originalInput } from "./ffmpeg-input";
 
 /** One 8 bit RGB pixel. */
 export type Rgb = { readonly r: number; readonly g: number; readonly b: number };
@@ -276,7 +276,7 @@ export function frameSampleArgs(
     "error",
     "-ss",
     (timeMs / 1000).toFixed(3),
-    ...ORIGINAL_INPUT,
+    ...originalInput(source),
     "-i",
     source,
     "-frames:v",
@@ -315,7 +315,7 @@ export function frameAlphaArgs(
     "error",
     "-ss",
     (timeMs / 1000).toFixed(3),
-    ...ORIGINAL_INPUT,
+    ...originalInput(source),
     "-i",
     source,
     "-frames:v",

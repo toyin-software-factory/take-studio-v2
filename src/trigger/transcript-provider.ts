@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { AbortTaskRunError } from "@trigger.dev/sdk";
-import { ORIGINAL_INPUT } from "@/lib/ffmpeg-input";
+import { originalInput } from "@/lib/ffmpeg-input";
 import { deepgramUrl, parseDeepgramResponse } from "@/lib/deepgram";
 import type { FailureCode } from "@/lib/failure-codes";
 import { JOB_ERROR_NAMES, hasJobErrorName } from "@/lib/job-errors";
@@ -111,7 +111,7 @@ export async function extractAudioWithFfmpeg(
       ...(options.remote
         ? ["-reconnect", "1", "-reconnect_streamed", "1", "-rw_timeout", "30000000"]
         : []),
-      ...ORIGINAL_INPUT,
+      ...originalInput(input),
       "-i",
       input,
       "-vn",

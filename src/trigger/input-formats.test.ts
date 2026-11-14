@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, beforeAll, expect, it } from "vitest";
-import { imageDemuxer, imageInput } from "@/lib/ffmpeg-input";
+import { WEBM_INPUT, imageDemuxer, imageInput, originalInput } from "@/lib/ffmpeg-input";
 import { describeWithFfmpeg } from "@/test/ffmpeg";
 import { MediaToolError, probeFile, probeImageFile, thumbnailFromUrl } from "./media";
 
@@ -112,4 +112,60 @@ it("picks the image demuxer from the first bytes", () => {
   expect(imageDemuxer(new TextEncoder().encode("ffconcat version 1.0"))).toBeNull();
   expect(imageInput(new Uint8Array(0))).toBeNull();
   expect(imageInput(png)).toEqual(["-f", "png_pipe"]);
+});
+
+// Spec 0021: a browser recording is WebM with no duration in its header. The probe reads the last
+// packet's end, so the take has a real length and the right container.
+describeWithFfmpeg("WebM recording (spec 0021)", () => {
+  let dir: string;
+  let webm: string;
+  beforeAll(async () => {
+    dir = await mkdtemp(join(tmpdir(), "webm-probe-"));
+    webm = join(dir, "source.webm");
+    // `-live 1` and `-reserve_index_space 0` leave the header without a duration, like MediaRecorder.
+    const made = spawnSync(
+      "ffmpeg",
+      [
+        "-y",
+        "-loglevel",
+        "error",
+        "-f",
+        "lavfi",
+        "-i",
+        "testsrc=size=64x48:rate=10",
+        "-f",
+        "lavfi",
+        "-i",
+        "sine=frequency=440",
+        "-t",
+        "2",
+        "-c:v",
+        "libvpx",
+        "-c:a",
+        "libopus",
+        "-live",
+        "1",
+        "-f",
+        "webm",
+        webm,
+      ],
+      { encoding: "utf8" },
+    );
+    if (made.status !== 0) throw new Error(`ffmpeg failed: ${made.stderr}`);
+  });
+  afterAll(() => rm(dir, { recursive: true, force: true }));
+
+  it("probes as webm with a length from its packets", async () => {
+    const facts = await probeFile(webm);
+    expect(facts).toMatchObject({ container: "webm", width: 64, height: 48, hasAudio: true });
+    expect(facts?.durationMs).toBeGreaterThan(1800);
+    expect(facts?.durationMs).toBeLessThan(2300);
+  });
+
+  it("opens with the pinned matroska input and refuses a text file named .webm", async () => {
+    const fake = join(dir, "sneaky.webm");
+    await writeFile(fake, `ffconcat version 1.0\nfile '${webm}'\n`);
+    expect(originalInput(fake)).toEqual(WEBM_INPUT);
+    expect(await probeFile(fake).catch(() => null)).toBeNull();
+  });
 });

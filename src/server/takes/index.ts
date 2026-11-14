@@ -5,7 +5,13 @@ import { markUploaded, transition } from "@/db/data/takes";
 import { background, jobStep, processingJob, render, take } from "@/db/schema";
 import { runTx } from "@/db/tx";
 import type { Executor, JobStep, ProcessingJob, Render, Take } from "@/db/types";
-import { CONTAINERS, TAKE_TITLE_MAX, type TakeStatus } from "@/lib/processing";
+import {
+  CONTAINERS,
+  SCRIPT_MAX_CHARS,
+  TAKE_SOURCES,
+  TAKE_TITLE_MAX,
+  type TakeStatus,
+} from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
 import { MEDIA_LIMITS, cleanTitle, originalKey, titleFromFileName } from "@/lib/take-rules";
 import { cancelRuns, requestStorageDrain } from "@/lib/trigger-runs";
@@ -25,7 +31,20 @@ const createSchema = z.object({
   fileName: z.string(),
   container: z.enum(CONTAINERS),
   bytes: z.number().int().positive().max(MEDIA_LIMITS.maxBytes),
+  /** Spec 0021: where the video came from; left out means a file upload. */
+  source: z.enum(TAKE_SOURCES).optional(),
+  /** Spec 0021: the creator's script, trimmed; empty means none. Personal data, never logged. */
+  script: z
+    .string()
+    .max(SCRIPT_MAX_CHARS * 2)
+    .optional(),
 });
+
+/** The script as stored: trimmed, and null when empty or absent. */
+export function cleanScript(script: string | undefined | null): string | null {
+  const trimmed = script?.trim() ?? "";
+  return trimmed.length === 0 ? null : trimmed;
+}
 
 /**
  * `takes.create`: a new take in `uploading` with an app generated ID and its original key
@@ -38,7 +57,9 @@ export async function create(
 ): Promise<Result<Take, "invalid">> {
   const parsed = createSchema.safeParse(input);
   if (!parsed.success) return err("invalid");
-  const { creatorId, fileName, container, bytes } = parsed.data;
+  const { creatorId, fileName, container, bytes, source, script } = parsed.data;
+  const cleanedScript = cleanScript(script);
+  if (cleanedScript !== null && cleanedScript.length > SCRIPT_MAX_CHARS) return err("invalid");
 
   const title = titleFromFileName(fileName);
   if (title.length === 0) return err("invalid");
@@ -54,6 +75,8 @@ export async function create(
       originalKey: originalKey(id, container),
       originalBytes: bytes,
       container,
+      source: source ?? "file",
+      script: cleanedScript,
     })
     .returning();
   return created ? ok(created) : err("invalid");
