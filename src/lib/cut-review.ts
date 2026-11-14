@@ -56,12 +56,23 @@ export function reasonLine(cut: NumberedCut | undefined): string | null {
 }
 
 /** AC-1 summary line over the pending state. */
-export function summaryLine(cuts: readonly { readonly ms: number }[]): string {
+export function summaryLine(
+  cuts: readonly { readonly ms: number; readonly kind?: string }[],
+): string {
   if (cuts.length === 0) return "No pauses cut.";
   const saved = secondsText(cuts.reduce((s, c) => s + c.ms, 0));
-  return cuts.length === 1
-    ? `1 pause cut, ${saved} s saved.`
-    : `${cuts.length} pauses cut, ${saved} s saved.`;
+  const words = cuts.filter((c) => c.kind !== undefined && c.kind !== "pause").length;
+  const pauses = cuts.length - words;
+  if (words === 0) {
+    return pauses === 1
+      ? `1 pause cut, ${saved} s saved.`
+      : `${pauses} pauses cut, ${saved} s saved.`;
+  }
+  const wordText = `${words} word ${words === 1 ? "cut" : "cuts"}`;
+  const pauseText = `${pauses} ${pauses === 1 ? "pause" : "pauses"}`;
+  return pauses === 0
+    ? `${wordText}, ${saved} s saved.`
+    : `${wordText} and ${pauseText}, ${saved} s saved.`;
 }
 
 export function pendingApplied(cut: ReviewCut, edits: Edits): boolean {

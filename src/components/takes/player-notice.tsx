@@ -3,7 +3,7 @@ import type { OriginalState } from "./use-original-source";
 /** The one line under the player about which video plays (spec 0011 AC-3). */
 export function playerNotice(active: "original" | "render", state: OriginalState): string | null {
   if (state.kind === "unplayable")
-    return "Preview isn’t available for this file. Render to hear it.";
+    return "Your browser can’t play this file’s original, so there’s no preview. Render will make the edited video.";
   if (state.kind === "failed") return "Couldn’t load the preview. Try again.";
   if (active === "original") return "Previewing your cuts on the original recording.";
   return null;
