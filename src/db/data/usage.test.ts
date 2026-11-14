@@ -8,7 +8,7 @@ import { type TestDb, createCreator, openTestDb, seedTake } from "../testing/tes
 import type { Db } from "../types";
 import { finish, startJob } from "./jobs";
 import { getUsedSeconds, readUsageSettings } from "./usage";
-import { reconcileUsage } from "./usage-reconcile";
+import { enableUsageLimit, reconcileUsage } from "./usage-reconcile";
 
 /**
  * Spec 0014 steps 2 and 3 (AC-1, AC-3 to AC-5, AC-10, AC-11). `app_setting` is global per
@@ -193,6 +193,17 @@ describe("backfill and reconcile (AC-11)", () => {
     await db.delete(usageMonth).where(eq(usageMonth.accountHash, hash));
   }
 
+  it("enableUsageLimit switches the setting on, from off or from a missing row, and is safe to repeat", async () => {
+    await setSettings(false);
+    expect((await readUsageSettings(db)).limitEnabled).toBe(false);
+    await enableUsageLimit(db);
+    await enableUsageLimit(db);
+    expect((await readUsageSettings(db)).limitEnabled).toBe(true);
+    await db.delete(appSetting).where(eq(appSetting.key, "usage_limit_enabled"));
+    await enableUsageLimit(db);
+    expect((await readUsageSettings(db)).limitEnabled).toBe(true);
+  });
+
   it("the migration backfill counts old jobs once and is safe to run twice", async () => {
     await setSettings(false);
     const a = await account();
@@ -228,7 +239,7 @@ describe("backfill and reconcile (AC-11)", () => {
     expect(first.added).toBeGreaterThanOrEqual(45);
     expect(await used(a.hash)).toBe(45);
     const second = await reconcileUsage(db);
-    expect(second).toEqual({ added: 0, subtracted: 0, jobs: 0 });
+    expect(second).toEqual({ added: 0, subtracted: 0, jobs: 0, failed: 0 });
     expect(await used(a.hash)).toBe(45);
   });
 
