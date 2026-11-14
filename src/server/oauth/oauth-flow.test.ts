@@ -264,6 +264,28 @@ describe("discovery and registration (AC-13)", () => {
 });
 
 describe("authorize and token (AC-13)", () => {
+  it("a minimal registration is a public client: PKCE exchange with no secret", async () => {
+    const who = await signIn("minimal@example.test");
+    const res = await jsonPost("/api/auth/oauth2/register", {
+      client_name: "Minimal assistant",
+      redirect_uris: [REDIRECT],
+    });
+    expect(res.status).toBe(201);
+    const client = (await res.json()) as Registered & { client_secret?: string };
+    expect(client.client_secret).toBeUndefined();
+    const { verifier, challenge } = pkce();
+    const code = await grantCode(who.cookie, client.client_id, challenge);
+    const token = await tokenRequest({
+      grant_type: "authorization_code",
+      code,
+      client_id: client.client_id,
+      redirect_uri: REDIRECT,
+      code_verifier: verifier,
+    });
+    expect(token.status).toBe(200);
+    expect(token.body.access_token).toBeTruthy();
+  });
+
   it("issues a one time code and a hashed token pair; the code needs the right verifier", async () => {
     const who = await signIn("flow@example.test");
     const registered = (await (await register()).json()) as Registered;

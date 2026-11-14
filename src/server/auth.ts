@@ -96,6 +96,13 @@ export function createAuth(
                 "Redirect URIs must be https, or http on localhost, with no wildcard.",
             });
           }
+          // MCP clients are public clients (PKCE, no secret): a registration that says nothing
+          // about its auth method would otherwise become confidential and get a secret it
+          // never uses, and its secretless code exchange would fail with invalid_client.
+          const body = ctx.body as Record<string, unknown> | undefined;
+          if (body && body.token_endpoint_auth_method === undefined) {
+            return { context: { ...ctx, body: { ...body, token_endpoint_auth_method: "none" } } };
+          }
           return;
         }
         if (ctx.path !== "/sign-in/magic-link") return;
