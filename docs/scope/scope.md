@@ -185,8 +185,8 @@ AI agents make the editing calls inside the pipeline: which pauses to cut (keepi
    - [x] AI cuts: one structured Claude call, validation, fallback to rules cuts, reasons on the timeline (AC-2, AC-3, AC-6, AC-7, AC-8, AC-9, AC-10, AC-12)
    - [x] Transcript fixes with undo and redo, used by the view, captions and downloads (AC-4, AC-11, AC-12)
    - [x] Background suggestion card, then measure time and cost on a real 10 minute take (AC-5, AC-6, AC-9, AC-12)
-- [ ] Verify it: `/check verify AI editing agents`
-- [ ] Test it: `/test AI editing agents`
+- [x] Verify it: `/check verify AI editing agents` (`docs/reviews/0012-ai-editing-verify.md`: AC-2, AC-3, AC-5 pass live; AC-4 and AC-7 not exercised live, AC-8 and AC-9 covered by tests)
+- [x] Test it: `/test AI editing agents` (`src/trigger/take-run/ai-call-request.test.ts` added for AC-9; the rest already covered, see the review)
 Spec [0012](../specs/0012-ai-editing-agents.md)
 
 ## Slice 6: Library, retention and limits
