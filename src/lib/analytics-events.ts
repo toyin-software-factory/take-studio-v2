@@ -30,7 +30,7 @@ const countsByKind = z.object(
     typeof cutCounts
   >,
 );
-const cutsReviewedProps = z
+export const cutsReviewedProps = z
   .object({
     counts: z
       .object(

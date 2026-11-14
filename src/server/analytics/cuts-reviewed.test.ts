@@ -3,7 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { analyticsEvent, cut } from "@/db/schema";
 import { createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import { AI_EDIT } from "@/lib/ai-edit";
-import { parseEventProps } from "@/lib/analytics-events";
+import { cutsReviewedProps } from "@/lib/analytics-events";
 import { recordCutsReviewed } from "./cuts-reviewed";
 import { cutQuality } from "./report";
 
@@ -64,31 +64,35 @@ describe("cuts_reviewed snapshot (spec 0017, AC-1, AC-5, AC-6)", () => {
       },
       { kind: "manual", proposedBy: "creator" },
     ]);
+    const before = await cutQuality(db, "all", new Date());
     await recordCutsReviewed(db, c.id, t.id);
     await recordCutsReviewed(db, c.id, t.id);
 
     const rows = await snapshots(t.id);
     expect(rows).toHaveLength(2);
-    const props = parseEventProps("cuts_reviewed", rows[0]?.props);
-    expect(props?.counts.ai.filler).toEqual({
+    const props = cutsReviewedProps.parse(rows[0]?.props);
+    expect(props.counts.ai.filler).toEqual({
       proposed: 3,
       undone: 1,
       restored: 0,
       kept: 0,
       added: 0,
     });
-    expect(props?.counts.ai.pause).toEqual({
+    expect(props.counts.ai.pause).toEqual({
       proposed: 2,
       undone: 0,
       restored: 1,
       kept: 1,
       added: 0,
     });
-    expect(props?.counts.creator.manual.added).toBe(1);
+    expect(props.counts.creator.manual.added).toBe(1);
 
     const quality = await cutQuality(db, "all", new Date());
-    const filler = quality.rows.find((r) => r.proposer === "ai" && r.kind === "filler");
-    expect(filler?.tally.proposed).toBeGreaterThanOrEqual(3);
+    const tallyOf = (q: typeof quality) =>
+      q.rows.find((r) => r.proposer === "ai" && r.kind === "filler")?.tally.proposed ?? 0;
+    // Two snapshots of one take count once: 3 proposed fillers, not 6.
+    expect(tallyOf(quality) - tallyOf(before)).toBe(3);
+    expect(quality.reviewedTakes - before.reviewedTakes).toBe(1);
     const mine = await snapshots(t.id);
     expect(mine).toHaveLength(2);
   });

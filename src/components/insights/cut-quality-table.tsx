@@ -71,7 +71,7 @@ export function CutQualityTable({ quality }: { readonly quality: CutQuality }) {
                     : "n/a"}
                 </td>
                 <td className="py-3 text-right tabular-nums">
-                  {tally.added === 0 ? "0" : (tally.added / takes).toFixed(2)}
+                  {tally.added === 0 ? "0" : perTake(tally.added)}
                 </td>
               </tr>
             ))}
