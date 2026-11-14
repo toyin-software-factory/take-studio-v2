@@ -1,6 +1,7 @@
 import { logger, schedules } from "@trigger.dev/sdk";
 import { withJobDb } from "@/db/client/job";
 import { purgeOldAnalyticsEvents, repairAnalyticsEvents } from "@/db/data/analytics-repair";
+import { purgeOldRateWindows } from "@/db/data/api-keys";
 import { failStuckBackgrounds, purgeRemovedBackgrounds } from "@/db/data/backgrounds";
 import {
   expireDueTakes,
@@ -27,6 +28,8 @@ import { ensureBuiltInBackgrounds } from "./built-in-backgrounds";
  * 4. drain the file deletion queue;
  * 4b. product events (spec 0016): insert the milestone events a dropped insert missed (the real
  *    rows' own times) and purge repeatable events older than 13 months; a failure is logged and
+ *    never stops the sweep;
+ * 4c. API rate windows (spec 0018 AC-9): delete the ones older than an hour; a failure is logged and
  *    never stops the sweep;
  * 5. first of all, install the built in studio backgrounds (spec 0008, AC-7; idempotent and cheap
  *    when they are all there; a failure is logged and never stops the sweep).
@@ -94,8 +97,16 @@ export const cleanupTask = schedules.task({
           return null;
         },
       );
+      // Spec 0018 AC-9: the limit only reads the current minute, so old windows can go.
+      const rateWindowsPurged = await purgeOldRateWindows(db, now).catch((error: unknown) => {
+        logger.error("rate window purge failed", {
+          error: error instanceof Error ? error.name : "unknown",
+        });
+        return null;
+      });
       return {
         analytics,
+        rateWindowsPurged,
         studiosInstalled,
         probesRedispatched: recovery.redispatched.length,
         stuckUploadsFailed: recovery.failed.length,
