@@ -42,25 +42,33 @@ function jsonSchemaOf(schema: z.ZodType | undefined): Json | undefined {
   );
 }
 
+/** Query parameters from an object schema, for an operation that has a request but no body. */
+function queryParameters(schema: Json | undefined): readonly Json[] {
+  const properties = schema?.properties;
+  if (!properties || typeof properties !== "object") return [];
+  const required = Array.isArray(schema?.required) ? (schema.required as string[]) : [];
+  return Object.entries(properties as Json).map(([name, field]) => ({
+    name,
+    in: "query",
+    required: required.includes(name),
+    schema: field,
+  }));
+}
+
 function operation(route: ApiRoute, lookup: ApiSchemaLookup): Json {
   const request = jsonSchemaOf(route.request ? lookup(route.request) : undefined);
   const response = jsonSchemaOf(route.response ? lookup(route.response) : undefined);
   const hasBody = route.method === "POST" || route.method === "PUT" || route.method === "PATCH";
   const params = pathParams(route.path);
+  const parameters: readonly Json[] = [
+    ...params.map((name) => ({ name, in: "path", required: true, schema: { type: "string" } })),
+    ...(hasBody ? [] : queryParameters(request)),
+  ];
   return {
     operationId: operationId(route),
     summary: route.summary,
     security: [{ bearerAuth: [] }],
-    ...(params.length > 0
-      ? {
-          parameters: params.map((name) => ({
-            name,
-            in: "path",
-            required: true,
-            schema: { type: "string" },
-          })),
-        }
-      : {}),
+    ...(parameters.length > 0 ? { parameters } : {}),
     ...(request && hasBody
       ? { requestBody: { required: true, content: { "application/json": { schema: request } } } }
       : {}),

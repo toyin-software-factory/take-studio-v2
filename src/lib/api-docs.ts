@@ -83,7 +83,7 @@ export const UPLOAD_STEPS: readonly UploadStep[] = [
     command: `curl -s -X POST "$BASE/api/uploads" \\
   -H "Authorization: Bearer $TAKE_STUDIO_KEY" \\
   -H "Content-Type: application/json" \\
-  -d '{"fileName":"take.mp4","sizeBytes":52428800,"container":"mp4"}'
+  -d '{"fileName":"take.mp4","sizeBytes":10485760,"container":"mp4"}'
 # {"takeId":"…","partSize":…,"partCount":…}`,
   },
   {
@@ -97,7 +97,7 @@ export const UPLOAD_STEPS: readonly UploadStep[] = [
   },
   {
     title: "Send each part",
-    text: "PUT the bytes of each part to its link. This goes to storage, not to us, so send no key. Keep the ETag header the reply gives back.",
+    text: "PUT the bytes of each part to its link. This goes to storage, not to us, so send no key. Keep the ETag header the reply gives back. This example file is 10 MiB, so it is one part; a bigger file is cut into pieces of the partSize from step 1 (the last one may be smaller), and you ask for, send and list every part number up to partCount.",
     command: `curl -s -D - -X PUT --data-binary @part-1.bin "$PART_URL"
 # ETag: "…"`,
   },

@@ -114,6 +114,34 @@ describe("buildOpenApi (spec 0018 AC-11)", () => {
     expect(op.responses["2XX"]?.content["application/json"].schema.properties).toHaveProperty("id");
   });
 
+  it("turns a request schema on a GET into query parameters with their required flags", () => {
+    const doc = build({
+      registry: [
+        {
+          method: "GET",
+          path: "/api/takes/{id}/media",
+          auth: "session-or-key",
+          summary: "media",
+          request: "MediaQuery",
+        },
+      ],
+      schemas: (name) =>
+        name === "MediaQuery"
+          ? z.object({ kind: z.enum(["download", "preview"]), page: z.number().optional() })
+          : undefined,
+    });
+    const op = doc.paths["/api/takes/{id}/media"]?.get as {
+      parameters: { name: string; in: string; required: boolean }[];
+      requestBody?: unknown;
+    };
+    expect(op.requestBody).toBeUndefined();
+    expect(op.parameters.map((p) => [p.name, p.in, p.required])).toEqual([
+      ["id", "path", true],
+      ["kind", "query", true],
+      ["page", "query", false],
+    ]);
+  });
+
   it("ignores a name the lookup does not know", () => {
     const doc = build({
       registry: [
