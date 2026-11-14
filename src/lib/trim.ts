@@ -178,6 +178,8 @@ export const SMOOTH = {
   wordEdgeMaxMs: 80,
   zoomScale: 1.08,
   zoomMinPieceMs: 1000,
+  /** The slow push: a long piece after a cut grows by this much of its base scale. */
+  pushScale: 0.04,
 } as const;
 
 /**
@@ -187,6 +189,29 @@ export const SMOOTH = {
  */
 export function endSlackMs(fps: number | null | undefined): number {
   return 500 / (fps && fps > 0 ? fps : 30) + 0.001;
+}
+
+/**
+ * The video filters of one kept piece (after `setpts`): a slow linear push from the base scale
+ * (1.00, or the zoom) to base plus `pushScale` across the piece, centred, at the source size; or
+ * the plain zoom crop; or nothing. The push applies to pieces of at least `zoomMinPieceMs` that
+ * follow a cut (never the first piece), so a take with no cuts has none.
+ */
+function pieceMotion(
+  piece: { readonly lenMs: number; readonly index: number; readonly zoomed: boolean },
+  size: { readonly width: number; readonly height: number } | undefined,
+  crop: { w: number; h: number } | null,
+): string {
+  if (!size || !crop) return "";
+  const base = piece.zoomed ? SMOOTH.zoomScale : 1;
+  if (piece.index > 0 && piece.lenMs >= SMOOTH.zoomMinPieceMs) {
+    const factor = `(${base}+${SMOOTH.pushScale}*t/${(piece.lenMs / 1000).toFixed(6)})`;
+    const even = (n: number) => `ceil(${n}*${factor}/2)*2`;
+    return `,scale=w='${even(size.width)}':h='${even(size.height)}':eval=frame,crop=${size.width}:${size.height},setsar=1`;
+  }
+  return piece.zoomed
+    ? `,crop=${crop.w}:${crop.h},scale=${size.width}:${size.height},setsar=1`
+    : "";
 }
 
 /**
@@ -252,8 +277,12 @@ export function renderFilterScript(keep: readonly Range[], options: RenderGraphO
   };
   const lines = keep.flatMap((r, i) => [
     `[0:v]trim=start=${videoSeconds(r.startMs)}:end=${videoSeconds(r.endMs)},setpts=PTS-STARTPTS${
-      zooms?.[i] && crop && options.size
-        ? `,crop=${crop.w}:${crop.h},scale=${options.size.width}:${options.size.height},setsar=1`
+      zooms
+        ? pieceMotion(
+            { lenMs: r.endMs - r.startMs, index: i, zoomed: zooms[i] ?? false },
+            options.size,
+            crop,
+          )
         : ""
     }[v${i}];`,
     ...(hasAudio
