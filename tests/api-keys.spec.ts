@@ -31,6 +31,9 @@ async function dismiss(page: Page) {
   await expect(page.getByLabel("New API key")).toHaveCount(0);
 }
 
+/** The page also holds the connected apps list, so a live region is found inside its own section. */
+const newKeyPanel = (page: Page) => page.getByRole("region", { name: /^Your new key/ });
+
 test("the user menu opens the API keys screen, which starts empty", async ({ page }) => {
   await page.goto("/library");
   await page.getByRole("button", { name: "Account menu" }).click();
@@ -67,7 +70,7 @@ test("create by keyboard, copy, save: the key is shown once and never kept", asy
   await expectNoSeriousAxeIssues(page);
 
   await page.getByRole("button", { name: "Copy key" }).click();
-  await expect(page.getByRole("status")).toHaveText("Copied");
+  await expect(newKeyPanel(page).getByRole("status")).toHaveText("Copied");
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(key);
 
   await dismiss(page);
@@ -99,7 +102,7 @@ test("a denied Clipboard API selects the key and says how to copy it", async ({ 
   await page.goto("/account/api-keys");
   await makeKey(page, "No clipboard");
   await page.getByRole("button", { name: "Copy key" }).click();
-  await expect(page.getByRole("status")).toContainText("press Ctrl+C or Cmd+C");
+  await expect(newKeyPanel(page).getByRole("status")).toContainText("press Ctrl+C or Cmd+C");
   await expect(page.getByLabel("New API key")).toBeFocused();
   const selected = await page.evaluate(() => {
     const el = document.getElementById("new-key-value") as HTMLTextAreaElement;
