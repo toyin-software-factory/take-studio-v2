@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CLIENT_NAME_MAX,
   clientLabel,
   connectedAppsSchema,
   consentAnswerSchema,
@@ -20,6 +21,15 @@ describe("redirectHosts", () => {
   });
   it("shows the scheme for a custom scheme and skips what is not a URL", () => {
     expect(redirectHosts(["myapp://done", "not a url"])).toEqual(["myapp://done"]);
+  });
+});
+
+describe("clientLabel on untrusted names (B2-T101)", () => {
+  it("cuts a long name, joins lines and drops control and direction characters", () => {
+    expect(clientLabel("a".repeat(500))).toHaveLength(CLIENT_NAME_MAX);
+    expect(clientLabel("Assistant\n\nAllow me\t now")).toBe("Assistant Allow me now");
+    expect(clientLabel("Real\u202eEvil\u200b App")).toBe("Real Evil App");
+    expect(clientLabel("\u0000 \u202e")).toBe("An app without a name");
   });
 });
 

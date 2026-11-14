@@ -1,4 +1,5 @@
 import { captureMessage } from "@sentry/core";
+import { z } from "zod";
 import { routeKey } from "@/lib/api-registry";
 import { composeStartUpload, firstBatch, parseCreated, parseLinks } from "./start-upload";
 import { type ToolDef, pathInputKeys, placeholders } from "./tools";
@@ -32,8 +33,15 @@ export type ToolOutcome = {
   readonly takeId: string | null;
 };
 
+/**
+ * The take ID for the log line and the Sentry report. The input is whatever the assistant sent
+ * (up to the 256 KB body), so only a real UUID is kept: any other text could be a secret, a
+ * prompt or a huge string, and the ID in a log must be an ID.
+ */
 const takeIdOf = (input: Input): string | null =>
-  typeof input.takeId === "string" ? input.takeId : null;
+  typeof input.takeId === "string" && z.uuid().safeParse(input.takeId).success
+    ? input.takeId
+    : null;
 
 /** Path parts, from the input, for the handler and the URL. A missing part is an empty string. */
 export function pathParams(tool: ToolDef, input: Input): RouteParams {
