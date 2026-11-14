@@ -33,6 +33,25 @@ export function historyProblems(lines: readonly RecordedHash[], today: string): 
   return problems;
 }
 
+/**
+ * Lines already recorded when this was written: a history must still hold this many lines and
+ * the last of them must be unchanged, so deleting a recorded suffix (and putting the copy back)
+ * fails. Raise a floor when you append (count and the digest the test prints); never lower one.
+ */
+export const FLOOR: Readonly<Record<"privacy" | "terms", { count: number; digest: string }>> = {
+  privacy: { count: 1, digest: "48253593f0e8a21c213507eef110b4c0437c050edd413320b88a8c0353d82ad3" },
+  terms: { count: 1, digest: "8a8a80929fba6c70be1e3a27e8b3cfd56ff66a8852f619886a586ccd59ecd449" },
+};
+
+export function floorProblems(
+  lines: readonly RecordedHash[],
+  floor: { count: number; digest: string },
+): string[] {
+  const kept = lines[floor.count - 1];
+  if (!kept) return [`the history lost lines: it must keep at least ${floor.count}`];
+  return lineDigest(kept) === floor.digest ? [] : [`line ${floor.count} was changed`];
+}
+
 const today = new Date().toISOString().slice(0, 10);
 const link = (before: RecordedHash, next: Omit<RecordedHash, "after">): RecordedHash => ({
   ...next,
@@ -44,6 +63,9 @@ describe("the recorded text hash history (AC-7, AC-9)", () => {
     it(`${page}: the history is sound, and LEGAL_VERSION is not after today`, () => {
       expect(historyProblems(LEGAL_TEXT_HASHES[page], today)).toEqual([]);
       expect(LEGAL_VERSION[page] <= today).toBe(true);
+    });
+    it(`${page}: no recorded line was deleted or changed`, () => {
+      expect(floorProblems(LEGAL_TEXT_HASHES[page], FLOOR[page])).toEqual([]);
     });
   }
 });
@@ -72,6 +94,16 @@ describe("historyProblems", () => {
     );
     const back = link(second, { date: "2026-11-13", hash: "ccc" });
     expect(historyProblems([first, second, back], "2026-11-15")).not.toEqual([]);
+  });
+
+  it("fails when a recorded suffix is deleted, or the last recorded line is changed", () => {
+    const floor = { count: 3, digest: lineDigest(third) };
+    expect(floorProblems([first, second, third], floor)).toEqual([]);
+    expect(
+      floorProblems([first, second, third, link(third, { date: "2026-11-15", hash: "d" })], floor),
+    ).toEqual([]);
+    expect(floorProblems([first], floor)).not.toEqual([]);
+    expect(floorProblems([first, second, { ...third, hash: "zzz" }], floor)).not.toEqual([]);
   });
 
   it("fails when a line is dated after today", () => {
