@@ -280,7 +280,7 @@ export const COLLECTED: readonly Collected[] = [
   {
     what: "Connected apps: when you connect an app such as an AI assistant with your sign in, its name, the web addresses it returns you to, the permission you gave, one way hashes of its access and refresh tokens, and when they were made and expire. The tokens themselves are never stored",
     why: "To let the app you chose act as you in Take Studio, and to let you disconnect it.",
-    kept: "A connection is kept until you disconnect the app or delete the account. Expired tokens are removed within a day or so. An app that was registered but never connected, or that you disconnected, is removed 30 days after it was registered.",
+    kept: "A connection is kept until you disconnect the app or delete the account. Expired tokens are removed within a day or so. An app that was registered but never connected, or that you disconnected, is removed once it is more than 30 days old and has no connection left, so a disconnected older app goes within about 15 minutes.",
     deletedWith: "Disconnecting the app or deleting the account.",
   },
   {
