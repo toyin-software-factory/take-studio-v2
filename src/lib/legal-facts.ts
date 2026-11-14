@@ -292,6 +292,18 @@ export const COLLECTED: readonly Collected[] = [
     deletedWith: "Deleting the take or the account.",
   },
   {
+    what: "Your script, if you add one when you record or upload (up to 20,000 characters), and whether the video was recorded in Take Studio or uploaded as a file",
+    why: "To show it while you record and to help make the cuts.",
+    kept: "Until you delete the take. It stays when the video expires after the retention period.",
+    deletedWith: "Deleting the take or the account.",
+  },
+  {
+    what: "A draft of your script and your teleprompter settings, saved in this browser only (local storage keys ts.scriptDraft and ts.prompter, not cookies)",
+    why: "So a draft is not lost and the teleprompter looks the way you left it.",
+    kept: "On your device until you clear it or the take is made. It is never sent to us until you start the upload.",
+    deletedWith: "Clearing your browser data.",
+  },
+  {
     what: "Backgrounds you upload (images)",
     why: "To put you in front of your own backdrop.",
     kept: "Until you delete them. They do not expire after the video retention period.",

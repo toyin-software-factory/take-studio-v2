@@ -1,6 +1,6 @@
 import { z } from "zod";
+import { type ApiAuthDeps, guard as authGuard } from "../api-auth";
 import { createApiKey, listApiKeys, revokeApiKey } from "@/db/data/api-keys";
-import type { Db } from "@/db/types";
 import { apiKeyPrefix, generateApiKey, hashApiKey, normalizeKeyName } from "@/lib/api-rules";
 
 /**
@@ -11,22 +11,12 @@ import { apiKeyPrefix, generateApiKey, hashApiKey, normalizeKeyName } from "@/li
  * The raw key exists in `handleCreate` only, and only the 201 body carries it.
  */
 
-export type Creator = { readonly db: Db; readonly creatorId: string };
+export type ApiKeyHttpDeps = Pick<ApiAuthDeps, "getCreator" | "allowedOrigin">;
 
-export type ApiKeyHttpDeps = {
-  /** The signed in creator for this request (cookie session), or null. */
-  readonly getCreator: (request: Request) => Promise<Creator | null>;
-  /** The only origin allowed to change keys (the app's own). */
-  readonly allowedOrigin: string;
-};
-
-export type ApiKeyError =
-  "unauthorized" | "session_required" | "forbidden" | "not_found" | "invalid" | "key_limit";
+export type ApiKeyError = "unauthorized" | "not_found" | "invalid" | "key_limit";
 
 const STATUS: Readonly<Record<ApiKeyError, number>> = {
   unauthorized: 401,
-  session_required: 401,
-  forbidden: 403,
   not_found: 404,
   invalid: 422,
   key_limit: 409,
@@ -34,8 +24,6 @@ const STATUS: Readonly<Record<ApiKeyError, number>> = {
 
 const MESSAGES: Readonly<Record<ApiKeyError, string>> = {
   unauthorized: "Please sign in again.",
-  session_required: "Keys are managed from your signed in account, not with an API key.",
-  forbidden: "This request isn't allowed.",
   not_found: "We couldn't find that key.",
   invalid: "Enter a name between 1 and 60 characters.",
   key_limit: "You already have 5 keys. Revoke one to make another.",
@@ -49,19 +37,11 @@ const json = (body: unknown, status: number): Response =>
 const errorResponse = (code: ApiKeyError): Response =>
   json({ error: code, message: MESSAGES[code] }, STATUS[code]);
 
-/** Origin (writes), bearer, then session; a Response means stop. */
-async function guard(
+const guard = (
   request: Request,
   deps: ApiKeyHttpDeps,
   options: { readonly checkOrigin: boolean },
-): Promise<Creator | Response> {
-  if (options.checkOrigin && request.headers.get("origin") !== deps.allowedOrigin) {
-    return errorResponse("forbidden");
-  }
-  if (request.headers.has("authorization")) return errorResponse("session_required");
-  const creator = await deps.getCreator(request);
-  return creator ?? errorResponse("unauthorized");
-}
+) => authGuard(request, deps, { ...options, sessionOnly: true });
 
 const bodySchema = z.object({ name: z.string() }).strict();
 

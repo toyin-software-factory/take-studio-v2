@@ -29,7 +29,7 @@ describe("checkUpload (AC-5)", () => {
     ["over 10 minutes", 1_000, { ...good, durationMs: MEDIA_LIMITS.maxDurationMs + 1 }, "too_long"],
     ["4K", 1_000, { ...good, width: 3840, height: 2160 }, "resolution_exceeded"],
     ["1440 short side", 1_000, { ...good, width: 1920, height: 1440 }, "resolution_exceeded"],
-    ["wrong container", 1_000, { ...good, container: "webm" }, "invalid_media"],
+    ["wrong container", 1_000, { ...good, container: "mkv" }, "invalid_media"],
     ["zero length", 1_000, { ...good, durationMs: 0 }, "invalid_media"],
   ] as const)("rejects a file %s", (_label, size, probe, code) => {
     expect(checkUpload(size, probe)).toEqual({ ok: false, failureCode: code });

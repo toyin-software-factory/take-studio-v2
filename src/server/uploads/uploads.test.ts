@@ -124,10 +124,57 @@ describe("POST /api/uploads (AC-3, AC-12)", () => {
     );
     expect(tooBig.status).toBe(422);
     expect(await tooBig.json()).toMatchObject({ error: "too_large" });
-    expect((await handleCreate(request("POST", { ...file, container: "webm" }), deps)).status).toBe(
+    expect((await handleCreate(request("POST", { ...file, container: "mkv" }), deps)).status).toBe(
       422,
     );
     expect((await handleCreate(request("POST", "not json"), deps)).status).toBe(422);
+  });
+
+  it("stores source and a trimmed script, defaulting to a file with no script (spec 0021)", async () => {
+    const { r2 } = fakeR2();
+    const creator = await createCreator(db);
+    const deps = httpDeps(creator.id, r2);
+    const plain = await created(creator.id, r2);
+    const recorded = await handleCreate(
+      request("POST", {
+        ...file,
+        container: "webm",
+        source: "recording",
+        script: "  Hello there.\n  ",
+      }),
+      deps,
+    );
+    expect(recorded.status).toBe(201);
+    const { takeId } = (await recorded.json()) as { takeId: string };
+    const blank = await handleCreate(request("POST", { ...file, script: "   " }), deps);
+    const blankId = ((await blank.json()) as { takeId: string }).takeId;
+    const rows = await db.select().from(take).where(eq(take.creatorId, creator.id));
+    const by = (id: string) => rows.find((r) => r.id === id);
+    expect(by(plain.takeId)).toMatchObject({ source: "file", script: null });
+    expect(by(takeId)).toMatchObject({
+      source: "recording",
+      script: "Hello there.",
+      container: "webm",
+    });
+    expect(by(blankId)).toMatchObject({ source: "file", script: null });
+  });
+
+  it("answers 422 script_too_long for a script over 20000 characters and never echoes it", async () => {
+    const { r2 } = fakeR2();
+    const creator = await createCreator(db);
+    const deps = httpDeps(creator.id, r2);
+    const script = "secret words ".repeat(2000);
+    const res = await handleCreate(request("POST", { ...file, script }), deps);
+    expect(res.status).toBe(422);
+    const text = await res.text();
+    expect(text).toContain("script_too_long");
+    expect(text).not.toContain("secret words");
+    const ok = await handleCreate(request("POST", { ...file, script: "a".repeat(20_000) }), deps);
+    expect(ok.status).toBe(201);
+    const bad = await handleCreate(request("POST", { ...file, source: "camera" }), deps);
+    expect(bad.status).toBe(422);
+    const rows = await db.select().from(take).where(eq(take.creatorId, creator.id));
+    expect(rows).toHaveLength(1);
   });
 
   it("allows 10 uploads per creator per hour, then answers 429; older takes don't count", async () => {

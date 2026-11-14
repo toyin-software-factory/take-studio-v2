@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { parseFfprobe, parseRate, thumbnailSeconds } from "./probe";
+import { needsPacketEnd, parseFfprobe, parsePacketEnd, parseRate, thumbnailSeconds } from "./probe";
 import { uploadFailureMessage } from "./take-messages";
 import { checkUpload } from "./take-rules";
 
@@ -92,10 +92,10 @@ describe("parseFfprobe edges", () => {
     });
   });
 
-  it("marks a non MP4/MOV container so the upload is refused as invalid media", () => {
+  it("marks a container that is not MP4, MOV or WebM so the upload is refused as invalid media", () => {
     const facts = parseFfprobe({
       streams: [{ codec_type: "video", width: 640, height: 360 }],
-      format: { format_name: "matroska,webm", duration: "3" },
+      format: { format_name: "avi", duration: "3" },
     });
     expect(checkUpload(1, facts)).toEqual({ ok: false, failureCode: "invalid_media" });
   });
@@ -136,5 +136,43 @@ describe("upload failure messages (AC-4)", () => {
     expect(uploadFailureMessage({ ...base, failureCode: "something_new" })).toBe(
       "Something went wrong with this video.",
     );
+  });
+});
+
+describe("WebM from a browser (spec 0021)", () => {
+  const webm = {
+    streams: [
+      { codec_type: "video", width: 1280, height: 720, avg_frame_rate: "30/1" },
+      { codec_type: "audio" },
+    ],
+    format: { format_name: "matroska,webm", size: "12345" },
+  };
+
+  it("reads the container as webm and the length from the last packet, not the header", () => {
+    expect(needsPacketEnd(webm)).toBe(true);
+    const facts = parseFfprobe(webm, { packetEndSeconds: 12.5 });
+    expect(facts).toMatchObject({ container: "webm", durationMs: 12_500, hasAudio: true });
+    // No header duration and no packets: no usable length, so the take fails as corrupt.
+    expect(parseFfprobe(webm)).toBeNull();
+    expect(parseFfprobe(webm, { packetEndSeconds: null })).toBeNull();
+  });
+
+  it("does not ask for packets for an MP4", () => {
+    const mp4 = { ...webm, format: { format_name: "mov,mp4,m4a,3gp,3g2,mj2", size: "1" } };
+    expect(needsPacketEnd(mp4)).toBe(false);
+    expect(needsPacketEnd("nope")).toBe(false);
+  });
+
+  it("takes the largest packet end and skips N/A and empty lines", () => {
+    expect(
+      parsePacketEnd("0.000000,0.033000\nN/A,N/A\n\n1.000000,0.033000\n0.500000,\n"),
+    ).toBeCloseTo(1.033);
+    expect(parsePacketEnd("2.5,N/A\n3.5,N/A")).toBe(1);
+    // One packet has no span: the file falls back to its header length.
+    expect(parsePacketEnd("2.5,N/A")).toBeNull();
+    // A first packet that starts late is not counted as extra length.
+    expect(parsePacketEnd("600.000,0.033\n609.967,0.033")).toBeCloseTo(10);
+    expect(parsePacketEnd("")).toBeNull();
+    expect(parsePacketEnd("N/A,N/A")).toBeNull();
   });
 });

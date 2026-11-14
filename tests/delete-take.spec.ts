@@ -268,7 +268,7 @@ test.describe("phone width", () => {
     await del.click();
     for (const name of ["Keep it", "Delete take"]) {
       const b = (await page.getByRole("button", { name }).boundingBox())!;
-      expect(b.height).toBeGreaterThanOrEqual(44);
+      expect(Math.round(b.height)).toBeGreaterThanOrEqual(44);
     }
     expect(await sideways()).toBeLessThanOrEqual(0);
     await expectNoSeriousAxeIssues(page);

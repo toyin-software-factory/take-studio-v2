@@ -9,6 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return origin
     ? [
         { url: `${origin}/`, changeFrequency: "monthly", priority: 1 },
+        { url: `${origin}/docs/api`, changeFrequency: "monthly", priority: 0.5 },
         { url: `${origin}/privacy`, changeFrequency: "yearly", priority: 0.3 },
         { url: `${origin}/terms`, changeFrequency: "yearly", priority: 0.3 },
       ]

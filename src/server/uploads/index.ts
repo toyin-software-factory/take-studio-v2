@@ -6,13 +6,13 @@ import { background, take, user } from "@/db/schema";
 import { runTx } from "@/db/tx";
 import type { Db, Take } from "@/db/types";
 import { CLEANUP } from "@/lib/cleanup-rules";
-import { CONTAINERS } from "@/lib/processing";
+import { CONTAINERS, SCRIPT_MAX_CHARS, TAKE_SOURCES } from "@/lib/processing";
 import { R2CompleteError, type R2 } from "@/lib/r2";
 import { type Result, err, ok } from "@/lib/result";
 import { MEDIA_LIMITS } from "@/lib/take-rules";
 import { UPLOAD, containerContentType, partCount } from "@/lib/uploads";
 import { recordEvent } from "../analytics/record";
-import { attachUpload, create } from "../takes";
+import { attachUpload, cleanScript, create } from "../takes";
 
 /**
  * Browser direct multipart upload to R2 (spec 0004, Flow steps 1 to 3; AC-3, AC-4, AC-12).
@@ -38,6 +38,8 @@ export type UploadDeps = {
 
 export type UploadError =
   | "invalid"
+  /** Spec 0021: the script is over 20000 characters. */
+  | "script_too_long"
   | "too_large"
   | "rate_limited"
   | "not_found"
@@ -55,7 +57,18 @@ const createSchema = z.object({
   container: z.enum(CONTAINERS),
   /** Spec 0008, AC-1: a background ID or `original`; left out means no choice was made. */
   backgroundId: z.union([z.literal("original"), z.uuid()]).optional(),
+  /** Spec 0021: `file` (default) or `recording`. */
+  source: z.enum(TAKE_SOURCES).optional(),
+  /** Spec 0021: the creator's script. Length is checked first (`script_too_long`), then stored trimmed. */
+  script: z.string().optional(),
 });
+
+/** True when a body's script is a string over the limit once trimmed (checked before zod, so no error ever holds it). */
+function scriptTooLong(input: unknown): boolean {
+  if (typeof input !== "object" || input === null || !("script" in input)) return false;
+  const script = (input as { readonly script: unknown }).script;
+  return typeof script === "string" && script.trim().length > SCRIPT_MAX_CHARS;
+}
 
 export type CreatedUpload = {
   readonly takeId: string;
@@ -72,9 +85,10 @@ export async function createUpload(
   creatorId: string,
   input: unknown,
 ): Promise<Result<CreatedUpload, UploadError>> {
+  if (scriptTooLong(input)) return err("script_too_long");
   const parsed = createSchema.safeParse(input);
   if (!parsed.success) return err("invalid");
-  const { fileName, sizeBytes, container, backgroundId: chosen } = parsed.data;
+  const { fileName, sizeBytes, container, backgroundId: chosen, source, script } = parsed.data;
   if (sizeBytes > MEDIA_LIMITS.maxBytes) return err("too_large");
   const now = deps.now?.() ?? new Date();
 
@@ -106,7 +120,14 @@ export async function createUpload(
         and(eq(take.creatorId, creatorId), gt(take.createdAt, new Date(now.getTime() - 3_600_000))),
       );
     if ((recent?.n ?? 0) >= UPLOAD.perHourLimit) return err("rate_limited" as const);
-    const made = await create(tx, { creatorId, fileName, container, bytes: sizeBytes });
+    const made = await create(tx, {
+      creatorId,
+      fileName,
+      container,
+      bytes: sizeBytes,
+      source,
+      script: cleanScript(script) ?? undefined,
+    });
     if (!made.ok) return err("invalid" as const);
     if (chosen !== undefined) {
       // The take's background and the creator's next default, in the same transaction.

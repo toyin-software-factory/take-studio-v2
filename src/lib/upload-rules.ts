@@ -16,22 +16,25 @@ export type FileCheck =
 const MIME_BY_CONTAINER: Readonly<Record<Container, string>> = {
   mp4: "video/mp4",
   mov: "video/quicktime",
+  webm: "video/webm",
 };
 
 function extensionOf(name: string): Container | null {
   const ext = name.toLowerCase().split(".").pop();
-  return ext === "mp4" || ext === "mov" ? ext : null;
+  return ext === "mp4" || ext === "mov" || ext === "webm" ? ext : null;
 }
 
 function containerOfMime(type: string): Container | null {
   if (type === MIME_BY_CONTAINER.mp4) return "mp4";
   if (type === MIME_BY_CONTAINER.mov) return "mov";
+  // A recording's type carries its codecs: `video/webm;codecs=vp9,opus`.
+  if (type.split(";")[0]?.trim() === MIME_BY_CONTAINER.webm) return "webm";
   return null;
 }
 
 /**
- * AC-2: refuse before upload a file over 2 GB, or one that isn't `.mp4` / `.mov`. The MIME
- * type must be `video/mp4` or `video/quicktime`, or empty (some systems give none) with a
+ * AC-2: refuse before upload a file over 2 GB, or one that isn't `.mp4`, `.mov` or `.webm`
+ * (a browser recording). The MIME type must be `video/mp4`, `video/quicktime` or `video/webm`, or empty (some systems give none) with a
  * valid extension. A known MIME wins over the extension for the container.
  */
 export function checkFile(file: FileFacts): FileCheck {

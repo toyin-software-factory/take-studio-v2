@@ -4,7 +4,7 @@ import { MEDIA_LINKS } from "@/lib/uploads";
 import { recordCutsReviewed } from "../analytics/cuts-reviewed";
 import { recordEvent } from "../analytics/record";
 import { getForCreator } from "../takes";
-import { type Creator, errorResponse, guard, json } from "../takes/http";
+import { type TakeHttpDeps, errorResponse, guard, json } from "../takes/http";
 
 /**
  * GET /api/takes/{id}/media?kind=play|download|original|thumb (spec 0004, AC-9, AC-11, AC-12):
@@ -15,8 +15,9 @@ import { type Creator, errorResponse, guard, json } from "../takes/http";
  */
 
 export type MediaHttpDeps = {
-  readonly getCreator: (request: Request) => Promise<Creator | null>;
+  readonly getCreator: TakeHttpDeps["getCreator"];
   readonly allowedOrigin: string;
+  readonly keyAuth?: TakeHttpDeps["keyAuth"];
   readonly headObject: (key: string) => Promise<{ readonly size: number } | null>;
   readonly presignGet: (
     key: string,

@@ -59,7 +59,7 @@ describe("takes.create", () => {
       ok: false,
       error: "invalid",
     });
-    expect(await create(db, { ...base, container: "webm" as "mp4" })).toEqual({
+    expect(await create(db, { ...base, container: "mkv" as "mp4" })).toEqual({
       ok: false,
       error: "invalid",
     });

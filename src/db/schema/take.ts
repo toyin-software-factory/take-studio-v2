@@ -11,7 +11,13 @@ import {
   timestamp,
   uuid,
 } from "drizzle-orm/pg-core";
-import { CONTAINERS, TAKE_TITLE_MAX, TAKE_TITLE_MIN } from "@/lib/processing";
+import {
+  CONTAINERS,
+  SCRIPT_MAX_CHARS,
+  TAKE_SOURCES,
+  TAKE_TITLE_MAX,
+  TAKE_TITLE_MIN,
+} from "@/lib/processing";
 import { user } from "./auth";
 import { background } from "./background";
 import { inList, takeStatus, timestamps } from "./helpers";
@@ -63,6 +69,13 @@ export const take = pgTable(
     ),
     /** The suggestion's one line reason (at most 280); ignored when the ID is null. Never log it. */
     suggestionReason: text("suggestion_reason"),
+    /** Spec 0021: `file` (chosen) or `recording` (made in the app). Set at upload create. */
+    source: text("source").notNull().default("file"),
+    /**
+     * Spec 0021: the script the creator read from, trimmed, at most 20000 characters; null for
+     * none. Personal data: never log it, send it to Sentry, analytics, a job payload or a URL.
+     */
+    script: text("script"),
     ...timestamps,
   },
   (t) => [
@@ -75,6 +88,11 @@ export const take = pgTable(
       sql`char_length(${t.title}) BETWEEN ${sql.raw(String(TAKE_TITLE_MIN))} AND ${sql.raw(String(TAKE_TITLE_MAX))}`,
     ),
     check("take_container_check", inList(t.container, CONTAINERS)),
+    check("take_source_check", inList(t.source, TAKE_SOURCES)),
+    check(
+      "take_script_length_check",
+      sql`${t.script} IS NULL OR char_length(${t.script}) <= ${sql.raw(String(SCRIPT_MAX_CHARS))}`,
+    ),
     check(
       "take_suggestion_reason_length_check",
       sql`${t.suggestionReason} IS NULL OR char_length(${t.suggestionReason}) <= 280`,

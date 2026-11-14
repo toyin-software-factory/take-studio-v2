@@ -18,7 +18,7 @@ import {
   previewHeight,
   previewKey,
 } from "@/lib/background-preview";
-import { ORIGINAL_INPUT, STORED_IMAGE_INPUT, STORED_IMAGE_URL_INPUT } from "@/lib/ffmpeg-input";
+import { originalInput, STORED_IMAGE_INPUT, STORED_IMAGE_URL_INPUT } from "@/lib/ffmpeg-input";
 import { deadlineMs, runWithDeadline } from "@/lib/deadline";
 import { parseJobEnv } from "@/lib/env";
 import {
@@ -141,7 +141,7 @@ export async function makePreview(
           "-y",
           ...HTTP_INPUT,
           ...seek,
-          ...ORIGINAL_INPUT,
+          ...originalInput(originalUrl),
           "-i",
           originalUrl,
           "-vf",
@@ -161,7 +161,7 @@ export async function makePreview(
           "-y",
           ...HTTP_INPUT,
           ...seek,
-          ...ORIGINAL_INPUT,
+          ...originalInput(originalUrl),
           "-i",
           originalUrl,
           ...HTTP_INPUT,

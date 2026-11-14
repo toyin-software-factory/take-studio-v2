@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type ApiAuthDeps, guard as authGuard } from "../api-auth";
 import type { Db } from "@/db/types";
 import { shortDate } from "@/lib/usage-rules";
 import { recordEvent } from "../analytics/record";
@@ -25,6 +26,8 @@ export type HttpDeps = {
   ) => Promise<{ readonly db: Db; readonly creatorId: string } | null>;
   /** The only origin allowed to call these routes (the app's own). */
   readonly allowedOrigin: string;
+  /** Lets a bearer key through the shared guard (spec 0018); tests leave it out. */
+  readonly keyAuth?: ApiAuthDeps["keyAuth"];
   readonly uploadDeps: (db: Db) => UploadDeps;
   /** USAGE_HASH_SECRET for the early allowance refusal (spec 0014 AC-7); left out or throwing skips it. */
   readonly usageSecret?: () => string;
@@ -33,6 +36,7 @@ export type HttpDeps = {
 
 const STATUS: Readonly<Record<UploadError, number>> = {
   invalid: 422,
+  script_too_long: 422,
   too_large: 422,
   rate_limited: 429,
   not_found: 404,
@@ -47,6 +51,7 @@ const STATUS: Readonly<Record<UploadError, number>> = {
 
 const MESSAGES: Readonly<Record<UploadError, string>> = {
   invalid: "That file can't be uploaded. Choose an MP4 or MOV video.",
+  script_too_long: "Your script is over 20,000 characters. Shorten it and try again.",
   too_large: "This video is over 2 GB. The limit is 2 GB.",
   rate_limited: "You've started 10 uploads in the last hour. Try again a little later.",
   not_found: "We couldn't find that take.",
@@ -68,17 +73,12 @@ function errorResponse(code: UploadError): Response {
   return json({ error: code, message: MESSAGES[code] }, STATUS[code]);
 }
 
-/** Session and Origin checks shared by every handler; a Response means stop. */
-async function guard(
+/** The shared identity guard, with the Origin check these write routes always had. */
+function guard(
   request: Request,
   deps: HttpDeps,
 ): Promise<{ readonly db: Db; readonly creatorId: string } | Response> {
-  if (request.headers.get("origin") !== deps.allowedOrigin) {
-    return json({ error: "forbidden", message: "This request isn't allowed." }, 403);
-  }
-  const creator = await deps.getCreator(request);
-  if (!creator) return json({ error: "unauthorized", message: "Please sign in again." }, 401);
-  return creator;
+  return authGuard(request, deps, { checkOrigin: true });
 }
 
 /** The request's JSON body, or undefined when it isn't JSON (the schemas then reject it). */

@@ -4,8 +4,22 @@
  * of input. Every input option here goes before the `-i` (or the ffprobe input) it applies to.
  */
 
-/** The original upload: only MP4 and MOV pass the probe, and both are the mov demuxer. */
+/** MP4 and MOV (and every file the pipeline renders) are the mov demuxer. */
 export const ORIGINAL_INPUT: readonly string[] = ["-f", "mov"];
+
+/** A browser recording in WebM (spec 0021): ffmpeg's `matroska` demuxer is also the WebM one. */
+export const WEBM_INPUT: readonly string[] = ["-f", "matroska"];
+
+/**
+ * The pin for reading a stored original, from the ending of its path or presigned link. The
+ * name is `source.{container}` and set by the server (`originalKey`), never by the creator, so
+ * the ending says which of the two accepted formats the file must be; a file that is another
+ * kind then fails to open instead of being followed to something else.
+ */
+export function originalInput(source: string): readonly string[] {
+  const path = source.split(/[?#]/)[0] ?? source;
+  return path.toLowerCase().endsWith(".webm") ? WEBM_INPUT : ORIGINAL_INPUT;
+}
 
 /**
  * The demuxer for a background image, chosen from its first bytes: `png_pipe`, `webp_pipe`,

@@ -214,7 +214,21 @@ describe("keepRanges and the render graph (AC-6)", () => {
     });
     const video = script.split("\n").filter((l) => l.startsWith("[0:v]"));
     expect(video[0]).not.toContain("crop=");
-    expect(video[1]).toContain("crop=1776:998,scale=1920:1080,setsar=1[v1]");
+    // A 2 s piece after a cut zooms to 1.08 and pushes to 1.12 (spec 0020 step 4).
+    expect(video[1]).toContain("(1.08+0.04*t/2.000000)");
+    // crop's own centring reads the size once, so x and y spell out the centre per frame.
+    expect(video[1]).toContain(
+      ":eval=frame,crop=1920:1080:x='(ceil(1920*(1.08+0.04*t/2.000000)/2)*2-1920)/2':y='(ceil(1080*(1.08+0.04*t/2.000000)/2)*2-1080)/2',setsar=1[v1]",
+    );
+    // A short zoomed piece (no push) keeps the plain crop and scale back.
+    const short = renderFilterScript([r(0, 2_000), r(3_000, 2_000), r(6_000, 500)], {
+      hdr: null,
+      size: { width: 1920, height: 1080 },
+      durationMs: 7_000,
+    });
+    expect(short.split("\n").filter((l) => l.startsWith("[0:v]"))[2]).toContain(
+      "crop=1776:998,scale=1920:1080,setsar=1[v2]",
+    );
     // With a background the zoom is still per piece, before the concat.
     const keyed = renderFilterScript([r(0, 2_000), r(3_000, 2_000)], {
       hdr: null,
@@ -222,7 +236,41 @@ describe("keepRanges and the render graph (AC-6)", () => {
       durationMs: 5_000,
       background: { keyColor: "#00b140", width: 1920, height: 1080 },
     });
-    expect(keyed.indexOf("crop=1776:998")).toBeLessThan(keyed.indexOf("concat="));
+    expect(keyed.indexOf(":eval=frame")).toBeLessThan(keyed.indexOf("concat="));
+  });
+
+  it("pushes slowly on kept pieces of 1 s or more after a cut (AC-7)", () => {
+    const r = (startMs: number, length: number) => ({ startMs, endMs: startMs + length });
+    expect(SMOOTH.pushScale).toBe(0.04);
+    const script = renderFilterScript([r(0, 3_000), r(4_000, 1_000), r(6_000, 999)], {
+      hdr: null,
+      size: { width: 1920, height: 1080 },
+      durationMs: 8_000,
+    });
+    const video = script.split("\n").filter((l) => l.startsWith("[0:v]"));
+    // The first piece follows no cut: no push, no zoom.
+    expect(video[0]).not.toContain("scale=");
+    // Pushed from 1.00 up to 1.04 would be an unzoomed piece; this one is zoomed (1.08 to 1.12).
+    expect(video[1]).toContain("(1.08+0.04*t/1.000000)");
+    expect(video[1]).toContain("ceil(1920*(1.08+0.04*t/1.000000)/2)*2");
+    // Under 1 s: no push; it keeps the previous zoom as the plain crop.
+    expect(video[2]).not.toContain("eval=frame");
+    // Uncut takes: no push.
+    const uncut = renderFilterScript([r(0, 5_000)], {
+      hdr: null,
+      size: { width: 1920, height: 1080 },
+      durationMs: 5_000,
+    });
+    expect(uncut).not.toContain("eval=frame");
+    // An unzoomed piece after a cut pushes from 1.00.
+    const flip = renderFilterScript([r(0, 2_000), r(3_000, 2_000), r(6_000, 2_000)], {
+      hdr: null,
+      size: { width: 1920, height: 1080 },
+      durationMs: 8_000,
+    });
+    expect(flip.split("\n").filter((l) => l.startsWith("[0:v]"))[2]).toContain(
+      "(1+0.04*t/2.000000)",
+    );
   });
 
   it("fades both edges of a single piece when cuts trim the start and the end (AC-1)", () => {
