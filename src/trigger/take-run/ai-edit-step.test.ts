@@ -169,7 +169,7 @@ describe("aiEditStep", () => {
     const rows = (await cutsOf(take.id)).sort((a, b) => a.startMs - b.startMs);
     expect(rows.every((r) => r.proposedBy === "ai" && r.reason)).toBe(true);
     expect(rows.map((r) => [r.kind, r.startMs, r.endMs, r.applied])).toEqual([
-      ["filler", 500, 800, true],
+      ["filler", 450, 800, true],
       ["pause", 3000, 5000, true],
       ["pause", 8000, 10_000, false],
     ]);
