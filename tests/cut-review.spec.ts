@@ -494,12 +494,30 @@ test("a focused block shows a visible focus ring, and the targets are 44 px on d
   expect(block!.width).toBeGreaterThanOrEqual(24);
   const buttons = listButtons(page);
   await expect(buttons).toHaveCount(3);
-  for (let i = 0; i < 3; i += 1) {
-    const box = await buttons.nth(i).boundingBox();
-    expect(box!.height).toBeGreaterThanOrEqual(44);
-  }
   await buttons.nth(0).focus();
   await expect(buttons.nth(0)).toHaveCSS("outline-style", "solid");
+});
+
+// The list buttons are 44 px under a coarse pointer (the project rule, `pointer-coarse:min-h-11`),
+// so that bar is measured on a phone; the timeline blocks are 44 px on every pointer (above).
+test("every Undo and Redo button in the list is 44 px tall on a phone (AC-10)", async ({
+  browser,
+  baseURL,
+}) => {
+  const context = await browser.newContext({ ...devices["Pixel 7"], baseURL: baseURL! });
+  try {
+    const page = await context.newPage();
+    const { id } = await setup(page, baseURL!, { detail: { cuts: AI_CUTS, aiEdit: "done" } });
+    await load(page, id);
+    const buttons = listButtons(page);
+    await expect(buttons).toHaveCount(3);
+    for (let i = 0; i < 3; i += 1) {
+      const box = await buttons.nth(i).boundingBox();
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+    }
+  } finally {
+    await context.close();
+  }
 });
 
 test("the summary follows every keep and undo and always matches the cut list (C-36)", async ({
