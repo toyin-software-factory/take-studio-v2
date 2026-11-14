@@ -50,6 +50,7 @@ export async function encodeRender(
       hasAudio: facts.hasAudio,
       size: { width: facts.width, height: facts.height },
       durationMs: facts.durationMs,
+      fps: facts.fps,
       background: background
         ? { keyColor: background.keyColor, width: facts.width, height: facts.height }
         : undefined,

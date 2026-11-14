@@ -253,6 +253,22 @@ describe("keepRanges and the render graph (AC-6)", () => {
     expect(script).not.toContain("afade");
   });
 
+  it("still fades the end of a real trailing cut of one frame (within 50 ms of the end)", () => {
+    const script = renderFilterScript([{ startMs: 0, endMs: 9_966.667 }], {
+      hdr: null,
+      durationMs: 10_000,
+      fps: 30,
+    });
+    expect(script).toContain("afade=t=out");
+    // At 60 fps an end half a frame early is still the take's own end.
+    const uncut = renderFilterScript([{ startMs: 0, endMs: 9_992 }], {
+      hdr: null,
+      durationMs: 10_000,
+      fps: 60,
+    });
+    expect(uncut).not.toContain("afade");
+  });
+
   it("has no audio branch for a take with no sound", () => {
     const script = renderFilterScript(
       [

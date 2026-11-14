@@ -178,9 +178,16 @@ export const SMOOTH = {
   wordEdgeMaxMs: 80,
   zoomScale: 1.08,
   zoomMinPieceMs: 1000,
-  /** How far before the take's end the last piece may stop after frame alignment and still be the end. */
-  frameAlignSlackMs: 50,
 } as const;
+
+/**
+ * How far before the take's end the last piece may stop and still be the take's own end: the
+ * uncut end snaps to the nearest frame, so it is at most half a frame early. A real trailing cut
+ * of a frame or more leaves the piece ending a whole frame early, so it is not mistaken for the end.
+ */
+export function endSlackMs(fps: number | null | undefined): number {
+  return 500 / (fps && fps > 0 ? fps : 30) + 0.001;
+}
 
 /**
  * Per keep range, whether it is zoomed in: the first piece is not, then each piece of at least
@@ -214,6 +221,8 @@ export type RenderGraphOptions = {
   readonly size?: { readonly width: number; readonly height: number };
   /** The take's length. A last piece ending at or past it has no cut at its end (no fade). */
   readonly durationMs?: number;
+  /** The source's frame rate (for the half frame end slack); unknown counts as 30. */
+  readonly fps?: number | null;
 };
 
 /**
@@ -234,7 +243,7 @@ export function renderFilterScript(keep: readonly Range[], options: RenderGraphO
     const fadeMs = Math.min(SMOOTH.audioFadeMs, len / 2);
     const cutAtStart = !(i === 0 && r.startMs <= 0);
     const cutAtEnd = !(i === lastIndex && options.durationMs !== undefined
-      ? r.endMs >= options.durationMs - SMOOTH.frameAlignSlackMs
+      ? r.endMs >= options.durationMs - endSlackMs(options.fps)
       : i === lastIndex && options.durationMs === undefined);
     return [
       cutAtStart ? `,afade=t=in:st=0:d=${seconds(fadeMs)}` : "",
