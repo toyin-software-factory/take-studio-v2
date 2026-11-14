@@ -20,3 +20,4 @@ A written, invented test set for the AI edit. No real creator words, no real tak
 
 - Any PR touching `src/lib/ai-edit.ts`, `src/lib/cut-rules.ts`, `src/lib/transcript-rules.ts` or `src/trigger/take-run/ai-*.ts` states the before and after totals from `ai-eval` (spec 0017 step 3, started by Toyin from the dashboard on request) in its description. Until `ai-eval` exists the recorded answers only prove the validator and scorer, not the real model.
 - Never put a real word a creator said in a case, a note or an answer.
+- `baseline.json` `knownMisses` lists the must cut spans the hand written answers miss on purpose (`caseId@startMs`); `cut-quality.test.ts` fails by name on any other miss. Change it only together with an answer.

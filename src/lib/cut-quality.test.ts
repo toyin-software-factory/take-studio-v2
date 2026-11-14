@@ -122,21 +122,23 @@ describe("the written cut quality test set", () => {
     expect(cases.some((c) => c.parsed.success && c.parsed.data.expected.length === 0)).toBe(true);
   });
 
-  function run(c: CutCase, answerRaw: unknown, useAi: boolean) {
+  /** The cuts the pipeline would apply for a case: the rules' pauses, plus the recorded answer if `useAi`. */
+  function appliedCuts(c: CutCase, answerRaw: unknown, useAi: boolean): ScoredCut[] {
     const candidates = c.pauses.map((p) => ({ ...p, reason: "Pause" }));
     const rules: ScoredCut[] = candidates.map((p) => ({ ...p, kind: "pause" }));
-    if (!useAi) return scoreCuts(c.expected, rules);
+    if (!useAi) return rules;
     const answer = aiEditAnswerSchema.parse(answerRaw);
     const valid = validateAiEdit(answer, c.words, candidates, c.durationMs);
     expect(valid.ok, `${c.id}: answer refused`).toBe(true);
     if (!valid.ok) throw new Error("unreachable");
     expect(valid.data.dropped, `${c.id}: items dropped`).toBe(0);
-    return scoreCuts(
-      c.expected,
-      valid.data.cuts
-        .filter((x) => x.applied)
-        .map((x) => ({ startMs: x.startMs, endMs: x.endMs, kind: x.kind })),
-    );
+    return valid.data.cuts
+      .filter((x) => x.applied)
+      .map((x) => ({ startMs: x.startMs, endMs: x.endMs, kind: x.kind }));
+  }
+
+  function run(c: CutCase, answerRaw: unknown, useAi: boolean) {
+    return scoreCuts(c.expected, appliedCuts(c, answerRaw, useAi));
   }
 
   const scored = (pred: (h: boolean) => boolean, useAi: boolean) =>
@@ -150,6 +152,21 @@ describe("the written cut quality test set", () => {
     const s = scored(() => true, true);
     expect(s.recall).toBeGreaterThanOrEqual(baseline.all.recall);
     expect(s.precision).toBeGreaterThanOrEqual(baseline.all.precision);
+  });
+
+  it("names every must cut span the recorded answers miss, and no new one (CodeRabbit, #227)", () => {
+    const missed = cases.flatMap((c) => {
+      if (!c.parsed.success) return [];
+      const data = c.parsed.data;
+      const cuts = appliedCuts(data, c.answer, true);
+      return data.expected
+        .filter((e) => e.verdict === "cut")
+        .filter((e) => scoreCuts([e], cuts).tally.hitSpans === 0)
+        .map((e) => `${data.id}@${e.startMs}`);
+    });
+    // The hand written answers carry deliberate flaws (see baseline.json notes): those are the
+    // only misses allowed. A lost span anywhere else fails here by name.
+    expect(missed.sort()).toEqual([...baseline.knownMisses].sort());
   });
 
   it("the held out third stays at or above its own floor", () => {

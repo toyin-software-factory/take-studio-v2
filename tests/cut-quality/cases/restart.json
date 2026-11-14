@@ -73,8 +73,8 @@
   "pauses": [],
   "expected": [
     {
-      "startMs": 800,
-      "endMs": 2000,
+      "startMs": 400,
+      "endMs": 1200,
       "kind": "false_start",
       "verdict": "cut"
     }

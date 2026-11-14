@@ -1,7 +1,7 @@
 {
   "id": "earlier-attempt",
   "note": "Two attempts at the same line; the earlier attempt is cut.",
-  "durationMs": 6120,
+  "durationMs": 9920,
   "words": [
     {
       "w": "Pack",
@@ -80,19 +80,73 @@
       "startMs": 5200,
       "endMs": 5520,
       "filler": false
+    },
+    {
+      "w": "and",
+      "startMs": 5600,
+      "endMs": 5920,
+      "filler": false
+    },
+    {
+      "w": "then",
+      "startMs": 6000,
+      "endMs": 6320,
+      "filler": false
+    },
+    {
+      "w": "carry",
+      "startMs": 6400,
+      "endMs": 6720,
+      "filler": false
+    },
+    {
+      "w": "it",
+      "startMs": 6800,
+      "endMs": 7120,
+      "filler": false
+    },
+    {
+      "w": "to",
+      "startMs": 7200,
+      "endMs": 7520,
+      "filler": false
+    },
+    {
+      "w": "the",
+      "startMs": 7600,
+      "endMs": 7920,
+      "filler": false
+    },
+    {
+      "w": "loading",
+      "startMs": 8000,
+      "endMs": 8320,
+      "filler": false
+    },
+    {
+      "w": "dock",
+      "startMs": 8400,
+      "endMs": 8720,
+      "filler": false
+    },
+    {
+      "w": "before",
+      "startMs": 8800,
+      "endMs": 9120,
+      "filler": false
+    },
+    {
+      "w": "noon",
+      "startMs": 9200,
+      "endMs": 9520,
+      "filler": false
     }
   ],
   "pauses": [],
   "expected": [
     {
-      "startMs": 2000,
-      "endMs": 2400,
-      "kind": "false_start",
-      "verdict": "cut"
-    },
-    {
-      "startMs": 2800,
-      "endMs": 4000,
+      "startMs": 400,
+      "endMs": 3600,
       "kind": "false_start",
       "verdict": "cut"
     }

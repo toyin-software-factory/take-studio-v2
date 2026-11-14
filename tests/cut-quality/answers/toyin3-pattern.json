@@ -25,8 +25,8 @@
       "reason": "Repeated or dropped words, one clean copy stays"
     },
     {
-      "fromWord": 18,
-      "toWord": 18,
+      "fromWord": 16,
+      "toWord": 17,
       "kind": "false_start",
       "reason": "Repeated or dropped words, one clean copy stays"
     }

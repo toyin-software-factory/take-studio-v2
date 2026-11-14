@@ -172,8 +172,8 @@
       "verdict": "keep"
     },
     {
-      "startMs": 10540,
-      "endMs": 10940,
+      "startMs": 9740,
+      "endMs": 10540,
       "kind": "false_start",
       "verdict": "cut"
     }
