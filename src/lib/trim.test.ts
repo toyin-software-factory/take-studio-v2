@@ -5,6 +5,7 @@ import {
   cutsFromSilences,
   keepRanges,
   outputFps,
+  renderLengthSeconds,
   parseSilences,
   progressOutTimeMs,
   renderFilterScript,
@@ -531,5 +532,20 @@ describe("progress (Flow step 6)", () => {
     release();
     await flushing;
     expect(log).toEqual(["start 10", "end 10", "start 50", "end 50"]);
+  });
+});
+
+describe("renderLengthSeconds (B2-T96)", () => {
+  it("adds the kept ranges, so the file is the original minus the cuts", () => {
+    expect(
+      renderLengthSeconds([
+        { startMs: 0, endMs: 3000 },
+        { startMs: 5000, endMs: 10020 },
+      ]),
+    ).toBe("8.020000");
+  });
+
+  it("is the whole take when nothing is cut", () => {
+    expect(renderLengthSeconds([{ startMs: 0, endMs: 4500 }])).toBe("4.500000");
   });
 });

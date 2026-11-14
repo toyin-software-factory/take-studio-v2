@@ -1,7 +1,11 @@
-import { statSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
 import { describeWithFfmpeg } from "@/test/ffmpeg";
+import { renderFilterScript, renderLengthSeconds } from "@/lib/trim";
 import { probeFile } from "./media";
 
 // Spec 0021 AC-4: the two files a browser recording makes, run through the real probe.
@@ -31,4 +35,65 @@ describeWithFfmpeg("recorded take fixtures (spec 0021 AC-4)", () => {
       expect(statSync(file(name)).size).toBeLessThan(1_000_000);
     }
   });
+});
+
+// B2-T96: the Safari style MP4 has audio running past its video, so a render with no length cap
+// came out 45 ms longer than the cut plan. The job ends the file at the plan's length.
+describeWithFfmpeg("recorded take render length (B2-T96)", () => {
+  for (const name of ["recorded-safari.mp4", "recorded-chrome.webm"]) {
+    it(`renders ${name} as long as the plan, original minus the cut`, async () => {
+      const facts = await probeFile(file(name));
+      const durationMs = facts?.durationMs ?? 0;
+      const keep = [
+        { startMs: 0, endMs: 3000 },
+        { startMs: 5000, endMs: durationMs },
+      ];
+      const dir = mkdtempSync(join(tmpdir(), "render-length-"));
+      try {
+        const graph = renderFilterScript(keep, { hdr: null, hasAudio: true, durationMs, fps: 30 });
+        const output = join(dir, "out.mp4");
+        const run = spawnSync(
+          "ffmpeg",
+          [
+            "-y",
+            "-f",
+            name.endsWith(".webm") ? "matroska" : "mov",
+            "-i",
+            file(name),
+            "-filter_complex",
+            graph,
+            "-map",
+            "[vout]",
+            "-map",
+            "[aout]",
+            "-fps_mode",
+            "cfr",
+            "-r",
+            "30",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-c:a",
+            "aac",
+            "-t",
+            renderLengthSeconds(keep),
+            output,
+          ],
+          { encoding: "utf8" },
+        );
+        expect(run.status).toBe(0);
+        const probe = spawnSync(
+          "ffprobe",
+          ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", output],
+          { encoding: "utf8" },
+        );
+        const renderMs = Math.round(Number(probe.stdout.trim()) * 1000);
+        const expectedMs = durationMs - 2000;
+        expect(Math.abs(renderMs - expectedMs)).toBeLessThanOrEqual(40);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  }
 });
