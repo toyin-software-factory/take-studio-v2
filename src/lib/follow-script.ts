@@ -39,6 +39,8 @@ export type FollowResult = {
   readonly matchIndex: number;
   /** True when this call moved the position forward. */
   readonly advanced: boolean;
+  /** True when the heard words repeat the last match (an interim result and its final revision). */
+  readonly repeat?: boolean;
 };
 
 /**
@@ -68,7 +70,7 @@ export function followScript(
     // the tail already lines up with the script ending at the last match, the position stays.
     const lastStart = lastMatchIndex - run + 1;
     if (lastStart >= 0 && tail.every((w, k) => wordsMatch(w, scriptWords[lastStart + k] ?? ""))) {
-      return stay;
+      return { ...stay, repeat: true };
     }
     for (let end = from + run - 1; end <= to; end++) {
       const start = end - run + 1;

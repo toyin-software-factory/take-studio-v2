@@ -62,7 +62,7 @@ describe("followScript (spec 0021 AC-12)", () => {
     expect(first).toEqual({ matchIndex: 2, advanced: true });
     // The interim result arrives again as its final revision: the position stays.
     const again = followScript(onions, heard("chop the onions"), first.matchIndex);
-    expect(again).toEqual({ matchIndex: 2, advanced: false });
+    expect(again).toMatchObject({ matchIndex: 2, advanced: false });
     // New words after the revision still move forward, onto the right "onions".
     expect(followScript(onions, heard("chop the onions then fry the onions"), 2).matchIndex).toBe(
       6,
@@ -85,5 +85,19 @@ describe("followScript (spec 0021 AC-12)", () => {
   it("tolerates a transcriber spelling slip", () => {
     const r = followScript(script, heard("add the garlik and stir"), -1);
     expect(script[r.matchIndex]).toBe("stir");
+  });
+});
+
+describe("followScript repeat flag", () => {
+  const script = ["welcome", "to", "the", "show", "welcome", "back"];
+  it("marks the same words again as a repeat", () => {
+    expect(followScript(script, ["welcome"], 0)).toEqual({
+      matchIndex: 0,
+      advanced: false,
+      repeat: true,
+    });
+  });
+  it("does not mark unmatched speech as a repeat", () => {
+    expect(followScript(script, ["banana"], 0).repeat).toBeUndefined();
   });
 });

@@ -122,7 +122,7 @@ export function useVoiceFollow(args: {
               // Timed scrolling may have carried the script past the match window while the voice
               // was lost: try again from the word the prompter now shows (forward only).
               const shown = Math.floor(startWord.current()) - 1;
-              if (shown <= last.current) return;
+              if (next.repeat || shown <= last.current) return;
               next = followScript(scriptWords.current, words, shown);
               if (!next.advanced) return;
             }
