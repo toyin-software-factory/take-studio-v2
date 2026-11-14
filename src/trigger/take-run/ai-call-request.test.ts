@@ -44,7 +44,11 @@ beforeEach(() => {
 describe("callClaude request (AC-9)", () => {
   it("sends one non streaming request with the fixed cap, effort low and no thinking parameter", async () => {
     const signal = new AbortController().signal;
-    const out = await callClaude({ system: "S", user: "U" }, "key", signal);
+    const out = await callClaude(
+      { system: "S", user: "U", estimatedInputTokens: 10 },
+      "key",
+      signal,
+    );
 
     expect(recorded.bodies).toHaveLength(1);
     const body = recorded.bodies[0]!;
@@ -62,7 +66,11 @@ describe("callClaude request (AC-9)", () => {
   });
 
   it("turns the SDK's own retries off, so only our one retry exists", async () => {
-    await callClaude({ system: "S", user: "U" }, "key", new AbortController().signal);
+    await callClaude(
+      { system: "S", user: "U", estimatedInputTokens: 10 },
+      "key",
+      new AbortController().signal,
+    );
     expect(recorded.clientOptions).toEqual([{ apiKey: "key", maxRetries: 0 }]);
   });
 });
