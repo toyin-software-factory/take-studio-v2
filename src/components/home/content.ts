@@ -1,3 +1,4 @@
+import { LEGAL_LINKS } from "@/lib/legal-links";
 import { MEDIA_LIMITS, VIDEO_RETENTION_DAYS } from "@/lib/take-rules";
 import { CONTACT_EMAIL } from "@/lib/site";
 
@@ -263,8 +264,8 @@ export const FOOTER = {
     {
       label: "Legal",
       links: [
-        { href: "/privacy", label: "Privacy" },
-        { href: "/terms", label: "Terms" },
+        { href: LEGAL_LINKS.privacy.href, label: "Privacy" },
+        { href: LEGAL_LINKS.terms.href, label: "Terms" },
         { href: `mailto:${CONTACT_EMAIL}`, label: CONTACT_EMAIL },
       ],
     },

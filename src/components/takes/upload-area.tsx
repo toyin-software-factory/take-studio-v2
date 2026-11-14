@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Upload } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { UploadNote } from "@/components/legal/legal-notice";
 import { Icon } from "@/components/ui/icon";
 import { ORIGINAL_BACKGROUND } from "@/lib/background-api";
 import { cn } from "@/lib/utils";
@@ -86,6 +87,7 @@ export function UploadArea() {
             Choose a video
           </Button>
           <p className="text-small text-muted-foreground">{LIMITS}</p>
+          <UploadNote />
           <BackgroundSelect
             backgrounds={backgrounds}
             picked={picked}

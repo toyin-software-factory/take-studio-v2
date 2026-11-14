@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronsUpDown, LogOut } from "lucide-react";
+import { ChevronsUpDown, FileText, LogOut, ShieldCheck } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -12,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Icon } from "@/components/ui/icon";
+import { LEGAL_LINKS } from "@/lib/legal-links";
 import { notify } from "@/components/ui/sonner";
 import { initialsOf } from "./initials";
 
@@ -73,6 +75,18 @@ export function UserMenu({ user }: { readonly user: ShellUser }) {
         <DropdownMenuLabel className="truncate text-muted-foreground">
           {user.email}
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {[LEGAL_LINKS.privacy, LEGAL_LINKS.terms].map((link) => (
+          <DropdownMenuItem key={link.href} asChild>
+            <Link href={link.href}>
+              <Icon
+                icon={link.href === LEGAL_LINKS.privacy.href ? ShieldCheck : FileText}
+                size="badge"
+              />
+              {link.label}
+            </Link>
+          </DropdownMenuItem>
+        ))}
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => void signOut()}>
           <Icon icon={LogOut} size="badge" />
