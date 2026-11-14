@@ -26,7 +26,10 @@ export default async function EmailsOffDonePage({ searchParams }: Props) {
             ? "We won't email you when your takes are ready. You can turn them back on from any take page."
             : "The link is not valid. You can change this setting from any take page once you are signed in."}
         </p>
-        <Link href="/" className="underline">
+        <Link
+          href="/"
+          className="underline underline-offset-4 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
+        >
           Go to Take Studio
         </Link>
       </main>
