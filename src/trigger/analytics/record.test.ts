@@ -101,6 +101,11 @@ describe("job events (spec 0016, AC-4, AC-6)", () => {
     expect(await named(t.id, "take_failed")).toHaveLength(2);
   });
 
+  it("refuses a once per take event with no take ID", async () => {
+    const c = await createCreator(db);
+    expect(await recordJobEvent(db, { name: "take_ready", creatorId: c.id } as never)).toBe(false);
+  });
+
   it("never throws on a failed insert", async () => {
     const out = await recordJobEvent(db, { name: "signup", creatorId: "no-such-user" });
     expect(out).toBe(false);

@@ -4,7 +4,12 @@ import type { Executor } from "@/db/types";
 import { insertAnalyticsEvent } from "@/db/data/analytics";
 import { cut, jobStep } from "@/db/schema";
 import { isBackgroundKind, isTranscribeKind } from "@/lib/processing";
-import { type AnalyticsEventInput, aiEditOutcome, parseEventProps } from "@/lib/analytics-events";
+import {
+  type AnalyticsEventInput,
+  aiEditOutcome,
+  hasRequiredTakeId,
+  parseEventProps,
+} from "@/lib/analytics-events";
 
 /**
  * Job side recorder (spec 0016 AC-6). Jobs cannot import `src/server`, so this validates with the
@@ -13,7 +18,7 @@ import { type AnalyticsEventInput, aiEditOutcome, parseEventProps } from "@/lib/
  */
 export async function recordJobEvent(db: Executor, event: AnalyticsEventInput): Promise<boolean> {
   const props = parseEventProps(event.name, event.props);
-  if (!props) {
+  if (!props || !hasRequiredTakeId(event.name, event.takeId)) {
     logger.error("analytics event refused", { name: event.name, takeId: event.takeId ?? null });
     return false;
   }
