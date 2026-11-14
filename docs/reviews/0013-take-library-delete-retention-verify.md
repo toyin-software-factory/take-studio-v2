@@ -3,7 +3,7 @@
 **Verdict: PASS, with two notes.** Every acceptance criterion maps to a passing test. The browser checks ran locally on 2026-11-14 against the dev server (`next dev` on 127.0.0.1:8787) with synthetic seeded takes only (made up titles such as "Gamma take", rows written straight into the local Postgres, DELETE stubbed where the exact answer matters). No production take and none of Toyin's takes were opened.
 
 1. **Not run on production.** A live run needs a sign in link from the lead, which this task did not include. The delete route, sweep and storage drain are proven by real database tests and the pipeline checks instead (rows below).
-2. **AC-11 logging has no test of its own.** The only delete log line (`take delete: after commit step failed` in `src/server/takes/index.ts`) writes the take ID, the step name and the error name, never a title, key or message, so the code meets AC-11. No test fails if someone adds a title to it. A test would live in `src/server/takes/delete.test.ts`, outside this task's files, so it is left for the lead to schedule.
+2. **AC-11 logging is now tested.** The only delete log line (`take delete: after commit step failed` in `src/server/takes/index.ts`) writes the take ID, the step name and the error name. `src/server/takes/delete.test.ts` "logs the take ID only when a step after the commit fails (AC-11)" fails if a title, key, link or message is added to it.
 
 ## Result per acceptance criterion
 
@@ -19,7 +19,7 @@
 | AC-8 | Pass | `src/db/data/cleanup.test.ts` "expires due takes, queues their files, clears render keys, and keeps cuts and render settings", "expires only after the date, and the transcript with its edits stays", "refuses to expire a processing take", "does not expire a take while a transcribe job runs"; `routes.test.ts` "is 404 with no file and 410 once expired" |
 | AC-9 | Pass | `src/lib/storage-lifecycle.test.ts` (35 days above the 30 day promise, once each prefix, never `backgrounds/`, seconds, one constant). The deploy step skips with a warning until `R2_LIFECYCLE_TOKEN` is a CI secret (B2-T06) |
 | AC-10 | Pass | `src/server/account/account.test.ts` "leaves no row of the creator and queues every file, whatever state each take is in" |
-| AC-11 | Pass by code, no dedicated test (note 2) | `bestEffort` logs `takeId`, `step` and the error name only; the dialog shows only the take's own title (`tests/delete-take.spec.ts`) |
+| AC-11 | Pass | `src/server/takes/delete.test.ts` checks that `bestEffort` logs `takeId`, `step` and the error name only; the dialog shows only the take's own title (`tests/delete-take.spec.ts`) |
 | AC-12 | Pass, gaps closed by this task | `tests/delete-take.spec.ts`: focus trap on the card dialog and the take page dialog (new), Escape and Keep it return focus to the opener, "Delete <title>" names on the card menu, header menu and Details button, error message focused inside the dialog, axe with the menu and the dialog open, 44 px targets and no sideways scroll on the library (Pixel 7) and on the take page and its dialog (new); `tests/expired-take.spec.ts` axe on the expired page and card at both widths |
 
 ## Added by this task
