@@ -1,9 +1,17 @@
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  appendFileSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, type BrowserContext } from "@playwright/test";
 import lighthouse from "lighthouse";
 import { signIn } from "../tests/support/session";
+import { type GatePage, gateViolations } from "./lighthouse-gate";
 import { seedTakes, seedTranscript } from "../tests/support/takes";
 
 /**
@@ -11,8 +19,12 @@ import { seedTakes, seedTranscript } from "../tests/support/takes";
  * and scores accessibility, best practices and SEO, on the landing page, sign in, library, one seeded ready take and /record, against the built Worker
  * (`pnpm build:worker`, then `opennextjs-cloudflare preview` on 127.0.0.1:8787).
  *
- * Report only: a slow page or a low score never fails the run. It fails when a page errors or does not load
- * (Lighthouse runtime error, an HTTP error, a redirect away from the page, or no metric at all).
+ * Gated since B2-T114 on accessibility, best practices and SEO (`scripts/lighthouse-gate.ts`: 100s on the
+ * landing page, 100s in accessibility and best practices and `is-crawlable` as the one SEO failure on the
+ * noindex pages). Performance stays report only: a slow page never fails the run. It also fails when a page
+ * errors or does not load (Lighthouse runtime error, an HTTP error, a redirect away from the page, or no metric at all).
+ * The seeded take's thumbnail and play file come from committed synthetic fixtures (`serveSyntheticMedia`),
+ * so a console error on the take page is a real one.
  * Synthetic data only: a made up user and take in the CI Postgres (the same guard as the e2e
  * tests), never a production sign in. Reports go to `lighthouse-reports/`, the table to the job
  * summary and to stdout.
@@ -32,7 +44,13 @@ if (!Number.isInteger(RUNS) || RUNS < 1) {
 const PORT = 9333;
 const OUT = "lighthouse-reports";
 
-type Page = { readonly name: string; readonly path: string; readonly signedIn: boolean };
+type Page = {
+  readonly name: string;
+  readonly path: string;
+  readonly signedIn: boolean;
+  /** False for the pages that send noindex on purpose. */
+  readonly indexable: boolean;
+};
 
 const METRICS = [
   { key: "lcp", audit: "largest-contentful-paint" },
@@ -202,6 +220,23 @@ async function measure(page: Page): Promise<Result> {
   };
 }
 
+function gatePage(result: Result): readonly GatePage[] {
+  if (!result.ok) return [];
+  const { scores } = result.median;
+  return [
+    {
+      name: result.page.name,
+      indexable: result.page.indexable,
+      scores: {
+        accessibility: scores.accessibility,
+        "best-practices": scores["best-practices"],
+        seo: scores.seo,
+      },
+      failedSeoAudits: result.failed.filter((a) => a.category === "seo").map((a) => a.id),
+    },
+  ];
+}
+
 const seconds = (ms: number) => `${(ms / 1000).toFixed(2)} s`;
 const millis = (ms: number) => `${Math.round(ms)} ms`;
 
@@ -234,7 +269,7 @@ function table(results: readonly Result[]): string {
   return [
     `## Lighthouse mobile (median of ${RUNS} runs)`,
     "",
-    "Simulated slow 4G, 4x CPU slowdown, mobile screen. Report only: a score never fails the build, an error or a page that does not load does. The runner is shared, so read differences of a few percent as noise.",
+    "Simulated slow 4G, 4x CPU slowdown, mobile screen. Performance is report only (the runner is shared, so read differences of a few percent as noise). Accessibility, best practices and SEO are gated: see `scripts/lighthouse-gate.ts`. An error or a page that does not load also fails.",
     "",
     "| Page | LCP | CLS | TBT | FCP | Performance |",
     "|---|---|---|---|---|---|",
@@ -250,9 +285,43 @@ function table(results: readonly Result[]): string {
     "",
     ...failedList(results),
     "",
-    "The take page uses a seeded ready take whose video files do not exist in the CI bucket, so the player shows its own unavailable state. Reports (HTML and JSON) are in the `lighthouse-reports` artifact.",
+    "The take page uses a seeded ready take whose thumbnail and play file are committed synthetic fixtures. Reports (HTML and JSON) are in the `lighthouse-reports` artifact.",
     "",
   ].join("\n");
+}
+
+const MEDIA_HOST = "https://media.lighthouse.test";
+const CLIP = readFileSync("tests/fixtures/clip.mp4");
+const THUMB = readFileSync("tests/fixtures/media/bg-small.jpg");
+const CORS = { "access-control-allow-origin": "*", "accept-ranges": "bytes" };
+
+/**
+ * The CI bucket is a placeholder, so the media route answers 503 for the seeded take. Answer the
+ * route with a link to a made up host and serve that host from the committed synthetic fixtures
+ * (a 30 KB clip and a 3 KB image). The routes sit on the browser context, which is the one
+ * Lighthouse's tab belongs to; they touch nothing on the server.
+ */
+async function serveSyntheticMedia(context: BrowserContext): Promise<void> {
+  await context.route("**/api/takes/*/media?*", (route) => {
+    const kind = new URL(route.request().url()).searchParams.get("kind");
+    const file = kind === "thumb" ? "thumb.jpg" : "clip.mp4";
+    return route.fulfill({ json: { url: `${MEDIA_HOST}/${file}`, expiresInSeconds: 3600 } });
+  });
+  await context.route(`${MEDIA_HOST}/**`, (route) => {
+    if (route.request().url().endsWith("/thumb.jpg")) {
+      return route.fulfill({ body: THUMB, contentType: "image/jpeg", headers: CORS });
+    }
+    const range = /bytes=(\d+)-(\d*)/.exec(route.request().headers().range ?? "");
+    if (!range) return route.fulfill({ body: CLIP, contentType: "video/mp4", headers: CORS });
+    const start = Number(range[1]);
+    const end = Math.min(range[2] ? Number(range[2]) : CLIP.length - 1, CLIP.length - 1);
+    return route.fulfill({
+      status: 206,
+      body: CLIP.subarray(start, end + 1),
+      contentType: "video/mp4",
+      headers: { ...CORS, "content-range": `bytes ${start}-${end}/${CLIP.length}` },
+    });
+  });
 }
 
 async function seedReadyTake(userId: string): Promise<string> {
@@ -280,18 +349,19 @@ async function run(context: BrowserContext): Promise<readonly Result[]> {
   const results: Result[] = [];
   // Signed out first: the landing page sends a signed in visitor to /library.
   for (const page of [
-    { name: "Landing", path: "/", signedIn: false },
-    { name: "Sign in", path: "/sign-in", signedIn: false },
+    { name: "Landing", path: "/", signedIn: false, indexable: true },
+    { name: "Sign in", path: "/sign-in", signedIn: false, indexable: false },
   ] satisfies Page[]) {
     results.push(await measure(page));
   }
   const { user, cleanup } = await signIn(context, BASE, "Lighthouse Tester");
   try {
     const takeId = await seedReadyTake(user.id);
+    await serveSyntheticMedia(context);
     for (const page of [
-      { name: "Library", path: "/library", signedIn: true },
-      { name: "Take page", path: `/takes/${takeId}`, signedIn: true },
-      { name: "Record", path: "/record", signedIn: true },
+      { name: "Library", path: "/library", signedIn: true, indexable: false },
+      { name: "Take page", path: `/takes/${takeId}`, signedIn: true, indexable: false },
+      { name: "Record", path: "/record", signedIn: true, indexable: false },
     ] satisfies Page[]) {
       results.push(await measure(page));
     }
@@ -326,6 +396,11 @@ async function main(): Promise<void> {
   const failed = results.filter((r) => !r.ok);
   if (failed.length > 0) {
     console.error(`::error::${failed.length} page(s) did not load cleanly under Lighthouse.`);
+    process.exit(1);
+  }
+  const violations = gateViolations(results.flatMap(gatePage));
+  if (violations.length > 0) {
+    for (const line of violations) console.error(`::error::Lighthouse gate: ${line}`);
     process.exit(1);
   }
 }
