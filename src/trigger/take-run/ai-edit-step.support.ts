@@ -12,13 +12,17 @@ import { type AiEditIo, aiEditStep } from "./ai-edit-step";
 export let testDb: TestDb;
 export let db: JobDb;
 
-/** Opens the file's own test database and clears the built in backgrounds around the tests. */
-export function registerDb() {
+/**
+ * Opens the test file's own database and clears the built in backgrounds around the tests. Every
+ * part file passes its own name (`take_studio_test_ai_edit_<part>`): the cleanup deletes all built
+ * ins of the database, so two files running in parallel must never share one.
+ */
+export function registerDb(database: string) {
   beforeAll(async () => {
-    // Its own database: the AI step sends every ready built in background in the prompt, so rows
+    // Its own database per file: the AI step sends every ready built in background in the prompt, so rows
     // other test files leave in the shared database could push the request over the input cap and
     // make the step skip as too_large (B2-T08). Clear built ins left by an earlier run of this file.
-    testDb = await openTestDb({ database: "take_studio_test_ai_edit" });
+    testDb = await openTestDb({ database });
     db = testDb.db as unknown as JobDb;
     await testDb.db.delete(background).where(isNull(background.creatorId));
   });

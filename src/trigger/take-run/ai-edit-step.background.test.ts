@@ -18,7 +18,7 @@ vi.mock("@trigger.dev/sdk", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-registerDb();
+registerDb("take_studio_test_ai_edit_background");
 
 /** Spec 0012 part 6 (AC-5, AC-8): the built in catalog in the request and the suggestion. */
 describe("aiEditStep background suggestion", () => {

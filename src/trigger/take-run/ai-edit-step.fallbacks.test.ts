@@ -24,7 +24,7 @@ vi.mock("@trigger.dev/sdk", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-registerDb();
+registerDb("take_studio_test_ai_edit_fallbacks");
 
 describe("aiEditStep", () => {
   it("a missing key is ai_unavailable (no_key), never an abort, and Claude is not called", async () => {

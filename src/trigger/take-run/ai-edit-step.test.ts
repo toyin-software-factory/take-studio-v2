@@ -23,7 +23,7 @@ vi.mock("@trigger.dev/sdk", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-registerDb();
+registerDb("take_studio_test_ai_edit");
 
 describe("aiEditStep", () => {
   it("sends the take's script to Claude, and sends none for a take without one (spec 0021 AC-13)", async () => {
