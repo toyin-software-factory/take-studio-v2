@@ -14,7 +14,7 @@ VERSION="${1:-1.0.0}"
 DEST=".claude/skills/modern-web-guidance"
 CLI='DISABLE_TELEMETRY=1 node "$(git rev-parse --show-toplevel)/.claude/skills/modern-web-guidance/modern-web.mjs"'
 
-[ -d .git ] || { echo "Run from the repo root." >&2; exit 1; }
+[ "$(git rev-parse --show-toplevel 2>/dev/null)" = "$(pwd -P)" ] || { echo "Run from the repo root." >&2; exit 1; }
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -23,12 +23,10 @@ trap 'rm -rf "$tmp"' EXIT
 src="$tmp/package/skills/modern-web-guidance"
 [ -f "$src/SKILL.md" ] && [ -f "$src/modern-web.mjs" ] || { echo "Unexpected package layout." >&2; exit 1; }
 
-rm -rf "$DEST"
-mkdir -p "$DEST"
-cp -R "$src/." "$DEST/"
-rm -f "$DEST/search.mjs.map"
+rm -f "$src/search.mjs.map"
 
-CLI="$CLI" python3 - "$DEST/SKILL.md" <<'PY'
+# Adapt the downloaded copy first, so a failed rewrite leaves the installed skill untouched.
+CLI="$CLI" python3 - "$src/SKILL.md" <<'PY'
 import os, sys
 path, cli = sys.argv[1], os.environ["CLI"]
 text = open(path, encoding="utf-8").read()
@@ -59,5 +57,9 @@ if "@latest" in text:
     sys.exit("SKILL.md still has an npx @latest command")
 open(path, "w", encoding="utf-8").write(text)
 PY
+
+rm -rf "$DEST"
+mkdir -p "$DEST"
+cp -R "$src/." "$DEST/"
 
 echo "Vendored modern-web-guidance@${VERSION} ($(cat "$DEST/skill-version.txt")) into $DEST"
