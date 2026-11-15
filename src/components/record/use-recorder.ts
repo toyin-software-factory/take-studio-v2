@@ -82,6 +82,10 @@ export function useRecorder(limitSeconds: number | null = null, holdForVoice = f
       if (!got) return;
       if ("failure" in got) dispatch({ type: "failed", failure: got.failure });
       else {
+        if (!mounted.current) {
+          got.media.getTracks().forEach((track) => track.stop());
+          return;
+        }
         commit(got.media);
         dispatch({ type: "granted" });
       }
