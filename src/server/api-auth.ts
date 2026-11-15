@@ -1,9 +1,19 @@
-import { authenticateApiKey, countApiRequest, touchApiKey } from "@/db/data/api-keys";
+import {
+  authenticateApiKey,
+  bearerFailuresNow,
+  countApiRequest,
+  countBearerFailure,
+  touchApiKey,
+} from "@/db/data/api-keys";
 import { SESSION_REQUIRED_MESSAGE } from "@/lib/session-required";
 import type { Db } from "@/db/types";
 import {
   bearerKey,
+  clientIpOf,
   hashApiKey,
+  hashClientIp,
+  failureWentOver,
+  isOverFailLimit,
   isOverRateLimit,
   retryAfterFromSecond,
   retryAfterSeconds,
@@ -57,10 +67,76 @@ function logRejected(reason: "malformed" | "unknown" | "unavailable"): void {
   console.warn("api_key_rejected", { reason });
 }
 
+/**
+ * B2-T103: the per address limit on wrong bearer values. Before any key or token lookup the
+ * committed failures of this address are read (a plain read); at the limit the request is a 429
+ * and no lookup happens. A wrong value is counted afterwards with one atomic upsert that returns
+ * the new count, so parallel failures each get their own number and one that lands past the
+ * limit answers 429 too. A good request never touches the counter, so valid traffic alone can
+ * never trip the limit. Deliberate trade: requests already past the read when the limit is
+ * reached still do their lookup, so a burst can overshoot by at most what one address has in
+ * flight at once (their failures still count and answer 429).
+ * The address is only ever used as a hash. With no address (local runs) nothing is limited. A
+ * limit that cannot be read or written never blocks a request.
+ */
+async function failureGate(
+  keyAuth: NonNullable<ApiAuthDeps["keyAuth"]>,
+  ip: string | null,
+): Promise<{
+  readonly blocked: ApiAuthError | null;
+  readonly countFailure: () => Promise<ApiAuthError | null>;
+}> {
+  const none = { blocked: null, countFailure: async () => null };
+  if (ip === null) return none;
+  const ipHash = await hashClientIp(ip);
+  const at = keyAuth.now?.();
+  const limited = (secondsIntoMinute: number): ApiAuthError => ({
+    kind: "rate_limited",
+    retryAfter: at ? retryAfterSeconds(at) : retryAfterFromSecond(secondsIntoMinute),
+  });
+  try {
+    const db = await keyAuth.getDb();
+    const { failures, secondsIntoMinute } = await bearerFailuresNow(db, ipHash, at);
+    if (isOverFailLimit(failures)) {
+      console.warn("api_bearer_ip_limited");
+      return { blocked: limited(secondsIntoMinute), countFailure: async () => null };
+    }
+    return {
+      blocked: null,
+      countFailure: async () => {
+        try {
+          const counted = await countBearerFailure(db, ipHash, at);
+          return failureWentOver(counted.count) ? limited(counted.secondsIntoMinute) : null;
+        } catch {
+          return null;
+        }
+      },
+    };
+  } catch {
+    return none;
+  }
+}
+
 async function resolveKey(
   header: string,
   keyAuth: NonNullable<ApiAuthDeps["keyAuth"]>,
+  ip: string | null,
 ): Promise<Resolved> {
+  const gate = await failureGate(keyAuth, ip);
+  if (gate.blocked) return fail(gate.blocked);
+  return lookupBearer(header, keyAuth, async (reason) => {
+    logRejected(reason);
+    const over = await gate.countFailure();
+    return fail(over ?? { kind: "invalid_api_key" });
+  });
+}
+
+async function lookupBearer(
+  header: string,
+  keyAuth: NonNullable<ApiAuthDeps["keyAuth"]>,
+  onRejected: (reason: "malformed" | "unknown") => Promise<Resolved>,
+): Promise<Resolved> {
+  const rejected = onRejected;
   const key = bearerKey(header);
   const token = key === null && keyAuth.oauthResource ? bearerToken(header) : null;
   if (token !== null && keyAuth.oauthResource) {
@@ -73,10 +149,7 @@ async function resolveKey(
       keyAuth.oauthResource,
       keyAuth.now?.(),
     );
-    if (!found) {
-      logRejected("unknown");
-      return fail({ kind: "invalid_api_key" });
-    }
+    if (!found) return await rejected("unknown");
     // The same per minute limit as a key, counted for this app and creator.
     const at = keyAuth.now?.();
     const window = await countOauthRequest(db, found.clientId, found.creatorId, at);
@@ -88,16 +161,10 @@ async function resolveKey(
     }
     return ok({ db, creatorId: found.creatorId });
   }
-  if (key === null) {
-    logRejected("malformed");
-    return fail({ kind: "invalid_api_key" });
-  }
+  if (key === null) return await rejected("malformed");
   const db = await keyAuth.getDb();
   const found = await authenticateApiKey(db, await hashApiKey(key));
-  if (!found) {
-    logRejected("unknown");
-    return fail({ kind: "invalid_api_key" });
-  }
+  if (!found) return await rejected("unknown");
   const at = keyAuth.now?.();
   const window = await countApiRequest(db, found.keyId, at);
   if (isOverRateLimit(window.count)) {
@@ -122,7 +189,7 @@ export async function resolveCreator(
       logRejected("unavailable");
       return fail({ kind: "invalid_api_key" });
     }
-    return resolveKey(header, deps.keyAuth);
+    return resolveKey(header, deps.keyAuth, clientIpOf(request.headers));
   }
   const creator = await deps.getCreator(request);
   return creator ? ok(creator) : fail({ kind: "unauthorized" });
