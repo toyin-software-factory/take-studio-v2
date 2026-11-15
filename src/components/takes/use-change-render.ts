@@ -1,15 +1,15 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { z } from "zod";
+import * as z from "zod/mini";
 import { type Edits, changeBody } from "@/lib/cut-review";
 import { CHANGE_MESSAGES, type ChangeErrorCode } from "@/lib/change-messages";
 import { callApi } from "./browser-io";
 import { type PollResult, usePoll } from "./use-poll";
 
-const errorSchema = z.object({ error: z.string(), message: z.string().optional() });
-const jobSchema = z.object({ status: z.string() });
-const jobStarted = z.object({ jobId: z.string() });
+export const errorSchema = z.object({ error: z.string(), message: z.optional(z.string()) });
+export const jobSchema = z.object({ status: z.string() });
+export const jobStarted = z.object({ jobId: z.string() });
 
 /** What the render button is doing (spec 0011, AC-6). `frozen` is the edits as they were at the press. */
 export type RenderPhase =

@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { z } from "zod";
+import * as z from "zod/mini";
 import { callApi } from "./browser-io";
 
-const waveformSchema = z.object({ waveform: z.array(z.number()).nullable() });
+export const waveformSchema = z.object({ waveform: z.nullable(z.array(z.number())) });
 
 /**
  * The loudness values for the timeline (spec 0011, AC-11): read once per page load from

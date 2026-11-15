@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 import {
   DEFAULT_SETTINGS,
   TELEPROMPTER,
@@ -19,11 +19,11 @@ export const draftKey = (creatorId: string) => `ts.scriptDraft.${creatorId}`;
 
 type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-const settingsSchema = z.object({
+export const settingsSchema = z.object({
   wpm: z.number(),
   size: z.number(),
-  follow: z.boolean().optional(),
-  followDisclosed: z.boolean().optional(),
+  follow: z.optional(z.boolean()),
+  followDisclosed: z.optional(z.boolean()),
 });
 
 export function loadSettings(store: Store | null, creatorId: string): PrompterSettings {

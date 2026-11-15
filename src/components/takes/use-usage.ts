@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { z } from "zod";
+import * as z from "zod/mini";
 import { callApi } from "./browser-io";
 import type { UsageView } from "./usage-meter";
 
-const usageBody = z.object({
+export const usageBody = z.object({
   usedSeconds: z.number(),
   allowanceSeconds: z.number(),
   remainingSeconds: z.number(),

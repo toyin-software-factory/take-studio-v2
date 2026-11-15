@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 import { keyDate } from "./api-keys-screen";
 
 /**
@@ -81,7 +81,7 @@ export function clientLabel(name: string | null | undefined): string {
 export const CLIENT_NAME_MAX = 60;
 
 /** The answer of POST /api/auth/oauth2/consent: where to send the browser next. */
-export const consentAnswerSchema = z.object({ url: z.string().min(1) });
+export const consentAnswerSchema = z.object({ url: z.string().check(z.minLength(1)) });
 
 const BLOCKED_SCHEMES = new Set(["javascript:", "data:", "vbscript:", "file:", "blob:"]);
 
@@ -101,9 +101,9 @@ export function followableUrl(raw: string): string | null {
 /** A connected app as GET /api/connected-apps returns it (ids and times, never a token). */
 export const connectedAppSchema = z.object({
   id: z.string(),
-  name: z.string().nullable(),
+  name: z.nullable(z.string()),
   connectedAt: z.string(),
-  lastUsedAt: z.string().nullable(),
+  lastUsedAt: z.nullable(z.string()),
 });
 export const connectedAppsSchema = z.object({ apps: z.array(connectedAppSchema) });
 export type ConnectedAppView = z.infer<typeof connectedAppSchema>;

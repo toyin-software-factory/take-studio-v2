@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 
 /** The "no background" choice, as the API and the picker spell it (spec 0008). */
 export const ORIGINAL_BACKGROUND = "original";
@@ -9,8 +9,8 @@ export const backgroundItemSchema = z.object({
   name: z.string(),
   alt: z.string(),
   status: z.string(),
-  failureCode: z.string().nullable().default(null),
-  thumbUrl: z.string().nullable(),
+  failureCode: z._default(z.nullable(z.string()), null),
+  thumbUrl: z.nullable(z.string()),
 });
 export type BackgroundItem = z.infer<typeof backgroundItemSchema>;
 
@@ -18,7 +18,7 @@ export const backgroundListSchema = z.object({
   builtIn: z.array(backgroundItemSchema),
   mine: z.array(backgroundItemSchema),
   /** The creator's last pick, null for "Keep original" (also when it was deleted or not ready). */
-  defaultId: z.string().nullable(),
+  defaultId: z.nullable(z.string()),
 });
 export type BackgroundListData = z.infer<typeof backgroundListSchema>;
 

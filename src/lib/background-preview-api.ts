@@ -1,10 +1,10 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 
 /** POST and GET /api/takes/{id}/background/preview (spec 0008, AC-4). */
 export const previewViewSchema = z.object({
   state: z.enum(["making", "ready", "failed"]),
-  url: z.string().optional(),
-  noGreenScreen: z.boolean().default(false),
+  url: z.optional(z.string()),
+  noGreenScreen: z._default(z.boolean(), false),
 });
 export type PreviewView = z.infer<typeof previewViewSchema>;
 
