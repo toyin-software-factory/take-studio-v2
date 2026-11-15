@@ -2,12 +2,13 @@ import { expect as baseExpect, test } from "@playwright/test";
 import { builtWorkerSetting } from "./support/built-env";
 import { expectNoMotion } from "./support/motion";
 import { INSIGHTS_TEST_VIEWER_ID, signIn } from "./support/session";
-import { cleanups, open, setup } from "./fixtures/background-take-page";
+import { seedTakes } from "./support/takes";
+import { cleanups, open, section, setup } from "./fixtures/background-take-page";
 
 // B2-T162 (launch UI review item 4), the rest of the main pages. With reduced motion on, nothing
 // is still animating or transitioning after load and after each dialog opens: the take page's
 // Background pane and delete dialog, /record's script step, sign in, Privacy, Terms, not found
-// and /insights for the test viewer. The library, a take page and /record are in
+// and /insights for the test viewer. The library, a take page and /record are also in
 // `reduced-motion.spec.ts`. Synthetic fixtures only.
 const expect = baseExpect.configure({ timeout: 30_000 });
 test.describe.configure({ timeout: 90_000 });
@@ -31,12 +32,22 @@ for (const path of ["/sign-in", "/privacy", "/terms", "/no-such-page"]) {
   });
 }
 
+test("no running animation on the library with a take in it", async ({ page, baseURL }) => {
+  const { user, cleanup } = await signIn(page.context(), baseURL ?? "");
+  cleanups.push(cleanup);
+  await seedTakes(user.id, [{ title: "Library motion", status: "processing" }]);
+  await page.goto("/library");
+  await expect(page.getByText("Library motion").first()).toBeVisible();
+  await expectNoMotion(page);
+});
+
 test("no running animation on the take page, its Background pane or its delete dialog", async ({
   page,
   baseURL,
 }) => {
   const { id } = await setup(page, baseURL!);
   await open(page, id);
+  await expect(section(page)).toBeVisible();
   await expectNoMotion(page);
   await page.getByRole("button", { name: "More actions for this take" }).click();
   await page.getByRole("menuitem", { name: "Delete Interview" }).click();
