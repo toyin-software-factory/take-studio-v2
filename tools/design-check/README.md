@@ -50,6 +50,7 @@ Outputs go to `.design-check/`: `feedback.md` (for the builder), `report.html` (
 ```
 node tools/design-check/src/cli.js check            # one round: code checks, screenshots, Jev
 node tools/design-check/src/cli.js check --page home
+node tools/design-check/src/cli.js check --page take-page-v2 --build http://localhost:3000/takes/<id>   # a real URL for that page
 node tools/design-check/src/cli.js watch            # live: re-checks on every save (code checks only)
 node tools/design-check/src/cli.js loop --builder "claude -p"   # headless loop: check, hand failures to the builder, repeat
 node tools/design-check/src/cli.js reset            # start a new loop at round 1

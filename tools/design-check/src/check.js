@@ -8,12 +8,8 @@ import { extractPage, openBrowser, toUrl } from "./extract.js";
 import { comparePixels } from "./pixels.js";
 import { runJudge } from "./judge.js";
 import { log } from "./config.js";
+import { pageName, slug } from "./page-flags.js";
 
-const slug = (s) =>
-  String(s)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "") || "page";
 // Output folder per page: readable slug plus a short hash, so "a/b" and "a-b" never share files.
 const pageDir = (name) =>
   `${slug(name)}-${crypto.createHash("sha1").update(String(name)).digest("hex").slice(0, 6)}`;
@@ -21,7 +17,7 @@ const pageDir = (name) =>
 // Pages come from the config ("pages": [{ name, design, build }]) or from --design/--build.
 export function resolvePages(cfg, only) {
   const pages = (cfg.pages || []).map((p) => ({
-    name: p.name || slug(p.design),
+    name: pageName(p),
     design: toUrl(p.design, cfg.base),
     build: toUrl(p.build, cfg.base),
     designFile: /^https?:/.test(p.design) ? null : path.resolve(cfg.base, p.design),
