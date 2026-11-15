@@ -15,6 +15,7 @@ import {
 } from "@/lib/take-display";
 import { usePublishCurrentTake } from "@/components/shell/current-take";
 import { DELETED_PARAM } from "@/lib/take-delete";
+import { createWriteGuard } from "@/lib/take-poll-guard";
 import { callApi } from "./browser-io";
 import { DeleteTakeDialog } from "./delete-take-dialog";
 import { createPlayerBridge } from "./player-bridge";
@@ -65,7 +66,11 @@ export function TakeView({
     setDeleteOpen(true);
   }, []);
 
+  // A reply asked for before the page saved something (a rename, a retry) is dropped (B2-T144).
+  const [writes] = useState(createWriteGuard);
+
   const load = useCallback(async (): Promise<PollResult> => {
+    const ticket = writes.begin();
     const reply = await callApi(`/api/takes/${takeId}`, "GET").catch(() => null);
     const parsed = takeDetailSchema.safeParse(reply?.data);
     if (reply?.status === 401 || reply?.status === 404) {
@@ -77,12 +82,13 @@ export function TakeView({
       return "error";
     }
     setFailures(0);
+    if (writes.isStale(ticket)) return "continue";
     setDetail(parsed.data);
     // A background change leaves the take Ready, so keep checking while it runs (spec 0008). A
     // ready take is also checked now and then (`POLL.idleMs`) so a page left open, or a second
     // tab, picks up a change finished somewhere else (S3S-T13).
     return keepPolling(parsed.data) ? "continue" : "stop";
-  }, [takeId]);
+  }, [takeId, writes]);
 
   const status = detail?.take.status ?? initialStatus;
   const title = detail?.take.title ?? initialTitle;
@@ -112,6 +118,7 @@ export function TakeView({
   );
 
   const onRetried = useCallback(() => {
+    writes.noteWrite();
     setDetail((d) =>
       d
         ? {
@@ -121,7 +128,7 @@ export function TakeView({
           }
         : d,
     );
-  }, []);
+  }, [writes]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -147,7 +154,10 @@ export function TakeView({
         <>
           <TakeHeader
             take={detail.take}
-            onRenamed={(t) => setDetail((d) => (d ? { ...d, take: t } : d))}
+            onRenamed={(t) => {
+              writes.noteWrite();
+              setDetail((d) => (d ? { ...d, take: t } : d));
+            }}
             onDelete={openDelete}
           />
           <div className="grid gap-6 min-[1200px]:grid-cols-[minmax(0,1fr)_380px] min-[1200px]:items-start">
