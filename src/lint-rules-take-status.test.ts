@@ -73,8 +73,9 @@ function setsStatus(text: string, open: number): boolean {
   const arg = text.slice(open, skipBalanced(text, open - 1) - 1).trim();
   if (!arg.startsWith("{") || skipBalanced(arg, 0) !== arg.length) return true;
   return topLevelParts(arg.slice(1, -1)).some((part) => {
-    const p = part.trim();
-    return p.startsWith("...") || /^(status|["']status["'])\s*(:|$)/.test(p);
+    const p = part.replace(/^(\s|\/\*[\s\S]*?\*\/|\/\/[^\n]*\n)+/, "");
+    // A computed key (`["status"]`) is flagged whatever it holds: it cannot be read reliably.
+    return p.startsWith("...") || p.startsWith("[") || /^(status|["']status["'])\s*(:|$)/.test(p);
   });
 }
 
@@ -113,6 +114,15 @@ describe("scan: a take's status changes only through transitionTake", () => {
       "src/server/x.ts",
     ]);
     expect(statusWritesOutside(bad("changes"), TAKE_STATUS_HOMES)).toEqual(["src/server/x.ts"]);
+    expect(statusWritesOutside(bad('{ /* audit */ status: "ready" }'), TAKE_STATUS_HOMES)).toEqual([
+      "src/server/x.ts",
+    ]);
+    expect(statusWritesOutside(bad('{ ["status"]: "ready" }'), TAKE_STATUS_HOMES)).toEqual([
+      "src/server/x.ts",
+    ]);
+    expect(statusWritesOutside(bad("{ ['status']: \"ready\" }"), TAKE_STATUS_HOMES)).toEqual([
+      "src/server/x.ts",
+    ]);
     // A `}` inside an earlier value (a template interpolation) does not hide the status key.
     expect(
       statusWritesOutside(bad('{ title: sql`${take.title}`, status: "ready" }'), TAKE_STATUS_HOMES),
