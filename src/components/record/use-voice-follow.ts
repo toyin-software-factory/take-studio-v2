@@ -99,6 +99,11 @@ export function useVoiceFollow(args: {
     startWord.current = args.startWord;
   }, [args.startWord]);
   const [state, dispatch] = useReducer(followReducer, FOLLOW_OFF);
+  // The latest state for the recording effect, which must not re-run when it changes.
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
   const scriptWords = useRef<readonly string[]>([]);
   const last = useRef(-1);
   const gate = useRef<AudioGate | null>(null);
@@ -182,6 +187,10 @@ export function useVoiceFollow(args: {
     if (!connect || !recording || !stream) return;
     let cancelled = false;
     let audio: Audio | null = null;
+    // Still connecting when the hold ends: the reducer falls back, so say why (one code, no data).
+    if (stateRef.current.early && stateRef.current.status === "connecting") {
+      reportFollowFailure("hold_expired");
+    }
     dispatch({ type: "recording", now: Date.now() });
     gate.current?.startRecording();
     void (async () => {

@@ -64,6 +64,7 @@ export function RecordView({
   });
   const hold =
     state.kind === "countdown" &&
+    state.secondsLeft === 0 &&
     holdCountdown({ enabled: followOn, status: follow.status, heldMs: 0 });
   // Adjusting state while rendering: React re-renders at once, before anything is drawn.
   if (hold !== holdForVoice) setHoldForVoice(hold);
