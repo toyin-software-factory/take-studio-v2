@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { callApi } from "@/components/takes/browser-io";
 import { type ConnectedAppView, connectedAppsSchema, disconnectDone } from "@/lib/oauth-screen";
-
-const TIMEOUT_MS = 30_000;
 
 type Load =
   | { readonly kind: "loading" }
@@ -12,14 +11,7 @@ type Load =
 
 async function request(path: string, method: "GET" | "DELETE") {
   try {
-    const response = await fetch(path, {
-      method,
-      credentials: "same-origin",
-      cache: "no-store",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-    });
-    const data: unknown = await response.json().catch(() => null);
-    return { status: response.status, data };
+    return await callApi(path, method);
   } catch {
     return { status: null, data: null };
   }

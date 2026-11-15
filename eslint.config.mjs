@@ -2,6 +2,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 import prettier from "eslint-config-prettier/flat";
+import { fetchMessage, proseSelectors, zodMessage, zodSource } from "./eslint.selectors.mjs";
 
 // Code boundaries from spec 0001 (Runtime rules). They keep heavy job code out of the
 // Worker bundle and keep Worker only code out of jobs.
@@ -10,17 +11,6 @@ const jobInternals = ["@/trigger", "@/trigger/*", "**/trigger/**"];
 const heavySdks = ["@anthropic-ai/sdk", "@anthropic-ai/sdk/*", "fluent-ffmpeg", "ffmpeg-static"];
 const testsDir = ["@/tests", "@/tests/*", "**/tests/**"];
 const workerOnly = ["@opennextjs/cloudflare", "next", "next/*", "react", "react-dom"];
-
-// Selectors for rules that used to be prose in AGENTS.md (see the block before globalIgnores).
-const sonnerSource = String.raw`/^sonner(\/|$)|sonner-impl$/`;
-const fullscreenMethod = "/^(requestFullscreen|webkitRequestFullscreen|webkitEnterFullscreen)$/";
-
-const boundary = (patterns, message, allowTypeImports = false) => ({
-  "no-restricted-imports": [
-    "error",
-    { patterns: [{ group: patterns, message, allowTypeImports }] },
-  ],
-});
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -129,28 +119,99 @@ const eslintConfig = defineConfig([
       "src/lib/fullscreen.ts",
     ],
     rules: {
+      "no-restricted-syntax": ["error", ...proseSelectors],
+    },
+  },
+  {
+    // Components also refuse a dynamic `import("zod")` (a block of its own replaces the one above, so it repeats its selectors).
+    files: ["src/components/**/*.{ts,tsx}"],
+    ignores: [
+      "src/**/*.test.{ts,tsx}",
+      "src/components/ui/sonner.tsx",
+      "src/components/ui/sonner-impl.tsx",
+    ],
+    rules: {
       "no-restricted-syntax": [
         "error",
-        ...[
-          "ImportDeclaration",
-          "ImportExpression",
-          "ExportNamedDeclaration",
-          "ExportAllDeclaration",
-        ].map((node) => ({
-          selector: `${node}[source.value=${sonnerSource}]`,
+        ...proseSelectors,
+        {
+          selector: `ImportExpression[source.value=${zodSource}]`,
+          message: zodMessage,
+        },
+      ],
+    },
+  },
+  {
+    // B2-T133: more rules that used to be prose in AGENTS.md, each under a rule name of its own
+    // (a later block replaces an earlier one's settings for the same rule).
+    files: ["src/**/*.{ts,tsx}"],
+    rules: { "import/no-default-export": "error" },
+  },
+  {
+    // Default exports the framework or the Worker runtime requires.
+    files: [
+      "src/app/**/{page,layout,template,default,loading,error,global-error,not-found}.tsx",
+      "src/app/**/{route,robots,sitemap,manifest}.ts",
+      "src/worker.ts",
+      "src/**/*.d.ts",
+    ],
+    rules: { "import/no-default-export": "off" },
+  },
+  {
+    files: ["src/app/error.tsx", "src/app/global-error.tsx"],
+    rules: {
+      "no-restricted-properties": [
+        "error",
+        ...["error", "err"].map((object) => ({
+          object,
+          property: "message",
           message:
-            "Toasts go through `notify` from @/components/ui/sonner. Importing sonner or sonner-impl directly puts about 32 KB back in the first load (B2-T109).",
-        })),
-        ...[
-          `MemberExpression[property.name=${fullscreenMethod}]`,
-          `MemberExpression[computed=true][property.value=${fullscreenMethod}]`,
-        ].map((selector) => ({
-          selector,
-          message:
-            "Full screen goes through `enterFullscreen` from @/lib/fullscreen, which falls back to the WebKit methods iPhone Safari needs.",
+            "Error pages never show the raw error. Show a fixed friendly sentence and report the error by ID (reportBrowserError).",
         })),
       ],
     },
+  },
+  {
+    files: ["src/components/**/*.{ts,tsx}"],
+    ignores: ["src/**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: ["zod", "zod/v3", "zod/v4"].map((name) => ({
+            name,
+            message: zodMessage,
+          })),
+          patterns: [
+            {
+              group: testsDir,
+              message:
+                "Code in src/ must not import from tests/: keep shared data in src (B2-T125).",
+            },
+          ],
+        },
+      ],
+      "no-restricted-globals": ["error", { name: "fetch", message: fetchMessage }],
+      // `window.fetch(...)` and `globalThis.fetch(...)` are not globals to ESLint, so they need their own check.
+      "no-restricted-properties": [
+        "error",
+        ...["window", "globalThis", "self"].map((object) => ({
+          object,
+          property: "fetch",
+          message: fetchMessage,
+        })),
+      ],
+    },
+  },
+  {
+    // `callApi` itself, and the part upload, which PUTs a file to a presigned R2 link (not our JSON API).
+    // `record/use-voice-follow.ts` hands `fetch` to `fetchRealtimeToken`: B2-T134 removes that exemption.
+    files: [
+      "src/components/takes/browser-io.ts",
+      "src/components/takes/use-background-upload.ts",
+      "src/components/record/use-voice-follow.ts",
+    ],
+    rules: { "no-restricted-globals": "off", "no-restricted-properties": "off" },
   },
   globalIgnores([
     ".next/**",

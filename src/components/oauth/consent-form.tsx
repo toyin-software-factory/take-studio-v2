@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, CircleAlert } from "lucide-react";
+import { callApi } from "@/components/takes/browser-io";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { CONSENT_CAN, CONSENT_COPY, consentAnswerSchema, followableUrl } from "@/lib/oauth-screen";
@@ -11,16 +12,12 @@ type Choice = "allow" | "deny";
 /** Sends the answer to Better Auth with the signed query exactly as this page got it. */
 async function answer(accept: boolean): Promise<string | null> {
   try {
-    const response = await fetch("/api/auth/oauth2/consent", {
-      method: "POST",
-      credentials: "same-origin",
-      cache: "no-store",
-      signal: AbortSignal.timeout(30_000),
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ accept, oauth_query: window.location.search.slice(1) }),
+    const reply = await callApi("/api/auth/oauth2/consent", "POST", {
+      accept,
+      oauth_query: window.location.search.slice(1),
     });
-    if (!response.ok) return null;
-    const parsed = consentAnswerSchema.safeParse(await response.json().catch(() => null));
+    if (reply.status < 200 || reply.status >= 300) return null;
+    const parsed = consentAnswerSchema.safeParse(reply.data);
     return parsed.success ? followableUrl(parsed.data.url) : null;
   } catch {
     return null;
