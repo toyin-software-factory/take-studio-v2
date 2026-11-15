@@ -1,13 +1,14 @@
 import { devices, expect as baseExpect, test, type Page } from "@playwright/test";
 import { expectNoSeriousAxeIssues } from "./support/axe";
-import { INSIGHTS_TEST_VIEWER_ID, setting, signIn } from "./support/session";
+import { builtWorkerSetting } from "./support/built-env";
+import { INSIGHTS_TEST_VIEWER_ID, signIn } from "./support/session";
 
 // B2-T99 (from the launch UI review): /insights for the viewer and for everyone else, and the app
-// error page. The CI `.env` names a made up user as INSIGHTS_VIEWER_USER_ID; a local `.env` may
+// error page. The CI `.env` names a made up user as INSIGHTS_VIEWER_USER_ID; a local build may
 // not, so the viewer tests skip there (and fail in CI, so they can never skip quietly).
 const expect = baseExpect.configure({ timeout: 20_000 });
 
-const viewerConfigured = setting("INSIGHTS_VIEWER_USER_ID") === INSIGHTS_TEST_VIEWER_ID;
+const viewerConfigured = builtWorkerSetting("INSIGHTS_VIEWER_USER_ID") === INSIGHTS_TEST_VIEWER_ID;
 const sideways = (page: Page) =>
   page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
 
@@ -17,8 +18,12 @@ test.describe("/insights", () => {
   test.describe.configure({ mode: "default" });
   test.beforeEach(() => {
     if (process.env.CI)
-      expect(viewerConfigured, "CI .env must set INSIGHTS_VIEWER_USER_ID").toBe(true);
-    else test.skip(!viewerConfigured, "INSIGHTS_VIEWER_USER_ID is not the test viewer id in .env");
+      expect(viewerConfigured, "the build must set INSIGHTS_VIEWER_USER_ID").toBe(true);
+    else
+      test.skip(
+        !viewerConfigured,
+        "the Worker was not built with the test viewer id (bash tests/support/build-worker.sh)",
+      );
   });
 
   test("the viewer sees the page: title, one h1, phone width", async ({ page, baseURL }) => {

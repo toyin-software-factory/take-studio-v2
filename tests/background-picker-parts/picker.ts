@@ -57,8 +57,13 @@ export function registerPicker(): void {
     await page.keyboard.press("Enter");
     const dialog = page.getByRole("dialog", { name: "Background" });
     await expect(dialog).toBeVisible();
+    // A local database can hold the built in studios (pnpm db:seed), which list before these two,
+    // so start on the test's own first studio instead of counting from Keep original (B2-T140).
     await dialog.getByRole("radio", { name: "Keep original" }).focus();
     await page.keyboard.press("ArrowRight");
+    await expect(dialog.getByRole("radio").nth(1)).toBeChecked();
+    await dialog.getByRole("radio", { name: /Calm studio/ }).focus();
+    await page.keyboard.press("Space");
     await expect(dialog.getByRole("radio", { name: /Calm studio/ })).toBeChecked();
     await page.keyboard.press("ArrowRight");
     await expect(dialog.getByRole("radio", { name: /Warm studio/ })).toBeChecked();
