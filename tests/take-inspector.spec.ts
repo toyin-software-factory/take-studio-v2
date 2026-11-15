@@ -141,9 +141,15 @@ test("the breadcrumb and chip in the top bar follow a rename", async ({ page, ba
   await expect(page.getByRole("banner").getByText("Ready")).toBeVisible();
 
   await page.getByRole("button", { name: "Rename" }).click();
-  const field = page.getByLabel("Title");
+  const field = page.getByRole("main").getByLabel("Title");
   await field.fill("Founder intro, final");
+  // Wait on the real signals: the save reply, then the form closing, then the top bar.
+  const saved = page.waitForResponse(
+    (r) => r.request().method() === "PATCH" && r.url().endsWith(`/api/takes/${id}`),
+  );
   await field.press("Enter");
+  expect((await saved).status()).toBe(200);
+  await expect(field).toHaveCount(0);
   await expect(crumb.locator("[aria-current=page]")).toHaveText("Founder intro, final");
 });
 

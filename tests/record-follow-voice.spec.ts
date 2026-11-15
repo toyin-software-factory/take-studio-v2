@@ -119,15 +119,23 @@ test("follows the spoken words and ignores an ad lib (AC-12)", async ({ page, ba
   expect(await page.evaluate(() => (window as never as { __sent: number }).__sent)).toBe(0);
   await expect(page.getByTestId("record-timer")).toBeVisible();
 
-  const say = (t: string) =>
-    page.evaluate((x) => (window as never as { __say: (s: string) => void }).__say(x), t);
+  const say = (...phrases: string[]) =>
+    page.evaluate(
+      (xs) => xs.forEach((x) => (window as never as { __say: (s: string) => void }).__say(x)),
+      phrases,
+    );
+  const following = page.getByText("Following your voice.");
   await say("welcome everyone to my short");
-  await expect(page.getByText("Following your voice.")).toBeVisible();
-  await expectNoSeriousAxeIssues(page);
+  await expect(following).toBeVisible();
+  // The app drops back to the timer after 5 s with no matched word (FOLLOW_FALLBACK_MS), so no slow
+  // step (the axe scan) may sit between a match and the next assertion: the scan runs last. Each
+  // assertion follows its phrase at once, so the real clock cannot decide the outcome.
   await say("so anyway that was a funny thing");
-  await expect(page.getByText("Following your voice.")).toBeVisible();
+  await expect(following).toBeVisible();
+  await expect(page.getByText(/scrolling on a timer/)).toHaveCount(0);
   await say("synthetic demonstration about gardening");
-  await expect(page.getByText("Following your voice.")).toBeVisible();
+  await expect(following).toBeVisible();
+  await expectNoSeriousAxeIssues(page);
 });
 
 test("a refused token falls back to timed scrolling with a visible note (AC-12)", async ({
