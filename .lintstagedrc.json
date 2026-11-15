@@ -1,5 +1,10 @@
 {
-  "*.{js,mjs,cjs,jsx,ts,tsx}": ["eslint --no-warn-ignored", "prettier --write --ignore-unknown"],
-  "*.{ts,tsx,js,mjs,css}": "tsx scripts/check-lines.ts",
-  "!(*.{js,mjs,cjs,jsx,ts,tsx})": "prettier --write --ignore-unknown"
+  "*.{ts,tsx,js,mjs}": [
+    "eslint --no-warn-ignored",
+    "prettier --write --ignore-unknown",
+    "tsx scripts/check-lines.ts"
+  ],
+  "*.{cjs,jsx}": ["eslint --no-warn-ignored", "prettier --write --ignore-unknown"],
+  "*.css": ["prettier --write --ignore-unknown", "tsx scripts/check-lines.ts"],
+  "!(*.{js,mjs,cjs,jsx,ts,tsx,css})": "prettier --write --ignore-unknown"
 }
