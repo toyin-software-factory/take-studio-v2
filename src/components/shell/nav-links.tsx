@@ -10,14 +10,14 @@ import { isActive, isSoon, navItems } from "./nav-items";
 export function NavLinks({ onNavigate }: { readonly onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
-    <ul className="space-y-1">
+    <ul className="flex flex-col gap-0.5">
       {navItems.map((item) => {
         const row =
-          "flex items-center gap-3 rounded-md px-3 py-2 text-small font-medium text-text outline-hidden pointer-coarse:min-h-11";
+          "flex items-center gap-3 h-10 rounded-md px-2.5 text-[15px] font-normal text-text-muted outline-hidden pointer-coarse:min-h-11";
         if (isSoon(item)) {
           return (
             <li key={item.label}>
-              <span aria-disabled="true" className={cn(row, "cursor-default text-text-muted")}>
+              <span aria-disabled="true" className={cn(row, "cursor-default")}>
                 <Icon icon={item.icon} />
                 {item.label}
                 <span className="ml-auto rounded-full border border-hairline px-1.5 py-0.5 text-[10px] uppercase tracking-wider">
@@ -36,8 +36,8 @@ export function NavLinks({ onNavigate }: { readonly onNavigate?: () => void }) {
               onClick={onNavigate}
               className={cn(
                 row,
-                "transition-colors hover:bg-hover-surface focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-solid focus-visible:outline-ring",
-                active && "bg-hover-surface",
+                "transition-colors hover:bg-hover-surface hover:text-text focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-solid focus-visible:outline-ring",
+                active && "bg-hover-surface text-text",
               )}
             >
               <Icon icon={item.icon} />

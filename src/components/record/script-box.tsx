@@ -23,6 +23,7 @@ export function ScriptBox({
   const id = useId();
   const words = countWords(script);
   const clear = () => {
+    if (script === "") return;
     const previous = script;
     onScript("");
     notify("default", {
@@ -49,7 +50,7 @@ export function ScriptBox({
         </span>
         <span>{readingTime(words, wpm)}</span>
         <span>Saved on this device</span>
-        <button type="button" data-check="s1-setup-cta" disabled={script === ""} onClick={clear}>
+        <button type="button" data-check="s1-setup-cta" onClick={clear}>
           Clear
         </button>
       </p>

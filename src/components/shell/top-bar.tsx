@@ -17,7 +17,7 @@ export function TopBar({
   return (
     <header
       data-check="header"
-      className="sticky top-0 z-(--z-nav) flex min-h-[72px] items-center gap-3 border-b border-hairline bg-nav-glass-light px-[clamp(16px,2.4vw,32px)] [backdrop-filter:var(--blur-nav)]"
+      className="sticky top-0 z-(--z-nav) flex min-h-[72px] items-center gap-2 border-b py-3 lg:gap-4 border-hairline bg-nav-glass-light px-[clamp(16px,2.4vw,32px)] [backdrop-filter:var(--blur-nav)]"
     >
       <div className="lg:hidden">
         <MobileNav user={user} recent={recent} />
