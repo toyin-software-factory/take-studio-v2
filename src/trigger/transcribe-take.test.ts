@@ -1,85 +1,19 @@
 import { eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { logger } from "@trigger.dev/sdk";
-import { finish, startTranscribeJob } from "@/db/data/jobs";
-import { jobStep, processingJob, take, transcript } from "@/db/schema";
-import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
-import type { Db } from "@/db/types";
-import { DeadlineExceeded, runWithDeadline } from "@/lib/deadline";
-import { parseTranscriptEnv } from "@/lib/env";
+import { take, transcript } from "@/db/schema";
 import {
   DeepgramError,
   DeepgramRejected,
   DeepgramTimeout,
   failTranscribeJob,
   transcribeFailureCode,
-  type TranscribeIo,
   postToDeepgram,
   transcribeJob,
 } from "./transcribe-take";
+import { SECRET_TEXT, dgBody, job, io, outcome, db, registerDb } from "./transcribe-take.support";
 
-let testDb: TestDb;
-let db: Db;
-beforeAll(async () => {
-  testDb = await openTestDb();
-  db = testDb.db;
-});
-afterAll(() => testDb?.close());
-
-const SECRET_TEXT = "secret words spoken";
-const dgBody = (language = "en-GB", words = true) => ({
-  results: {
-    channels: [
-      {
-        detected_language: language,
-        alternatives: [
-          {
-            transcript: SECRET_TEXT,
-            words: words
-              ? [
-                  { word: "secret", punctuated_word: "Secret", start: 0, end: 0.5, confidence: 1 },
-                  { word: "words", punctuated_word: "words", start: 0.6, end: 1, confidence: 1 },
-                ]
-              : [],
-            paragraphs: { paragraphs: [{ start: 0 }] },
-          },
-        ],
-      },
-    ],
-  },
-});
-
-async function job() {
-  const creator = await createCreator(db);
-  const t = await seedTake(db, creator.id, { status: "ready" });
-  const started = await startTranscribeJob(db, { takeId: t.id });
-  if (!started.ok) throw new Error("start refused");
-  return { take: t, jobId: started.data.id };
-}
-
-function io(over: Partial<TranscribeIo> = {}) {
-  const post = vi.fn(async () => dgBody());
-  const value: TranscribeIo = {
-    r2: {
-      headObject: async () => ({ size: 1 }),
-      presignGet: async () => "https://r2.test/x?sig=1",
-    },
-    probe: async () => ({ hasAudio: true, fps: 29.97 }) as never,
-    extractAudio: async (_link, out) => {
-      const { writeFile } = await import("node:fs/promises");
-      await writeFile(out, "ogg");
-    },
-    post,
-    ...over,
-  };
-  return { value, post };
-}
-
-async function outcome(jobId: string) {
-  const [j] = await db.select().from(processingJob).where(eq(processingJob.id, jobId));
-  const [s] = await db.select().from(jobStep).where(eq(jobStep.jobId, jobId));
-  return { job: j, step: s };
-}
+registerDb();
 
 describe("transcribeJob (spec 0007, AC-6, AC-7)", () => {
   it("saves the transcript for English (en-GB), leaves the take ready and charges nothing", async () => {
@@ -236,153 +170,5 @@ describe("the Deepgram error matrix (spec 0007, AC-8)", () => {
     expect(transcribeFailureCode(new DeepgramError(null))).toBe("provider_error");
     expect(transcribeFailureCode(new Error("MAX_DURATION_EXCEEDED"))).toBe("timeout");
     expect(transcribeFailureCode(new Error("boom"))).toBe("internal_error");
-  });
-});
-
-describe("a stalled attempt stops at the deadline (S2T-T07)", () => {
-  it("ends the job failed with timeout, take Ready, 0 charged, nothing left open or on disk", async () => {
-    const { take: t, jobId } = await job();
-    let extractStopped = false;
-    // A barrier: the deadline fires only once the extraction is waiting for the abort.
-    let markReady: () => void = () => undefined;
-    const extractionReady = new Promise<void>((resolve) => {
-      markReady = resolve;
-    });
-    const stalled = io({
-      extractAudio: async (_link, out, signal) => {
-        const { writeFile } = await import("node:fs/promises");
-        await writeFile(out, "partial"); // a temp file the attempt must clean up
-        await new Promise<void>((resolve) => {
-          if (signal?.aborted) return resolve();
-          signal?.addEventListener(
-            "abort",
-            () => {
-              extractStopped = true; // ffmpeg killed
-              resolve();
-            },
-            { once: true },
-          );
-          markReady();
-        });
-        throw signal?.reason;
-      },
-    }).value;
-
-    const controller = new AbortController();
-    const running = transcribeJob(db, jobId, "r", stalled, controller.signal).catch(
-      (e: unknown) => e,
-    );
-    await extractionReady;
-    controller.abort(new DeadlineExceeded());
-    const error = await running;
-
-    expect(error).toBeInstanceOf(DeadlineExceeded);
-    expect(extractStopped).toBe(true);
-    expect(await failTranscribeJob(db, jobId, error)).toBe("timeout");
-    const { job: j, step } = await outcome(jobId);
-    expect(j).toMatchObject({ status: "failed", failureCode: "timeout", secondsCharged: 0 });
-    expect(step).toMatchObject({ status: "failed", failureCode: "timeout" });
-    const [after] = await db.select().from(take).where(eq(take.id, t.id));
-    expect(after?.status).toBe("ready");
-    // The work directory is gone.
-    const { readdir } = await import("node:fs/promises");
-    const { tmpdir } = await import("node:os");
-    expect((await readdir(tmpdir())).filter((n) => n.startsWith(`transcribe-${t.id}-`))).toEqual(
-      [],
-    );
-  });
-
-  it("aborts the Deepgram fetch itself and reports the deadline, not a Deepgram failure", async () => {
-    const hang = ((_url: string, init?: RequestInit) =>
-      new Promise((_, reject) => {
-        init?.signal?.addEventListener("abort", () => reject(init.signal?.reason), { once: true });
-      })) as unknown as typeof fetch;
-    const error = await runWithDeadline(30, (signal) =>
-      postToDeepgram(new Uint8Array(), "k", hang, signal),
-    ).catch((e: unknown) => e);
-    expect(error).toBeInstanceOf(DeadlineExceeded);
-    expect(transcribeFailureCode(error)).toBe("timeout");
-  });
-});
-
-describe("no write after the deadline (S2T-T07)", () => {
-  it("does not skip the job when the original is found missing after the deadline", async () => {
-    const { jobId } = await job();
-    const controller = new AbortController();
-    const gone = io({
-      r2: {
-        headObject: async () => {
-          controller.abort(new DeadlineExceeded());
-          return null;
-        },
-        presignGet: async () => "x",
-      },
-    }).value;
-    const error = await transcribeJob(db, jobId, "r", gone, controller.signal).catch(
-      (e: unknown) => e,
-    );
-    expect(error).toBeInstanceOf(DeadlineExceeded);
-    const { job: j, step } = await outcome(jobId);
-    expect(j?.status).toBe("running");
-    expect(step?.status).toBe("running");
-  });
-});
-
-describe("a job that is already final (spec 0007, atomic save)", () => {
-  it("publishes no transcript when cleanup failed the job while the run worked", async () => {
-    const { take: t, jobId } = await job();
-    // Cleanup fails the stale job while the run is still talking to Deepgram.
-    const post = async () => {
-      await finish(db, { jobId, status: "failed", failureCode: "stale_run" });
-      return dgBody();
-    };
-    const result = await transcribeJob(db, jobId, "r", io({ post }).value);
-    expect(result).toMatchObject({ outcome: "job_final" });
-    expect(await db.select().from(transcript).where(eq(transcript.takeId, t.id))).toHaveLength(0);
-    expect((await outcome(jobId)).job).toMatchObject({
-      status: "failed",
-      failureCode: "stale_run",
-    });
-  });
-});
-
-describe("postToDeepgram", () => {
-  const reply = (status: number, json: unknown = {}) =>
-    (async () => new Response(JSON.stringify(json), { status })) as unknown as typeof fetch;
-
-  it("sends the audio with the key and returns the body", async () => {
-    const fetchImpl = vi.fn(async () => new Response(JSON.stringify({ a: 1 })));
-    expect(await postToDeepgram(new Uint8Array([1]), "KEY", fetchImpl as never)).toEqual({ a: 1 });
-    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
-    expect(url).toContain("mip_opt_out=true");
-    expect(init.headers).toMatchObject({ authorization: "Token KEY", "content-type": "audio/ogg" });
-  });
-
-  it.each([429, 500, 503])("retries (DeepgramError) on %i", async (status) => {
-    await expect(postToDeepgram(new Uint8Array(), "k", reply(status))).rejects.toBeInstanceOf(
-      DeepgramError,
-    );
-  });
-
-  it("retries on a network failure", async () => {
-    const down = (async () => {
-      throw new Error("boom");
-    }) as unknown as typeof fetch;
-    await expect(postToDeepgram(new Uint8Array(), "k", down)).rejects.toBeInstanceOf(DeepgramError);
-  });
-
-  it.each([400, 402, 413])("does not retry %i (DeepgramRejected, status only)", async (status) => {
-    const error = (await postToDeepgram(new Uint8Array(), "k", reply(status)).catch(
-      (e: unknown) => e,
-    )) as Error;
-    expect(error).toBeInstanceOf(DeepgramRejected);
-    expect(error.message).toBe(`Deepgram rejected the request (${status})`);
-  });
-});
-
-describe("transcriptEnvSchema", () => {
-  it("names the variable, never a value", () => {
-    expect(() => parseTranscriptEnv({})).toThrow("Invalid transcript env: DEEPGRAM_API_KEY");
-    expect(parseTranscriptEnv({ DEEPGRAM_API_KEY: "k" })).toEqual({ DEEPGRAM_API_KEY: "k" });
   });
 });
