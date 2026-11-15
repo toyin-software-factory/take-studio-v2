@@ -20,11 +20,11 @@
 | AC-6 length and usage | Pass | `record-limits.spec.ts`, `recorder-rules.test.ts`. |
 | AC-8 script storage | Pass | Unit tests for storage, privacy, delete. **Gap found and closed:** nothing tested in the browser that the script and `source: "recording"` travel with the create, or that the device draft is cleared once the take exists; both are now in `record-script-storage.spec.ts`. |
 | AC-9 accessibility | Pass | `record-a11y.spec.ts` (every state, both themes, keyboard only, no trap), `record-follow-voice.spec.ts`. |
-| AC-10 phone and desktop | Pass in CI spec; real devices pending | Pixel 7 run passes. Real iPhone Safari, Android Chrome, desktop Safari and Firefox are not reachable here. |
+| AC-10 phone and desktop | Desktop passes; phone behaviour re checked after B2-T129 | Desktop layout passes in `record-a11y.spec.ts`. The phone part (Pixel 7 layout, thumb reach, no sideways scroll) passes on today's `main`, but B2-T129 (#347) turns phone `/record` into a full screen takeover with a settings bottom sheet, so it is re run after #347 merges. Real iPhone Safari, Android Chrome, desktop Safari and Firefox are not reachable here. |
 | AC-11 legal | Pass | `legal-facts` tests pass; `pnpm legal:drift` is run before the PR. |
 | AC-12 voice following | Pass in tests; live check pending | `record-follow-voice.spec.ts`, follow and realtime unit tests. Toyin's live retry (C-49) is still owed. |
 | AC-13 script aware cuts | Pass at code level; model score pending | `ai-edit` and `cut-quality` unit tests. Toyin's `ai-eval` run (C-29) is owed. |
-| AC-1, AC-3, AC-4, AC-7, AC-14 | Passing today on `main`, re check after B2-T129 | `record.spec.ts` passes on the current Review step; B2-T129 redesigns it, so these are re run after it merges. |
+| AC-1, AC-3, AC-4, AC-7, AC-14, and AC-2's default text size | Passing today on `main`, re check after B2-T129 | `record.spec.ts` passes on the current Review step; B2-T129 redesigns it and changes the prompter's default text size (to 28 px, still inside AC-2's 28 to 64 range), so these are re run after it merges and the default is recorded then. |
 
 No UI failure was found, so nothing was reported to Dwight and `src/components/record/` is untouched.
 
