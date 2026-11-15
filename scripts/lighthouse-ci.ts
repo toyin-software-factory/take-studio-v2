@@ -7,11 +7,11 @@ import { signIn } from "../tests/support/session";
 import { seedTakes, seedTranscript } from "../tests/support/takes";
 
 /**
- * Lighthouse mobile run (B2-T106), CI and local preview only. Measures LCP, CLS and TBT on the
- * landing page, sign in, library, one seeded ready take and /record, against the built Worker
+ * Lighthouse mobile run (B2-T106, B2-T111), CI and local preview only. Measures LCP, CLS and TBT,
+ * and scores accessibility, best practices and SEO, on the landing page, sign in, library, one seeded ready take and /record, against the built Worker
  * (`pnpm build:worker`, then `opennextjs-cloudflare preview` on 127.0.0.1:8787).
  *
- * Report only: a slow page never fails the run. It fails when a page errors or does not load
+ * Report only: a slow page or a low score never fails the run. It fails when a page errors or does not load
  * (Lighthouse runtime error, an HTTP error, a redirect away from the page, or no metric at all).
  * Synthetic data only: a made up user and take in the CI Postgres (the same guard as the e2e
  * tests), never a production sign in. Reports go to `lighthouse-reports/`, the table to the job
@@ -19,7 +19,8 @@ import { seedTakes, seedTranscript } from "../tests/support/takes";
  *
  * Profile: Lighthouse's mobile defaults written out (Moto G Power sized screen, simulated slow 4G
  * at 150 ms round trip and 1.6 Mbps down, 4x CPU slowdown). Each page runs `LH_RUNS` times (3)
- * and the median of each metric is reported.
+ * and the median of each metric is reported. Failed audits (any score under 1 in the four
+ * categories, in any run) are listed per page with their item counts, never item contents.
  */
 
 const BASE = process.env.LH_BASE_URL ?? "http://127.0.0.1:8787";
@@ -40,22 +41,45 @@ const METRICS = [
   { key: "fcp", audit: "first-contentful-paint" },
 ] as const;
 type MetricKey = (typeof METRICS)[number]["key"];
-type Sample = Readonly<Record<MetricKey, number>> & { readonly score: number };
+const CATEGORIES = ["performance", "accessibility", "best-practices", "seo"] as const;
+type CategoryId = (typeof CATEGORIES)[number];
+type Scores = Readonly<Record<CategoryId, number>>;
+type Sample = Readonly<Record<MetricKey, number>> & { readonly scores: Scores };
+type FailedAudit = {
+  readonly id: string;
+  readonly title: string;
+  readonly category: CategoryId;
+  readonly items: number | null;
+};
+
+type LhrAudit = {
+  readonly title?: string;
+  readonly score?: number | null;
+  readonly scoreDisplayMode?: string;
+  readonly numericValue?: number;
+  readonly details?: unknown;
+};
 
 type Lhr = {
   readonly runtimeError?: { readonly code: string };
   readonly finalDisplayedUrl: string;
-  readonly categories: { readonly performance: { readonly score: number | null } };
-  readonly audits: Readonly<
-    Record<string, { readonly numericValue?: number; readonly details?: unknown }>
+  readonly categories: Readonly<
+    Record<
+      CategoryId,
+      {
+        readonly score: number | null;
+        readonly auditRefs?: readonly { readonly id: string; readonly weight: number }[];
+      }
+    >
   >;
+  readonly audits: Readonly<Record<string, LhrAudit>>;
 };
 
 const SETTINGS = {
   port: PORT,
   logLevel: "error" as const,
   output: ["json", "html"] as ("json" | "html")[],
-  onlyCategories: ["performance"],
+  onlyCategories: [...CATEGORIES],
   formFactor: "mobile" as const,
   throttlingMethod: "simulate" as const,
   throttling: {
@@ -89,7 +113,9 @@ function loadProblem(lhr: Lhr, page: Page): string | null {
   if (final.pathname !== page.path) return `redirected to ${final.pathname}`;
   const status = documentStatus(lhr);
   if (status !== null && status >= 400) return `HTTP ${status}`;
-  if (typeof lhr.categories.performance.score !== "number") return "no performance score";
+  for (const id of CATEGORIES) {
+    if (typeof lhr.categories[id]?.score !== "number") return `no ${id} score`;
+  }
   for (const { audit } of METRICS) {
     if (typeof lhr.audits[audit]?.numericValue !== "number") return `no ${audit} value`;
   }
@@ -103,16 +129,42 @@ function sample(lhr: Lhr): Sample {
     cls: read("cumulative-layout-shift"),
     tbt: read("total-blocking-time"),
     fcp: read("first-contentful-paint"),
-    score: lhr.categories.performance.score!,
+    scores: {
+      performance: lhr.categories.performance.score!,
+      accessibility: lhr.categories.accessibility.score!,
+      "best-practices": lhr.categories["best-practices"].score!,
+      seo: lhr.categories.seo.score!,
+    },
   };
 }
 
+/** Audits of the three quality categories that did not pass, with how many items they flag. */
+function failedAudits(lhr: Lhr): readonly FailedAudit[] {
+  const found: FailedAudit[] = [];
+  for (const category of CATEGORIES.slice(1)) {
+    for (const { id } of lhr.categories[category].auditRefs ?? []) {
+      const audit = lhr.audits[id];
+      if (!audit || typeof audit.score !== "number" || audit.score >= 1) continue;
+      if (audit.scoreDisplayMode === "manual" || audit.scoreDisplayMode === "informative") continue;
+      const items = (audit.details as { items?: readonly unknown[] } | undefined)?.items;
+      found.push({ id, title: audit.title ?? id, category, items: items ? items.length : null });
+    }
+  }
+  return found;
+}
+
 type Result =
-  | { readonly page: Page; readonly ok: true; readonly median: Sample }
+  | {
+      readonly page: Page;
+      readonly ok: true;
+      readonly median: Sample;
+      readonly failed: readonly FailedAudit[];
+    }
   | { readonly page: Page; readonly ok: false; readonly problem: string };
 
 async function measure(page: Page): Promise<Result> {
   const samples: Sample[] = [];
+  const failed = new Map<string, FailedAudit>();
   for (let run = 1; run <= RUNS; run++) {
     const result = await lighthouse(`${BASE}${page.path}`, SETTINGS);
     if (!result) return { page, ok: false, problem: "no Lighthouse result" };
@@ -124,8 +176,9 @@ async function measure(page: Page): Promise<Result> {
     const problem = loadProblem(lhr, page);
     if (problem) return { page, ok: false, problem };
     samples.push(sample(lhr));
+    for (const audit of failedAudits(lhr)) failed.set(audit.id, audit);
   }
-  const med = (key: keyof Sample) => median(samples.map((s) => s[key]));
+  const med = (key: MetricKey) => median(samples.map((s) => s[key]));
   return {
     page,
     ok: true,
@@ -134,28 +187,64 @@ async function measure(page: Page): Promise<Result> {
       cls: med("cls"),
       tbt: med("tbt"),
       fcp: med("fcp"),
-      score: med("score"),
+      scores: {
+        performance: median(samples.map((x) => x.scores.performance)),
+        accessibility: median(samples.map((x) => x.scores.accessibility)),
+        "best-practices": median(samples.map((x) => x.scores["best-practices"])),
+        seo: median(samples.map((x) => x.scores.seo)),
+      },
     },
+    failed: [...failed.values()],
   };
 }
 
 const seconds = (ms: number) => `${(ms / 1000).toFixed(2)} s`;
 const millis = (ms: number) => `${Math.round(ms)} ms`;
 
-function table(results: readonly Result[]): string {
-  const rows = results.map((r) =>
+const pageLabel = (page: Page) => `${page.name} \`${page.path.replace(/[0-9a-f-]{36}/, ":id")}\``;
+const pct = (score: number) => String(Math.round(score * 100));
+
+function failedList(results: readonly Result[]): readonly string[] {
+  const lines = results.flatMap((r) =>
     r.ok
-      ? `| ${r.page.name} \`${r.page.path.replace(/[0-9a-f-]{36}/, ":id")}\` | ${seconds(r.median.lcp)} | ${r.median.cls.toFixed(3)} | ${millis(r.median.tbt)} | ${seconds(r.median.fcp)} | ${Math.round(r.median.score * 100)} |`
+      ? r.failed.map(
+          (a) =>
+            `- ${pageLabel(r.page)}: \`${a.id}\` (${a.category}) ${a.title}${a.items === null ? "" : `, ${a.items} item(s)`}`,
+        )
+      : [],
+  );
+  return lines.length > 0 ? lines : ["No failed audits."];
+}
+
+function table(results: readonly Result[]): string {
+  const perf = results.map((r) =>
+    r.ok
+      ? `| ${pageLabel(r.page)} | ${seconds(r.median.lcp)} | ${r.median.cls.toFixed(3)} | ${millis(r.median.tbt)} | ${seconds(r.median.fcp)} | ${pct(r.median.scores.performance)} |`
       : `| ${r.page.name} | FAILED: ${r.problem} | | | | |`,
+  );
+  const quality = results.map((r) =>
+    r.ok
+      ? `| ${pageLabel(r.page)} | ${pct(r.median.scores.accessibility)} | ${pct(r.median.scores["best-practices"])} | ${pct(r.median.scores.seo)} |`
+      : `| ${r.page.name} | FAILED: ${r.problem} | | |`,
   );
   return [
     `## Lighthouse mobile (median of ${RUNS} runs)`,
     "",
     "Simulated slow 4G, 4x CPU slowdown, mobile screen. Report only: a score never fails the build, an error or a page that does not load does. The runner is shared, so read differences of a few percent as noise.",
     "",
-    "| Page | LCP | CLS | TBT | FCP | Score |",
+    "| Page | LCP | CLS | TBT | FCP | Performance |",
     "|---|---|---|---|---|---|",
-    ...rows,
+    ...perf,
+    "",
+    "### Accessibility, best practices, SEO",
+    "",
+    "| Page | Accessibility | Best practices | SEO |",
+    "|---|---|---|---|",
+    ...quality,
+    "",
+    "### Failed audits",
+    "",
+    ...failedList(results),
     "",
     "The take page uses a seeded ready take whose video files do not exist in the CI bucket, so the player shows its own unavailable state. Reports (HTML and JSON) are in the `lighthouse-reports` artifact.",
     "",
