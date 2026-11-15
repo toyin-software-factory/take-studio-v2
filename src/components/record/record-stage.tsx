@@ -90,7 +90,7 @@ export function RecordStage({
   return (
     <section
       className="rst rst-live"
-      aria-label="Camera"
+      aria-label="Recording stage"
       data-recording={recording}
       data-check="s2-stage"
       data-check-section=""

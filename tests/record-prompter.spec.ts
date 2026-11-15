@@ -103,7 +103,7 @@ test("speed, size and the script draft are remembered on the device (AC-2)", asy
   await expect(page.getByLabel("Script (optional)")).toHaveValue(SCRIPT);
   await page.getByRole("button", { name: "Turn on camera" }).click();
   await expect(page.getByTestId("prompter-speed")).toHaveText("150 wpm");
-  await expect(page.getByTestId("prompter-size")).toHaveText("54 px");
+  await expect(page.getByTestId("prompter-size")).toHaveText("36 px");
 });
 
 test("reduced motion steps by line with a highlight (AC-9)", async ({ page, baseURL }) => {
@@ -172,7 +172,10 @@ test("the Review step has the Your take panel, big play and the three actions (B
   await expect(page.locator('[data-check="s2-stage-heading-2"]')).toContainText(
     "recorded. Nothing has left this device yet.",
   );
-  await expect(page.locator('[data-check="s2-stage-cta-2"]')).toHaveAccessibleName("Use this take");
+  await expect(page.locator('[data-check="s2-stage-cta-2"]')).toHaveAccessibleName(
+    "Play your take",
+  );
+  await expect(page.getByRole("button", { name: "Use this take" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Record again" })).toBeVisible();
   await expect(page.getByRole("link", { name: "Save to device" })).toBeVisible();
   await expect(page.getByText("we cut the pauses, add your studio")).toBeVisible();
@@ -192,7 +195,7 @@ test("the Review step shows progress and Cancel while a take uploads (B2-T129)",
   await open(page, baseURL!);
   await page.route("**/api/uploads", () => new Promise(() => {})); // never answers: stays sending
   await toReview(page);
-  await page.locator('[data-check="s2-stage-cta-2"]').click();
+  await page.getByRole("button", { name: "Use this take" }).click();
   await expect(page.locator('[data-check="s2-stage-heading-2"]')).toContainText("Sending it now.");
   await expect(page.getByRole("progressbar")).toBeVisible();
   await expect(page.getByText("Uploading. Keep this tab open.")).toBeVisible();

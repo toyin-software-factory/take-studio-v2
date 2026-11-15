@@ -40,7 +40,7 @@ export function RecordReview({
   }, [take.blob]);
 
   return (
-    <section className="rst rvw" aria-label="Camera" data-check="s2-stage" data-check-section="">
+    <section className="rst rvw" aria-label="Your take" data-check="s2-stage" data-check-section="">
       <div className="rst-col">
         <div className="rst-cam">
           {url ? (
