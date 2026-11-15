@@ -37,10 +37,12 @@ export {
   CHOICES,
   COLLECTED,
   COOKIES,
+  DEVICE_STORAGE,
   LEGAL_NUMBERS,
   PUBLIC_VIEWER,
   type Collected,
   type CookieFact,
+  type DeviceStorageFact,
 } from "./legal-facts-data";
 export {
   DEEPGRAM_OPTS_OUT,
