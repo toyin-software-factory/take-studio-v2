@@ -6,6 +6,7 @@ import { useUsage } from "@/components/takes/use-usage";
 import { UploadProgress } from "@/components/takes/upload-progress";
 import { useLeaveGuard } from "@/components/takes/use-leave-guard";
 import { useUpload } from "@/components/takes/use-upload";
+import { holdCountdown } from "@/lib/follow-state";
 import { wouldLoseWork } from "@/lib/recorder-state";
 import { clearDraft, deviceStore, loadDraft, saveDraft } from "@/lib/prompter-storage";
 import { isUsedUp, usageLimitSeconds, type RecordingContainer } from "@/lib/recorder-rules";
@@ -14,6 +15,7 @@ import { RecordSetup } from "./record-setup";
 import { RecordStage } from "./record-stage";
 import { usePrompter } from "./use-prompter";
 import { useRecorder } from "./use-recorder";
+import { useVoiceFollow } from "./use-voice-follow";
 
 /** The container a file name ends in (the recorder named it from the type it picked). */
 const containerOf = (fileName: string): RecordingContainer =>
@@ -39,7 +41,9 @@ export function RecordView({
 }) {
   const [usageKey, setUsageKey] = useState("");
   const usage = useUsage(firstUsage, usageKey);
-  const recorder = useRecorder(usageLimitSeconds(usage));
+  // The countdown waits at 0 while the voice service connects (set below, once its status is known).
+  const [holdForVoice, setHoldForVoice] = useState(false);
+  const recorder = useRecorder(usageLimitSeconds(usage), holdForVoice);
   const upload = useUpload();
   const [script, setScript] = useState("");
   const { state, dispatch } = recorder;
@@ -49,6 +53,25 @@ export function RecordView({
   const onStage =
     state.kind === "ready" || state.kind === "countdown" || state.kind === "recording";
   const prompter = usePrompter(script, creatorId, state.kind === "recording", onStage);
+  const followOn = prompter.settings.follow && prompter.total > 0;
+  const follow = useVoiceFollow({
+    script,
+    stream: recorder.stream,
+    enabled: followOn,
+    countdown: state.kind === "countdown",
+    recording: state.kind === "recording",
+    startWord: prompter.getPosition,
+  });
+  const hold =
+    state.kind === "countdown" &&
+    holdCountdown({ enabled: followOn, status: follow.status, heldMs: 0 });
+  // Adjusting state while rendering: React re-renders at once, before anything is drawn.
+  if (hold !== holdForVoice) setHoldForVoice(hold);
+  // The prompter stands still at its first line while the voice service connects.
+  const { setStill } = prompter;
+  useEffect(() => {
+    setStill(followOn && follow.status === "connecting");
+  }, [setStill, followOn, follow.status]);
 
   // The script draft is remembered on this device and cleared once the take is created.
   // eslint-disable-next-line react-hooks/set-state-in-effect -- reading device storage after hydration
@@ -97,9 +120,10 @@ export function RecordView({
     return (
       <RecordStage
         state={state}
-        script={script}
         stream={recorder.stream}
         prompter={prompter}
+        follow={follow}
+        holding={hold}
         elapsedMs={recorder.elapsedMs}
         limitMs={recorder.limitMs}
         onRecord={recorder.begin}

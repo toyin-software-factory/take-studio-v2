@@ -32,6 +32,7 @@ const FAKE_SOCKET = `
         this.url = url; this.protocols = protocols; this.readyState = 0;
         this.onopen = null; this.onmessage = null; this.onclose = null; this.onerror = null;
         sockets.push(this);
+        if (window.__neverOpen) return;
         setTimeout(() => { this.readyState = 1; this.onopen && this.onopen({}); }, 20);
       }
       send() { window.__sent += 1; }
@@ -110,12 +111,13 @@ test("follows the spoken words and ignores an ad lib (AC-12)", async ({ page, ba
   await toggle.click();
   await page.getByRole("dialog").getByRole("button", { name: "Turn on" }).click();
   await page.getByRole("button", { name: "Record" }).click();
-  await expect(page.getByTestId("record-timer")).toBeVisible();
-  await expect.poll(() => page.evaluate(() => window.WebSocket.name)).toBe("FakeSocket");
-  await expect(page.getByText("Connecting to follow your voice…")).toBeVisible();
+  // B2-T115: the socket opens at the countdown, and nothing is sent before recording starts.
   await expect
     .poll(() => page.evaluate(() => (window as never as { __sockets: unknown[] }).__sockets.length))
     .toBe(1);
+  await expect(page.getByText("Voice ready")).toBeVisible();
+  expect(await page.evaluate(() => (window as never as { __sent: number }).__sent)).toBe(0);
+  await expect(page.getByTestId("record-timer")).toBeVisible();
 
   const say = (t: string) =>
     page.evaluate((x) => (window as never as { __say: (s: string) => void }).__say(x), t);
@@ -140,4 +142,22 @@ test("a refused token falls back to timed scrolling with a visible note (AC-12)"
   await expect(page.getByRole("status").filter({ hasText: /timer|timed|scroll/i })).toBeVisible();
   await expect(page.getByTestId("script-scroll")).toBeVisible();
   await expectNoSeriousAxeIssues(page);
+});
+
+test("a socket that never opens holds the countdown, then falls back to the timer (B2-T115)", async ({
+  page,
+  baseURL,
+}) => {
+  await open(page, baseURL!, "ok");
+  await page.evaluate(() => {
+    (window as never as { __neverOpen: boolean }).__neverOpen = true;
+  });
+  await page.getByRole("switch", { name: "Follow my voice" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Turn on" }).click();
+  await page.getByRole("button", { name: "Record" }).click();
+  await expect(page.getByText("Connecting…")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Connecting voice…" })).toBeAttached();
+  await expect(page.getByTestId("record-timer")).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: /timer|timed|scroll/i })).toBeVisible();
+  expect(await page.evaluate(() => (window as never as { __sent: number }).__sent)).toBe(0);
 });
