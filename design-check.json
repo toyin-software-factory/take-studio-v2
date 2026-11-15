@@ -8,7 +8,8 @@
     {
       "name": "record-v2",
       "design": "docs/design/record-v2.tagged.html",
-      "build": "http://localhost:3000/record"
+      "build": "http://localhost:3000/record",
+      "storageState": ".design-check/auth.json"
     },
     {
       "name": "take-page-v2",
@@ -18,5 +19,8 @@
   ],
   "viewports": ["desktop", "phone"],
   "watch": ["src"],
-  "judge": { "type": "jev", "model": "jev-1.14.0" }
+  "judge": {
+    "type": "jev",
+    "model": "jev-1.14.0"
+  }
 }
