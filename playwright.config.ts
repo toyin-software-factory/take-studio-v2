@@ -18,6 +18,8 @@ const chain = (names: string[]): string[] => (process.env.E2E_SPLIT ? [] : names
 
 export default defineConfig({
   testDir: "./tests",
+  // Stops the run with the cause when the Worker does not accept the test session (B2-T137).
+  globalSetup: "./tests/support/global-setup.ts",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
