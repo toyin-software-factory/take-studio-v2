@@ -32,7 +32,7 @@
     inset: 0;
     z-index: var(--z-modal);
     border-radius: 0;
-    padding: 0;
+    padding: 10px;
     height: 100svh;
     grid-template-rows: minmax(0, 1fr) auto;
     overflow-y: auto;
@@ -44,7 +44,6 @@
     aspect-ratio: auto;
     flex: 1;
     min-height: 0;
-    border-radius: 0;
   }
   .rst-btn.rst-back {
     display: grid;
