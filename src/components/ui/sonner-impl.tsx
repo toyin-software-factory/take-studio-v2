@@ -112,9 +112,23 @@ const regionMounted = new Promise<void>((resolve) => {
   markMounted = resolve;
 });
 
-/** Shows a toast (waits for the toast region to exist first). */
+/** How long a toast waits for the region. A healthy region mounts within a second or two of hydration. */
+const REGION_WAIT_MS = 8000;
+
+function regionWithin(ms: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("toast region did not mount")), ms);
+  });
+  return Promise.race([regionMounted, timeout]).finally(() => clearTimeout(timer));
+}
+
+/**
+ * Shows a toast (waits for the toast region to exist first). Rejects if the region never mounts,
+ * so `notify` can fall back to an alert instead of losing the message.
+ */
 export async function notifyNow(variant: ToastVariant, options: ToastOptions): Promise<void> {
-  await regionMounted;
+  await regionWithin(REGION_WAIT_MS);
   // Our card owns the timer (it pauses on focus too), so sonner never closes it by itself.
   sonnerToast.custom((id) => <ToastCard id={id} variant={variant} {...options} />, {
     duration: Infinity,
