@@ -61,7 +61,7 @@ export function registerPicker(): void {
     // so start on the test's own first studio instead of counting from Keep original (B2-T140).
     await dialog.getByRole("radio", { name: "Keep original" }).focus();
     await page.keyboard.press("ArrowRight");
-    await expect(dialog.getByRole("radio", { name: "Keep original" })).not.toBeChecked();
+    await expect(dialog.getByRole("radio").nth(1)).toBeChecked();
     await dialog.getByRole("radio", { name: /Calm studio/ }).focus();
     await page.keyboard.press("Space");
     await expect(dialog.getByRole("radio", { name: /Calm studio/ })).toBeChecked();
