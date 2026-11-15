@@ -205,12 +205,7 @@ const eslintConfig = defineConfig([
   },
   {
     // `callApi` itself, and the part upload, which PUTs a file to a presigned R2 link (not our JSON API).
-    // `record/use-voice-follow.ts` hands `fetch` to `fetchRealtimeToken`: B2-T134 removes that exemption.
-    files: [
-      "src/components/takes/browser-io.ts",
-      "src/components/takes/use-background-upload.ts",
-      "src/components/record/use-voice-follow.ts",
-    ],
+    files: ["src/components/takes/browser-io.ts", "src/components/takes/use-background-upload.ts"],
     rules: { "no-restricted-globals": "off", "no-restricted-properties": "off" },
   },
   globalIgnores([
