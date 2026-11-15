@@ -42,6 +42,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 18 | Email sign in and take ready email | Slice 1 | done |
 | 19 | Cut quality measurement | Launch | done |
 | 20 | Record with script | Slice 8 | in-progress |
+| 23 | Before and after on the homepage | Slice 10 | planned |
 
 ## Foundations
 
@@ -339,6 +340,20 @@ Record a take inside Take Studio (phone or laptop camera and mic) while a telepr
 - [x] Test it: `/test Record with script` (backend in B2-T138; UI in B2-T147: `src/components/record/recorder-media.test.ts`, `tests/record-lifecycle.spec.ts`, `tests/record-sheet.spec.ts`, `tests/record-review-upload.spec.ts`; the rest was already covered by `tests/record*.spec.ts`)
 Spec [0021](../specs/0021-record-with-script/index.md)
 
+## Slice 10: Before and after on the homepage
+
+### 23. Before and after on the homepage · planned
+One take we record ourselves, shown raw next to the finished version from our own pipeline, with a slider and the time saved. Growth idea from Toyin, after Upload first, sign in after (C-30 asks for the choices in the spec).
+**Done when:** the homepage has a Before and after section that plays a clip we recorded (never a creator's take), the "after" is the real pipeline output, the slider works by keyboard, pointer and touch, the time saved is computed from the real durations, and the page still scores Lighthouse mobile 90 or more.
+- [x] Design it (spec): `/architect Before and after on the homepage`
+- [ ] Build it: `/develop Before and after on the homepage`
+   - [ ] Record the clip with a release, run it through the pipeline, publish script (tasks 1 and 2)
+   - [ ] Media route and the section with the slider (tasks 3 and 4)
+   - [ ] Playback, phone layout, button and performance (tasks 5 to 8)
+- [ ] Verify it: `/check verify Before and after on the homepage`
+- [ ] Test it: `/test Before and after on the homepage`
+Spec [0025](../specs/0025-before-and-after-homepage.md)
+
 ## Deferred
 Out of scope for this build pass, kept so the plan stays honest.
 - **Billing & plans**: paid plans beyond the free monthly allowance · needs a decision · GA
@@ -354,7 +369,7 @@ Out of scope for this build pass, kept so the plan stays honest.
 Positioning, costs and competitor research: docs/scope/research/2026-11-13-positioning-and-studio-look.md
 Ways to make people want to use Take Studio quickly. Recommended order when Toyin picks: Product analytics (feature 17, so the rest can be measured), then Upload first, sign in after, then Before and after on the homepage.
 - **Upload first, sign in after**: drop a video on the homepage; the email for the magic link and the take ready email is asked for while it uploads and processes · needs a decision
-- **Before and after on the homepage**: one real take, raw against finished, with a slider and the time saved · needs a decision
+- **Before and after on the homepage**: one real take, raw against finished, with a slider and the time saved · enrolled as feature 23, Before and after on the homepage
 - **Vertical 9:16 export**: ready to post on TikTok, Reels and Shorts; goes together with Burned in captions above · needs a decision · with Burned in captions
 - **Share page for a finished take**: a public link with a small "Made with Take Studio" mark and a "Try it on yours" button · needs a decision
 - **Time saved counter**: per take and in total on the library · needs a decision

@@ -93,7 +93,7 @@ Before, on `/library`, `/record` and `/takes/[id]`: page read, then `AppShell`'s
 ## Bigger items for Michael
 
 1. **Done in B2-T108: full zod is out of the signed in first load.** What is left is the small core of `zod/mini` (see the next section). The remaining question is whether that core can go too, by checking the responses without a library.
-2. **Take page and record page split points.** Things that appear only after a click could load on demand with `next/dynamic`: the delete dialog, the background picker and its preview overlay, the export and transcript download panels. Probably 50 to 100 KB raw off the take page. Not done here: it can change when a dialog appears and would need the full browser suite to prove nothing moved, which this sandbox cannot run.
+2. **Done in B2-T154 (smaller than estimated): see "B2-T154" below.** Original note: take page and record page split points. Things that appear only after a click could load on demand with `next/dynamic`: the delete dialog, the background picker and its preview overlay, the export and transcript download panels. Probably 50 to 100 KB raw off the take page. Not done here: it can change when a dialog appears and would need the full browser suite to prove nothing moved, which this sandbox cannot run.
 3. **Shared app frame chunk (154 KB).** Done in B2-T109, see "Shared app frame chunk (B2-T109)" below.
 4. **Sentry** is already after idle and out of the first load. Nothing to do.
 5. **Take page polling and the player** need a profile on a real mid phone before anyone changes them.
@@ -170,3 +170,38 @@ These cannot come from CI. Recommended:
 
 - **Pattern copy over `zod/mini`** for the email check: bigger saving (106 KB against 21 KB) and a test that pins it to zod.
 - **No `next/dynamic` splits and no zod migration in this PR**: both are bigger than "small and safe" and cannot be proven here without a browser.
+
+## B2-T154: click-only panels on the take page
+
+Measured the same way as above (`PIPELINE_BUILD=1 next build`, `route-bundle-stats.json`, raw plus per chunk gzip), same machine, main at 0f36596 before and the branch after.
+
+| Route | Before raw / gzip | After raw / gzip | Change |
+|---|---|---|---|
+| `/takes/[id]` | 851.6 / 266.0 KB (16 chunks) | 836.3 / 261.9 KB (17 chunks) | minus 15.3 raw, minus 4.1 gzip |
+| `/library` (control) | 781.6 / 244.5 KB | 781.6 / 244.1 KB | no change |
+
+What moved out of the first load (both with `next/dynamic`, `ssr: false`, nothing shown while loading):
+- **The Background pane** (`BackgroundChange`: the picker grid, notes and the `use-background*` hooks). It is hidden until its tab is clicked. It starts loading when the browser is idle after first paint, or at once on hover, focus or selection of its tab, so a click rarely waits. It stays mounted (`forceMount`) once loaded, so nothing about the tab behaviour changed.
+- **The delete dialog.** It mounts when the page is idle or the moment a delete is requested, so it opens with its focus and return focus as before.
+
+Kept in the first load on purpose: the Export panel (the default tab, visible at first paint, splitting it would flash), the Transcript panel and its downloads (also `forceMount` and tied to the player bridge, and tiny), and the preview overlay (tiny, and the player needs it for the bridge).
+
+The result is about 15 KB raw, well under the 50 to 100 KB estimate, because Radix, the icons and the shared hooks are in the frame chunk already. It is kept because it lowers first load and changes nothing visible. The browser checks (take page, delete, background, cut review, transcript, axe) are in the PR.
+
+## B2-T158: click-only code on /record
+
+Measured the same way as above (`PIPELINE_BUILD=1 next build`, `route-bundle-stats.json`, raw plus per chunk gzip), same machine, main at b7147f2 before and the branch after.
+
+| Route | Before raw / gzip | After raw / gzip | Change |
+|---|---|---|---|
+| `/record` | 853.1 / 268.4 KB | 812.0 / 256.0 KB | minus 41.1 raw, minus 12.4 gzip |
+| `/library` (control) | 800.4 / 249.9 KB | 801.2 / 250.8 KB | plus 0.9 raw, plus 0.9 gzip |
+| `/takes/[id]` (control) | 856.4 / 268.2 KB | 857.4 / 269.1 KB | plus 1.0 raw, plus 0.9 gzip |
+
+What moved out of the first load: the **stage** (step 2: `RecordStage`, with the device pickers and their Radix select, the level meter, the prompter text and controls, the voice toggle and the consent dialog). It is behind `next/dynamic` with `ssr: false` in `src/components/record/lazy-steps.tsx`. Step 2 only appears after the creator clicks "Turn on camera" and the browser answers the permission prompt, so it is never on screen at first paint. The load starts when the browser is idle (1.5 s timeout) and at once when the camera button is pressed, so it is nearly always ready before the permission answer comes back.
+
+Tried and dropped: also splitting the **review** (step 3, `RecordReview`). With both split, `/record` was 819.3 KB raw (minus 33.8) and `/library` and `/takes/[id]` each grew by about 13 KB, because the bundler regrouped shared chunks (the B2-T107 effect). Stage only is smaller on `/record` and leaves the other routes within 1 KB, so the review stays in the first load.
+
+Kept in the first load on purpose: the setup step (script box, follow my voice option, the camera button, notices), because it is on screen at first paint, and `useVoiceFollow` and `usePrompter`, which `RecordView` calls on every render (hooks cannot be loaded later). The Deepgram follow code is therefore not split in this change: its hook lives in the page, and moving it needs a design change (a lazy start of the connection), noted as a possible next step.
+
+The two controls move by under 1 KB, which is within the chunk regrouping noise, not a regression.

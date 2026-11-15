@@ -107,6 +107,7 @@ export const ORACLE = {
       .nullable()
       .default(null),
     noGreenScreen: z.boolean().default(false),
+    sourceFps: z.number().nullable().default(null),
     backgroundJob: z
       .object({
         status: z.string(),
