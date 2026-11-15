@@ -40,7 +40,7 @@ Four forces shape it:
 - **AC-10**: A "Try it on yours" button follows the section. It goes to the upload entry: the hero drop zone once spec 0023 ships, and `/sign-in` until then.
 - **AC-11**: The section adds no cookie, no script vendor, no stored personal field and no analytics event. `pnpm legal:drift` is clean with no copy change.
 - **AC-12**: With scripts off, the two videos show one above the other with their native controls and labels. The text is the same.
-- **AC-13**: A documented command republishes the clip from a take and rewrites the manifest, so the section can be refreshed when the pipeline improves, and the `showcase/` files are never deleted by the retention sweep or the R2 lifecycle backstop.
+- **AC-13**: A documented command republishes the clip from a take and writes a new version folder and its manifest (never rewriting a published one), so the section can be refreshed when the pipeline improves, and the `showcase/` files are never deleted by the retention sweep or the R2 lifecycle backstop.
 
 ## Options considered
 
@@ -132,7 +132,7 @@ E1 follows spec 0016, which promises no cookie, no pixel and no page view tracki
 - No name, no take id, no date of recording.
 
 **Storage and delivery**:
-- Keys: `showcase/v1/raw.mp4`, `raw.webm`, `finished.mp4`, `finished.webm`, `poster.avif` and `poster.webp`, `raw.vtt`, `finished.vtt`, `manifest.json`. A new version means a new folder (`v2`), never an overwrite.
+- Keys: `showcase/v1/raw.mp4`, `raw.webm`, `finished.mp4`, `finished.webm`, `poster.avif` and `poster.webp`, `raw.vtt`, `finished.vtt`, `manifest.json`. **Versions**: a new publish always writes a new folder (`v2`, `v3`), never an overwrite, and the old folder stays in R2 (so a rollback is a one line change). The active version is one constant in code, `SHOWCASE_VERSION` in `src/lib/showcase.ts`; the homepage and the route both read it, so they cannot disagree. Switching is a code change reviewed in a normal PR, deployed by CI, after the publish command prints the new folder. The route serves any folder that has a valid manifest (`/showcase/v2/[file]`), so a cached page that still names `v1` keeps working until it is replaced.
 - Route `GET /showcase/v1/[file]` reads from R2 over the S3 API (`aws4fetch`, as spec 0001), passes the `Range` header, answers 206, and sets `Cache-Control: public, max-age=31536000, immutable` plus the right `Content-Type`. Any name not in the manifest answers 404. The body is streamed, never held in memory.
 - The R2 lifecycle backstop (35 days, spec 0013) and the cleanup sweep act only on `originals/` and `renders/`. A build task confirms that, and adds a test that no sweep path can reach `showcase/`.
 
@@ -144,8 +144,8 @@ E1 follows spec 0016, which promises no cookie, no pixel and no page view tracki
 - Slider: a visually present `<input type="range" min="0" max="100" step="1">` over the stage, with `aria-label="Compare raw and finished"` and `aria-valuetext`. Arrow keys move 5, Home and End jump to the ends. The knob is a style of the native thumb, so pointer, touch and keyboard all come free.
 - Playback: both videos start together, muted, with captions on. A small loop keeps the finished video within 0.15 s of the raw one while both play, and each stops on its last frame while the other finishes. When the raw video ends, both rewind. Sound plays the side the handle favors.
 - Reduced motion: no autoplay and no handle animation. The poster shows, Play starts both.
-- Loading: the videos use `preload="none"` and no `src` until an IntersectionObserver sees the section within about one screen, then `preload="metadata"`. The poster is a normal image with a fixed `aspect-ratio`, so CLS is 0.
-- No scripts: the same markup shows both videos stacked with `controls`, the Raw and Finished labels above each, and the slider hidden.
+- Loading: the server markup puts a real `src` on each video with `preload="none"`, so nothing downloads until play. When scripts run, an IntersectionObserver sees the section within about one screen and raises it to `preload="metadata"`. This one mechanism serves both the script and no script cases, so there is no second path to conflict. The poster is a normal image with a fixed `aspect-ratio`, so CLS is 0.
+- No scripts: the same markup, with its server rendered `src`, shows both videos stacked with `controls`, the Raw and Finished labels above each, and the slider hidden.
 - Phone: the stage spans the page margin to margin. Labels, the time saved and the button stack below in one column at 810 px and under.
 
 **Time saved**: `savedMs = rawMs − finishedMs`, formatted by a pure function (`m:ss`, rounding to the second). Text is "On this take: 0:31 raw, 0:19 finished, 12 seconds saved." The line says "One sample take. Your results will differ." It is rendered on the server from the manifest.
