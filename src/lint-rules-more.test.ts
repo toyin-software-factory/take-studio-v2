@@ -139,9 +139,6 @@ function sourcesUnder(dir: string): Source[] {
 // line breaks between the parts of a call do not hide it.
 const CREATE_WEB_DB = /\bcreateWebDb\b/;
 const AUTH_GET_SESSION = /\.\s*api\s*\.\s*getSession\b/;
-// A client kept at module level: a top of file `const x = getDb(...)` or `createWebDb(...)`.
-const MODULE_LEVEL_DB =
-  /^(?:export\s+)?(?:const|let|var)\s[^=\n]*=\s*(?:\(\s*|await\s+)*(?:getDb|createWebDb)\s*\(/m;
 const CREATE_WEB_DB_HOMES = [
   "src/server/request.ts",
   "src/db/client/web.ts",
@@ -163,8 +160,6 @@ describe("scans: where the database client and the session are made", () => {
         file: "src/app/w/page.tsx",
         text: "(await getAuth())\n  .api\n  .getSession ({ headers })",
       },
-      { file: "src/app/v/page.tsx", text: "const db = await getDb();\nexport default 1;" },
-      { file: "src/app/u/page.tsx", text: "export const db = (await getDb());" },
     ];
     expect(callsOutside(sources, CREATE_WEB_DB, CREATE_WEB_DB_HOMES)).toEqual([
       "src/app/x/page.tsx",
@@ -174,21 +169,38 @@ describe("scans: where the database client and the session are made", () => {
       "src/app/y/page.tsx",
       "src/app/w/page.tsx",
     ]);
-    expect(callsOutside(sources, MODULE_LEVEL_DB, [])).toEqual([
-      "src/app/x/page.tsx",
-      "src/app/v/page.tsx",
-      "src/app/u/page.tsx",
-    ]);
   });
 
   const real = sourcesUnder("src");
   it("only src/server/request.ts builds a web database client: use getDb() (src/db/AGENTS.md)", () => {
     expect(callsOutside(real, CREATE_WEB_DB, CREATE_WEB_DB_HOMES)).toEqual([]);
   });
-  it("no file keeps a database client at module level: call getDb() inside the request", () => {
-    expect(callsOutside(real, MODULE_LEVEL_DB, [])).toEqual([]);
-  });
   it("only request.ts and api-auth-deps.ts read the session from Better Auth: pages use getSession()", () => {
     expect(callsOutside(real, AUTH_GET_SESSION, GET_SESSION_HOMES)).toEqual([]);
+  });
+});
+
+describe("no database client at module level", { timeout: 60_000 }, () => {
+  const bad = [
+    "const db = getDb();",
+    "export const db = await getDb();",
+    "const db = (await getDb());",
+    "const ready = true, db = await getDb();",
+    "let db = createWebDb(env);",
+  ];
+  it("refuses each form, naming getDb", async () => {
+    for (const line of bad) {
+      const found = await messages(
+        "no-restricted-syntax",
+        "src/app/a/page.tsx",
+        `${line}\nexport const x = 1;\n`,
+      );
+      expect(found, line).toHaveLength(1);
+      expect(found[0]).toContain("getDb()");
+    }
+  });
+  it("allows a call inside a function", async () => {
+    const ok = "export const load = async () => { const db = await getDb(); return db; };\n";
+    expect(await messages("no-restricted-syntax", "src/app/a/page.tsx", ok)).toEqual([]);
   });
 });
