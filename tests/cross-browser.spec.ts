@@ -95,7 +95,7 @@ test("a ready take page shows the title, the player and the downloads", async ({
   expect(await noSidewaysScroll(page)).toBe(true);
   // axe crashes Playwright's Firefox on this page in CI ("Page crashed" inside axe's frame
   // evaluate, with the video element mounted). Chromium and WebKit run it here, and Chromium's
-  // takes.spec.ts runs it too. The Firefox look is on the device pass instead
+  // takes.library.spec.ts runs it too. The Firefox look is on the device pass instead
   // (docs/reviews/launch-device-pass.md, step 4.5).
   if (test.info().project.name !== "firefox") await expectNoSeriousAxeIssues(page);
 });
