@@ -8,6 +8,7 @@ import prettier from "eslint-config-prettier/flat";
 const webOnly = ["@/app", "@/app/*", "@/server", "@/server/*", "**/app/**", "**/server/**"];
 const jobInternals = ["@/trigger", "@/trigger/*", "**/trigger/**"];
 const heavySdks = ["@anthropic-ai/sdk", "@anthropic-ai/sdk/*", "fluent-ffmpeg", "ffmpeg-static"];
+const testsDir = ["@/tests", "@/tests/*", "**/tests/**"];
 const workerOnly = ["@opennextjs/cloudflare", "next", "next/*", "react", "react-dom"];
 
 const boundary = (patterns, message, allowTypeImports = false) => ({
@@ -22,11 +23,45 @@ const eslintConfig = defineConfig([
   ...nextTs,
   prettier,
   {
+    // Non test code under src/ must not depend on tests/ (B2-T125): the Worker and job bundles
+    // would carry test files. Test files and src/test are exempt here; the src/trigger, src/app, src/server, src/db and
+    // src/lib blocks below carry the same tests/ pattern themselves (a later block replaces this rule).
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/**/*.test.{ts,tsx}", "src/test/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: testsDir,
+              message:
+                "Code in src/ must not import from tests/: keep shared data in src (B2-T125).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["src/trigger/**/*.{ts,tsx}"],
-    rules: boundary(
-      [...webOnly, ...workerOnly],
-      "Jobs import only from src/db, src/lib and src/trigger (spec 0001).",
-    ),
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [...webOnly, ...workerOnly],
+              message: "Jobs import only from src/db, src/lib and src/trigger (spec 0001).",
+            },
+            {
+              group: testsDir,
+              message: "Jobs must not import from tests/: move shared data into src/lib (B2-T125).",
+            },
+          ],
+        },
+      ],
+    },
   },
   {
     files: ["src/app/**/*.{ts,tsx}", "src/server/**/*.{ts,tsx}"],
@@ -42,6 +77,11 @@ const eslintConfig = defineConfig([
                 "The web app may only import task types from src/trigger (for tasks.trigger), never task code (spec 0001).",
             },
             {
+              group: testsDir,
+              message:
+                "Code in src/ must not import from tests/: keep shared data in src (B2-T125).",
+            },
+            {
               group: heavySdks,
               message:
                 "Heavy SDKs belong in src/trigger jobs, never in the Worker bundle (spec 0001).",
@@ -53,10 +93,25 @@ const eslintConfig = defineConfig([
   },
   {
     files: ["src/db/**/*.ts", "src/lib/**/*.ts"],
-    rules: boundary(
-      [...webOnly, ...jobInternals, "@opennextjs/cloudflare"],
-      "Shared code (src/db, src/lib) must not depend on the web app or on jobs (spec 0001).",
-    ),
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [...webOnly, ...jobInternals, "@opennextjs/cloudflare"],
+              message:
+                "Shared code (src/db, src/lib) must not depend on the web app or on jobs (spec 0001).",
+            },
+            {
+              group: testsDir,
+              message:
+                "Code in src/ must not import from tests/: keep shared data in src (B2-T125).",
+            },
+          ],
+        },
+      ],
+    },
   },
   globalIgnores([
     ".next/**",

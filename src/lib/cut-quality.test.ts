@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import baseline from "../../tests/cut-quality/baseline.json";
-import { CASE_ENTRIES } from "../../tests/cut-quality/cases";
+import baseline from "./cut-quality-data/baseline.json";
+import { CASE_ENTRIES } from "./cut-quality-cases";
 import { aiEditAnswerSchema, validateAiEdit } from "./ai-edit";
 import {
   CUT_QUALITY_MIN_TAKES,
