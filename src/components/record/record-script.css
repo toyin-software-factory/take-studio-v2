@@ -58,9 +58,14 @@
   min-height: 32px;
 }
 @media (pointer: coarse) {
+  /* The draft's 32 px row stays: the button is a real 44 px box, pulled back 6 px above and below. */
   .rec-meta button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
     min-height: 44px;
     min-width: 44px;
+    margin-block: -6px;
   }
 }
 .rec-meta button:focus-visible {
@@ -90,7 +95,7 @@
   font-size: var(--fs-small);
   color: var(--color-text-muted);
   font-weight: var(--fw-regular);
-  max-width: 62ch;
+  max-width: 52ch;
 }
 .rec-switch {
   position: relative;
