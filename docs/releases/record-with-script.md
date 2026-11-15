@@ -18,4 +18,4 @@ If you fluff a line, just say it again. When a take has a script, the AI keeps y
 
 - Your script is saved with the take, shown on its Details tab, and deleted when you delete the take or your account.
 - With Follow my voice on, your microphone audio goes to Deepgram while you record. It is not stored, and a first time dialog explains this before it turns on.
-- Nothing leaves your device until you choose Use this take.
+- The recorded file stays on your device until you choose Use this take.

@@ -10,7 +10,7 @@ Record with script is a careful piece of work: the token route checks Origin, se
 ## Resolved in this PR
 The reviewer's major and two small minors were in scope, so they are fixed here with tests. The text of each finding below is the reviewer's, unchanged.
 - **Late socket after the hold**: a new pure check `followAudioAllowed` in `src/lib/follow-state.ts` is false once following has fallen back with the socket gone. `useVoiceFollow` reads it after the token arrives and when the socket opens, and closes the socket instead of opening the audio gate. Test: "allows audio while connecting, ready and following, and not after the socket is gone", plus a check on the unavailable fallback, in `src/lib/follow-state.test.ts`. A hook level test with a fake socket was not added, because the project has no React hook test setup; the decision lives in the pure function.
-- **Shortcuts behind the dialog**: `commandForKey` takes `modalOpen`, and the prompter listener passes whether a `[role="dialog"][aria-modal="true"]` or open `dialog` exists. Test: "never fires while a modal dialog is open" in `src/lib/teleprompter.test.ts`.
+- **Shortcuts behind the dialog**: `commandForKey` takes `modalOpen`, and the prompter listener passes whether a Radix dialog content (`data-slot="dialog-content"` and `data-state="open"`) or an open native `dialog` exists. Test: "never fires while a modal dialog is open" in `src/lib/teleprompter.test.ts`.
 - **Pause into the next take**: the prompter resets `paused` when recording ends, in the same effect that resets the position. This one has no unit test, because it is state inside a hook; the existing prompter browser tests still pass the pause flow.
 
 ## Follow ups (not done in this PR)

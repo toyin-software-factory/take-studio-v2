@@ -104,7 +104,9 @@ export function usePrompter(script: string, creatorId: string, active: boolean, 
         alt: event.altKey,
         meta: event.metaKey,
         modalOpen:
-          document.querySelector('[role="dialog"][aria-modal="true"], dialog[open]') !== null,
+          document.querySelector(
+            '[data-slot="dialog-content"][data-state="open"], [role="dialog"][data-state="open"], dialog[open]',
+          ) !== null,
       });
       if (!command) return;
       event.preventDefault();
