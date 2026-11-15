@@ -4,7 +4,12 @@ import { useEffect, useReducer, useRef } from "react";
 import { followScript, normaliseWord, scriptWordsOf } from "@/lib/follow-script";
 import { callApi } from "@/components/takes/browser-io";
 import { keepRunning } from "./keep-running";
-import { FOLLOW_OFF, followReducer, type FollowStatus } from "@/lib/follow-state";
+import {
+  FOLLOW_OFF,
+  followAudioAllowed,
+  followReducer,
+  type FollowStatus,
+} from "@/lib/follow-state";
 import { pipeFailureCode, reportFollowFailure, socketCloseCode } from "@/lib/follow-diagnosis";
 import { PCM_WORKLET_NAME, PCM_WORKLET_SOURCE } from "@/lib/pcm-worklet";
 import {
@@ -141,7 +146,7 @@ export function useVoiceFollow(args: {
 
     void (async () => {
       const token = await fetchRealtimeToken(tokenFetch);
-      if (cancelled) return;
+      if (cancelled || !followAudioAllowed(stateRef.current)) return;
       if (!token.ok) {
         reportFollowFailure(token.code);
         dispatch({ type: "unavailable" });
@@ -151,6 +156,11 @@ export function useVoiceFollow(args: {
         token.token,
         {
           onOpen: () => {
+            // The hold ran out while connecting: the screen says following is off, so stay silent.
+            if (!followAudioAllowed(stateRef.current)) {
+              conn?.close();
+              return;
+            }
             audioGate.open();
             dispatch({ type: "open", now: Date.now() });
           },
