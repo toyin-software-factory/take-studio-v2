@@ -87,6 +87,17 @@ describe("the browser reads through zod/mini only", { timeout: 60_000 }, () => {
 
 describe("browser calls go through callApi", { timeout: 60_000 }, () => {
   const code = 'export const go = () => fetch("/api/x");\n';
+  it("refuses window.fetch and globalThis.fetch too", async () => {
+    for (const call of ["window.fetch", "globalThis.fetch"]) {
+      const found = await messages(
+        "no-restricted-properties",
+        "src/components/takes/a.ts",
+        `export const go = () => ${call}("/api/x");\n`,
+      );
+      expect(found).toHaveLength(1);
+      expect(found[0]).toContain("callApi");
+    }
+  });
   it("refuses a bare fetch in a component, naming callApi", async () => {
     const found = await messages("no-restricted-globals", "src/components/takes/a.ts", code);
     expect(found).toHaveLength(1);
@@ -124,9 +135,18 @@ function sourcesUnder(dir: string): Source[] {
   });
 }
 
-const CREATE_WEB_DB = /\bcreateWebDb\(/;
-const AUTH_GET_SESSION = /\.api\.getSession\(/;
-const CREATE_WEB_DB_HOMES = ["src/server/request.ts", "src/db/client/web.ts"];
+// The name itself, so an import alias (`createWebDb as makeDb`) is caught too, and whitespace or
+// line breaks between the parts of a call do not hide it.
+const CREATE_WEB_DB = /\bcreateWebDb\b/;
+const AUTH_GET_SESSION = /\.\s*api\s*\.\s*getSession\b/;
+// A client kept at module level: a top of file `const x = getDb(...)` or `createWebDb(...)`.
+const MODULE_LEVEL_DB =
+  /^(?:export\s+)?(?:const|let|var)\s[^=\n]*=\s*(?:await\s+)?(?:getDb|createWebDb)\s*\(/m;
+const CREATE_WEB_DB_HOMES = [
+  "src/server/request.ts",
+  "src/db/client/web.ts",
+  "src/db/client/index.ts",
+];
 const GET_SESSION_HOMES = ["src/server/request.ts", "src/server/api-auth-deps.ts"];
 
 describe("scans: where the database client and the session are made", () => {
@@ -135,18 +155,36 @@ describe("scans: where the database client and the session are made", () => {
       { file: "src/server/request.ts", text: "createWebDb(env)" },
       { file: "src/app/x/page.tsx", text: "const db = createWebDb(env);" },
       { file: "src/app/y/page.tsx", text: "await auth.api.getSession({ headers })" },
+      {
+        file: "src/app/z/page.tsx",
+        text: 'import { createWebDb as makeDb } from "@/db/client/web";',
+      },
+      {
+        file: "src/app/w/page.tsx",
+        text: "(await getAuth())\n  .api\n  .getSession ({ headers })",
+      },
+      { file: "src/app/v/page.tsx", text: "const db = await getDb();\nexport default 1;" },
     ];
     expect(callsOutside(sources, CREATE_WEB_DB, CREATE_WEB_DB_HOMES)).toEqual([
       "src/app/x/page.tsx",
+      "src/app/z/page.tsx",
     ]);
     expect(callsOutside(sources, AUTH_GET_SESSION, GET_SESSION_HOMES)).toEqual([
       "src/app/y/page.tsx",
+      "src/app/w/page.tsx",
+    ]);
+    expect(callsOutside(sources, MODULE_LEVEL_DB, [])).toEqual([
+      "src/app/x/page.tsx",
+      "src/app/v/page.tsx",
     ]);
   });
 
   const real = sourcesUnder("src");
   it("only src/server/request.ts builds a web database client: use getDb() (src/db/AGENTS.md)", () => {
     expect(callsOutside(real, CREATE_WEB_DB, CREATE_WEB_DB_HOMES)).toEqual([]);
+  });
+  it("no file keeps a database client at module level: call getDb() inside the request", () => {
+    expect(callsOutside(real, MODULE_LEVEL_DB, [])).toEqual([]);
   });
   it("only request.ts and api-auth-deps.ts read the session from Better Auth: pages use getSession()", () => {
     expect(callsOutside(real, AUTH_GET_SESSION, GET_SESSION_HOMES)).toEqual([]);

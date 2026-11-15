@@ -15,6 +15,9 @@ const workerOnly = ["@opennextjs/cloudflare", "next", "next/*", "react", "react-
 const sonnerSource = String.raw`/^sonner(\/|$)|sonner-impl$/`;
 const fullscreenMethod = "/^(requestFullscreen|webkitRequestFullscreen|webkitEnterFullscreen)$/";
 
+const fetchMessage =
+  "Browser calls to our API go through `callApi` from @/components/takes/browser-io: it times out after 30 seconds.";
+
 const boundary = (patterns, message, allowTypeImports = false) => ({
   "no-restricted-imports": [
     "error",
@@ -203,13 +206,15 @@ const eslintConfig = defineConfig([
           ],
         },
       ],
-      "no-restricted-globals": [
+      "no-restricted-globals": ["error", { name: "fetch", message: fetchMessage }],
+      // `window.fetch(...)` and `globalThis.fetch(...)` are not globals to ESLint, so they need their own check.
+      "no-restricted-properties": [
         "error",
-        {
-          name: "fetch",
-          message:
-            "Browser calls to our API go through `callApi` from @/components/takes/browser-io: it times out after 30 seconds.",
-        },
+        ...["window", "globalThis", "self"].map((object) => ({
+          object,
+          property: "fetch",
+          message: fetchMessage,
+        })),
       ],
     },
   },
@@ -222,7 +227,7 @@ const eslintConfig = defineConfig([
       "src/components/takes/use-background-upload.ts",
       "src/components/record/use-voice-follow.ts",
     ],
-    rules: { "no-restricted-globals": "off" },
+    rules: { "no-restricted-globals": "off", "no-restricted-properties": "off" },
   },
   globalIgnores([
     ".next/**",
