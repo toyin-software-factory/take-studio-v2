@@ -27,11 +27,13 @@ Nothing real needed fixing, so before and after are the same. Everything that di
 | Sign in, library, take page, record | `is-crawlable` (SEO), "Page is blocked from indexing" | **Intended, not changed.** These pages are private or have nothing to index. They send `noindex` on purpose (and are listed in `PRIVATE_PATHS` in `src/lib/site.ts`, which `robots.ts` also keeps out of the sitemap). The SEO score of 63 on these four pages is only this one audit. Making them indexable would be wrong. |
 | Library | `errors-in-console` (best practices), 1 item | **Test setup, not a product bug.** The seeded take has no files in the CI bucket, so its thumbnail request answers 503. Real takes have thumbnails. Nothing to fix in the app. |
 | Take page | `errors-in-console` (best practices), 3 items | **Same cause.** The thumbnail and the play file of the seeded take answer 503 (the page already shows its own "unavailable" state). The three items are those requests. |
-| Landing | `link-text` (SEO), 1 item | **Real, but a visual change, so listed and not changed.** On a phone width the header button shows only "Start" (the long label "Upload a take" is hidden by CSS at phone width, `h-cta-short` in `home.css`). Lighthouse's list of vague link texts includes "start", and it reads the visible text, so an `aria-label` would not clear it. See the recommendation below. |
+| Landing | `link-text` (SEO), 1 item | **Real. Fixed in B2-T112** (see the section below). On a phone width the header button shows only "Start" (the long label "Upload a take" is hidden by CSS at phone width, `h-cta-short` in `home.css`). Lighthouse's list of vague link texts includes "start", and it reads the visible text, so an `aria-label` would not clear it. See the recommendation below. |
 
-### Recommendation for Michael (not done, needs a design decision)
+### Landing link text, fixed in B2-T112
 
-Change the short header button label on `/` from "Start" to "Upload" (`src/components/home/nav.tsx`, the `h-cta-short` span). It is one word, fits the same space, says what the button does, and is not on Lighthouse's vague list. That would take the landing SEO score to 100. It is a visible copy change on the landing page, so it needs your yes first (the reference is the landing design draft). I did not change it.
+The short header button label on `/` is now "Upload" instead of "Start" (`src/components/home/nav.tsx`, the `h-cta-short` span). Michael approved the copy (C-30, the recommended option). It is one word, says what the button does, and is not on Lighthouse's vague list. The wide label still says "Upload a take". Below 480 px the Sign in link is hidden, so the bar holds only the brand and this button, and the shorter word fits the same space without wrapping. The phone width test in `tests/home-motion.spec.ts` now looks for the link named "Upload".
+
+Result: check the `link-text` audit and the landing SEO score in the Lighthouse job on the B2-T112 PR. Expected: `link-text` passes and landing SEO goes from 92 to 100 (the 8 points came from this one audit). The measured number is added to the PR once the job has run.
 
 ## Where Lighthouse and axe disagree
 

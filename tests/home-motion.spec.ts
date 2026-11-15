@@ -78,7 +78,7 @@ test.describe("menu dialog on a phone (AC-4)", () => {
     await expect(burger).toBeVisible();
     // Under 810 px the bar shows the logo, a short call to action and the menu button only.
     await expect(page.getByRole("navigation", { name: "Main" })).toBeHidden();
-    await expect(page.getByRole("link", { name: "Start" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Upload", exact: true })).toBeVisible();
 
     await burger.focus();
     await page.keyboard.press("Enter");

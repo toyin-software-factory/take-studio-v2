@@ -38,7 +38,7 @@ export function HomeNav() {
         <span className="h-nav-divider" aria-hidden="true" />
         <Link className="h-btn h-btn-nav" href="/sign-in">
           <span className="h-cta-long">Upload a take</span>
-          <span className="h-cta-short">Start</span>
+          <span className="h-cta-short">Upload</span>
         </Link>
         <HomeMenu />
       </div>
