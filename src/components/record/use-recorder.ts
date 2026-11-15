@@ -2,22 +2,10 @@
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { nextCameraId } from "@/lib/recorder-devices";
-import {
-  RECORDER,
-  baseType,
-  recordingLimitMs,
-  shouldAutoStop,
-  type PickedType,
-} from "@/lib/recorder-rules";
-import { VOICE_HOLD_MS } from "@/lib/follow-state";
+import { RECORDER, recordingLimitMs, shouldAutoStop, type PickedType } from "@/lib/recorder-rules";
 import { INITIAL_RECORDER, recorderReducer } from "@/lib/recorder-state";
-import {
-  acquireMedia,
-  checkBrowser,
-  createRecorder,
-  finishedAction,
-  idsOf,
-} from "./recorder-media";
+import { acquireMedia, checkBrowser, idsOf } from "./recorder-media";
+import { useCountdownStart } from "./use-countdown-start";
 import { useChooseDevices } from "./use-choose-devices";
 import { useDevices } from "./use-devices";
 import { useRecordingGuards } from "./use-recording-guards";
@@ -35,7 +23,6 @@ export function useRecorder(limitSeconds: number | null = null, holdForVoice = f
   const [state, dispatch] = useReducer(recorderReducer, INITIAL_RECORDER);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
-  const [holdExpired, setHoldExpired] = useState(false);
   const picked = useRef<PickedType | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
@@ -124,72 +111,44 @@ export function useRecorder(limitSeconds: number | null = null, holdForVoice = f
     return acquire(cameraId, micId);
   }, [acquire, cameraId, micId]);
 
+  const { resetHold } = useCountdownStart({
+    state,
+    dispatch,
+    stream,
+    holdForVoice,
+    release,
+    setElapsedMs,
+    refs: {
+      pickedRef: picked,
+      recorderRef: recorder,
+      chunksRef: chunks,
+      startedAtRef: startedAt,
+      stoppedByPersonRef: stoppedByPerson,
+      hiddenDuringRef: hiddenDuring,
+      trackEndedRef: trackEnded,
+    },
+  });
+
   const begin = useCallback(() => {
     // Never start a countdown on a stream that was let go (a device change that failed).
     if (!live.current?.getVideoTracks().some((track) => track.readyState === "live")) {
       setDeviceNote("The camera is off. Choose a camera again.");
       return;
     }
-    setHoldExpired(false);
+    resetHold();
     dispatch({ type: "start", seconds: RECORDER.countdownSeconds });
-  }, [live, setDeviceNote]);
+  }, [live, setDeviceNote, resetHold]);
+
+  /** Back to the script: let the camera go (stopping its tracks) and forget the ended stream. */
+  const leave = useCallback(() => {
+    release();
+    dispatch({ type: "leave" });
+  }, [release]);
 
   const stop = useCallback(() => {
     stoppedByPerson.current = true;
     if (recorder.current?.state === "recording") recorder.current.stop();
   }, []);
-
-  // Countdown: one tick a second; at zero the recorder starts.
-  useEffect(() => {
-    if (state.kind !== "countdown" || !stream || !picked.current) return;
-    if (state.secondsLeft > 0) {
-      const timer = setTimeout(() => dispatch({ type: "tick" }), 1000);
-      return () => clearTimeout(timer);
-    }
-    if (recorder.current) return;
-    // Wait at 0 for the voice service, but never longer than the hold.
-    if (holdForVoice && !holdExpired) {
-      const timer = setTimeout(() => setHoldExpired(true), VOICE_HOLD_MS);
-      return () => clearTimeout(timer);
-    }
-    const { mimeType, container } = picked.current;
-    const next = createRecorder(stream, mimeType, (chunk) => chunks.current.push(chunk));
-    chunks.current = [];
-    stoppedByPerson.current = false;
-    hiddenDuring.current = false;
-    trackEnded.current = false;
-    next.onstop = () => {
-      const blob = new Blob(chunks.current, { type: baseType(mimeType) });
-      const action = finishedAction({
-        blob,
-        durationMs: performance.now() - startedAt.current,
-        container,
-        stoppedByPerson: stoppedByPerson.current,
-        hiddenDuring: hiddenDuring.current,
-        trackEnded: trackEnded.current,
-      });
-      chunks.current = [];
-      recorder.current = null;
-      if (action.type !== "discarded") release();
-      dispatch(action);
-    };
-    recorder.current = next;
-    startedAt.current = performance.now();
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- the timer restarts with the recorder
-    setElapsedMs(0);
-    try {
-      next.start(RECORDER.timesliceMs);
-    } catch {
-      // For example the camera went away during the countdown: let the person turn it on again.
-      next.onstop = null;
-      recorder.current = null;
-      chunks.current = [];
-      release();
-      dispatch({ type: "start_failed", failure: "unavailable" });
-      return;
-    }
-    dispatch({ type: "recording" });
-  }, [state, stream, release, holdForVoice, holdExpired]);
 
   // Timer, and the automatic stop at the limit.
   useEffect(() => {
@@ -237,6 +196,7 @@ export function useRecorder(limitSeconds: number | null = null, holdForVoice = f
     request,
     again,
     begin,
+    leave,
     stop,
     devices,
     deviceNote,

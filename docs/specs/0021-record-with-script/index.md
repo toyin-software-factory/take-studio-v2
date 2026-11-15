@@ -1,7 +1,7 @@
 # 0021. Record with script (in app recording and teleprompter)
 
 **Date**: 2026-11-14
-**Status**: Proposed
+**Status**: Accepted
 
 ## Summary
 

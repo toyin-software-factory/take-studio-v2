@@ -21,13 +21,13 @@ How each page was checked: title, one `h1`, a `main` landmark with a skip link, 
 | Turn off take emails | `/emails/off/confirm` | Had no test. Page code is sound. | Same new tests, for a valid and a bad link. |
 | Take emails result | `/emails/off/done` | Had no test. The "Go to Take Studio" link had no 44 px target on a touch screen. | Link now has `pointer-coarse:min-h-11`, and a test checks it on a Pixel 7. |
 | Insights | `/insights` | Private page for one viewer. No axe test, because a test needs the viewer id set in the test environment. | Nothing. Listed below. |
-| App error and global error | `error.tsx`, `global-error.tsx` | Page code is sound (heading, Retry, 44 px target, token colours). A test needs a thrown render error. | Nothing. Listed below. |
+| App error and global error | `error.tsx`, `global-error.tsx` | Page code is sound (heading, Retry, 44 px target, token colours). A test needs a thrown render error. | Done: `tests/insights-errors.spec.ts` (B2-T99) covers `error.tsx`; `tests/global-error.spec.ts` (B2-T155) covers `global-error.tsx`. |
 | Design gallery | `/design` | Development only, 404 in production. Covered by `design.spec.ts`. | Nothing. |
 
 ## Bigger items for you to turn into tasks
 
 1. Insights has no axe or phone test. It needs a test viewer (`INSIGHTS_VIEWER_IDS` style env in the Playwright server) so a signed in test can open it.
-2. The two error pages have no test. A small route that throws only when `NODE_ENV` is test, or a Playwright `route` that makes the take API throw during render, would let axe check them.
+2. **Done (B2-T99 and B2-T155).** The two error pages had no test. A small route that throws only when `NODE_ENV` is test, or a Playwright `route` that makes the take API throw during render, would let axe check them.
 3. A real browser pass by someone with eyes on a phone (iOS Safari and Android Chrome) on the landing page, the record page and the take page. The sandbox cannot do this and axe does not catch it all (reading order, motion that feels too much).
 4. Reduced motion has a test only on the landing page, the recorder and the design components (the cut timeline one is in #294). The other pages use the one global CSS rule, so risk is low, but nothing asserts it.
 5. A screen reader pass (VoiceOver and NVDA) on the cut timeline and the recorder. Automated checks cannot judge how the announcements sound.
