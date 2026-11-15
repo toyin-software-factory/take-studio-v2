@@ -1,3 +1,35 @@
+# Verify: record with script, spec 0021 (B2-T142 run, part 1)
+
+**Status: part 1 of 2.** Run on 2026-11-15 on `b2-t142-record-script-verify`, main at `21aa75e` (after B2-T128, the Record step). B2-T129 (the Review step redesign) is not merged, so the ACs that run through Review and the upload (AC-1, AC-3, AC-4, AC-7, AC-14) are re checked after it lands. The earlier report from 2026-11-14 follows below and still holds for what this run did not repeat. Synthetic scripts and test takes only; no real creator data, no production sign in.
+
+## What was run (this run)
+
+- Worker built with `bash tests/support/build-worker.sh` (clean env, placeholders only), Postgres local, chromium with Chromium's fake camera and microphone.
+- `tests/record*.spec.ts` on chromium: **25 passed** (`record`, `record-failures`, `record-follow-voice`, `record-prompter`, `record-script-step`).
+- `record-a11y` and `record-limits` projects (`E2E_SPLIT=1`): **43 passed** (axe on every state in both themes, keyboard run, Pixel 7 layout, timer, warning, automatic stop, used up, refused upload, leave confirmation).
+- 20 unit test files for the spec (36 files with the neighbours, 334 tests): **all passed** (follow script and state, teleprompter, storage, privacy, recorder rules and devices, realtime stream and routes, script aware cuts, cut quality, uploads, legal facts, recorded fixtures).
+- New in this run, two gap tests in `tests/record-script-storage.spec.ts` (**2 passed**).
+- Not repeated: `pnpm test:pipeline` (needs R2 and Trigger.dev keys), so the MP4 45 ms finding below is unchanged and still open.
+
+## Result per AC (this run)
+
+| AC | Result | Evidence |
+| --- | --- | --- |
+| AC-2 teleprompter | Pass | `record-prompter.spec.ts` (buttons, keys, remembered settings, no script means no prompter, reduced motion, Record step layout from B2-T128). **Gap found and closed:** the 20000 character cap in the script box had no browser test; `record-script-storage.spec.ts` checks `maxlength` and the counter. |
+| AC-5 failures | Pass | `record-failures.spec.ts`, `record.spec.ts` (blocked, busy with Try again, no sideways scroll on a phone). |
+| AC-6 length and usage | Pass | `record-limits.spec.ts`, `recorder-rules.test.ts`. |
+| AC-8 script storage | Pass | Unit tests for storage, privacy, delete. **Gap found and closed:** nothing tested in the browser that the script and `source: "recording"` travel with the create, or that the device draft is cleared once the take exists; both are now in `record-script-storage.spec.ts`. |
+| AC-9 accessibility | Pass | `record-a11y.spec.ts` (every state, both themes, keyboard only, no trap), `record-follow-voice.spec.ts`. |
+| AC-10 phone and desktop | Pass in CI spec; real devices pending | Pixel 7 run passes. Real iPhone Safari, Android Chrome, desktop Safari and Firefox are not reachable here. |
+| AC-11 legal | Pass | `legal-facts` tests pass; `pnpm legal:drift` is run before the PR. |
+| AC-12 voice following | Pass in tests; live check pending | `record-follow-voice.spec.ts`, follow and realtime unit tests. Toyin's live retry (C-49) is still owed. |
+| AC-13 script aware cuts | Pass at code level; model score pending | `ai-edit` and `cut-quality` unit tests. Toyin's `ai-eval` run (C-29) is owed. |
+| AC-1, AC-3, AC-4, AC-7, AC-14 | Passing today on `main`, re check after B2-T129 | `record.spec.ts` passes on the current Review step; B2-T129 redesigns it, so these are re run after it merges. |
+
+No UI failure was found, so nothing was reported to Dwight and `src/components/record/` is untouched.
+
+---
+
 # Verify: record with script, spec 0021
 
 **Verdict: built and checked as far as this sandbox goes, but row 20 and spec 0021 stay open.** Every criterion is met by code and tests on main, with one new finding (AC-4 and AC-14: the Safari style MP4 render is 45 ms off, see below). What is still owed cannot be done from here: real phones and browsers, the live voice following check, and Toyin's `ai-eval` run.
