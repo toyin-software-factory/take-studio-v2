@@ -176,3 +176,55 @@ export function connectRealtime(
     },
   };
 }
+
+/** Frames kept while the socket is still opening (about 100 ms each), oldest dropped first. */
+export const STARTUP_QUEUE_MAX = 100;
+
+export type AudioGate = {
+  /** One microphone frame. Dropped unless recording; held (bounded) until the socket is open. */
+  readonly push: (frame: ArrayBuffer) => void;
+  /** The socket is open: held frames go out now if recording. */
+  readonly open: () => void;
+  readonly startRecording: () => void;
+  readonly stopRecording: () => void;
+};
+
+/**
+ * The one place that decides when audio may leave the browser (B2-T115). The socket now opens at
+ * the countdown, but the microphone only goes to Deepgram while recording, so a frame pushed
+ * before `startRecording` is dropped and never sent, whether or not the socket is open.
+ */
+export function createAudioGate(
+  sendFrame: (frame: ArrayBuffer) => void,
+  max: number = STARTUP_QUEUE_MAX,
+): AudioGate {
+  let isOpen = false;
+  let recording = false;
+  const held: ArrayBuffer[] = [];
+  const flush = () => {
+    if (isOpen && recording) for (const frame of held.splice(0)) sendFrame(frame);
+  };
+  return {
+    push: (frame) => {
+      if (!recording) return;
+      if (isOpen) {
+        sendFrame(frame);
+        return;
+      }
+      held.push(frame);
+      if (held.length > max) held.shift();
+    },
+    open: () => {
+      isOpen = true;
+      flush();
+    },
+    startRecording: () => {
+      recording = true;
+      flush();
+    },
+    stopRecording: () => {
+      recording = false;
+      held.length = 0;
+    },
+  };
+}

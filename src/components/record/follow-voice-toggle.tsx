@@ -64,7 +64,8 @@ export function FollowVoiceToggle({
         </Label>
       </div>
       <p role="status" aria-live="polite" className="min-h-5 text-small">
-        {enabled && follow.status === "connecting" ? "Connecting to follow your voice…" : null}
+        {enabled && follow.status === "connecting" ? "Connecting…" : null}
+        {enabled && follow.status === "ready" ? "Voice ready" : null}
         {enabled && follow.status === "following" ? "Following your voice." : null}
         {enabled && follow.status === "fallback" ? follow.note : null}
       </p>

@@ -21,6 +21,7 @@ import {
   type PickedType,
   type SetupFailure,
 } from "@/lib/recorder-rules";
+import { VOICE_HOLD_MS } from "@/lib/follow-state";
 import { INITIAL_RECORDER, recorderReducer, wouldLoseWork } from "@/lib/recorder-state";
 import { useDevices } from "./use-devices";
 
@@ -65,11 +66,15 @@ function checkBrowser(): { picked: PickedType | null; problem: SetupFailure | nu
  * camera on when asked, counts down, records in one second chunks, stops at the length limit
  * and gives the finished take back as one Blob. The camera is released whenever nothing needs
  * it, and a warning shows before leaving with a recording or a take.
+ *
+ * `holdForVoice` (B2-T115): when the countdown reaches 0 and Follow my voice is still connecting,
+ * the recorder waits up to `VOICE_HOLD_MS` for it, then starts anyway.
  */
-export function useRecorder(limitSeconds: number | null = null) {
+export function useRecorder(limitSeconds: number | null = null, holdForVoice = false) {
   const [state, dispatch] = useReducer(recorderReducer, INITIAL_RECORDER);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [holdExpired, setHoldExpired] = useState(false);
   const picked = useRef<PickedType | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
@@ -234,6 +239,7 @@ export function useRecorder(limitSeconds: number | null = null) {
       setDeviceNote("The camera is off. Choose a camera again.");
       return;
     }
+    setHoldExpired(false);
     dispatch({ type: "start", seconds: RECORDER.countdownSeconds });
   }, []);
 
@@ -250,6 +256,11 @@ export function useRecorder(limitSeconds: number | null = null) {
       return () => clearTimeout(timer);
     }
     if (recorder.current) return;
+    // Wait at 0 for the voice service, but never longer than the hold.
+    if (holdForVoice && !holdExpired) {
+      const timer = setTimeout(() => setHoldExpired(true), VOICE_HOLD_MS);
+      return () => clearTimeout(timer);
+    }
     const { mimeType, container } = picked.current;
     const next = new MediaRecorder(stream, {
       mimeType,
@@ -288,6 +299,7 @@ export function useRecorder(limitSeconds: number | null = null) {
     };
     recorder.current = next;
     startedAt.current = performance.now();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the timer restarts with the recorder
     setElapsedMs(0);
     try {
       next.start(RECORDER.timesliceMs);
@@ -296,13 +308,12 @@ export function useRecorder(limitSeconds: number | null = null) {
       next.onstop = null;
       recorder.current = null;
       chunks.current = [];
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- the camera must be let go when the recorder cannot start
       release();
       dispatch({ type: "start_failed", failure: "unavailable" });
       return;
     }
     dispatch({ type: "recording" });
-  }, [state, stream, release]);
+  }, [state, stream, release, holdForVoice, holdExpired]);
 
   // Timer, and the automatic stop at the limit.
   useEffect(() => {

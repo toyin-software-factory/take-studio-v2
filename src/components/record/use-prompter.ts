@@ -42,6 +42,13 @@ export function usePrompter(script: string, creatorId: string, active: boolean, 
   const [announcement, setAnnouncement] = useState("");
   const reducedMotion = useReducedMotion();
   const position = useRef(0);
+  // True while Follow my voice is connecting: the clock stands still (written by the page).
+  const holdStill = useRef(false);
+  const setStill = useCallback((still: boolean) => {
+    holdStill.current = still;
+  }, []);
+  /** Words passed so far, read on demand (never during render). */
+  const getPosition = useCallback(() => position.current, []);
   const [lineIndex, setLineIndex] = useState(0);
   // The latest settings, written the moment they change, so two changes in one tick (the first
   // use dialog marks it seen and turns follow on) never overwrite each other.
@@ -119,7 +126,9 @@ export function usePrompter(script: string, creatorId: string, active: boolean, 
     let last = performance.now();
     let frame = 0;
     const tick = (now: number) => {
-      position.current = advance(position.current, now - last, wpm.current, total);
+      if (!holdStill.current) {
+        position.current = advance(position.current, now - last, wpm.current, total);
+      }
       last = now;
       frame = requestAnimationFrame(tick);
     };
@@ -149,6 +158,8 @@ export function usePrompter(script: string, creatorId: string, active: boolean, 
     announcement,
     reducedMotion,
     position,
+    setStill,
+    getPosition,
     lineIndex,
     setLineIndex,
     run,

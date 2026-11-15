@@ -15,7 +15,7 @@ import { FollowVoiceToggle } from "./follow-voice-toggle";
 import { PrompterText } from "./prompter-text";
 import type { Prompter } from "./use-prompter";
 import { useLevel } from "./use-level";
-import { useVoiceFollow } from "./use-voice-follow";
+import type { VoiceFollow } from "./use-voice-follow";
 
 /**
  * The live preview (mirrored, display only: the file is never mirrored), the script over it,
@@ -24,9 +24,10 @@ import { useVoiceFollow } from "./use-voice-follow";
  */
 export function RecordStage({
   state,
-  script,
   stream,
   prompter,
+  follow,
+  holding,
   elapsedMs,
   limitMs,
   onRecord,
@@ -41,9 +42,11 @@ export function RecordStage({
   onFlip,
 }: {
   readonly state: RecorderState;
-  readonly script: string;
   readonly stream: MediaStream | null;
   readonly prompter: Prompter;
+  readonly follow: VoiceFollow;
+  /** The countdown is at 0, waiting for Follow my voice to connect (at most 5 seconds). */
+  readonly holding: boolean;
   readonly elapsedMs: number;
   readonly limitMs: number;
   readonly onRecord: () => void;
@@ -66,22 +69,17 @@ export function RecordStage({
 
   const recording = state.kind === "recording";
   const countdown = state.kind === "countdown";
-  const follow = useVoiceFollow({
-    script,
-    stream,
-    enabled: prompter.settings.follow && prompter.total > 0,
-    recording,
-    startWord: () => prompter.position.current,
-  });
   const leftMs = Math.max(0, limitMs - elapsedMs);
   const warn = recording && shouldWarn(elapsedMs, limitMs);
-  const status = countdown
-    ? `Recording starts in ${state.secondsLeft}`
-    : warn
-      ? "One minute left"
-      : recording
-        ? "Recording"
-        : "";
+  const status = holding
+    ? "Connecting voice…"
+    : countdown
+      ? `Recording starts in ${state.secondsLeft}`
+      : warn
+        ? "One minute left"
+        : recording
+          ? "Recording"
+          : "";
 
   return (
     <div className="flex flex-col gap-4">
@@ -107,6 +105,14 @@ export function RecordStage({
             className="absolute inset-0 grid place-items-center bg-glass text-[8rem] leading-none font-medium text-on-dark"
           >
             {state.secondsLeft}
+          </div>
+        ) : null}
+        {holding ? (
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 grid place-items-center bg-glass text-h3 font-medium text-on-dark"
+          >
+            Connecting voice…
           </div>
         ) : null}
         <span
