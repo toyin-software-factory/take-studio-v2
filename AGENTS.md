@@ -24,7 +24,7 @@ pnpm test:e2e                 # Playwright smoke tests
 pnpm db:generate              # new migration after a schema change (commit it)
 ```
 
-Production deploys run only from CI on merge to main (build and check the Worker, then migrate, then Trigger.dev, then ship the Worker). Never deploy by hand with `.env*` files present.
+Production deploys run only from CI on merge to main (build and check the Worker, then migrate, then Trigger.dev, then ship the Worker). Never deploy by hand with `.env*` files present. A bad deploy, a bad migration or an incident: follow [docs/runbook.md](docs/runbook.md); the Worker rolls back only through the `Roll back the Worker` workflow (`.github/workflows/rollback.yml`).
 
 Deploy the Worker only through `scripts/deploy-worker.sh`, never `wrangler deploy <file>` (it drops the bindings). The Sentry source map chain and the OpenNext patch are in [scripts/AGENTS.md](scripts/AGENTS.md).
 

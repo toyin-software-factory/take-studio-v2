@@ -1,0 +1,105 @@
+name: Roll back the Worker
+
+# Production runbook (docs/runbook.md, section 1). Puts an earlier Worker version live with
+# `wrangler rollback`: no build, no migration, no Trigger.dev deploy, so it takes seconds and
+# touches nothing but the Worker. It does NOT undo database migrations or Trigger.dev tasks.
+#
+# Why this and not "redeploy an older commit": the redeploy path (Deploy workflow, manual run)
+# rebuilds the Worker, reruns the migration and ships new Trigger.dev tasks, which is slow and
+# adds risk during an incident. A rollback only switches the Worker to a version Cloudflare
+# already holds, with the bindings that version had. Migrations are backward compatible
+# (expand, then contract), so the older Worker still runs on the newer schema.
+#
+# Guards: it only runs from main, in the `production` environment (the same approval rules as a
+# deploy), and shares the `deploy-production` group so it never overlaps a deploy. Nothing here
+# reads a .env file or prints a secret; version IDs are not secrets.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "list shows the recent Worker versions and deployments (read only). rollback switches production."
+        type: choice
+        options: [list, rollback]
+        default: list
+      version_id:
+        description: "Worker version ID to roll back to (from a list run). Empty means the version before the current one."
+        type: string
+        required: false
+      reason:
+        description: "Why (required for rollback; stored with the deployment, no personal data)"
+        type: string
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  rollback:
+    name: Roll back production Worker
+    # Only the main branch, never a pull request branch or a tag.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      WORKER_NAME: take-studio
+      # Same wrangler version as package.json and deploy.yml.
+      WRANGLER: wrangler@4.160.0
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Inputs go through the environment, never into the script text.
+      MODE: ${{ inputs.mode }}
+      VERSION_ID: ${{ inputs.version_id }}
+      REASON: ${{ inputs.reason }}
+    steps:
+      - name: Check the inputs
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID is not set for the production environment."
+            exit 1
+          fi
+          if [ -n "$VERSION_ID" ] && ! printf '%s' "$VERSION_ID" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; then
+            echo "::error::version_id must be a Worker version ID (a UUID) from a list run."
+            exit 1
+          fi
+          if [ "$MODE" = "rollback" ]; then
+            if [ -z "$REASON" ]; then
+              echo "::error::A rollback needs a reason."
+              exit 1
+            fi
+            if [ "${#REASON}" -gt 100 ]; then
+              echo "::error::Keep the reason under 100 characters."
+              exit 1
+            fi
+          fi
+
+      - name: Show the current deployment and recent versions
+        run: |
+          npx --yes "$WRANGLER" deployments list --name "$WORKER_NAME"
+          npx --yes "$WRANGLER" versions list --name "$WORKER_NAME"
+
+      - name: Roll back
+        if: inputs.mode == 'rollback'
+        run: |
+          if [ -n "$VERSION_ID" ]; then
+            npx --yes "$WRANGLER" rollback "$VERSION_ID" --name "$WORKER_NAME" --message "$REASON" --yes
+          else
+            npx --yes "$WRANGLER" rollback --name "$WORKER_NAME" --message "$REASON" --yes
+          fi
+
+      - name: Show the deployment now live
+        if: inputs.mode == 'rollback'
+        run: npx --yes "$WRANGLER" deployments list --name "$WORKER_NAME"
+
+      - name: Next steps
+        if: inputs.mode == 'rollback'
+        run: |
+          {
+            echo "### Worker rolled back"
+            echo
+            echo "Production runs an earlier Worker version now. This did not undo migrations or Trigger.dev tasks."
+            echo "Next: open a PR that reverts the bad commit on main (the next merge deploys again), then follow docs/runbook.md."
+          } >> "$GITHUB_STEP_SUMMARY"

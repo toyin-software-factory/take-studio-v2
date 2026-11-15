@@ -102,6 +102,10 @@ On a small machine (3 GB) add `PIPELINE_START=prod`: it builds the app once and 
 
 The migrate line gives the pipeline's default local database (`take_studio`) its tables, whatever `DATABASE_URL_DIRECT` your shell has. If you override `PIPELINE_DATABASE_URL`, point `DATABASE_URL_DIRECT` at that same database.
 
+## Production runbook
+
+A bad deploy, a bad migration or an incident: [`docs/runbook.md`](docs/runbook.md). It covers the Worker rollback (the `Roll back the Worker` workflow in GitHub Actions), going back a Trigger.dev version, Neon restore, what the R2 lifecycle rules delete, and the first steps in an incident.
+
 ## CI and deploy
 
 - **CI** (`.github/workflows/ci.yml`, every PR): a `static` job (install, lint, format check, typecheck, Vitest, a check that `drizzle-kit generate` makes no new migration) and four parallel `e2e` shard jobs (each builds the Worker and runs one quarter of Playwright against it, with its own Postgres service container). The `check` job, named "Lint, typecheck, test, build, e2e", waits for all of them and is the one required check.
