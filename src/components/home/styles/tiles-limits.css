@@ -1,0 +1,128 @@
+/* What it does: four uneven tiles */
+.h-caps {
+  display: grid;
+  gap: 24px;
+  align-items: start;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 810px) {
+  .h-caps {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (min-width: 1200px) {
+  .h-caps {
+    grid-template-columns: 1fr 1.55fr 1fr 1.55fr;
+  }
+}
+.h-tile {
+  background: var(--color-dark);
+  overflow: hidden;
+}
+.h-tile-media {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.h-tile-media video,
+.h-tile-media .h-tile-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* The poster grows a little while its video plays (the draft's `.is-playing img`): under the
+   pointer or keyboard focus on a mouse, as the tile enters the view on a touch screen. Not under
+   reduced motion, where nothing plays by itself. */
+@media (prefers-reduced-motion: no-preference) {
+  .h-tile-poster {
+    transition: transform var(--dur-media) var(--ease-out);
+  }
+  .h-tile-media:hover .h-tile-poster,
+  .h-tile-media[data-playing="true"] .h-tile-poster {
+    transform: scale(1.04);
+  }
+}
+/* With scripts the video waits invisible over the poster and fades in once it plays; without them it keeps its controls and stays visible. */
+html.js .h-tile-media video {
+  opacity: 0;
+  transition: opacity var(--dur-hover) var(--ease-ui);
+}
+html.js .h-tile-media[data-playing="true"] video {
+  opacity: 1;
+}
+.h-tile-toggle {
+  right: 12px;
+  bottom: 12px;
+}
+.h-tile-1,
+.h-tile-3 {
+  aspect-ratio: 1 / 1;
+}
+.h-tile-2 {
+  aspect-ratio: 3 / 4;
+}
+.h-tile-4 {
+  aspect-ratio: 5 / 4;
+}
+.h-tile-soon {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  color: var(--color-on-dark-75);
+}
+.h-cap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.h-cap figcaption {
+  display: flex;
+  flex-direction: column;
+}
+.h-cap figcaption p {
+  margin-top: 6px;
+  color: var(--color-text-muted);
+  max-width: 28ch;
+}
+
+/* The limits */
+.h-stats {
+  display: grid;
+  gap: 24px;
+  grid-template-columns: 1fr 1fr;
+}
+@media (min-width: 1200px) {
+  .h-stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.h-stat {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-line);
+}
+.h-stat-num {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--fs-display);
+  line-height: var(--lh-tight);
+  letter-spacing: -0.02em;
+  font-weight: var(--fw-regular);
+  font-variant-numeric: tabular-nums;
+}
+.h-stat-unit {
+  font-size: var(--fs-h3);
+}
+.h-stat-label {
+  font-size: var(--fs-small);
+  color: var(--color-text-muted);
+}

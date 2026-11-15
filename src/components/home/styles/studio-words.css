@@ -1,0 +1,183 @@
+/* The giant words: one plain line without scripts or under reduced motion; with the motion on
+   (`is-staged`) the block is three screens tall and the stage stays pinned while one word at a
+   time shows (recipe 7.7). The words are decorative copies of the text read out above. */
+.h-studio-word-stage {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 0.3em;
+  padding-block: clamp(64px, 10vw, 160px);
+  font-size: var(--fs-display);
+  line-height: var(--lh-display);
+  letter-spacing: var(--ls-display);
+  font-weight: var(--fw-regular);
+}
+.h-studio.is-staged .h-studio-words {
+  height: 300vh;
+}
+.h-studio.is-staged .h-studio-word-stage {
+  position: sticky;
+  top: 0;
+  display: grid;
+  gap: 0;
+  place-items: center;
+  height: 100vh;
+  height: 100svh;
+  padding-block: 0;
+  overflow: hidden;
+  font-size: var(--fs-display-xl);
+}
+.h-studio.is-staged .h-studio-word {
+  grid-area: 1 / 1;
+}
+.h-bento {
+  display: grid;
+  gap: 20px;
+}
+.h-bento-row {
+  display: grid;
+  gap: 20px;
+}
+@media (min-width: 810px) {
+  .h-bento-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (min-width: 1200px) {
+  .h-bento-a {
+    grid-template-columns: 2fr 1fr;
+  }
+  .h-bento-b {
+    grid-template-columns: 1fr 2fr;
+  }
+}
+.h-glass {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: clamp(24px, 3vw, 40px);
+  background: var(--color-glass);
+  backdrop-filter: var(--blur-glass);
+  border: 1px solid var(--color-line-dark);
+  border-radius: var(--radius-lg);
+}
+.h-glass p {
+  color: var(--color-on-dark-75);
+  max-width: 44ch;
+}
+.h-chip {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  height: 24px;
+  padding: 4px 10px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-on-dark-20);
+  color: var(--color-on-dark-75);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  font-weight: var(--fw-regular);
+}
+.h-chip-accent {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-ink);
+}
+.h-media {
+  margin-top: auto;
+  padding-top: 20px;
+}
+.h-mini-tl {
+  background: var(--color-dark-2);
+  border: 1px solid var(--color-ring-dark);
+  border-radius: 8px;
+  padding: 10px;
+}
+.h-mini-tl-row {
+  display: flex;
+  gap: 3px;
+  height: 36px;
+}
+.h-mini-tl-seg {
+  background: var(--color-on-dark-60);
+  border-radius: 6px;
+}
+.h-mini-tl-cut {
+  min-width: 12px;
+  border-radius: 6px;
+  border: 1.5px solid var(--color-error);
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--color-error) 90%, transparent) 0 4px,
+    color-mix(in srgb, var(--color-error) 40%, transparent) 4px 8px
+  );
+}
+.h-mini-tl-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--color-on-dark-75);
+  font-variant-numeric: tabular-nums;
+}
+.h-swatches {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.h-swatches img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+}
+.h-srt {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 16px;
+  font-size: var(--fs-small);
+  line-height: 1.6;
+  font-weight: var(--fw-regular);
+  color: var(--color-on-dark-75);
+  background: var(--color-glass);
+  border: 1px solid var(--color-line-dark);
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
+}
+.h-srt span:nth-child(2) {
+  color: var(--color-accent);
+}
+.h-studio-fill {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding-block: 0 var(--section-y);
+}
+.h-studio-fill .h-fill {
+  position: relative;
+  font-size: var(--fs-h2);
+  line-height: var(--lh-heading);
+  letter-spacing: var(--ls-heading);
+  font-weight: var(--fw-regular);
+  /* The real text, grey but over 3:1 on the dark stage (large text); the white copy on top is
+     revealed as the line scrolls up. Without scripts or under reduced motion it is fully white. */
+  color: var(--color-on-dark-60);
+  --fill-progress: 100%;
+}
+.h-fill-top {
+  position: absolute;
+  inset: 0;
+  color: var(--color-on-dark);
+  clip-path: inset(0 calc(100% - var(--fill-progress)) 0 0);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .js .h-studio-fill .h-fill {
+    --fill-progress: 0%;
+  }
+}
+.h-studio-cta {
+  align-self: stretch;
+  margin-top: 48px;
+}

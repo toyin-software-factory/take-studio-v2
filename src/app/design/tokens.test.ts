@@ -6,7 +6,10 @@ import { isGalleryEnabled } from "./gallery";
 import { allColours, lightPairs, pairHexes, stagePairs } from "./tokens";
 
 const srcDir = join(__dirname, "..", "..");
-const css = readFileSync(join(srcDir, "app", "globals.css"), "utf8");
+/** globals.css imports its parts from `app/styles/` (B2-T119): read them in the same order. */
+const css = ["theme", "root", "utilities"]
+  .map((name) => readFileSync(join(srcDir, "app", "styles", `${name}.css`), "utf8"))
+  .join("\n");
 const doc = readFileSync(join(srcDir, "..", "design.md"), "utf8");
 
 /** Every `--name: value;` declaration in globals.css, first one wins (all layers). */

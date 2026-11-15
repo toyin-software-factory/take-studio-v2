@@ -1,0 +1,206 @@
+/* ---------- 2. design.md §2 non colour tokens, then the semantic names ---------- */
+:root {
+  /* Content card palette (homepage fan cards) */
+  --card-red: #e5392c;
+  --card-green: #1d9a4a;
+  --card-orange: #ff9a1f;
+  --card-paper: #efefef;
+  --card-blue: #2f6bff;
+  --card-black: #111111;
+
+  --fw-light: 300;
+  --fw-regular: 400;
+  --fw-medium: 500;
+
+  --fs-display-xl: clamp(4.125rem, -4.8224rem + 18.6404vw, 14.5rem);
+  --fs-display: clamp(3.5rem, 2.571rem + 3.81vw, 6rem);
+  --fs-h1: clamp(2.75rem, 2.471rem + 1.143vw, 3.5rem);
+  --fs-h2: clamp(2.25rem, 1.786rem + 1.905vw, 3.5rem);
+  --fs-h3: clamp(1.5rem, 1.314rem + 0.762vw, 2rem);
+  --fs-h4: clamp(1.25rem, 1.111rem + 0.571vw, 1.625rem);
+  --fs-lead: clamp(1.125rem, 1.079rem + 0.19vw, 1.25rem);
+  --fs-nav: 1.25rem;
+  --fs-body: 1rem;
+  --fs-small: 0.875rem;
+  --fs-micro: 0.75rem;
+
+  --lh-display: 0.9;
+  --lh-h1: 1.1;
+  --lh-heading: 1.2;
+  --lh-body: 1.5;
+  --lh-tight: 1;
+
+  --ls-display: -0.04em;
+  --ls-heading: -0.01em;
+  --ls-body: 0.01em;
+  --ls-eyebrow: 0.05em;
+
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 16px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+  --space-9: 64px;
+  --space-10: 96px;
+  --space-11: 160px;
+  --section-y: clamp(5rem, 3.143rem + 7.619vw, 10rem);
+  --container-max: 1400px;
+  --container-pad: clamp(1.25rem, 5vw, 4.5rem);
+  --gutter: 24px;
+  --nav-h: 80px;
+  --nav-h-float: 56px;
+
+  --radius-0: 0;
+  --radius-pill: 999px;
+  --radius-round: 50%;
+
+  --ring-light: 0 0 0 1px rgb(0 0 0 / 8%);
+  --ring-dark: 0 0 0 1px rgb(255 255 255 / 15%);
+  --blur-nav: blur(16px) saturate(1.6);
+  --blur-glass: blur(10px);
+
+  --z-field: 0;
+  --z-base: 1;
+  --z-raised: 10;
+  --z-edge-blur: 50;
+  --z-nav: 100;
+  --z-menu: 200;
+  --z-cursor: 900;
+  --z-modal: 1000;
+
+  --dur-instant: 100ms;
+  --dur-fast: 150ms;
+  --dur-ui: 200ms;
+  --dur-hover: 300ms;
+  --dur-color: 400ms;
+  --dur-fade: 460ms;
+  --dur-swap: 500ms;
+  --dur-media: 600ms;
+  --dur-enter: 700ms;
+  --dur-spread: 800ms;
+  --dur-reveal: 1500ms;
+  --dur-loop: 4000ms;
+  --stagger: 70ms;
+  --stagger-word: 40ms;
+
+  /* ---------- Semantic names on the white shell ---------- */
+  --bg: var(--color-bg);
+  --surface: var(--color-bg);
+  --panel: var(--color-surface);
+  --hover-surface: color-mix(in srgb, var(--color-ink) 6%, transparent);
+  --selected-surface: color-mix(in srgb, var(--color-ink) 8%, transparent);
+  --text: var(--color-ink);
+  --text-muted: var(--color-text-muted);
+  --border: var(--color-line);
+  --border-strong: var(--color-line-strong);
+  --primary: var(--color-ink);
+  --primary-fg: var(--color-on-dark);
+  --primary-hover: var(--color-ink-soft);
+  --primary-active: var(--color-ink-soft);
+  --danger: var(--color-error);
+  --danger-hover: color-mix(in srgb, var(--color-error) 85%, var(--color-ink));
+  --danger-active: color-mix(in srgb, var(--color-error) 70%, var(--color-ink));
+  --danger-bg: color-mix(in srgb, var(--color-error) 8%, transparent);
+  --success: var(--color-success);
+  --success-bg: color-mix(in srgb, var(--color-success) 8%, transparent);
+  --warning: var(--color-warning);
+  --warning-bg: color-mix(in srgb, var(--color-warning) 8%, transparent);
+  --info: var(--color-ink-soft);
+  --info-bg: color-mix(in srgb, var(--color-ink) 6%, transparent);
+  --disabled-bg: color-mix(in srgb, var(--color-ink) 6%, transparent);
+  --disabled-fg: color-mix(in srgb, var(--color-ink) 45%, transparent);
+  --focus: var(--color-ink);
+  --backdrop: color-mix(in srgb, var(--color-dark) 60%, transparent);
+
+  /* ---------- Dark stage (player panel, processing preview) ---------- */
+  --stage-bg: var(--color-dark);
+  --stage-raised: var(--color-dark-2);
+  --stage-border: var(--color-line-dark);
+  --stage-border-strong: var(--color-on-dark-60);
+  --stage-text: var(--color-on-dark);
+  --stage-text-muted: var(--color-on-dark-75);
+  --stage-accent: var(--color-accent);
+  --stage-focus: var(--color-accent);
+  --stage-hover: color-mix(in srgb, var(--color-on-dark) 10%, transparent);
+
+  /* ---------- Layout and layers used by the existing components ---------- */
+  --radius: var(--radius-md);
+  --sidebar-width: 15rem;
+  --elevation-card: var(--ring-light);
+  --elevation-overlay: var(--shadow-lift);
+  --z-sticky: var(--z-raised);
+  --z-stage-overlay: 20;
+  --z-dropdown: 30;
+  --z-backdrop: 40;
+  --z-dialog: var(--z-modal);
+  --z-toast: 1100;
+  --z-tooltip: 1200;
+  --scrollbar: var(--border-strong);
+
+  /* ---------- shadcn/ui names, mapped to the tokens above ---------- */
+  --background: var(--bg);
+  --foreground: var(--text);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --popover: var(--surface);
+  --popover-foreground: var(--text);
+  --primary-foreground: var(--primary-fg);
+  --secondary: var(--surface);
+  --secondary-foreground: var(--text);
+  --muted: var(--disabled-bg);
+  --muted-foreground: var(--text-muted);
+  --destructive: var(--danger);
+  --destructive-foreground: var(--primary-fg);
+  --input: var(--border-strong);
+  --ring: var(--focus);
+}
+
+/*
+ * The stage: everything inside `.stage` resolves the same names to the dark set, so shared
+ * components work unchanged. Primary becomes the white pill on dark (design.md §5) and the
+ * focus ring turns lime. The lime accent is a fill or a ring there, never text on white.
+ */
+.stage {
+  --bg: var(--stage-bg);
+  --surface: var(--stage-raised);
+  --hover-surface: var(--stage-hover);
+  --selected-surface: var(--stage-hover);
+  --text: var(--stage-text);
+  --text-muted: var(--stage-text-muted);
+  --border: var(--stage-border);
+  --border-strong: var(--stage-border-strong);
+  --focus: var(--stage-focus);
+  --scrollbar: var(--color-on-dark-20);
+  --primary: var(--color-on-dark);
+  --primary-fg: var(--color-ink);
+  --primary-hover: color-mix(in srgb, var(--color-on-dark) 91%, var(--color-ink));
+  --primary-active: color-mix(in srgb, var(--color-on-dark) 91%, var(--color-ink));
+  --disabled-bg: var(--stage-hover);
+  --disabled-fg: var(--color-on-dark-60);
+  --danger: var(--color-on-dark);
+  --danger-hover: var(--primary-hover);
+  --danger-active: var(--primary-active);
+  --danger-bg: var(--stage-hover);
+
+  --background: var(--stage-bg);
+  --foreground: var(--stage-text);
+  --card: var(--stage-raised);
+  --card-foreground: var(--stage-text);
+  --popover: var(--stage-raised);
+  --popover-foreground: var(--stage-text);
+  --primary-foreground: var(--color-ink);
+  --secondary: var(--stage-raised);
+  --secondary-foreground: var(--stage-text);
+  --muted: var(--stage-raised);
+  --muted-foreground: var(--stage-text-muted);
+  --destructive: var(--color-on-dark);
+  --destructive-foreground: var(--color-ink);
+  --input: var(--stage-border-strong);
+  --ring: var(--stage-focus);
+
+  background-color: var(--stage-bg);
+  color: var(--stage-text);
+}

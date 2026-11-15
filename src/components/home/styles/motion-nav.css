@@ -1,0 +1,146 @@
+/* ---------- Motion (spec 0010 task 2): states the scripts switch on ---------- */
+
+/* Nav: transparent at the top once scripts run, a glass pill after 202 px, white over dark */
+.js .h-nav:not(.is-float),
+html.h-intro-pending .h-nav:not(.is-float) {
+  background: transparent;
+  backdrop-filter: none;
+}
+.h-nav.is-float {
+  top: 12px;
+  width: min(100% - 2 * var(--container-pad), 1296px);
+  height: var(--nav-h-float);
+  padding-inline: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-nav-glass-light);
+  backdrop-filter: var(--blur-nav);
+  box-shadow: var(--ring-light);
+}
+.h-nav.is-float .h-logo {
+  padding-left: 16px;
+}
+.h-nav.is-dark {
+  color: var(--color-on-dark);
+}
+.h-nav.is-dark .h-logo-play {
+  fill: var(--color-dark);
+}
+.h-nav.is-dark .h-nav-divider {
+  background: var(--color-line-dark);
+}
+.h-nav.is-dark .h-btn {
+  background: var(--color-on-dark);
+  color: var(--color-ink);
+}
+.h-nav.is-float.is-dark {
+  background: var(--color-nav-glass-dark);
+  box-shadow: var(--ring-dark);
+}
+.h-nav.is-dark :focus-visible {
+  outline-color: var(--color-accent);
+}
+
+/* Burger and the menu dialog (below 810 px) */
+.h-burger {
+  display: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+  place-items: center;
+}
+.h-burger span {
+  position: relative;
+  display: block;
+  width: 40px;
+  height: 14px;
+}
+.h-burger span::before,
+.h-burger span::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: currentcolor;
+}
+.h-burger span::before {
+  top: 0;
+}
+.h-burger span::after {
+  bottom: 0;
+}
+@media (max-width: 809px) {
+  .h-burger {
+    display: grid;
+  }
+}
+.h-menu {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-menu);
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 24px var(--container-pad);
+  border: 0;
+  background: var(--color-dark);
+  color: var(--color-on-dark);
+}
+.h-menu[open] {
+  display: flex;
+  flex-direction: column;
+}
+.h-menu :focus-visible {
+  outline-color: var(--color-accent);
+}
+.h-menu-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+}
+.h-menu-name {
+  font-size: var(--fs-nav);
+  font-weight: var(--fw-medium);
+  letter-spacing: -0.02em;
+}
+.h-menu-close {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.h-menu-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 48px;
+}
+.h-menu-links a {
+  display: block;
+  font-size: var(--fs-h2);
+  line-height: 1.2;
+  letter-spacing: var(--ls-heading);
+  text-decoration: none;
+  text-transform: lowercase;
+}
+.h-menu .h-menu-cta {
+  align-self: flex-start;
+  margin-top: auto;
+  background: var(--color-on-dark);
+  color: var(--color-ink);
+}
+html:has(.h-menu[open]) {
+  overflow: hidden;
+}

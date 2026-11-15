@@ -1,0 +1,87 @@
+/* Footer */
+.h-footer {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-ink);
+  color: var(--color-on-dark);
+  padding-top: var(--section-y);
+}
+.h-footer-cols {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 48px 24px;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 480px) {
+  .h-footer-cols {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (min-width: 810px) {
+  .h-footer-cols {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.h-footer-label {
+  margin-bottom: 16px;
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  font-weight: var(--fw-regular);
+  color: var(--color-accent);
+}
+.h-footer li a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--color-on-dark-75);
+  text-decoration: underline 1px transparent;
+  text-underline-offset: 6px;
+  transition:
+    color var(--dur-color) var(--ease-ui),
+    text-decoration-color var(--dur-color) var(--ease-ui),
+    text-underline-offset var(--dur-color) var(--ease-ui);
+}
+.h-footer li a:hover {
+  color: var(--color-on-dark);
+  text-decoration-color: var(--color-accent);
+  text-underline-offset: 3px;
+}
+.h-footer-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  position: relative;
+  z-index: 2;
+  gap: 12px;
+  margin-top: 96px;
+  padding-block: 24px;
+  border-top: 1px solid var(--color-line-dark);
+  font-size: var(--fs-small);
+  color: var(--color-on-dark-60);
+}
+.h-footer-mark {
+  padding-inline: var(--container-pad);
+  font-size: var(--fs-display-xl);
+  line-height: 0.8;
+  margin-top: 24px;
+  text-align: center;
+  letter-spacing: var(--ls-display);
+  font-weight: var(--fw-regular);
+  /* Decorative (aria-hidden) but axe still checks it: white at 60% is over 3:1 on the footer. */
+  color: var(--color-on-dark-60);
+  white-space: nowrap;
+  user-select: none;
+  position: relative;
+  filter: blur(6px);
+  mask-image: linear-gradient(to bottom, #000 30%, transparent 100%);
+}
+.h-footer-mark::after {
+  content: "";
+  position: absolute;
+  inset: 20% 10% -20%;
+  background: radial-gradient(ellipse at 50% 100%, var(--color-accent), transparent 65%);
+  opacity: 0.18;
+  pointer-events: none;
+}
