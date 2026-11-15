@@ -26,13 +26,26 @@ import { z } from "zod";
 import { RESPONSE_SCHEMAS } from "../src/lib/api-schemas/responses";
 
 const args = process.argv.slice(2);
-const flag = (name: string, fallback: string): string => {
+/** The operand of `--name`, or undefined when the flag is absent. A flag with no operand is an error. */
+const flag = (name: string): string | undefined => {
   const i = args.indexOf(`--${name}`);
-  return i >= 0 ? (args[i + 1] ?? fallback) : fallback;
+  if (i < 0) return undefined;
+  const value = args[i + 1];
+  if (value === undefined || value.startsWith("--")) throw new Error(`--${name} needs a value.`);
+  return value;
 };
-const base = flag("base", process.env.API_BASE_URL ?? "http://localhost:3000").replace(/\/$/, "");
-const waitSeconds = Number(flag("wait", "600"));
-const revokeSeconds = Number(flag("revoke-wait", "300"));
+const seconds = (name: string, fallback: number): number => {
+  const raw = flag(name);
+  if (raw === undefined) return fallback;
+  if (!/^\d+$/.test(raw)) throw new Error(`--${name} is a whole number of seconds, 0 or more.`);
+  return Number(raw);
+};
+const base = (flag("base") ?? process.env.API_BASE_URL ?? "http://localhost:3000").replace(
+  /\/$/,
+  "",
+);
+const waitSeconds = seconds("wait", 600);
+const revokeSeconds = seconds("revoke-wait", 300);
 const key = z
   .string()
   .regex(/^tsk_[A-Za-z0-9_-]{43}$/, "Set TAKE_API_KEY to an API key (tsk_…).")
@@ -176,14 +189,33 @@ async function main() {
 
   await step("openapi: the document lists the routes this run uses", async () => {
     const res = await api("GET", "/api/openapi.json", undefined, false);
-    const doc = z.object({ paths: z.record(z.string(), z.unknown()) }).safeParse(res.json);
-    if (res.status !== 200 || !doc.success) stop(res.status, "no OpenAPI document");
-    const need = ["/api/usage", "/api/uploads", "/api/takes/{id}", "/api/takes/{id}/changes"];
-    const missing = need.filter((p) => !(doc.success && p in doc.data.paths));
-    if (missing.length > 0) stop(res.status, `paths missing: ${missing.join(", ")}`);
+    const doc = z
+      .object({ paths: z.record(z.string(), z.record(z.string(), z.unknown())) })
+      .safeParse(res.json);
+    if (res.status !== 200 || !doc.success) return stop(res.status, "no OpenAPI document");
+    const paths = doc.data.paths;
+    // Every route template this run calls, with the method it uses.
+    const need: readonly (readonly [string, string])[] = [
+      ["get", "/api/usage"],
+      ["post", "/api/uploads"],
+      ["delete", "/api/uploads/{takeId}"],
+      ["post", "/api/uploads/{takeId}/parts"],
+      ["post", "/api/uploads/{takeId}/complete"],
+      ["get", "/api/takes/{id}"],
+      ["delete", "/api/takes/{id}"],
+      ["post", "/api/takes/{id}/changes"],
+      ["get", "/api/takes/{id}/jobs/{jobId}"],
+      ["get", "/api/takes/{id}/media"],
+      ["get", "/api/takes/{id}/transcript"],
+      ["get", "/api/takes/{id}/transcript/{format}"],
+    ];
+    const missing = need.filter(([method, path]) => !(path in paths && method in paths[path]));
+    if (missing.length > 0) {
+      return stop(res.status, `routes missing: ${missing.map(([m, p]) => `${m} ${p}`).join(", ")}`);
+    }
     return {
       status: res.status,
-      note: `${Object.keys(doc.success ? doc.data.paths : {}).length} paths`,
+      note: `${Object.keys(paths).length} paths, ${need.length} checked`,
     };
   });
 
@@ -261,6 +293,8 @@ async function main() {
   });
 
   const applied = () => (detail?.cuts ?? []).find((c) => c.applied);
+  // The cut chosen for undo and redo: picked once, so both steps and the checks use the same ID.
+  let chosenCutId: string | null = null;
   await step("cuts: list them", async () => {
     const reply = await api("GET", `/api/takes/${run.takeId}`);
     const now = shaped("TakeDetail", reply);
@@ -273,6 +307,7 @@ async function main() {
   await step("cuts: undo one", async () => {
     const cut = applied();
     if (!cut || !run.takeId) return stop(0, "no cut to undo");
+    chosenCutId = cut.id;
     const result = await changeCuts(run.takeId, [{ id: cut.id, applied: false }]);
     const after = result.detail.cuts.find((c) => c.id === cut.id);
     if (after?.applied !== false) return stop(200, "the cut is still applied after the undo");
@@ -284,8 +319,9 @@ async function main() {
   });
 
   await step("cuts: redo it", async () => {
-    const cut = (detail?.cuts ?? []).find((c) => !c.applied);
-    if (!cut || !run.takeId) return stop(0, "no cut to redo");
+    const cut = (detail?.cuts ?? []).find((c) => c.id === chosenCutId);
+    if (!cut || !run.takeId) return stop(0, "the cut chosen for the undo is gone");
+    if (cut.applied) return stop(200, "the chosen cut is still applied, nothing to redo");
     const result = await changeCuts(run.takeId, [{ id: cut.id, applied: true }]);
     const after = result.detail.cuts.find((c) => c.id === cut.id);
     if (after?.applied !== true) return stop(200, "the cut is not applied after the redo");
@@ -333,11 +369,15 @@ async function main() {
   // A failed run still cleans up: an upload in progress is cancelled, a take is deleted.
   const left = run.takeId;
   if (left !== null) {
-    const cleanup = run.completed
-      ? await api("DELETE", `/api/takes/${left}`).catch(() => null)
-      : await api("DELETE", `/api/uploads/${left}`).catch(() => null);
-    console.log(`CLEAN take ${left}  HTTP ${cleanup?.status ?? "none"}`);
-    if (cleanup === null || ![200, 204, 404].includes(cleanup.status)) process.exitCode = 1;
+    // An upload still open is aborted first (409 means the object already exists). Either way the
+    // take itself is then deleted, so a failed run leaves nothing behind.
+    if (!run.completed) {
+      const abort = await api("DELETE", `/api/uploads/${left}`).catch(() => null);
+      console.log(`CLEAN abort ${left}  HTTP ${abort?.status ?? "none"}`);
+    }
+    const removed = await api("DELETE", `/api/takes/${left}`).catch(() => null);
+    console.log(`CLEAN delete ${left}  HTTP ${removed?.status ?? "none"}`);
+    if (removed === null || ![200, 204, 404].includes(removed.status)) process.exitCode = 1;
   }
 
   if (!failed) {
