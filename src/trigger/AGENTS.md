@@ -33,6 +33,7 @@ Each keeps its old module as the entry point and re exports the same names, so i
 - `preview-background.ts` is `makePreview` and the task; `preview-io.ts` holds `PreviewIo`, `HTTP_INPUT` and `createPreviewIo` (the real R2 and ffmpeg calls).
 - `take-run/ai-edit-step.ts` is `aiEditStep`, `tryAi` and the retry; `take-run/ai-edit-store.ts` holds the step's database reads and guarded writes (`setFinal`, `writeValid`, `setStepRunning`, `aiEditAlreadyFinal`, `storedHasCuts`, `RunStopped`).
 - `ai-eval/run-eval.ts` is `runAiEval`, the totals and the logs; `ai-eval/eval-case.ts` holds `EvalIo`, `evalCase`, `buildCaseSummary` and the answer parsing.
+- The big unit tests are split the same way (B2-T121): shared setup lives in a `<name>.support.ts` file (not picked up by vitest), which exports the helpers and a `registerDb()` that sets up and cleans the test database. Each `<name>.<part>.test.ts` keeps its own `vi.mock(...)` and calls `registerDb()`. Keep every test title unchanged.
 
 ## Rules worth knowing
 
