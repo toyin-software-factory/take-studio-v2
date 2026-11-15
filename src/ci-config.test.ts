@@ -180,9 +180,13 @@ describe("the Lighthouse job (B2-T106)", () => {
     expect(code).toMatch(/needs: \[static, e2e\]\s/);
   });
 
-  it("only reports: the script fails on a load problem, never on a score", () => {
+  it("gates the three quality scores, never performance (B2-T114)", () => {
     const script = readFileSync("scripts/lighthouse-ci.ts", "utf8");
     expect(script).toContain("did not load cleanly");
-    expect(script).not.toMatch(/score\s*[<>]=?\s*0?\.\d|lcp\s*[<>]/);
+    expect(script).toContain("gateViolations(");
+    // Performance numbers stay report only: no threshold on LCP, TBT or the performance score.
+    expect(script).not.toMatch(/lcp\s*[<>]|tbt\s*[<>]|performance\s*[<>]/);
+    const gate = readFileSync("scripts/lighthouse-gate.ts", "utf8");
+    expect(gate).not.toMatch(/performance\s*:\s*[01]/);
   });
 });
