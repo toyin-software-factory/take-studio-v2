@@ -14,10 +14,10 @@ for (const part of ["theme", "root"]) {
   }
 }
 
-/** Every `--color-*` token the CSS declares with a literal colour (hex or rgb). */
+/** Every `--color-*` token the CSS declares except plain `var()` aliases of semantic names. */
 export const colourTokenNames = (): string[] =>
   [...declared]
-    .filter(([name, value]) => name.startsWith("--color-") && /^(#|rgb)/i.test(value))
+    .filter(([name, value]) => name.startsWith("--color-") && !/^var\(/i.test(value))
     .map(([name]) => name.slice(2));
 
 /** Parses `#rrggbb` or `rgb(r g b / a%)` (also with commas). */

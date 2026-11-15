@@ -39,15 +39,20 @@ export const surfaces: Readonly<Record<string, Surface>> = {
   "top-bar-success-chip": {
     stack: [
       bar("src/components/shell/top-bar.tsx", /\bbg-background\/(\d+)\b/),
-      { token: "color-success", alpha: 0.08 },
+      {
+        token: "color-success",
+        alpha: { fromSource: ["src/app/styles/root.css", /--success-bg:[^;]*?(\d+)%/] },
+      },
     ],
     under: [BLACK, WHITE],
   },
   // The homepage nav: a light glass bar over the dark studio section, a dark glass pill over dark sections.
   "home-nav-light": { stack: [{ token: "color-nav-glass-light" }], under: [BLACK, WHITE] },
   "home-nav-dark": { stack: [{ token: "color-nav-glass-dark" }], under: [BLACK] },
-  // Glass cards, the srt line and the media toggle sit on the dark studio section and the phone reel.
+  // Glass cards and the srt line sit on the dark studio section and the phone reel.
   "stage-glass": { stack: [{ token: "color-glass" }], under: [BLACK] },
+  // The play and pause toggle floats over video frames, which can be white.
+  "media-glass": { stack: [{ token: "color-media-glass" }], under: [BLACK, WHITE] },
 };
 
 export type Pair = {
@@ -141,7 +146,13 @@ export const pairs: readonly Pair[] = [
     fg: "color-on-dark",
     on: "stage-glass",
     kind: "ui",
-    reason: "media toggle and player icons on glass",
+    reason: "player control icons on glass",
+  },
+  {
+    fg: "color-on-dark",
+    on: "media-glass",
+    kind: "ui",
+    reason: "play and pause toggle over a video frame, even a white one",
   },
   {
     fg: "color-on-dark-75",
