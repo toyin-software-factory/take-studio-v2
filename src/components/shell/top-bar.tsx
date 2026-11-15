@@ -15,7 +15,10 @@ export function TopBar({
   readonly recent: readonly RecentTake[];
 }) {
   return (
-    <header className="sticky top-0 z-(--z-nav) flex min-h-[72px] items-center gap-3 border-b border-hairline bg-nav-glass-light px-[clamp(16px,2.4vw,32px)] [backdrop-filter:var(--blur-nav)]">
+    <header
+      data-check="header"
+      className="sticky top-0 z-(--z-nav) flex min-h-[72px] items-center gap-3 border-b border-hairline bg-nav-glass-light px-[clamp(16px,2.4vw,32px)] [backdrop-filter:var(--blur-nav)]"
+    >
       <div className="lg:hidden">
         <MobileNav user={user} recent={recent} />
       </div>

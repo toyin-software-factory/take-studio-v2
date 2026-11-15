@@ -1,27 +1,10 @@
 "use client";
 
 import { useId, useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { FollowConsent } from "./follow-consent";
 import type { VoiceFollow } from "./use-voice-follow";
-
-/** What the first time disclosure says (spec 0021 AC-12); the Privacy page says the same. */
-export const FOLLOW_DISCLOSURE = {
-  title: "Follow my voice sends your audio to Deepgram",
-  sent: "While you record, your microphone audio is sent live to Deepgram, our speech to text provider, so the prompter can find your place in your script.",
-  notSent:
-    "Your video, your name and your email are not sent. We don't store this audio, and we ask Deepgram not to use it to train its models.",
-  off: "You can turn it off at any time. The prompter then scrolls on a timer.",
-} as const;
 
 /**
  * "Follow my voice" (spec 0021 step 2, AC-12, AC-9): off by default. The first time it is turned
@@ -69,28 +52,12 @@ export function FollowVoiceToggle({
         {enabled && follow.status === "following" ? "Following your voice." : null}
         {enabled && follow.status === "fallback" ? follow.note : null}
       </p>
-      <Dialog open={asking} onOpenChange={setAsking}>
-        <DialogContent
-          onCloseAutoFocus={(event) => {
-            // No trigger element holds the dialog, so put focus back on the switch.
-            event.preventDefault();
-            document.getElementById(id)?.focus();
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>{FOLLOW_DISCLOSURE.title}</DialogTitle>
-            <DialogDescription>{FOLLOW_DISCLOSURE.sent}</DialogDescription>
-          </DialogHeader>
-          <p>{FOLLOW_DISCLOSURE.notSent}</p>
-          <p>{FOLLOW_DISCLOSURE.off}</p>
-          <DialogFooter>
-            <Button variant="secondary" onClick={() => setAsking(false)}>
-              Not now
-            </Button>
-            <Button onClick={confirm}>Turn on</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <FollowConsent
+        open={asking}
+        onOpenChange={setAsking}
+        onConfirm={confirm}
+        returnFocusId={id}
+      />
     </div>
   );
 }

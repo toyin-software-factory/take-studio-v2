@@ -44,7 +44,7 @@ export function SidebarBody({
           Upload a take
         </Link>
       </Button>
-      <nav aria-label="Main">
+      <nav aria-label="Main" data-check="nav">
         <NavLinks onNavigate={onNavigate} />
       </nav>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-1.5 pb-1.5">
