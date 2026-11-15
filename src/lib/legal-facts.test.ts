@@ -318,6 +318,10 @@ describe("launch gate wiring and drift flag (spec 0015 AC-8, AC-10)", () => {
     expect(legalDriftFlag(["src/components/home/content.ts"])).toEqual([]);
   });
 
+  it("counts a change to a split legal-facts-*.ts file as a change to the facts", () => {
+    expect(legalDriftFlag(["package.json", "src/lib/legal-facts-processors.ts"])).toEqual([]);
+  });
+
   it("watches only files and folders that exist", () => {
     for (const path of LEGAL_WATCHED_PATHS) {
       expect(() => statSync(path), `${path} was moved: update LEGAL_WATCHED_PATHS`).not.toThrow();

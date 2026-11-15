@@ -1,290 +1,43 @@
-import { isMediaFailure } from "./failure-codes";
-import { isVideoExpired } from "./video-expiry";
-import { uploadFailureMessage } from "./take-messages";
-import { VIDEO_RETENTION_DAYS } from "./take-rules";
-
 /**
  * Pure display rules for the library and take pages (spec 0004, AC-1, AC-4, AC-7 to AC-10,
  * design.md Voice): status labels, friendly failure messages, mm:ss times, expiry notes, the
  * weighted overall progress, tab titles and the polling schedule. No React, no I/O.
+ *
+ * Split by job (B2-T116): `take-display-status` (status, failures, clock, notes),
+ * `take-display-steps` (step progress and tab titles) and `take-display-poll` (polling and the
+ * background notes). This file only re-exports them.
  */
-
-export type TakeStatusName =
-  "uploading" | "uploaded" | "processing" | "ready" | "failed" | "expired";
-
-/** Badge for a take status: a label and a tone (the icon is picked by the component). */
-export type StatusBadge = {
-  readonly label: string;
-  readonly tone: "neutral" | "info" | "success" | "warning" | "danger";
-};
-
-const BADGES: Readonly<Record<TakeStatusName, StatusBadge>> = {
-  uploading: { label: "Uploading", tone: "info" },
-  uploaded: { label: "Queued", tone: "info" },
-  processing: { label: "Processing", tone: "info" },
-  ready: { label: "Ready", tone: "success" },
-  failed: { label: "Failed", tone: "danger" },
-  expired: { label: "Expired", tone: "neutral" },
-};
-
-export function statusBadge(status: string): StatusBadge {
-  return BADGES[status as TakeStatusName] ?? { label: "Unknown", tone: "neutral" };
-}
-
-/** Statuses where the take is still moving and its page or card should keep checking. */
-export function isInFlight(status: string): boolean {
-  return status === "uploading" || status === "uploaded" || status === "processing";
-}
-
-/**
- * The friendly message for a failed take: what happened, then what to do (design.md Voice).
- * Media failures use the shared wording from `take-messages.ts` (AC-4; the page has no frame
- * size, so a resolution failure gets its general sentence); our own failures say it wasn't the
- * creator's fault.
- */
-export function failureMessage(
-  take: {
-    readonly failureCode: string | null;
-    readonly durationMs: number | null;
-  },
-  retryable = true,
-): string {
-  if (isMediaFailure(take.failureCode)) {
-    return uploadFailureMessage({ ...take, width: null, height: null, originalBytes: 0 });
-  }
-  // A take that can't be retried (no length was read, or the original is going) says to upload
-  // again instead of "Try again", so the words match the button.
-  const again = retryable ? "Try again." : "Upload the video again.";
-  switch (take.failureCode) {
-    case "limit_exceeded":
-      // The dated version (kept until, back on) is `limitExceededMessage` in usage-rules.ts.
-      return retryable
-        ? "This month's allowance is used up. Your upload is kept: try again when your minutes come back, or delete it."
-        : "This month's allowance was used up and this video can't be tried again. Upload the video again when your minutes come back.";
-    case "timeout":
-      return `Processing took too long and stopped. ${again}`;
-    case "cancelled_while_running":
-    case "cancelled_before_start":
-      return `Processing was stopped before it finished. ${again}`;
-    default:
-      return `Something went wrong on our side while processing this video. ${again}`;
-  }
-}
-
-/**
- * The status a card or page should show now: a ready take whose video has expired (the server
- * says so, or its expiry time has passed while the page stayed open) is `expired`, whatever
- * the last response said.
- */
-export function effectiveStatus(
-  status: string,
-  videoExpiresAt: string | null,
-  expired: boolean,
-  now: Date,
-): string {
-  const past = isVideoExpired(videoExpiresAt, now);
-  return status === "ready" && (expired || past) ? "expired" : status;
-}
-
-/** mm:ss, or h:mm:ss from an hour (design.md Voice). Negative or missing gives 0:00. */
-export function formatClock(ms: number | null): string {
-  const total = Math.max(0, Math.floor((ms ?? 0) / 1000));
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = String(total % 60).padStart(2, "0");
-  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${s}` : `${m}:${s}`;
-}
-
-const DAY_MS = 24 * 60 * 60 * 1000;
-const SHORT_DATE = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  timeZone: "UTC",
-});
-
-/** "3 Dec" (design.md Voice). UTC, so server and browser agree. */
-export function shortDate(iso: string): string {
-  return SHORT_DATE.format(new Date(iso)).replace(/\.$/, "");
-}
-
-/** Fewer days than this left: the expiry note adds the days left (spec 0013 AC-1). */
-export const EXPIRY_COUNTDOWN_DAYS = 8;
-
-/** The transcript promise next to every expired video (AC-1, AC-2; the Privacy page says the same). */
-export const TRANSCRIPT_KEPT = "Your transcript is kept.";
-
-/** "Video removed on 3 Dec": the date the video was due to go, in UTC (AC-1, AC-2). */
-export function videoRemovedNote(videoExpiresAt: string): string {
-  return `Video removed on ${shortDate(videoExpiresAt)}`;
-}
-
-/** "Videos are kept for 30 days." from the one retention constant, so it cannot drift. */
-export const RETENTION_NOTE = `Videos are kept for ${VIDEO_RETENTION_DAYS} days.`;
-
-/**
- * Expiry note for a card or page (AC-1, design.md Expired video): "Video expires on 12 Dec",
- * with "(in 3 days)", "(in 1 day)" or "(in less than a day)" once fewer than 8 days remain (never
- * "today": the creator's day is not UTC); after expiry "Video removed on 3 Dec. Your transcript
- * is kept."; null before the upload completes.
- */
-export function expiryNote(
-  videoExpiresAt: string | null,
-  expired: boolean,
-  now: Date,
-): string | null {
-  if (!videoExpiresAt) return null;
-  if (expired || isVideoExpired(videoExpiresAt, now))
-    return `${videoRemovedNote(videoExpiresAt)}. ${TRANSCRIPT_KEPT}`;
-  const date = `Video expires on ${shortDate(videoExpiresAt)}`;
-  const days = Math.floor((new Date(videoExpiresAt).getTime() - now.getTime()) / DAY_MS);
-  if (days >= EXPIRY_COUNTDOWN_DAYS) return date;
-  if (days === 0) return `${date} (in less than a day)`;
-  return `${date} (in ${days} ${days === 1 ? "day" : "days"})`;
-}
-
-/** "Removed 1:24 of pauses" (AC-9). */
-export function removedNote(removedMs: number): string {
-  return `Removed ${formatClock(removedMs)} of pauses`;
-}
-
-/** The AC-7 notes. */
-export const TAKE_NOTES = {
-  no_cuts: "No long pauses found. Your video is ready as is.",
-  no_audio: "No audio found, so nothing was trimmed.",
-} as const;
-
-export type StepView = {
-  readonly name: string;
-  readonly status: string;
-  readonly progress: number | null;
-};
-
-/**
- * Weights of the steps in the overall bar (spec 0012): trim 10, transcript 5, AI edit 5,
- * background 5 (only when the job has one), render 75. The bar divides by the steps the job has.
- */
-const STEP_WEIGHTS: Readonly<Record<string, number>> = {
-  trim: 10,
-  transcript: 5,
-  ai_edit: 5,
-  background: 5,
-  render: 75,
-};
-
-/** A step's own percent: done or skipped is 100, pending 0, running its reported progress. */
-export function stepPercent(step: StepView): number {
-  // A failed step (only the non fatal transcript step can end this way on a job that goes on)
-  // is over, like a skipped one.
-  if (step.status === "succeeded" || step.status === "skipped" || step.status === "failed") {
-    return 100;
-  }
-  if (step.status === "running") return Math.min(100, Math.max(0, step.progress ?? 0));
-  return 0;
-}
-
-/** Overall percent across the job's steps with their weights (unknown steps weigh 0). */
-export function overallPercent(steps: readonly StepView[]): number {
-  const total = steps.reduce((sum, s) => sum + (STEP_WEIGHTS[s.name] ?? 0), 0);
-  if (total === 0) return 0;
-  const done = steps.reduce((sum, s) => sum + (STEP_WEIGHTS[s.name] ?? 0) * stepPercent(s), 0);
-  return Math.floor(done / total);
-}
-
-const STEP_LABELS: Readonly<Record<string, string>> = {
-  trim: "Find pauses",
-  transcript: "Transcript",
-  background: "Background",
-  ai_edit: "AI edit",
-  render: "Make the video",
-};
-
-export function stepLabel(name: string): string {
-  return STEP_LABELS[name] ?? name;
-}
-
-const STEP_STATUS_TEXT: Readonly<Record<string, string>> = {
-  pending: "Waiting",
-  running: "In progress",
-  succeeded: "Done",
-  failed: "Failed",
-  skipped: "Skipped",
-};
-
-export function stepStatusText(
-  step: StepView,
-  options: { readonly jobFailed?: boolean } = {},
-): string {
-  if (step.status === "running" && step.progress !== null) return `${stepPercent(step)}%`;
-  // Spec 0012: a failed step of a job that did not fail is a quiet "Skipped".
-  if (step.status === "failed" && !options.jobFailed) return STEP_STATUS_TEXT.skipped ?? "Skipped";
-  return STEP_STATUS_TEXT[step.status] ?? step.status;
-}
-
-/** Tab title (AC-8): "Processing… · My take · Take Studio", "Ready · My take · Take Studio". */
-export function tabTitle(status: string, title: string): string {
-  const prefix: Readonly<Record<string, string>> = {
-    uploading: "Uploading…",
-    uploaded: "Processing…",
-    processing: "Processing…",
-    ready: "Ready",
-    failed: "Failed",
-    expired: "Expired",
-  };
-  const lead = prefix[status];
-  return lead ? `${lead} · ${title} · Take Studio` : `${title} · Take Studio`;
-}
-
-/** Poll intervals (spec 0004, Flow step 7, AC-8). */
-export const POLL = {
-  takeMs: 2000,
-  /** A ready take that nothing is changing: a slow check that finds a change made elsewhere. */
-  idleMs: 15_000,
-  cardMs: 5000,
-  maxBackoffMs: 10_000,
-} as const;
-
-/** Next delay after `failures` errors in a row: the base, doubling, capped at 10 s. */
-export function pollDelay(baseMs: number, failures: number): number {
-  // The cap never lowers a base that is already above it (the idle check, `POLL.idleMs`).
-  return Math.min(baseMs * 2 ** failures, Math.max(POLL.maxBackoffMs, baseMs));
-}
-
-/** True while a background change is queued or running (the take itself stays Ready). */
-export function backgroundChangeActive(
-  job: { readonly status: string } | null | undefined,
-): boolean {
-  return job?.status === "queued" || job?.status === "running";
-}
-
-/** What the take page says about a background change that failed (spec 0008, AC-5). */
-export function backgroundFailureMessage(failureCode: string | null): string {
-  return failureCode === "background_missing"
-    ? "That background isn't available any more. Pick another one."
-    : "The new background didn't finish. Your video is unchanged. Try again.";
-}
-
-/** The note shown when the take has no usable green screen (spec 0008, AC-3). */
-export const NO_GREEN_SCREEN_NOTE =
-  "We couldn't find a green screen in this take, so we kept the original background.";
-
-/**
- * True while the take page keeps checking the take: while it is uploading or processing, while a
- * background change runs, and, slowly, while it is ready (so a second tab sees a change finished
- * in the first). A failed or expired take is final.
- */
-export function keepPolling(detail: {
-  readonly take: { readonly status: string; readonly expired: boolean };
-  readonly backgroundJob?: { readonly status: string } | null;
-}): boolean {
-  if (isInFlight(detail.take.status) || backgroundChangeActive(detail.backgroundJob)) return true;
-  return detail.take.status === "ready" && !detail.take.expired;
-}
-
-/**
- * The line on the stage while a still preview covers the video (S3S-T14, spec 0011): it says the
- * picture is a still, not a video, and that the pending bar's Render makes it.
- */
-export function previewStatusText(preview: { readonly kind: "making" | "image" }): string {
-  if (preview.kind === "making") return "Making a still preview. Your video is paused.";
-  return "Still preview, not a video. Press \u201cRender\u201d to make it.";
-}
+export {
+  EXPIRY_COUNTDOWN_DAYS,
+  RETENTION_NOTE,
+  TAKE_NOTES,
+  TRANSCRIPT_KEPT,
+  effectiveStatus,
+  expiryNote,
+  failureMessage,
+  formatClock,
+  isInFlight,
+  removedNote,
+  shortDate,
+  statusBadge,
+  videoRemovedNote,
+  type StatusBadge,
+  type TakeStatusName,
+} from "./take-display-status";
+export {
+  overallPercent,
+  stepLabel,
+  stepPercent,
+  stepStatusText,
+  tabTitle,
+  type StepView,
+} from "./take-display-steps";
+export {
+  NO_GREEN_SCREEN_NOTE,
+  POLL,
+  backgroundChangeActive,
+  backgroundFailureMessage,
+  keepPolling,
+  pollDelay,
+  previewStatusText,
+} from "./take-display-poll";
