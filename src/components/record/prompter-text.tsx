@@ -5,8 +5,8 @@ import { cn } from "@/lib/utils";
 import { lineAt } from "@/lib/teleprompter";
 import type { Prompter } from "./use-prompter";
 
-/** Text rows are about this many times the font size tall (leading-snug plus the padding). */
-const ROW_HEIGHT = 1.375;
+/** Text rows are about this many times the font size tall (line height plus the row padding). */
+const ROW_HEIGHT = 1.35;
 
 /**
  * The script over the top of the preview (near the lens on a laptop, at the top of a phone
@@ -64,8 +64,13 @@ export function PrompterText({
         const inside = (position.current - line.startWord) / line.words;
         const rows = Math.max(1, Math.round(node.offsetHeight / (settings.size * ROW_HEIGHT)));
         const shown = reducedMotion ? (Math.floor(inside * rows) / rows) * node.offsetHeight : 0;
+        // The first line rests on the reading line (the top padding), so it is not subtracted.
+        const pad = parseFloat(getComputedStyle(el).paddingTop) || 0;
         el.scrollTop =
-          node.offsetTop - el.offsetTop + (reducedMotion ? shown : inside * node.offsetHeight);
+          node.offsetTop -
+          el.offsetTop -
+          pad +
+          (reducedMotion ? shown : inside * node.offsetHeight);
       }
       if (index !== current.current) {
         current.current = index;
@@ -87,8 +92,12 @@ export function PrompterText({
       data-testid="script-scroll"
       data-check="s2-stage-text"
       data-paused={paused ? "true" : "false"}
-      style={{ fontSize: `${settings.size}px`, scrollBehavior: "auto" }}
-      className="mx-auto max-h-full w-full max-w-3xl overflow-hidden rounded-md bg-nav-glass-dark px-4 py-2 text-center leading-snug font-normal text-on-dark"
+      style={{
+        fontSize: `${settings.size}px`,
+        scrollBehavior: "auto",
+        padding: "calc(38cqh - 0.675em) 24px 70cqh",
+      }}
+      className="rst-ptext mx-auto h-full w-full overflow-hidden text-center font-normal tracking-[-0.005em] text-on-dark-60"
     >
       {lines.map((line, index) => (
         <p
@@ -100,7 +109,9 @@ export function PrompterText({
               ? "bg-glass text-on-dark"
               : showHighlight
                 ? "text-on-dark-75"
-                : null,
+                : !showHighlight && index <= prompter.lineIndex
+                  ? "text-on-dark"
+                  : null,
           )}
         >
           {line.text}

@@ -42,7 +42,6 @@
   overflow: hidden;
   background: var(--color-dark);
 }
-/* The preview breathes a little (draft: 9 s loop); the review shows the take still. */
 @media (prefers-reduced-motion: no-preference) {
   .rst:not(.rvw) .rst-cam video {
     transform-origin: 50% 40%;
@@ -213,12 +212,16 @@
   min-height: 68px;
   display: flex;
   flex-direction: column;
-  padding: 8px 16px;
+  container-type: size;
   border-radius: var(--radius-lg);
   background: var(--color-media-glass);
   backdrop-filter: var(--blur-glass);
   pointer-events: none;
   overflow: hidden;
+}
+.rst-ptext {
+  line-height: 1.35;
+  mask-image: linear-gradient(180deg, transparent 0, #000 22%, #000 60%, transparent 100%);
 }
 .rst-line {
   position: absolute;

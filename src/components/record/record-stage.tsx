@@ -132,6 +132,7 @@ export function RecordStage({
               className="rst-btn rst-back"
               data-round
               aria-label="Back to script"
+              data-check="s2-stage-cta"
               onClick={onBack}
             >
               <Icon icon={ChevronLeft} />

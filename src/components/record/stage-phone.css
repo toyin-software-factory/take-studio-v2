@@ -26,6 +26,11 @@
   .rst-live .rst-prompter {
     height: 32%;
   }
+  /* The draft keeps its camera box tall on a phone in review too, so the big play sits mid screen. */
+  .rvw .rst-cam {
+    aspect-ratio: auto;
+    height: 53svh;
+  }
   .rst-btn.rst-back {
     display: grid;
     place-items: center;
