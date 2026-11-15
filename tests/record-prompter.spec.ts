@@ -54,13 +54,13 @@ test("pause, speed and size work with buttons and keys; the recording never paus
   await page.getByRole("button", { name: "Faster" }).click();
   await expect(page.getByTestId("prompter-speed")).toHaveText("150 wpm");
   await page.getByRole("button", { name: "Larger text" }).click();
-  await expect(page.getByTestId("prompter-size")).toHaveText("54 px");
+  await expect(page.getByTestId("prompter-size")).toHaveText("36 px");
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("ArrowDown");
   await expect(page.getByTestId("prompter-speed")).toHaveText("130 wpm");
   await page.keyboard.press("-");
   await page.keyboard.press("-");
-  await expect(page.getByTestId("prompter-size")).toHaveText("36 px");
+  await expect(page.getByTestId("prompter-size")).toHaveText("28 px");
 
   await page.getByRole("button", { name: "Record" }).click();
   await expect(page.getByTestId("record-timer")).toBeVisible();

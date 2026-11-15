@@ -1,7 +1,7 @@
 /* /record, step 2 on phones (under 810 px): the stage fills the screen like a camera app and the
    settings panel becomes a bottom sheet (draft: is-live, stage__close, sheet). */
-.rst-back,
-.rst-more,
+.rst-btn.rst-back,
+.rst-btn.rst-more,
 .rst-scrim {
   display: none;
 }
@@ -26,7 +26,7 @@
   .rst-live .rst-prompter {
     height: 32%;
   }
-  .rst-back {
+  .rst-btn.rst-back {
     display: grid;
     place-items: center;
     position: absolute;
@@ -34,7 +34,7 @@
     top: 12px;
     z-index: 3;
   }
-  .rst-more {
+  .rst-btn.rst-more {
     display: inline-flex;
   }
   .rst-panel.rst-sheet {
