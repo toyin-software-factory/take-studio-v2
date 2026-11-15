@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const getSession = vi.fn();
-const getDb = vi.fn(async () => ({}));
-const notFound = vi.fn(() => {
-  throw new Error("NEXT_NOT_FOUND");
-});
+const { getSession, getDb, notFound } = vi.hoisted(() => ({
+  getSession: vi.fn(),
+  getDb: vi.fn(async () => ({})),
+  notFound: vi.fn(() => {
+    throw new Error("NEXT_NOT_FOUND");
+  }),
+}));
 vi.mock("@/server/request", () => ({ getSession, getDb }));
 vi.mock("next/headers", () => ({ headers: async () => new Headers() }));
 vi.mock("next/navigation", () => ({ notFound }));
@@ -17,10 +19,11 @@ vi.mock("@/server/analytics/report", () => ({
   cutTest: vi.fn(),
 }));
 
-const page = async () => {
-  const { default: InsightsPage } = await import("./page");
-  return InsightsPage({ searchParams: Promise.resolve({}) });
-};
+// Imported once at the top (vi.mock is hoisted above it), not inside the first test: the cold
+// import of the page module is slow under load and used to eat that test's 5 s timeout.
+import InsightsPage, * as insightsModule from "./page";
+
+const page = async () => InsightsPage({ searchParams: Promise.resolve({}) });
 
 beforeEach(() => {
   getSession.mockReset();
@@ -54,7 +57,7 @@ describe("/insights gate (spec 0016, AC-8)", () => {
   });
 
   it("is dynamic and noindex", async () => {
-    const mod = await import("./page");
+    const mod = insightsModule;
     expect(mod.dynamic).toBe("force-dynamic");
     expect(mod.metadata.robots).toEqual({ index: false, follow: false });
   });
