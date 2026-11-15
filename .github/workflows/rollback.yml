@@ -22,7 +22,7 @@ on:
         options: [list, rollback]
         default: list
       version_id:
-        description: "Worker version ID to roll back to (from a list run). Empty means the version before the current one."
+        description: "Worker version ID to roll back to (from a list run). Required for rollback."
         type: string
         required: false
       reason:
@@ -66,6 +66,10 @@ jobs:
             echo "::error::CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID is not set for the production environment."
             exit 1
           fi
+          if [ "$MODE" = "rollback" ] && [ -z "$VERSION_ID" ]; then
+            echo "::error::A rollback needs a version_id from a list run. An empty one would pick a different target after each attempt, so a re-run could undo the rollback."
+            exit 1
+          fi
           if [ -n "$VERSION_ID" ] && ! printf '%s' "$VERSION_ID" | grep -Eq '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'; then
             echo "::error::version_id must be a Worker version ID (a UUID) from a list run."
             exit 1
@@ -90,14 +94,21 @@ jobs:
         run: |
           # Two parts, because separate workflows cannot share one concurrency queue without one
           # cancelling the other. 1) Deploy stops itself while DEPLOY_FREEZE is true, so no new
-          # Deploy can reach a production write once it is set. 2) With the freeze set, one list of
+          # Deploy can reach a production write once it is set. 2) With the freeze set, a query per unfinished state of
           # runs that are not finished shows any Deploy that started before it. Fail loudly.
           if [ "$DEPLOY_FREEZE" != "true" ]; then
             echo "::error::Set the repository variable DEPLOY_FREEZE to true first (Settings, Secrets and variables, Actions, Variables), then run this rollback again. See docs/runbook.md, section 1."
             exit 1
           fi
-          busy=$(gh run list --workflow deploy.yml --limit 50 --json databaseId,status \
-            --jq '[.[] | select(.status != "completed")] | map(.databaseId) | join(" ")')
+          # Ask the API for each unfinished state directly (not the latest N runs), all pages, so
+          # an old Deploy that is still queued or running cannot fall out of view.
+          busy=""
+          for state in queued in_progress waiting pending requested; do
+            found=$(gh api --paginate "repos/$GH_REPO/actions/workflows/deploy.yml/runs?status=$state&per_page=100" \
+              --jq '.workflow_runs[].id')
+            busy="$busy $found"
+          done
+          busy=$(echo $busy)
           if [ -n "$busy" ]; then
             echo "::error::A Deploy run started before the freeze is still going or waiting (run IDs: $busy). Cancel it in Actions, or wait for it to finish, then run this rollback again."
             exit 1
@@ -111,11 +122,7 @@ jobs:
       - name: Roll back
         if: inputs.mode == 'rollback'
         run: |
-          if [ -n "$VERSION_ID" ]; then
-            npx --yes "$WRANGLER" rollback "$VERSION_ID" --name "$WORKER_NAME" --message "$REASON" --yes
-          else
-            npx --yes "$WRANGLER" rollback --name "$WORKER_NAME" --message "$REASON" --yes
-          fi
+          npx --yes "$WRANGLER" rollback "$VERSION_ID" --name "$WORKER_NAME" --message "$REASON" --yes
 
       - name: Show the deployment now live
         if: inputs.mode == 'rollback'
