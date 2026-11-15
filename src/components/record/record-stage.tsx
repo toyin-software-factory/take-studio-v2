@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { SwitchCamera } from "lucide-react";
+import { ChevronLeft, SlidersHorizontal, SwitchCamera } from "lucide-react";
 import { Icon } from "@/components/ui/icon";
 import { shouldWarn } from "@/lib/recorder-rules";
 import { formatClock } from "@/lib/take-display";
@@ -14,6 +14,7 @@ import { FollowVoiceToggle } from "./follow-voice-toggle";
 import { PrompterText } from "./prompter-text";
 import type { Prompter } from "./use-prompter";
 import { useLevel } from "./use-level";
+import { usePhoneSheet } from "./use-phone-sheet";
 import type { VoiceFollow } from "./use-voice-follow";
 
 /**
@@ -39,6 +40,7 @@ export function RecordStage({
   onCamera,
   onMic,
   onFlip,
+  onBack,
 }: {
   readonly state: RecorderState;
   readonly stream: MediaStream | null;
@@ -59,7 +61,12 @@ export function RecordStage({
   readonly onCamera: (id: string) => void;
   readonly onMic: (id: string) => void;
   readonly onFlip: (() => void) | null;
+  /** Phones: leave the full screen stage for the script step (only before recording). */
+  readonly onBack: () => void;
 }) {
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLElement>(null);
+  const sheet = usePhoneSheet(trigger, panel);
   const level = useLevel(stream);
   const video = useRef<HTMLVideoElement>(null);
   useEffect(() => {
@@ -82,7 +89,7 @@ export function RecordStage({
 
   return (
     <section
-      className="rst"
+      className="rst rst-live"
       aria-label="Camera"
       data-recording={recording}
       data-check="s2-stage"
@@ -118,6 +125,17 @@ export function RecordStage({
             <div aria-hidden="true" className="rst-count" style={{ fontSize: "var(--fs-h3)" }}>
               Connecting voice…
             </div>
+          ) : null}
+          {!recording && !countdown ? (
+            <button
+              type="button"
+              className="rst-btn rst-back"
+              data-round
+              aria-label="Back to script"
+              onClick={onBack}
+            >
+              <Icon icon={ChevronLeft} />
+            </button>
           ) : null}
           <div className="rst-top">
             <span className="rst-pill">
@@ -172,10 +190,32 @@ export function RecordStage({
             </span>
             {recording ? "Stop" : countdown ? "Starting…" : "Record"}
           </button>
-          <div className="rst-dock-l" aria-hidden="true" />
+          <div className="rst-dock-l rst-dock-r">
+            <button
+              ref={trigger}
+              type="button"
+              className="rst-btn rst-more"
+              data-round
+              aria-label="Camera and script settings"
+              aria-expanded={sheet.open}
+              aria-controls="rst-sheet"
+              onClick={() => sheet.setOpen(true)}
+            >
+              <Icon icon={SlidersHorizontal} />
+            </button>
+          </div>
         </div>
       </div>
-      <aside className="rst-panel" aria-label="Recording settings">
+      <div className="rst-scrim" data-on={sheet.open} aria-hidden="true" onClick={sheet.close} />
+      <aside
+        ref={panel}
+        id="rst-sheet"
+        className="rst-panel rst-sheet"
+        data-open={sheet.open}
+        inert={sheet.phone && !sheet.open}
+        aria-label="Recording settings"
+      >
+        <div className="rst-grab" aria-hidden="true" />
         <h3 data-check="s2-stage-heading">Script and camera</h3>
         {prompter.total > 0 ? <PrompterControls prompter={prompter} /> : null}
         <div className="rst-row">

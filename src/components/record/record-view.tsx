@@ -142,6 +142,10 @@ export function RecordView({
           onCamera={recorder.chooseCamera}
           onMic={recorder.chooseMic}
           onFlip={recorder.flip}
+          onBack={() => {
+            recorder.stream?.getTracks().forEach((track) => track.stop());
+            recorder.dispatch({ type: "leave" });
+          }}
         />
       </WithSteps>
     );
