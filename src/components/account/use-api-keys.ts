@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { callApi } from "@/components/takes/browser-io";
 import {
   KEY_COPY,
   type ApiKeyView,
@@ -11,21 +12,10 @@ import {
   withNewKey,
 } from "@/lib/api-keys-screen";
 
-const TIMEOUT_MS = 30_000;
-
 /** One JSON call to our own key routes. Status is null on a network failure or timeout. */
 async function call(path: string, method: "POST" | "DELETE", body?: unknown) {
   try {
-    const response = await fetch(path, {
-      method,
-      credentials: "same-origin",
-      cache: "no-store",
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      headers: body === undefined ? undefined : { "content-type": "application/json" },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
-    const data: unknown = await response.json().catch(() => null);
-    return { status: response.status, data };
+    return await callApi(path, method, body);
   } catch {
     return { status: null, data: null };
   }

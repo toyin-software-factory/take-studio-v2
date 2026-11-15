@@ -24,7 +24,7 @@ Drizzle over Postgres. Spec: [0002 data model](../../docs/specs/0002-data-model/
 
 ## Clients
 
-- Web: `createWebDb` builds a new client per request over Hyperdrive (`max: 5`, `fetch_types: false`). Never keep one at module level; `getDb()` in `src/server/request.ts` is the way in.
+- Web: `createWebDb` builds a new client per request over Hyperdrive (`max: 5`, `fetch_types: false`). Never keep one at module level; `getDb()` in `src/server/request.ts` is the way in (a test enforces it, `src/lint-rules-more.test.ts`).
 - Jobs: `withJobDb` opens and closes a client inside each task (`max: 2`, the Neon pooled URL, first connect retried 3 times for scale to zero).
 
 ## Tests and migrations

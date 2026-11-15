@@ -152,6 +152,78 @@ const eslintConfig = defineConfig([
       ],
     },
   },
+  {
+    // B2-T133: more rules that used to be prose in AGENTS.md. Each uses a rule name of its own, so
+    // none replaces another block's settings (a later block replaces an earlier one of the same rule).
+    files: ["src/**/*.{ts,tsx}"],
+    rules: { "import/no-default-export": "error" },
+  },
+  {
+    // Files whose default export the framework or the Worker runtime requires.
+    files: [
+      "src/app/**/{page,layout,template,default,loading,error,global-error,not-found}.tsx",
+      "src/app/**/{route,robots,sitemap,manifest}.ts",
+      "src/worker.ts",
+      "src/**/*.d.ts",
+    ],
+    rules: { "import/no-default-export": "off" },
+  },
+  {
+    files: ["src/app/error.tsx", "src/app/global-error.tsx"],
+    rules: {
+      "no-restricted-properties": [
+        "error",
+        ...["error", "err"].map((object) => ({
+          object,
+          property: "message",
+          message:
+            "Error pages never show the raw error. Show a fixed friendly sentence and report the error by ID (reportBrowserError).",
+        })),
+      ],
+    },
+  },
+  {
+    files: ["src/components/**/*.{ts,tsx}"],
+    ignores: ["src/**/*.test.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: ["zod", "zod/v3", "zod/v4"].map((name) => ({
+            name,
+            message:
+              'The browser reads responses through zod/mini only: `import * as z from "zod/mini"` (B2-T108).',
+          })),
+          patterns: [
+            {
+              group: testsDir,
+              message:
+                "Code in src/ must not import from tests/: keep shared data in src (B2-T125).",
+            },
+          ],
+        },
+      ],
+      "no-restricted-globals": [
+        "error",
+        {
+          name: "fetch",
+          message:
+            "Browser calls to our API go through `callApi` from @/components/takes/browser-io: it times out after 30 seconds.",
+        },
+      ],
+    },
+  },
+  {
+    // `callApi` itself, and the part upload, which PUTs a file to a presigned R2 link (not our JSON API).
+    // `record/use-voice-follow.ts` hands `fetch` to `fetchRealtimeToken`. B2-T133 left it because
+    // Dwight's /record work (B2-T127) is in flight; B2-T134 removes this exemption.
+    files: [
+      "src/components/takes/browser-io.ts",
+      "src/components/takes/use-background-upload.ts",
+      "src/components/record/use-voice-follow.ts",
+    ],
+    rules: { "no-restricted-globals": "off" },
+  },
   globalIgnores([
     ".next/**",
     ".open-next/**",

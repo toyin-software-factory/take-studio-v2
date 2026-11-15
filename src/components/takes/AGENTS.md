@@ -5,7 +5,7 @@ The library at `/library` (`/` redirects signed in visitors there) and the take 
 ## How it is split
 
 - Pure rules live in `src/lib`, not here: `take-display.ts` (status badges, mm:ss, expiry notes, weighted progress, tab titles, poll delay), `take-api.ts` (zod shapes for the take routes), `upload-client.ts` (the whole upload flow, with its I/O passed in so tests can fake it), `upload-rules.ts`.
-- `browser-io.ts` is the browser side of that I/O: `callApi` (30 second timeout on every call) and `putPart` (XMLHttpRequest, because fetch has no upload progress). Keep new upload calls bounded the same way.
+- `browser-io.ts` is the browser side of that I/O: `callApi` (30 second timeout on every call) and `putPart` (XMLHttpRequest, because fetch has no upload progress). Keep new upload calls bounded the same way (ESLint enforces it: `fetch` is refused in `src/components`, use `callApi`; `src/lint-rules-more.test.ts`).
 - Components are client components. Polling goes through `use-poll.ts` (pauses while the tab is hidden, backs off on errors). `use-now.ts` is the library's clock, so expiry notes stay true on a page left open.
 
 ## Rules worth knowing
