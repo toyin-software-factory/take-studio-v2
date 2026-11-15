@@ -102,6 +102,10 @@ On a small machine (3 GB) add `PIPELINE_START=prod`: it builds the app once and 
 
 The migrate line gives the pipeline's default local database (`take_studio`) its tables, whatever `DATABASE_URL_DIRECT` your shell has. If you override `PIPELINE_DATABASE_URL`, point `DATABASE_URL_DIRECT` at that same database.
 
+## Production runbook
+
+A bad deploy, a bad migration or an incident: [`docs/runbook.md`](docs/runbook.md). It covers the Worker rollback (the `Roll back the Worker` workflow in GitHub Actions), going back a Trigger.dev version, Neon restore, what the R2 lifecycle rules delete, and the first steps in an incident.
+
 ## API real run (before opening the public API)
 
 `pnpm check:api-run` is the one command check for scope row 13 (spec 0018 AC-3, AC-5, AC-7). It uses only the public API in `/api/openapi.json`, with a key you pass in the environment: read usage, upload a small synthetic clip (`tests/fixtures/media/speech-en.mp4`, never a real take), wait until it is ready, list the cuts, undo and redo one, fetch the video and transcript links, delete the take, then wait until the key is refused after you revoke it.
