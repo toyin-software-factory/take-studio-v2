@@ -24,8 +24,8 @@
   pointer-events: none;
   background: radial-gradient(
     60% 60% at 40% 40%,
-    rgb(71 167 202 / 22%),
-    rgb(7 72 104 / 10%) 45%,
+    color-mix(in srgb, var(--color-field-1) 22%, transparent),
+    color-mix(in srgb, var(--color-field-2) 10%, transparent) 45%,
     transparent 75%
   );
 }
@@ -40,7 +40,7 @@
   aspect-ratio: 16 / 9;
   border-radius: var(--radius-md);
   overflow: hidden;
-  background: #000;
+  background: var(--color-dark);
 }
 .rst-cam::after {
   content: "";
@@ -49,10 +49,10 @@
   pointer-events: none;
   background: linear-gradient(
     180deg,
-    rgb(0 0 0 / 55%),
+    color-mix(in srgb, var(--color-dark) 55%, transparent),
     transparent 38%,
     transparent 70%,
-    rgb(0 0 0 / 45%)
+    color-mix(in srgb, var(--color-dark) 45%, transparent)
   );
 }
 .rst-top {
@@ -112,7 +112,7 @@
   z-index: 3;
   display: grid;
   place-items: center;
-  background: rgb(0 0 0 / 60%);
+  background: var(--color-media-glass);
   font-size: var(--fs-display-xl);
   line-height: var(--lh-display);
   font-weight: var(--fw-regular);
@@ -195,11 +195,12 @@
   inset: 12px 12px auto;
   z-index: 1;
   height: 38%;
+  min-height: 68px;
   display: flex;
   flex-direction: column;
   padding: 8px 16px;
   border-radius: var(--radius-lg);
-  background: rgb(0 0 0 / 60%);
+  background: var(--color-media-glass);
   backdrop-filter: var(--blur-glass);
   pointer-events: none;
   overflow: hidden;

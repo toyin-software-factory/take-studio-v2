@@ -121,7 +121,7 @@
 }
 .rst-keys {
   font-size: var(--fs-micro);
-  color: var(--color-on-dark-60);
+  color: var(--color-on-dark-75);
   font-weight: var(--fw-regular);
   line-height: 1.6;
 }
