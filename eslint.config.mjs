@@ -11,6 +11,10 @@ const heavySdks = ["@anthropic-ai/sdk", "@anthropic-ai/sdk/*", "fluent-ffmpeg", 
 const testsDir = ["@/tests", "@/tests/*", "**/tests/**"];
 const workerOnly = ["@opennextjs/cloudflare", "next", "next/*", "react", "react-dom"];
 
+// Selectors for rules that used to be prose in AGENTS.md (see the block before globalIgnores).
+const sonnerSource = String.raw`/^sonner(\/|$)|sonner-impl$/`;
+const fullscreenMethod = "/^(requestFullscreen|webkitRequestFullscreen|webkitEnterFullscreen)$/";
+
 const boundary = (patterns, message, allowTypeImports = false) => ({
   "no-restricted-imports": [
     "error",
@@ -109,6 +113,38 @@ const eslintConfig = defineConfig([
                 "Code in src/ must not import from tests/: keep shared data in src (B2-T125).",
             },
           ],
+        },
+      ],
+    },
+  },
+  {
+    // Rules that used to live only in AGENTS.md, now checked (ROLE.md "Corrections become checks").
+    // The helper files themselves and unit tests are exempt.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: [
+      "src/**/*.test.{ts,tsx}",
+      "src/test/**",
+      "src/components/ui/sonner.tsx",
+      "src/components/ui/sonner-impl.tsx",
+      "src/lib/fullscreen.ts",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        ...[
+          "ImportDeclaration",
+          "ImportExpression",
+          "ExportNamedDeclaration",
+          "ExportAllDeclaration",
+        ].map((node) => ({
+          selector: `${node}[source.value=${sonnerSource}]`,
+          message:
+            "Toasts go through `notify` from @/components/ui/sonner. Importing sonner or sonner-impl directly puts about 32 KB back in the first load (B2-T109).",
+        })),
+        {
+          selector: `MemberExpression[property.name=${fullscreenMethod}]`,
+          message:
+            "Full screen goes through `enterFullscreen` from @/lib/fullscreen, which falls back to the WebKit methods iPhone Safari needs.",
         },
       ],
     },
