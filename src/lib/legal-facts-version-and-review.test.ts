@@ -117,7 +117,7 @@ describe("launch gate wiring and drift flag (spec 0015 AC-8, AC-10)", () => {
     expect(scripts["test:legal-launch"]).toContain("scripts/vitest.legal-launch.config.ts");
     expect(scripts["legal:drift"]).toContain("scripts/legal-drift.ts");
     const normal = readFileSync("vitest.config.ts", "utf8");
-    expect(normal).toContain('include: ["src/**/*.test.ts"]');
+    expect(normal).toContain('include: ["src/**/*.test.ts", "scripts/**/*.test.ts"]');
     const gate = readFileSync("scripts/vitest.legal-launch.config.ts", "utf8");
     expect(gate).toContain("tests/legal-launch/*.check.ts");
     expect(readFileSync("tests/legal-launch/legal-launch.check.ts", "utf8")).toContain(
