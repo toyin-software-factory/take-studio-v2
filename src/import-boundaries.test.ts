@@ -30,6 +30,15 @@ describe("import boundaries (spec 0001)", { timeout: 60_000 }, () => {
     expect(errors[0]).toContain("Jobs import only from src/db, src/lib and src/trigger");
   });
 
+  it("stops jobs from importing anything under tests/ (B2-T125)", async () => {
+    const errors = await boundaryErrors(
+      "src/trigger/ai-eval/example.ts",
+      'import { x } from "../../../tests/cut-quality/cases";\nimport { y } from "@/tests/support/session";\nexport const z = [x, y];\n',
+    );
+    expect(errors).toHaveLength(2);
+    expect(errors[0]).toContain("Jobs must not import from tests/");
+  });
+
   it("lets jobs import shared db and lib code", async () => {
     expect(
       await boundaryErrors(

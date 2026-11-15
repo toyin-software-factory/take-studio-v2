@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { CASE_ENTRIES } from "../../../tests/cut-quality/cases";
+import { CASE_ENTRIES } from "@/lib/cut-quality-cases";
 import type { AiCallResult } from "../take-run/ai-call";
 import { type EvalIo, buildCaseSummary, runAiEval } from "./run-eval";
 

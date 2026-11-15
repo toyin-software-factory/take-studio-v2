@@ -8,6 +8,7 @@ import prettier from "eslint-config-prettier/flat";
 const webOnly = ["@/app", "@/app/*", "@/server", "@/server/*", "**/app/**", "**/server/**"];
 const jobInternals = ["@/trigger", "@/trigger/*", "**/trigger/**"];
 const heavySdks = ["@anthropic-ai/sdk", "@anthropic-ai/sdk/*", "fluent-ffmpeg", "ffmpeg-static"];
+const testsDir = ["@/tests", "@/tests/*", "**/tests/**"];
 const workerOnly = ["@opennextjs/cloudflare", "next", "next/*", "react", "react-dom"];
 
 const boundary = (patterns, message, allowTypeImports = false) => ({
@@ -23,10 +24,23 @@ const eslintConfig = defineConfig([
   prettier,
   {
     files: ["src/trigger/**/*.{ts,tsx}"],
-    rules: boundary(
-      [...webOnly, ...workerOnly],
-      "Jobs import only from src/db, src/lib and src/trigger (spec 0001).",
-    ),
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [...webOnly, ...workerOnly],
+              message: "Jobs import only from src/db, src/lib and src/trigger (spec 0001).",
+            },
+            {
+              group: testsDir,
+              message: "Jobs must not import from tests/: move shared data into src/lib (B2-T125).",
+            },
+          ],
+        },
+      ],
+    },
   },
   {
     files: ["src/app/**/*.{ts,tsx}", "src/server/**/*.{ts,tsx}"],

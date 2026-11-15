@@ -13,7 +13,7 @@ import { resolve } from "node:path";
 import { AI_EDIT, aiEditAnswerSchema, buildAiRequest, validateAiEdit } from "../src/lib/ai-edit";
 import { cutCaseSchema } from "../src/lib/cut-quality";
 import { callClaude } from "../src/trigger/take-run/ai-call";
-import { CASE_ENTRIES } from "../tests/cut-quality/cases";
+import { CASE_ENTRIES } from "../src/lib/cut-quality-cases";
 
 const inCloud = ["CI", "TRIGGER_SECRET_KEY", "TRIGGER_RUN_ID", "TRIGGER_API_URL"].filter(
   (name) => Boolean(process.env[name]) && process.env[name] !== "false",
@@ -39,9 +39,7 @@ let kept = 0;
 for (const entry of CASE_ENTRIES) {
   const parsed = cutCaseSchema.safeParse(entry.raw);
   if (!parsed.success) {
-    console.error(
-      "a case in tests/cut-quality/cases/index.ts fails its schema; run the unit tests",
-    );
+    console.error("a case in src/lib/cut-quality-cases.ts fails its schema; run the unit tests");
     process.exit(1);
   }
   const c = parsed.data;

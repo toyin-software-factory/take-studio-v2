@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CASE_ENTRIES, type CaseEntry } from "../../../tests/cut-quality/cases";
+import { CASE_ENTRIES, type CaseEntry } from "@/lib/cut-quality-cases";
 import { AI_EDIT } from "@/lib/ai-edit";
 import { type CutScore, combineScores } from "@/lib/cut-quality";
 import type { GroupTotals } from "@/lib/ai-eval-record";
