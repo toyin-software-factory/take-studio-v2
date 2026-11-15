@@ -64,6 +64,13 @@ Read its "Heads up" list and clear every item before the task is done: context g
 - If the Mobbin MCP is unavailable, stop and raise it to the lead as a blocker. Do not design without references.
 - A screen with a reference design (a draft in `docs/design/`) is checked against it with design-check (`.claude/skills/design-check`): run its live check while you build, and finish with the judged `check` loop, where Jev decides when the screen matches. At most 5 rounds. When it says the result needs Toyin, stop and raise it (builders to the lead, the lead with `ask_user`). The PR gets a `## Design check` section with the verdict.
 
+## Frontend: modern web platform
+
+- Before you write or change HTML, CSS or browser-side code (dialogs, popovers, menus, forms and validation, layout, animation, scrolling, dark mode, accessibility, Core Web Vitals), search Modern Web Guidance (`.claude/skills/modern-web-guidance`) and follow the guide it returns. It runs from the vendored copy with the command in its `SKILL.md`: no npx, no network.
+- The project's own decisions win where they conflict: specs, `design.md`, `AGENTS.md`, the component library and lint rules come first. Adapt a guide to the stack (React, Next.js, the component library) instead of swapping a library component for hand-written HTML. If a guide suggests a change beyond your task, tell the lead instead of making it.
+- When a guide shaped your code, add a `## Modern Web Guidance` section to the PR body with the skill's one-line note per guide (the terminal reply is not read).
+- `legacy-scan` is for a modernization pass the lead asks for, not for feature tasks.
+
 ## Teamwork
 
 - Start each task with a fresh context (`/clear`) and read from the files, not from memory of earlier tasks.

@@ -1,6 +1,9 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+// Imported at the top, not inside the test: the cold import of the Better Auth route is slow under load
+// and used to eat the 5 s test timeout.
+import * as route from "@/app/api/auth/[...all]/route";
 import { appSetting, usageMonth } from "@/db/schema";
 import { createApiKey } from "@/db/data/api-keys";
 import { type TestDb, createCreator, openTestDb } from "@/db/testing/test-db";
@@ -137,7 +140,6 @@ describe("no route builds its own identity check (AC-5)", () => {
 });
 describe("Better Auth paths are session only (AC-4)", () => {
   it("answers 401 session_required to any bearer, before Better Auth runs", async () => {
-    const route = await import("@/app/api/auth/[...all]/route");
     for (const [method, path] of [
       ["POST", "/api/auth/delete-user"],
       ["POST", "/api/auth/change-email"],
