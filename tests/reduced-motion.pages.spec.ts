@@ -1,14 +1,13 @@
 import { expect as baseExpect, test } from "@playwright/test";
-import { builtWorkerSetting } from "./support/built-env";
 import { expectNoMotion } from "./support/motion";
-import { INSIGHTS_TEST_VIEWER_ID, signIn } from "./support/session";
+import { signIn } from "./support/session";
 import { seedTakes } from "./support/takes";
 import { cleanups, open, section, setup } from "./fixtures/background-take-page";
 
 // B2-T162 (launch UI review item 4), the rest of the main pages. With reduced motion on, nothing
 // is still animating or transitioning after load and after each dialog opens: the take page's
 // Background pane and delete dialog, /record's script step, sign in, Privacy, Terms, not found
-// and /insights for the test viewer. The library, a take page and /record are also in
+// and, in `insights-errors.spec.ts` (same serial group, same made up viewer id), /insights. The library, a take page and /record are also in
 // `reduced-motion.spec.ts`. Synthetic fixtures only.
 const expect = baseExpect.configure({ timeout: 30_000 });
 test.describe.configure({ timeout: 90_000 });
@@ -73,22 +72,4 @@ test("no running animation on /record's script step with a script and the voice 
   await page.getByRole("switch", { name: "Follow my voice" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
   await expectNoMotion(page);
-});
-
-test.describe("/insights", () => {
-  test("no running animation for the test viewer", async ({ page, baseURL }) => {
-    const configured = builtWorkerSetting("INSIGHTS_VIEWER_USER_ID") === INSIGHTS_TEST_VIEWER_ID;
-    if (process.env.CI) expect(configured, "the build must set INSIGHTS_VIEWER_USER_ID").toBe(true);
-    else test.skip(!configured, "the Worker was not built with the test viewer id");
-    const { cleanup } = await signIn(
-      page.context(),
-      baseURL ?? "",
-      "Insights Viewer",
-      INSIGHTS_TEST_VIEWER_ID,
-    );
-    cleanups.push(cleanup);
-    await page.goto("/insights");
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    await expectNoMotion(page);
-  });
 });
