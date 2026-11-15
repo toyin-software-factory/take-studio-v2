@@ -1,16 +1,11 @@
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { background, cut, processingJob, render, take } from "../schema";
-import {
-  type TestDb,
-  createCreator,
-  openTestDb,
-  seedTake,
-  builtInTracker,
-} from "../testing/test-db";
+import { type TestDb, createCreator, openTestDb, seedTake } from "../testing/test-db";
 import type { Db } from "../types";
 import { finish, markRunning, startChangeJob } from "./jobs";
 import { create as createRender } from "./renders";
+import { A, B, built } from "./change-job-test-helpers";
 
 /** Spec 0011 build step 1: the change job carries a cut plan and a background in one free render. */
 let testDb: TestDb;
@@ -19,12 +14,10 @@ beforeAll(async () => {
   testDb = await openTestDb();
   db = testDb.db;
 });
-const built = builtInTracker();
 afterAll(async () => {
   if (testDb) await built.clean(testDb.db);
   await testDb?.close();
 });
-
 async function seedBackground() {
   const id = crypto.randomUUID();
   await db.insert(background).values({
@@ -39,12 +32,7 @@ async function seedBackground() {
   });
   built.track({ id });
   return id;
-}
-
-const A = { startMs: 1000, endMs: 2000 };
-const B = { startMs: 5000, endMs: 6000 };
-
-/** A Ready take with cuts A and B both applied and a latest render that removed them. */
+} /** A Ready take with cuts A and B both applied and a latest render that removed them. */
 async function readyTake(opts: { backgroundId?: string | null; keyed?: boolean } = {}) {
   const creator = await createCreator(db);
   const t = await seedTake(db, creator.id, {
@@ -84,7 +72,6 @@ async function readyTake(opts: { backgroundId?: string | null; keyed?: boolean }
   });
   return { creator, take: t, renderId, cutA, cutB };
 }
-
 const start = (
   ctx: { creator: { id: string }; take: { id: string }; renderId: string },
   over: Partial<Parameters<typeof startChangeJob>[1]> = {},
@@ -96,9 +83,7 @@ const start = (
     cuts: [],
     ...over,
   });
-
 const cutRow = async (id: string) => (await db.select().from(cut).where(eq(cut.id, id)))[0]!;
-
 describe("startChangeJob with a cut plan", () => {
   it("restoring a cut and changing the background is one free job; success applies the plan", async () => {
     const bg = await seedBackground();
@@ -184,124 +169,5 @@ describe("startChangeJob with a cut plan", () => {
       .from(render)
       .where(and(eq(render.takeId, ctx.take.id), eq(render.isLatest, true)));
     expect(latest?.id).toBe(ctx.renderId);
-  });
-});
-
-describe("startChangeJob refusals", () => {
-  it("refuses a stale baseRenderId", async () => {
-    const ctx = await readyTake();
-    expect(
-      await start(ctx, {
-        baseRenderId: crypto.randomUUID(),
-        cuts: [{ cutId: ctx.cutA, applied: false }],
-      }),
-    ).toEqual({ ok: false, error: "stale" });
-  });
-
-  it("refuses nothing changed, including after a failed job", async () => {
-    const ctx = await readyTake();
-    expect(await start(ctx)).toEqual({ ok: false, error: "nothing_changed" });
-    // A plan entry equal to the stored state is no change either.
-    expect(await start(ctx, { cuts: [{ cutId: ctx.cutA, applied: true }] })).toEqual({
-      ok: false,
-      error: "nothing_changed",
-    });
-  });
-
-  it("refuses an unknown cut id and another take's cut", async () => {
-    const ctx = await readyTake();
-    const other = await readyTake();
-    for (const id of [crypto.randomUUID(), other.cutA, "not-a-uuid"]) {
-      expect(await start(ctx, { cuts: [{ cutId: id, applied: false }] })).toEqual({
-        ok: false,
-        error: "not_found",
-      });
-    }
-  });
-
-  it("refuses another creator's take", async () => {
-    const ctx = await readyTake();
-    const stranger = await createCreator(db);
-    expect(
-      await startChangeJob(db, {
-        creatorId: stranger.id,
-        takeId: ctx.take.id,
-        baseRenderId: ctx.renderId,
-        cuts: [{ cutId: ctx.cutA, applied: false }],
-      }),
-    ).toEqual({ ok: false, error: "not_found" });
-  });
-
-  it("refuses a plan that cuts the whole take", async () => {
-    const ctx = await readyTake();
-    await db.insert(cut).values({
-      id: crypto.randomUUID(),
-      takeId: ctx.take.id,
-      startMs: 0,
-      endMs: 10_000,
-      kind: "manual",
-      proposedBy: "creator",
-      applied: false,
-    });
-    const [whole] = await db.select().from(cut).where(eq(cut.takeId, ctx.take.id));
-    const all = await db.select().from(cut).where(eq(cut.takeId, ctx.take.id));
-    const target = all.find((c) => c.endMs === 10_000) ?? whole!;
-    expect(await start(ctx, { cuts: [{ cutId: target.id, applied: true }] })).toEqual({
-      ok: false,
-      error: "invalid",
-    });
-  });
-
-  it("refuses a cut only request when the background the video used is gone (background_missing)", async () => {
-    const bg = await seedBackground();
-    const ctx = await readyTake({ backgroundId: bg, keyed: true });
-    await db.delete(background).where(eq(background.id, bg));
-    expect(await start(ctx, { cuts: [{ cutId: ctx.cutA, applied: false }] })).toEqual({
-      ok: false,
-      error: "background_missing",
-    });
-  });
-
-  it("refuses while a job is active and when the original is gone", async () => {
-    const ctx = await readyTake();
-    const plan = [{ cutId: ctx.cutA, applied: false }];
-    const first = await start(ctx, { cuts: plan });
-    expect(first.ok).toBe(true);
-    expect(await start(ctx, { cuts: plan })).toEqual({ ok: false, error: "job_active" });
-    const gone = await readyTake();
-    await db
-      .update(take)
-      .set({ videoExpiresAt: new Date(Date.now() - 60_000) })
-      .where(eq(take.id, gone.take.id));
-    expect(await start(gone, { cuts: [{ cutId: gone.cutA, applied: false }] })).toEqual({
-      ok: false,
-      error: "original_gone",
-    });
-  });
-
-  it("shares the hourly limit between cut and background changes", async () => {
-    const bg = await seedBackground();
-    const ctx = await readyTake();
-    const now = new Date();
-    for (let i = 0; i < 10; i += 1) {
-      await db.insert(processingJob).values({
-        id: crypto.randomUUID(),
-        takeId: ctx.take.id,
-        kind: "background",
-        status: "failed",
-        failureCode: "internal_error",
-        secondsCharged: 0,
-        createdAt: now,
-      });
-    }
-    for (const over of [
-      { cuts: [{ cutId: ctx.cutA, applied: false }] },
-      { background: { id: bg } },
-    ]) {
-      expect(await start(ctx, { ...over, now })).toEqual({
-        ok: false,
-        error: "background_change_limit",
-      });
-    }
   });
 });
