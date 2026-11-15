@@ -68,7 +68,7 @@ Re run on 2026-11-14 on branch `b2-t93-record-script-verify`, main at `19cae65`.
 1. **Real devices:** iPhone Safari, Android Chrome, desktop Safari and Firefox, for AC-1, AC-5, AC-7 and AC-10, including the background stop note and the lost camera note.
 2. **AC-12 live voice following** in production (Toyin is retrying, C-49).
 3. **AC-13 `ai-eval`** run by Toyin, and then the script cap (65 percent) confirmed or changed.
-4. **AC-4 and AC-14 MP4 length: closed** on 2026-11-15 (main `0b0b8b2`, 25 of 25 pipeline checks pass after #299 ended the render at the plan's length).
+4. **AC-4 and AC-14 MP4 length: check passes** on 2026-11-15 (main `0b0b8b2`, 25 of 25 pipeline checks pass after #299). The recording tolerance is 150 ms (`tests/pipeline/fixtures.ts`), so the old 45 ms gap would also pass; closure needs the measured render and expected durations, or a one frame tolerance.
 5. **A real iPhone MP4** through the pipeline (the fixtures are synthetic).
 
 ## Script aware cuts (tasks 10 to 12)
