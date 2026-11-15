@@ -66,9 +66,9 @@ Read its "Heads up" list and clear every item before the task is done: context g
 
 ## Frontend: modern web platform
 
-- Before you write or change HTML, CSS or browser-side code (dialogs, popovers, menus, forms and validation, layout, animation, scrolling, dark mode, accessibility, Core Web Vitals), search Modern Web Guidance (`.claude/skills/modern-web-guidance`) and follow the guide it returns. It runs from the vendored copy with the command in its `SKILL.md`: no npx, no network.
+- Search Modern Web Guidance only when your change touches one of these: sheets, dialogs and popovers; phone and viewport layout; animation; forms; accessibility. For other UI work, skip it. When you do, search it (`.claude/skills/modern-web-guidance`) and follow the guide it returns. It runs from the vendored copy with the command in its `SKILL.md`: no npx, no network.
 - The project's own decisions win where they conflict: specs, `design.md`, `AGENTS.md`, the component library and lint rules come first. Adapt a guide to the stack (React, Next.js, the component library) instead of swapping a library component for hand-written HTML. If a guide suggests a change beyond your task, tell the lead instead of making it.
-- When a guide shaped your code, add a `## Modern Web Guidance` section to the PR body with the skill's one-line note per guide (the terminal reply is not read).
+- When a guide shaped your code, add a `## Modern Web Guidance` section to the PR body with the skill's one-line note per guide (the terminal reply is not read). List only the guides you applied; leave out guides you read but did not apply, and leave the section out when none shaped the code.
 - `legacy-scan` is for a modernization pass the lead asks for, not for feature tasks.
 
 ## Teamwork
