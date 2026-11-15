@@ -97,7 +97,7 @@ export function PrompterText({
         scrollBehavior: "auto",
         padding: "calc(38cqh - 0.675em) 24px 70cqh",
       }}
-      className="rst-ptext mx-auto h-full w-full overflow-hidden text-center font-normal tracking-[-0.005em] text-on-dark-60"
+      className="rst-ptext mx-auto h-full w-full overflow-hidden text-center font-normal tracking-[-0.005em] text-on-dark-75"
     >
       {lines.map((line, index) => (
         <p
