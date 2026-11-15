@@ -2,7 +2,7 @@
 
 Every page and user-facing feature, by the name Toyin uses, with its route, who can reach it and how to get there. Use these names in specs, proof and messages, and drive agent-browser from this list (see ROLE.md, Teamwork). A PR that adds, renames, moves or removes a page or feature, or changes who can reach it or how, updates this file.
 
-Signed in pages need a session. In e2e tests and local agent-browser runs, sign in with the test helper in `tests/support/session.ts` (seeds a user and sets the session cookie against the local Postgres); never use a real account.
+Signed-in pages need a session. In e2e tests, sign in with the test helper in `tests/support/session.ts` (it seeds a user and sets the session cookie on a Playwright `BrowserContext` against the local Postgres). The helper does not sign in agent-browser sessions. Never use a real account.
 
 ## Public pages
 
@@ -34,7 +34,7 @@ Signed in pages need a session. In e2e tests and local agent-browser runs, sign 
 | Export (downloads) | `/takes/[id]`, Take tools > Export | "Save edited video", "Save original video". | 0004 |
 | Studio background | `/takes/[id]`, Take tools > Background | Pick a studio or your own background, preview it, then apply. | 0008 |
 | Transcript | `/takes/[id]`, Take tools > Transcript | Read the transcript, "Save transcript (TXT)", "Save captions (SRT)". | 0007 |
-| Take details and rename | `/takes/[id]` | "Rename" beside the take's title; Take tools > Details for length, dates and expiry. | 0004, 0013 |
+| Take details and rename | `/takes/[id]` | "Rename" beside the take's title; Take tools > Details for length, dates, expiry and the take's Script (from `/record`). | 0004, 0013 |
 | API keys | `/account/api-keys` | Account menu > API keys. | 0018 |
 | Connected apps (OAuth) | `/account/api-keys` | Listed on the API keys page. | 0019 |
 | App sign in consent | `/oauth/consent` | Reached from an MCP client's sign in flow. | 0019 |

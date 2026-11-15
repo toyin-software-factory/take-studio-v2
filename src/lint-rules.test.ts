@@ -62,12 +62,14 @@ describe("full screen goes through enterFullscreen", { timeout: 60_000 }, () => 
       "export function go(video: HTMLVideoElement & { webkitEnterFullscreen?: () => void }) {",
       "  void video.requestFullscreen();",
       "  video.webkitEnterFullscreen?.();",
+      '  void video["requestFullscreen"]();',
       "}",
       "",
     ].join("\n");
     const errors = await ruleErrors("src/components/takes/example.tsx", code);
-    expect(errors).toHaveLength(2);
-    expect(errors[0]).toContain("Full screen goes through `enterFullscreen`");
+    expect(errors).toHaveLength(3);
+    for (const error of errors)
+      expect(error).toContain("Full screen goes through `enterFullscreen`");
   });
 
   it("lets code call enterFullscreen", async () => {

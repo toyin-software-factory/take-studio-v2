@@ -141,11 +141,14 @@ const eslintConfig = defineConfig([
           message:
             "Toasts go through `notify` from @/components/ui/sonner. Importing sonner or sonner-impl directly puts about 32 KB back in the first load (B2-T109).",
         })),
-        {
-          selector: `MemberExpression[property.name=${fullscreenMethod}]`,
+        ...[
+          `MemberExpression[property.name=${fullscreenMethod}]`,
+          `MemberExpression[computed=true][property.value=${fullscreenMethod}]`,
+        ].map((selector) => ({
+          selector,
           message:
             "Full screen goes through `enterFullscreen` from @/lib/fullscreen, which falls back to the WebKit methods iPhone Safari needs.",
-        },
+        })),
       ],
     },
   },
