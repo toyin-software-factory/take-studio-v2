@@ -1,4 +1,4 @@
-import type { CaseEntry } from "../../../tests/cut-quality/cases";
+import type { CaseEntry } from "@/lib/cut-quality-cases";
 import {
   AI_EDIT,
   type AiCause,

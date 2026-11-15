@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { CASE_ENTRIES } from "../../../tests/cut-quality/cases";
+import { CASE_ENTRIES } from "@/lib/cut-quality-cases";
 import { runAiEval } from "./run-eval";
 import {
   TOKEN,

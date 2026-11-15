@@ -1,4 +1,4 @@
-import { CASE_ENTRIES } from "../../../tests/cut-quality/cases";
+import { CASE_ENTRIES } from "@/lib/cut-quality-cases";
 import type { AiCallResult } from "../take-run/ai-call";
 import { type EvalIo } from "./run-eval";
 
