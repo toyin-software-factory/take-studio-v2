@@ -29,7 +29,12 @@ export function actionsProblem(actions) {
       return `${at}: click takes a selector, or { role, name }`;
     if (
       key === "fill" &&
-      !(v && typeof v.value === "string" && (isText(v.label) || isText(v.selector)))
+      !(
+        v &&
+        typeof v.value === "string" &&
+        // runStep uses a supplied selector first, so that is the field to validate
+        (v.selector !== undefined ? isText(v.selector) : isText(v.label))
+      )
     )
       return `${at}: fill takes { label or selector, value }`;
     if (key === "waitFor" && !isText(v)) return `${at}: waitFor takes a selector`;

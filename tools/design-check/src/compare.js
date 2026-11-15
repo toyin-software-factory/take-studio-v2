@@ -605,10 +605,12 @@ const describe = (m) =>
 
 // Returns [findings, judgeQuestions]. Easings written in different systems (a GSAP name vs a
 // CSS cubic-bezier) cannot be compared in code, so those become questions for the judge.
-export function compareMotion(D, B, vp, tol, { strictMotion = false } = {}) {
+export function compareMotion(D, B, vp, tol, { strictMotion = false, stepPage = false } = {}) {
   const out = [],
     questions = [];
   const labels = new Set(D.elements.map((e) => e.label.split("#")[0]));
+  // On a step page a label the draft hides at that step is not expected in the build either.
+  const shown = new Set(D.elements.filter((e) => e.visible).map((e) => e.label.split("#")[0]));
   const byLabel = (list) => {
     const m = new Map();
     for (const x of list) {
@@ -627,6 +629,7 @@ export function compareMotion(D, B, vp, tol, { strictMotion = false } = {}) {
       const bs = bList.filter((m) => triggerGroup(m.trigger) === trig);
       const id = `${vp}:${label}:motion-${trig}`;
       if (!bs.length) {
+        if (stepPage && !shown.has(label)) continue;
         out.push({
           id,
           source: "code",

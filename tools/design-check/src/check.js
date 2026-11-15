@@ -202,6 +202,7 @@ export async function runRound(cfg, pages, { quick = false } = {}) {
         );
         const [motion, motionQs] = compareMotion(D, B, vp, cfg.tolerance, {
           strictMotion: cfg.motion === "strict",
+          stepPage: Array.isArray(page.designActions),
         });
         pr.findings.push(...motion);
         if (quick) continue;
