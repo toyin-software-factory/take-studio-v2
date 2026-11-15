@@ -42,10 +42,10 @@ Run here: 12 unit and database test files for this spec plus the legal and clean
 
 `pnpm check:api-run` (`scripts/api-real-run.ts`) uses only the public API listed in `/api/openapi.json` and a key from `TAKE_API_KEY`. Synthetic data only: the committed 6 second `tests/fixtures/media/speech-en.mp4`, never a real take. Run on 2026-11-15 against the local stack (`next dev` on port 3100, local Postgres, real R2, Trigger.dev dev and Deepgram), with a made up creator and a key made through the session route `POST /api/keys`. The script made no key route and the key never appears in the output; only IDs, statuses and counts do.
 
-Passing run (13 of 13, exit 0):
+Passing run (13 of 13, exit 0). The openapi step now checks 12 route and method pairs:
 
 ```
-PASS  openapi: the document lists the routes this run uses  HTTP 200  22 paths
+PASS  openapi: the document lists the routes this run uses  HTTP 200  22 paths, 12 checked
 PASS  usage: read the allowance  HTTP 200  3600 s left of 3600
 PASS  upload: start  HTTP 201  take <id>, 1 part(s)
 PASS  upload: send the parts to storage  HTTP 200  1 part sent
@@ -57,6 +57,7 @@ PASS  cuts: redo it  HTTP 202  cut <id> on, 2133 ms removed
 PASS  video: the download link works  HTTP 200  70575 bytes, video/mp4
 PASS  transcript: the text file downloads  HTTP 200  75 bytes, text/plain; charset=utf-8
 PASS  delete: remove the take  HTTP 204  deleted, a read now gives 404
+
 REVOKE  In the web app open the account menu, API keys, and revoke the key used for this run.
 PASS  revoke: the key is refused after the creator revokes it  HTTP 401  invalid_api_key
 OK  13 of 13 steps passed
@@ -67,7 +68,7 @@ The local driver revoked the key through `DELETE /api/keys/{id}` (HTTP 204) when
 Forced failure (the key's last 3 characters changed, exit 1, later steps skipped, nothing was created so nothing to clean):
 
 ```
-PASS  openapi: the document lists the routes this run uses  HTTP 200  22 paths
+PASS  openapi: the document lists the routes this run uses  HTTP 200  22 paths, 12 checked
 FAIL  usage: read the allowance  HTTP 401  expected 200, got invalid_api_key
 FAILED  1 of 2 steps passed
 ```
