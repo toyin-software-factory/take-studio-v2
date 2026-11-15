@@ -93,15 +93,15 @@ export function RecordStage({
             aria-label="Camera preview"
             className="size-full -scale-x-100 object-cover"
           />
-          <div
-            data-check="s2-stage-text"
-            className="pointer-events-none absolute inset-x-3 top-3 bottom-14 z-[1] flex flex-col gap-2"
-          >
-            <PrompterText
-              prompter={prompter}
-              followWordIndex={follow.status === "following" ? follow.wordIndex : null}
-            />
-          </div>
+          {prompter.total > 0 ? (
+            <div data-check="s2-stage-text" data-paused={prompter.paused} className="rst-prompter">
+              <PrompterText
+                prompter={prompter}
+                followWordIndex={follow.status === "following" ? follow.wordIndex : null}
+              />
+              <span className="rst-line" aria-hidden="true" />
+            </div>
+          ) : null}
           {countdown && state.secondsLeft > 0 ? (
             <div aria-hidden="true" className="rst-count">
               {state.secondsLeft}
