@@ -60,7 +60,9 @@ function finding(vp, label, prop, design, build, message, extra = {}) {
 }
 
 // --- structure & style -----------------------------------------------------------
-export function compareElements(D, B, vp, tol) {
+// `stepPage`: the design is measured after click-through steps (`designActions`), so a label the
+// draft keeps hidden in this step (another step's content) is not expected in the build.
+export function compareElements(D, B, vp, tol, { stepPage = false } = {}) {
   const out = [];
   const dMap = new Map(D.elements.map((e) => [e.label, e]));
   const bMap = new Map(B.elements.map((e) => [e.label, e]));
@@ -93,6 +95,7 @@ export function compareElements(D, B, vp, tol) {
   for (const [label, d] of dMap) {
     const b = bMap.get(label);
     if (!b) {
+      if (stepPage && !d.visible) continue;
       out.push(
         finding(
           vp,
