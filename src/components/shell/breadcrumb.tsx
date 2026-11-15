@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import { Icon } from "@/components/ui/icon";
 import { StatusBadge } from "@/components/takes/status-badge";
@@ -13,11 +14,13 @@ import { useCurrentTake } from "./current-take";
  */
 export function Breadcrumb() {
   const current = useCurrentTake();
+  const onRecord = usePathname() === "/record";
+  const trail = current?.title ?? (onRecord ? "Record" : null);
   return (
     <>
       <nav aria-label="Breadcrumb" className="min-w-0 flex-1">
         <ol className="flex min-w-0 items-center gap-2 text-small">
-          {current ? (
+          {trail ? (
             <>
               <li className="shrink-0">
                 <Link
@@ -31,7 +34,7 @@ export function Breadcrumb() {
                 <Icon icon={ChevronRight} size="badge" />
               </li>
               <li aria-current="page" className="min-w-0 truncate font-medium">
-                {current.title}
+                {trail}
               </li>
             </>
           ) : (

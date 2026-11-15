@@ -76,9 +76,7 @@ test("a browser without recording says so; on a desktop there is no phone camera
   await openSetup(page);
   await expect(page.getByText("This browser can't record here")).toBeVisible();
   await expect(page.getByRole("link", { name: "Upload a file instead" })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Record with your phone.s camera/ })).toHaveCount(
-    0,
-  );
+  await expect(page.getByRole("button", { name: "Use phone camera app" })).toHaveCount(0);
 });
 
 test.describe("on a phone", () => {
@@ -99,9 +97,7 @@ test.describe("on a phone", () => {
     });
     await openSetup(page);
     await expect(page.getByText("This browser can't record here")).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /Record with your phone.s camera/ }),
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Use phone camera app" })).toBeVisible();
     await page.getByTestId("native-camera-input").setInputFiles({
       name: "from-camera.mp4",
       mimeType: "video/mp4",

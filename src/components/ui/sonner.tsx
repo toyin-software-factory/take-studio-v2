@@ -27,5 +27,10 @@ export function notify(variant: ToastVariant, options: ToastOptions): void {
   void loadImpl()
     .catch(() => loadImpl())
     .then((m) => m.notifyNow(variant, options))
-    .catch(() => window.alert(options.title));
+    .catch(() => {
+      // The toast could not load: keep Undo reachable through a plain confirm.
+      const { action } = options;
+      if (action && window.confirm(`${options.title}. ${action.label}?`)) action.onClick();
+      else if (!action) window.alert(options.title);
+    });
 }

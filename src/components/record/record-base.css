@@ -1,0 +1,135 @@
+/* /record, step 1 (B2-T126a): page, steps and motion on the project tokens. */
+.rec-page {
+  /* The shell's main already insets 16 to 32 px and 24 to 32 px; top up to the draft's own. */
+  padding: max(0px, calc(clamp(24px, 3vw, 48px) - 32px))
+    calc(clamp(16px, 2.4vw, 40px) - clamp(16px, 2.4vw, 32px)) 64px;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(32px, 4vw, 56px);
+  width: 100%;
+  margin-inline: auto;
+  min-width: 0;
+}
+.rec-steps {
+  display: flex;
+  gap: 4px 28px;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rec-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-regular);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.rec-steps li::before {
+  content: "";
+  width: 24px;
+  height: 1px;
+  background: var(--color-line);
+  transition:
+    width var(--dur-hover) ease,
+    background var(--dur-hover) ease;
+}
+.rec-steps li[aria-current="step"] {
+  color: var(--color-ink);
+}
+.rec-steps li[aria-current="step"]::before {
+  width: 48px;
+  background: var(--color-ink);
+}
+.rec-steps li[data-done] {
+  color: var(--color-ink);
+}
+.rec-steps li[data-done]::before {
+  background: var(--color-ink);
+}
+
+.rec-setup {
+  display: grid;
+  gap: 40px;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 1200px) {
+  .rec-setup {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+    gap: 48px;
+    align-items: start;
+  }
+}
+.rec-eyebrow {
+  font-size: clamp(0.875rem, 0.829rem + 0.19vw, 1rem);
+  line-height: 1.2;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  font-weight: var(--fw-regular);
+  color: var(--color-text-muted);
+  margin-bottom: 16px;
+}
+.rec-h1 {
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+  letter-spacing: var(--ls-heading);
+  font-weight: var(--fw-regular);
+  max-width: 16ch;
+}
+.rec-muted {
+  color: var(--color-text-muted);
+}
+.rec-w {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.12em;
+  margin-bottom: -0.12em;
+}
+.rec-w > span {
+  display: inline-block;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rec-w > span {
+    animation: rec-word 1.5s cubic-bezier(0.25, 1, 0.5, 1) both; /* gsap power4.out, as the draft */
+    animation-delay: calc(var(--i, 0) * var(--stagger-word));
+  }
+  .rec-enter {
+    animation: rec-rise var(--dur-enter) var(--ease-enter) both;
+    animation-delay: calc(var(--i, 0) * var(--stagger));
+  }
+  .rec-flip {
+    animation: rec-flip var(--dur-enter) var(--ease-enter) both;
+    display: inline-block;
+  }
+}
+@keyframes rec-word {
+  from {
+    transform: translateY(105%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes rec-rise {
+  from {
+    opacity: 0;
+    translate: 0 20px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@keyframes rec-flip {
+  from {
+    transform: translateY(60%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
