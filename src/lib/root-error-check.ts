@@ -13,5 +13,11 @@ export async function shouldThrowRootError(
   getHeaders: () => Promise<Pick<Headers, "get">>,
 ): Promise<boolean> {
   if (!galleryEnabled) return false;
-  return (await getHeaders()).get(ROOT_ERROR_CHECK_HEADER) === "1";
+  try {
+    return (await getHeaders()).get(ROOT_ERROR_CHECK_HEADER) === "1";
+  } catch {
+    // Some renders have no request to read, the not found page for an unknown path among them
+    // (it answered 500 here). No headers means no trigger, never an error of its own.
+    return false;
+  }
 }

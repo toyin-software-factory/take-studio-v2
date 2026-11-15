@@ -18,6 +18,13 @@ describe("shouldThrowRootError (B2-T155)", () => {
     expect(read).not.toHaveBeenCalled();
   });
 
+  it("answers false, not an error, when the render has no request to read", async () => {
+    const none = async (): Promise<Pick<Headers, "get">> => {
+      throw new Error("headers was called outside a request scope");
+    };
+    expect(await shouldThrowRootError(true, none)).toBe(false);
+  });
+
   it("uses a header name no real client sends", () => {
     expect(ROOT_ERROR_CHECK_HEADER).toBe("x-root-error-check");
   });

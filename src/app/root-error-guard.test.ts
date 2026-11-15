@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import { shouldThrowRootError } from "@/lib/root-error-check";
 import { isGalleryEnabled } from "./design/gallery";
@@ -17,5 +18,12 @@ describe("the root layout trigger in production", () => {
       expect(await shouldThrowRootError(isGalleryEnabled(env), read)).toBe(false);
     }
     expect(read).not.toHaveBeenCalled();
+  });
+});
+
+describe("the not found page", () => {
+  it("renders per request, so the gallery build's header read cannot turn a 404 into a 500", () => {
+    const source = readFileSync(new URL("./not-found.tsx", import.meta.url), "utf8");
+    expect(source).toMatch(/await connection\(\)/);
   });
 });
