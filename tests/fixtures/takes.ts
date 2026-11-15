@@ -1,5 +1,4 @@
 import { readFileSync } from "node:fs";
-import AxeBuilder from "@axe-core/playwright";
 import { expect as baseExpect, type Page } from "@playwright/test";
 import { signIn } from "../support/session";
 
@@ -22,12 +21,4 @@ export async function signedIn(page: Page, baseURL: string, name?: string) {
   return user;
 }
 
-export async function expectNoSeriousAxeIssues(page: Page) {
-  const results = await new AxeBuilder({ page })
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"])
-    .analyze();
-  const blocking = results.violations.filter(
-    (v) => v.impact === "serious" || v.impact === "critical",
-  );
-  expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
-}
+export { expectNoSeriousAxeIssues } from "../support/axe";
