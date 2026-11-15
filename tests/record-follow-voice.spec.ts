@@ -118,6 +118,13 @@ test("follows the spoken words and ignores an ad lib (AC-12)", async ({ page, ba
   await expect(page.getByText("Voice ready")).toBeVisible();
   expect(await page.evaluate(() => (window as never as { __sent: number }).__sent)).toBe(0);
   await expect(page.getByTestId("record-timer")).toBeVisible();
+  // The axe scan times itself with Date, so it runs before the clock is fixed.
+  await expectNoSeriousAxeIssues(page);
+  // The app drops back to the timer after 5 s with no matched word (FOLLOW_FALLBACK_MS). That
+  // clock is not what this test is about, and on a loaded machine real time decides it. Fix the
+  // page's Date so no real delay can end following; timers keep running.
+  await page.clock.install();
+  await page.clock.setFixedTime(new Date());
 
   const say = (...phrases: string[]) =>
     page.evaluate(
@@ -127,15 +134,11 @@ test("follows the spoken words and ignores an ad lib (AC-12)", async ({ page, ba
   const following = page.getByText("Following your voice.");
   await say("welcome everyone to my short");
   await expect(following).toBeVisible();
-  // The app drops back to the timer after 5 s with no matched word (FOLLOW_FALLBACK_MS), so no slow
-  // step (the axe scan) may sit between a match and the next assertion: the scan runs last. Each
-  // assertion follows its phrase at once, so the real clock cannot decide the outcome.
   await say("so anyway that was a funny thing");
   await expect(following).toBeVisible();
   await expect(page.getByText(/scrolling on a timer/)).toHaveCount(0);
   await say("synthetic demonstration about gardening");
   await expect(following).toBeVisible();
-  await expectNoSeriousAxeIssues(page);
 });
 
 test("a refused token falls back to timed scrolling with a visible note (AC-12)", async ({
