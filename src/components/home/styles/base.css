@@ -1,0 +1,225 @@
+.home {
+  font: var(--fw-light) var(--fs-body) / var(--lh-body) var(--font-sans);
+  letter-spacing: var(--ls-body);
+  color: var(--color-ink);
+  background: var(--color-bg);
+  overflow-x: clip;
+}
+.home *,
+.home *::before,
+.home *::after {
+  box-sizing: border-box;
+}
+:where(.home) h1,
+:where(.home) h2,
+:where(.home) h3,
+:where(.home) p,
+:where(.home) ul,
+:where(.home) dl,
+:where(.home) dd,
+:where(.home) figure {
+  margin: 0;
+  padding: 0;
+}
+:where(.home) ul {
+  list-style: none;
+}
+:where(.home) img,
+:where(.home) video {
+  display: block;
+  max-width: 100%;
+}
+:where(.home) a {
+  color: inherit;
+}
+.home :focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 3px;
+}
+.home [data-theme="dark"] :focus-visible {
+  outline-color: var(--color-accent);
+}
+.h-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.h-container {
+  width: 100%;
+  max-width: calc(var(--container-max) + 2 * var(--container-pad));
+  margin-inline: auto;
+  padding-inline: var(--container-pad);
+}
+
+/* Type (design.md section 3) */
+.h-h1 {
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+  letter-spacing: var(--ls-heading);
+  font-weight: var(--fw-regular);
+}
+.h-h2 {
+  font-size: var(--fs-h2);
+  line-height: var(--lh-heading);
+  letter-spacing: var(--ls-heading);
+  font-weight: var(--fw-regular);
+}
+.h-h3 {
+  font-size: var(--fs-h3);
+  line-height: var(--lh-heading);
+  letter-spacing: var(--ls-heading);
+  font-weight: var(--fw-regular);
+}
+.h-h4 {
+  font-size: var(--fs-h4);
+  line-height: 1.25;
+  letter-spacing: var(--ls-heading);
+  font-weight: var(--fw-regular);
+}
+.h-lead {
+  font-size: var(--fs-lead);
+  line-height: 1.5;
+  font-weight: var(--fw-light);
+  color: var(--color-text-muted);
+}
+.h-eyebrow {
+  font-size: clamp(0.875rem, 0.829rem + 0.19vw, 1rem);
+  line-height: 1.2;
+  letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase;
+  font-weight: var(--fw-regular);
+  color: var(--color-text-muted);
+}
+.h-muted {
+  color: var(--color-text-muted);
+}
+[data-theme="dark"] .h-muted {
+  color: var(--color-on-dark-60);
+}
+[data-theme="dark"] .h-eyebrow {
+  color: var(--color-on-dark-75);
+}
+.h-section {
+  padding-block: var(--section-y);
+}
+.h-section-flush {
+  padding-top: 0;
+}
+.h-head {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 64px;
+  max-width: 960px;
+}
+
+/* Buttons and links (design.md section 5) */
+.h-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  min-width: 44px;
+  padding: 0 24px;
+  border-radius: var(--radius-pill);
+  background: var(--color-ink);
+  color: var(--color-bg);
+  text-decoration: none;
+  font-size: var(--fs-body);
+  line-height: 1;
+  font-weight: var(--fw-regular);
+  transition:
+    background var(--dur-hover) var(--ease-ui),
+    transform var(--dur-fast) ease;
+}
+.h-btn:hover {
+  background: var(--color-ink-soft);
+}
+.h-btn:active {
+  transform: scale(0.98);
+}
+.h-btn-nav {
+  height: 44px;
+}
+.h-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: var(--fs-nav);
+  font-weight: var(--fw-regular);
+  line-height: 1.2;
+  text-transform: lowercase;
+  text-decoration: underline 1px transparent;
+  text-underline-offset: 6px;
+  transition:
+    color var(--dur-color) var(--ease-ui),
+    text-decoration-color var(--dur-color) var(--ease-ui),
+    text-underline-offset var(--dur-color) var(--ease-ui);
+}
+.h-link:hover {
+  text-decoration-color: currentcolor;
+  text-underline-offset: 3px;
+}
+.h-link-plain {
+  text-decoration: underline 1px;
+  text-underline-offset: 4px;
+}
+.h-btn-split {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-decoration: none;
+}
+.h-btn-split-label,
+.h-btn-split-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  border-radius: var(--radius-pill);
+  background: var(--color-ink);
+  color: var(--color-bg);
+  transition: background var(--dur-swap) var(--ease-ui);
+}
+.h-btn-split-label {
+  padding: 0 24px;
+  font-weight: 400;
+  transition:
+    background var(--dur-swap) var(--ease-ui),
+    padding var(--dur-swap) var(--ease-in-out);
+}
+.h-btn-split-icon {
+  width: 48px;
+  border-radius: var(--radius-round);
+  transition:
+    background var(--dur-swap) var(--ease-ui),
+    translate var(--dur-swap) var(--ease-in-out);
+}
+.h-btn-split-icon svg {
+  rotate: -45deg;
+  transition: rotate var(--dur-swap) var(--ease-in-out);
+}
+.h-btn-split:hover .h-btn-split-label,
+.h-btn-split:focus-visible .h-btn-split-label {
+  padding: 0 32px;
+}
+.h-btn-split:hover .h-btn-split-icon,
+.h-btn-split:focus-visible .h-btn-split-icon {
+  translate: -4px 0;
+}
+.h-btn-split:hover .h-btn-split-icon svg,
+.h-btn-split:focus-visible .h-btn-split-icon svg {
+  rotate: 0deg;
+}
+.h-btn-split:hover .h-btn-split-label,
+.h-btn-split:hover .h-btn-split-icon {
+  background: var(--color-ink-soft);
+}
+[data-theme="dark"] .h-btn-split-label,
+[data-theme="dark"] .h-btn-split-icon {
+  background: var(--color-on-dark);
+  color: var(--color-ink);
+}

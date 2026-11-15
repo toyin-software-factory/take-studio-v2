@@ -1,0 +1,216 @@
+/* ---------- 3. Tailwind utilities that read the semantic names per element ---------- */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-panel: var(--panel);
+  --color-hover-surface: var(--hover-surface);
+  --color-selected-surface: var(--selected-surface);
+  --color-text: var(--text);
+  --color-border-strong: var(--border-strong);
+  --color-primary-fg: var(--primary-fg);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-active: var(--primary-active);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-active: var(--danger-active);
+  --color-danger-bg: var(--danger-bg);
+  --color-success-bg: var(--success-bg);
+  --color-warning-bg: var(--warning-bg);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  --color-disabled-bg: var(--disabled-bg);
+  --color-disabled-fg: var(--disabled-fg);
+  --color-focus: var(--focus);
+  --color-backdrop: var(--backdrop);
+
+  --color-stage-bg: var(--stage-bg);
+  --color-stage-raised: var(--stage-raised);
+  --color-stage-border: var(--stage-border);
+  --color-stage-text: var(--stage-text);
+  --color-stage-text-muted: var(--stage-text-muted);
+  --color-stage-accent: var(--stage-accent);
+  --color-stage-focus: var(--stage-focus);
+  --color-stage-hover: var(--stage-hover);
+
+  /* Type (design.md §3). Weight 300 is for 16 px and up, so the small sizes carry 400. */
+  --text-display-xl: var(--fs-display-xl);
+  --text-display-xl--line-height: var(--lh-display);
+  --text-display-xl--letter-spacing: var(--ls-display);
+  --text-display: var(--fs-display);
+  --text-display--line-height: var(--lh-tight);
+  --text-display--letter-spacing: -0.02em;
+  --text-h1: var(--fs-h1);
+  --text-h1--line-height: var(--lh-h1);
+  --text-h1--letter-spacing: var(--ls-heading);
+  --text-h1--font-weight: var(--fw-regular);
+  --text-h2: var(--fs-h2);
+  --text-h2--line-height: var(--lh-heading);
+  --text-h2--letter-spacing: var(--ls-heading);
+  --text-h2--font-weight: var(--fw-regular);
+  --text-h3: var(--fs-h3);
+  --text-h3--line-height: var(--lh-heading);
+  --text-h3--letter-spacing: var(--ls-heading);
+  --text-h3--font-weight: var(--fw-regular);
+  --text-h4: var(--fs-h4);
+  --text-h4--line-height: 1.25;
+  --text-h4--letter-spacing: var(--ls-heading);
+  --text-h4--font-weight: var(--fw-regular);
+  --text-lead: var(--fs-lead);
+  --text-lead--line-height: var(--lh-body);
+  --text-lead--letter-spacing: var(--ls-body);
+  --text-body: var(--fs-body);
+  --text-body--line-height: var(--lh-body);
+  --text-body--letter-spacing: var(--ls-body);
+  --text-small: var(--fs-small);
+  --text-small--line-height: 1.43;
+  --text-small--letter-spacing: var(--ls-body);
+  --text-small--font-weight: var(--fw-regular);
+  --text-caption: var(--fs-micro);
+  --text-caption--line-height: 1.33;
+  --text-caption--letter-spacing: var(--ls-eyebrow);
+  --text-caption--font-weight: var(--fw-regular);
+  /* shadcn components use xs, sm, base, lg: aligned to the scale above. */
+  --text-xs: var(--fs-micro);
+  --text-xs--line-height: 1.33;
+  --text-xs--font-weight: var(--fw-regular);
+  --text-sm: var(--fs-small);
+  --text-sm--line-height: 1.43;
+  --text-sm--font-weight: var(--fw-regular);
+  --text-base: var(--fs-body);
+  --text-base--line-height: var(--lh-body);
+  --text-lg: var(--fs-lead);
+  --text-lg--line-height: var(--lh-body);
+
+  --container-content: 75rem;
+  --container-transcript: 72ch;
+  --container-dialog-sm: 25rem;
+  --container-dialog-md: 35rem;
+  --container-dialog-lg: 45rem;
+
+  --shadow-card: var(--elevation-card);
+  --shadow-overlay: var(--elevation-overlay);
+
+  --animate-indeterminate: indeterminate 1.2s var(--ease-ui) infinite;
+
+  @keyframes indeterminate {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(300%);
+    }
+  }
+  --default-transition-duration: var(--dur-fast);
+  --default-transition-timing-function: var(--ease-ui);
+}
+
+@layer base {
+  html {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+  }
+
+  body {
+    margin: 0;
+    font-size: var(--fs-body);
+    font-weight: var(--fw-light);
+    line-height: var(--lh-body);
+    letter-spacing: var(--ls-body);
+    background-color: var(--bg);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  * {
+    border-color: var(--border);
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar) transparent;
+  }
+
+  /* design.md §10: 2 px ring, 3 px offset. Ink on light, lime on dark (--focus). */
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+
+  /*
+   * Text links (design.md §5): the colour is inherited, the underline is transparent at rest
+   * and shows on hover with a smaller offset. Running text keeps a visible underline, because
+   * ink on ink body text is only recognisable as a link by it.
+   */
+  :where(p, main li) a {
+    color: inherit;
+    text-decoration: underline 1px currentColor;
+    text-underline-offset: 3px;
+    transition:
+      color var(--dur-color) var(--ease-ui),
+      text-decoration-color var(--dur-color) var(--ease-ui),
+      text-underline-offset var(--dur-color) var(--ease-ui);
+  }
+
+  :where(p, main li) a:hover {
+    text-underline-offset: 2px;
+  }
+
+  /* Weight 300 only at 16 px and up; small and bold text stays at 400 or 500. */
+  :where(small, label, button, th, caption) {
+    font-weight: var(--fw-regular);
+  }
+}
+
+/* Times, durations and sizes: tabular numbers in the same family (design.md §3). */
+@utility mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Reduced motion (design.md §10): no slide ins, skeleton shimmer stops. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/*
+ * Print (spec 0015 AC-12): the legal pages print as plain black on white, the chrome (header,
+ * table of contents) is hidden in the markup with `print:hidden`, headings stay with their text,
+ * and an external link shows its address on paper.
+ */
+@media print {
+  body {
+    background: #fff;
+    color: #000;
+    font-size: 11pt;
+  }
+  [data-legal-copy] h2 {
+    break-after: avoid;
+  }
+  [data-legal-copy] li,
+  [data-legal-copy] p {
+    break-inside: avoid;
+  }
+  [data-legal-copy] a[href^="http"]::after {
+    content: " (" attr(href) ")";
+    overflow-wrap: anywhere;
+  }
+}

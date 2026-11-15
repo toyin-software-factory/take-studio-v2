@@ -1,0 +1,78 @@
+/* ---------- 1. design.md §2 colour, type family, radius, shadow, motion tokens ---------- */
+@theme static {
+  --color-*: initial;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  /* Light shell */
+  --color-bg: #ffffff;
+  --color-surface: #f6f6f6;
+  --color-ink: #030303;
+  --color-ink-soft: #252528;
+  --color-text-muted: #4f4f4f;
+  --color-line: #d2cdd8;
+  --color-line-strong: #767676;
+  --color-hairline: rgb(0 0 0 / 8%);
+
+  /* Dark stage */
+  --color-dark: #010101;
+  --color-dark-2: #0f0f0f;
+  --color-on-dark: #ffffff;
+  --color-on-dark-75: rgb(255 255 255 / 75%);
+  --color-on-dark-60: rgb(255 255 255 / 60%);
+  --color-on-dark-20: rgb(255 255 255 / 20%);
+  --color-line-dark: rgb(255 255 255 / 10%);
+  --color-ring-dark: rgb(255 255 255 / 15%);
+  --color-glass: rgb(0 0 0 / 30%);
+  --color-nav-glass-light: rgb(255 255 255 / 72%);
+  --color-nav-glass-dark: rgb(0 0 0 / 60%);
+
+  /* Accent: UI only, never text on white */
+  --color-accent: #cdff59;
+
+  /* WebGL light only, never used in UI (homepage) */
+  --color-field-1: #47a7ca;
+  --color-field-2: #074868;
+  --color-field-3: #011836;
+
+  /* Status colours (design.md §0), small labels and icons only, always with an icon and label */
+  --color-success: #2e6b3f;
+  --color-warning: #8a5a00;
+  --color-error: #9b0d18;
+
+  /* Type family and weights */
+  --font-sans:
+    var(--font-inter-tight), "Inter Tight", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+
+  /* Radius */
+  --radius-xs: 5px;
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 42px;
+
+  /* Elevation and effects */
+  --shadow-fan: -28px 8px 40px 0 rgb(0 0 0 / 35%);
+  --shadow-lift: 0 16px 36px -10px rgb(0 0 0 / 45%), 0 2px 6px 0 rgb(0 0 0 / 20%);
+
+  /* Easing */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-enter: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --ease-reveal: cubic-bezier(0.33, 1, 0.68, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-ui: cubic-bezier(0.44, 0, 0.56, 1);
+  --ease-loop: cubic-bezier(0.37, 0, 0.63, 1);
+  --ease-snap: cubic-bezier(0.35, 0, 0, 1);
+  --ease-settle: cubic-bezier(0.215, 0.61, 0.355, 1);
+
+  /* Breakpoints and 4 px spacing base (p-1 = 4, p-2 = 8, p-4 = 16, p-6 = 24) */
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+  --spacing: 0.25rem;
+}
