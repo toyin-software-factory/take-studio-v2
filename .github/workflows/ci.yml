@@ -263,16 +263,10 @@ jobs:
   # It runs beside the E2E shards, so it is not on the critical path, and it is NOT in the
   # `check` job's needs: a new, shared runner measurement stays advisory until it has a clean
   # record over several runs (a flaky red check would block merges for no product reason). The
-  # `before-t105` variant is temporary: it puts back the pre B2-T105 page code so one run gives a
-  # before and after pair for docs/reviews/launch-speed-review.md.
   lighthouse:
-    name: Lighthouse mobile (${{ matrix.variant }})
+    name: Lighthouse mobile
     runs-on: ubuntu-24.04
     timeout-minutes: 25
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [current, before-t105]
     services:
       postgres:
         image: postgres:17-alpine
@@ -297,8 +291,6 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
-          # The before variant needs the old commit, so it takes the full history.
-          fetch-depth: ${{ matrix.variant == 'before-t105' && '0' || '1' }}
 
       - uses: pnpm/action-setup@v4
 
@@ -308,13 +300,6 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-
-      - name: Put back the pre B2-T105 page code (before variant)
-        if: matrix.variant == 'before-t105'
-        run: |
-          git checkout d8e57f5 -- src/lib/sign-in-state.ts src/app/library/page.tsx src/app/record/page.tsx 'src/app/takes/[id]/page.tsx'
-          # the new unit test imports EMAIL_PATTERN, which the old file lacks, and the build typechecks tests
-          rm src/lib/sign-in-state.test.ts
 
       - name: Apply migrations
         run: pnpm db:migrate
@@ -345,8 +330,6 @@ jobs:
 
       - name: Lighthouse run
         timeout-minutes: 15
-        env:
-          LH_VARIANT: ${{ matrix.variant }}
         # Same container recipe as the e2e step: host networking, the runner's Node and pnpm
         # mounted read only, no apt. The Worker preview starts inside the container, the script
         # waits for it, then measures and stops it.
@@ -355,7 +338,7 @@ jobs:
           node_dir="$(dirname "$(dirname "$(command -v node)")")"
           docker run --rm --network host --ipc=host --init \
             --user "$(id -u):$(id -g)" -e HOME=/tmp \
-            -e CI -e LH_VARIANT -e GITHUB_STEP_SUMMARY -e PNPM_HOME -e NODE_DIR="$node_dir" -e DATABASE_URL -e DATABASE_URL_DIRECT \
+            -e CI -e GITHUB_STEP_SUMMARY -e PNPM_HOME -e NODE_DIR="$node_dir" -e DATABASE_URL -e DATABASE_URL_DIRECT \
             -e CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE -e NEXT_TELEMETRY_DISABLED \
             -v "$GITHUB_WORKSPACE":/work -v "$pnpm_dir":"$pnpm_dir":ro -v "$node_dir":"$node_dir":ro \
             -v "$(dirname "$GITHUB_STEP_SUMMARY")":"$(dirname "$GITHUB_STEP_SUMMARY")" -w /work \
@@ -364,7 +347,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: lighthouse-reports-${{ matrix.variant }}
+          name: lighthouse-reports
           path: lighthouse-reports/
           if-no-files-found: ignore
           retention-days: 14

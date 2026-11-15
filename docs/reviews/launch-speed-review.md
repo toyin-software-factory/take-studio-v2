@@ -12,7 +12,8 @@ The sandbox cannot run a browser (no Playwright, no Lighthouse, no Chrome), so t
 | What is in the shared chunks | Measured | Searched each chunk for library signatures (zod, Sentry, Better Auth, Radix, sonner, lucide). |
 | Fonts, images, motion, layout shift setup | Read from the code | Compared with the vercel react best practices guidance. |
 | Server data waterfalls | Read from the code, fixed | See "Server waterfalls". |
-| LCP, CLS, TBT or INP, long tasks | **Not measured. Needs a CI run or a real phone.** | See "Numbers that need a CI or phone run" at the end. |
+| LCP, CLS, TBT | Measured in CI (B2-T106), before and after B2-T105 | Lighthouse mobile on the built Worker, median of 3 runs per page. See "Lighthouse numbers". |
+| INP, long tasks | **Not measured. Needs a real phone.** | See "Numbers that need a phone run" at the end. |
 
 All build numbers are the production build with `PIPELINE_BUILD=1` (it only skips type errors). Nothing here used production data or a production sign in (C-31).
 
@@ -34,7 +35,7 @@ JS is first load JavaScript from `route-bundle-stats.json`, raw KB / gzip KB.
 | `/takes/[id]` | 929 / 287 | 929 / 288 | none (within rounding) |
 | `/record` | 897 / 280 | 897 / 280 | none |
 
-LCP, CLS and TBT or INP: before and after are both "not measured here" for every page (see the last section). The JS numbers are the proxy: less first load JavaScript is less to download, parse and run on a mid phone, which is what moves TBT and INP.
+LCP, CLS and TBT are in "Lighthouse numbers" below. INP and long tasks are not measured. The JS numbers are the proxy: less first load JavaScript is less to download, parse and run on a mid phone, which is what moves TBT and INP.
 
 ### Landing (`/`)
 
@@ -79,13 +80,37 @@ Before, on `/library`, `/record` and `/takes/[id]`: page read, then `AppShell`'s
 4. **Sentry** is already after idle and out of the first load. Nothing to do.
 5. **Take page polling and the player** need a profile on a real mid phone before anyone changes them.
 
-## Numbers that need a CI or phone run
+## Lighthouse numbers (B2-T106)
 
-These cannot come from this sandbox. Recommended, in this order:
+What was measured: the new CI job (`Lighthouse mobile`) builds the Worker, starts the preview with the synthetic test account and a seeded ready take, and runs Lighthouse 12 with the mobile profile (simulated slow 4G, 4x CPU slowdown). Each page runs 3 times and the median is shown. The "before" leg is the same commit with the four B2-T105 page files put back to their pre B2-T105 versions (`d8e57f5`: the zod email check on the landing and sign in pages, and the serial reads on the library, take and record pages). Both legs ran in the same CI run (43655994721) on shared GitHub runners, so only large gaps mean anything.
 
-1. **Lighthouse mobile in CI.** Add a job in the pinned Playwright image that builds the Worker, starts `pnpm preview` with the synthetic test account, and runs `lighthouse` (mobile profile, simulated slow 4G, 4x CPU slowdown) on `/`, `/sign-in`, `/library`, a seeded ready take and `/record`. It gives LCP, CLS and TBT per page. The signed in pages need the test session the Playwright setup already makes (`tests/support/session.ts`).
-2. **A real mid phone** (an Android phone around the Pixel 6a class) for INP and long tasks: `/record` through a recording (the prompter and the level meter), and the take page while it polls and plays. `docs/reviews/launch-device-pass.md` already has the device run; add "note anything that feels slow or janky" to its motion rows.
-3. After 1 and 2, compare with the JS numbers above: the landing and sign in pages should already show the effect of this PR in TBT.
+| Page | LCP before / after | CLS before / after | TBT before / after |
+|---|---|---|---|
+| Landing `/` | 3.41 s / 3.13 s | 0.000 / 0.000 | 99 ms / 133 ms |
+| Sign in `/sign-in` | 1.39 s / 1.86 s | 0.000 / 0.000 | 35 ms / 44 ms |
+| Library `/library` | 2.15 s / 2.58 s | 0.001 / 0.000 | 58 ms / 137 ms |
+| Take page `/takes/:id` | 3.68 s / 3.64 s | 0.000 / 0.000 | 148 ms / 173 ms |
+| Record `/record` | 2.75 s / 2.49 s | 0.000 / 0.000 | 116 ms / 144 ms |
+
+How to read it:
+
+- **No measurable gain, and the order is not stable.** Some pages look a little better after and some a little worse, in both LCP and TBT. That is the noise of a shared runner, not an effect of the change. The 106 KB of zod gzip (30 KB) removed from the landing and sign in pages is a small share of a page that Lighthouse already loads in about 1 to 3 seconds under simulation, and a single 3 run median cannot show it.
+- **The take page is measured in its unavailable state.** The seeded take's video files are not in the CI bucket, so the player shows its own unavailable message. Its LCP and TBT do not include a playing video.
+- **CLS is 0 everywhere**, before and after, as the code design intends.
+- **What the numbers do give us** is a baseline: the take page is the slowest (LCP about 3.6 s, TBT about 150 to 170 ms), then the landing page (LCP above 3 s, driven by the hero image). Those are the pages to look at first.
+- The server waterfall fix (one database round trip less) cannot show here: the CI database is on the same machine, so a round trip costs almost nothing. On Neon through Hyperdrive it is real, but this job cannot measure it.
+- To get a trustworthy before and after, the next step is more runs per page or a quieter machine, or the real phone run below. The JS numbers earlier in this file remain the firm result.
+
+## B2-T107: take page split tried, not kept
+
+- **Delete dialog split tried, not kept.** The delete dialog is the only panel on `/takes/[id]` that appears only after a click. Loaded with `next/dynamic` (prefetch on hover and focus of its triggers), its chunk is 2.6 KB and it leaves the first load, but the chunk graph reshuffled and the route went from 929 to 932 KB raw (288 KB gzip both), so there is no gain and it was dropped. The Export panel is the default tab, so it is visible on first paint. The background picker is not on this page (it is in the upload area). The preview overlay and the transcript downloads are tiny. Radix Dialog is already in the shared frame chunk, so only the dialog's own code could move. So bigger item 2 above is mostly closed: nothing on the take page is big enough to be worth a split.
+
+## Numbers that need a phone run
+
+These cannot come from CI. Recommended:
+
+1. **A real mid phone** (an Android phone around the Pixel 6a class) for INP and long tasks: `/record` through a recording (the prompter and the level meter), and the take page while it polls and plays. `docs/reviews/launch-device-pass.md` already has the device run; add "note anything that feels slow or janky" to its motion rows.
+2. Compare with the Lighthouse baseline above.
 
 ## Choices made (C-30)
 

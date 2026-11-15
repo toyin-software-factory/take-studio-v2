@@ -149,7 +149,7 @@ function table(results: readonly Result[]): string {
       : `| ${r.page.name} | FAILED: ${r.problem} | | | | |`,
   );
   return [
-    `## Lighthouse mobile (median of ${RUNS} runs${process.env.LH_VARIANT ? `, ${process.env.LH_VARIANT}` : ""})`,
+    `## Lighthouse mobile (median of ${RUNS} runs)`,
     "",
     "Simulated slow 4G, 4x CPU slowdown, mobile screen. Report only: a score never fails the build, an error or a page that does not load does. The runner is shared, so read differences of a few percent as noise.",
     "",
