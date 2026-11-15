@@ -13,8 +13,8 @@ export const MAX_LINES = 250;
 
 const CHECKED = /\.(ts|tsx|js|mjs|css)$/;
 
-/** Generated or vendored output: migrations and their meta, build folders. Lockfiles are not .ts, .js or .css, so CHECKED already skips them (a name match on "lock" would also skip clock.ts). */
-const GENERATED = [/^drizzle\//, /(^|\/)\.next\//, /(^|\/)node_modules\//];
+/** Generated or vendored output: migrations and their meta, build folders, vendored agent skills (`.claude/skills/`). Lockfiles are not .ts, .js or .css, so CHECKED already skips them (a name match on "lock" would also skip clock.ts). */
+const GENERATED = [/^drizzle\//, /(^|\/)\.next\//, /(^|\/)node_modules\//, /^\.claude\/skills\//];
 
 /**
  * Folders kept out on purpose. `tools/design-check/` is a standalone dev tool that is not part
