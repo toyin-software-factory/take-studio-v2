@@ -44,3 +44,12 @@ test("--build with an unknown --page fails, and no --build changes nothing", () 
   );
   assert.equal(pagesFromFlags(pages, { page: "home" }), pages);
 });
+
+test("a page with no name is picked by the slug of its design, as resolvePages does", () => {
+  const unnamed = [{ design: "docs/design/Take Page.html", build: PLACEHOLDER }, pages[0]];
+  const out = pagesFromFlags(unnamed, { page: "docs-design-take-page-html", build: "http://a/b" });
+  assert.equal(out[0].build, "http://a/b");
+  assert.equal(out[1].build, "/");
+  assert.equal(unnamed[0].build, PLACEHOLDER, "the input is not changed");
+  assert.equal(unnamed[0].name, undefined);
+});
