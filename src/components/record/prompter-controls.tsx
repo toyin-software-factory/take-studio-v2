@@ -1,7 +1,6 @@
 "use client";
 
 import { Minus, Pause, Play, Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import type { Prompter } from "./use-prompter";
 
@@ -10,23 +9,34 @@ import type { Prompter } from "./use-prompter";
  * Down, + and -) do the same thing. Pausing the script never pauses the recording. Changes are
  * announced politely once, never every second.
  */
+/** The round Pause or Resume script button that sits in the dock beside Record. */
+export function PauseButton({ prompter }: { readonly prompter: Prompter }) {
+  const { paused, run } = prompter;
+  return (
+    <button
+      type="button"
+      className="rst-btn"
+      data-round
+      data-check="s2-stage-cta-4"
+      aria-label={paused ? "Resume script" : "Pause script"}
+      aria-keyshortcuts="P"
+      data-testid="prompter-toggle"
+      onClick={() => run("toggle")}
+    >
+      <Icon icon={paused ? Play : Pause} />
+    </button>
+  );
+}
+
 export function PrompterControls({ prompter }: { readonly prompter: Prompter }) {
-  const { settings, paused, run, announcement } = prompter;
+  const { settings, run, announcement } = prompter;
   return (
     <div
       role="group"
       aria-label="Script controls"
       data-testid="prompter-controls"
-      className="flex flex-wrap items-center gap-x-4 gap-y-2"
+      className="flex flex-col gap-4"
     >
-      <Button
-        variant="secondary"
-        onClick={() => run("toggle")}
-        aria-keyshortcuts="P"
-        data-testid="prompter-toggle"
-      >
-        <Icon icon={paused ? Play : Pause} /> {paused ? "Resume script" : "Pause script"}
-      </Button>
       <Stepper
         label="Speed"
         value={`${settings.wpm} wpm`}
@@ -45,7 +55,7 @@ export function PrompterControls({ prompter }: { readonly prompter: Prompter }) 
         onMore={() => run("larger")}
         testId="prompter-size"
       />
-      <p className="w-full text-small text-muted-foreground">
+      <p className="rst-keys">
         Keys: P pause, Up and Down speed, + and − size. The recording keeps going.
       </p>
       <p role="status" className="sr-only">
@@ -73,16 +83,31 @@ function Stepper({
   readonly testId: string;
 }) {
   return (
-    <div role="group" aria-label={label} className="flex items-center gap-2">
-      <Button variant="secondary" size="icon" aria-label={lessLabel} onClick={onLess}>
-        <Icon icon={Minus} />
-      </Button>
-      <span className="mono min-w-20 text-center text-small" data-testid={testId}>
-        {value}
-      </span>
-      <Button variant="secondary" size="icon" aria-label={moreLabel} onClick={onMore}>
-        <Icon icon={Plus} />
-      </Button>
+    <div role="group" aria-label={label} className="rst-row">
+      <span>{label}</span>
+      <div className="rst-stepper">
+        <button
+          type="button"
+          className="rst-btn"
+          data-round
+          aria-label={lessLabel}
+          onClick={onLess}
+        >
+          <Icon icon={Minus} />
+        </button>
+        <output className="mono" data-testid={testId}>
+          {value}
+        </output>
+        <button
+          type="button"
+          className="rst-btn"
+          data-round
+          aria-label={moreLabel}
+          onClick={onMore}
+        >
+          <Icon icon={Plus} />
+        </button>
+      </div>
     </div>
   );
 }

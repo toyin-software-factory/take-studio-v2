@@ -1,7 +1,6 @@
 "use client";
 
 import { SwitchCamera } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Label } from "@/components/ui/label";
 import {
@@ -67,7 +66,7 @@ export function DevicePickers({
   readonly onFlip: (() => void) | null;
 }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+    <div className="flex flex-col gap-3">
       <Picker
         id="record-camera"
         label="Camera"
@@ -85,9 +84,9 @@ export function DevicePickers({
         onChange={onMic}
       />
       {onFlip ? (
-        <Button variant="secondary" size="lg" disabled={locked} onClick={onFlip}>
+        <button type="button" className="rst-btn" disabled={locked} onClick={onFlip}>
           <Icon icon={SwitchCamera} /> Flip camera
-        </Button>
+        </button>
       ) : null}
     </div>
   );
