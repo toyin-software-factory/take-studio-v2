@@ -5,6 +5,7 @@ import {
   grantRequestBody,
   grantResponseSchema,
   mintRefusal,
+  retryAfterSeconds,
 } from "./realtime-rules";
 
 describe("realtime token rules (spec 0021 AC-12)", () => {
@@ -28,5 +29,15 @@ describe("realtime token rules (spec 0021 AC-12)", () => {
     expect(grantResponseSchema.safeParse({ access_token: "t", expires_in: 60 }).success).toBe(true);
     expect(grantResponseSchema.safeParse({ access_token: "", expires_in: 60 }).success).toBe(false);
     expect(grantResponseSchema.safeParse({ access_token: "t" }).success).toBe(false);
+  });
+});
+
+describe("retryAfterSeconds", () => {
+  it("is the time until the oldest mint leaves the window, rounded up, at least 1", () => {
+    const base = { windowMs: REALTIME_TOKEN.hourMs, nowMs: 1_000_000 };
+    expect(retryAfterSeconds({ ...base, oldestMintedAtMs: base.nowMs - 50 * 60 * 1000 })).toBe(600);
+    expect(retryAfterSeconds({ ...base, oldestMintedAtMs: base.nowMs })).toBe(3600);
+    expect(retryAfterSeconds({ ...base, oldestMintedAtMs: base.nowMs - 3_599_500 })).toBe(1);
+    expect(retryAfterSeconds({ ...base, oldestMintedAtMs: base.nowMs - 4_000_000 })).toBe(1);
   });
 });
