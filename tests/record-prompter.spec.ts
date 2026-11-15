@@ -48,19 +48,19 @@ test("pause, speed and size work with buttons and keys; the recording never paus
   const controls = page.getByTestId("prompter-controls");
   await expect(controls).toBeVisible();
   await expect(page.getByTestId("prompter-speed")).toHaveText("140 wpm");
-  await expect(page.getByTestId("prompter-size")).toHaveText("44 px");
+  await expect(page.getByTestId("prompter-size")).toHaveText("28 px");
   await expectNoSeriousAxeIssues(page);
 
   await page.getByRole("button", { name: "Faster" }).click();
   await expect(page.getByTestId("prompter-speed")).toHaveText("150 wpm");
   await page.getByRole("button", { name: "Larger text" }).click();
-  await expect(page.getByTestId("prompter-size")).toHaveText("54 px");
+  await expect(page.getByTestId("prompter-size")).toHaveText("36 px");
   await page.keyboard.press("ArrowDown");
   await page.keyboard.press("ArrowDown");
   await expect(page.getByTestId("prompter-speed")).toHaveText("130 wpm");
   await page.keyboard.press("-");
   await page.keyboard.press("-");
-  await expect(page.getByTestId("prompter-size")).toHaveText("36 px");
+  await expect(page.getByTestId("prompter-size")).toHaveText("28 px");
 
   await page.getByRole("button", { name: "Record" }).click();
   await expect(page.getByTestId("record-timer")).toBeVisible();
@@ -103,7 +103,7 @@ test("speed, size and the script draft are remembered on the device (AC-2)", asy
   await expect(page.getByLabel("Script (optional)")).toHaveValue(SCRIPT);
   await page.getByRole("button", { name: "Turn on camera" }).click();
   await expect(page.getByTestId("prompter-speed")).toHaveText("150 wpm");
-  await expect(page.getByTestId("prompter-size")).toHaveText("54 px");
+  await expect(page.getByTestId("prompter-size")).toHaveText("36 px");
 });
 
 test("reduced motion steps by line with a highlight (AC-9)", async ({ page, baseURL }) => {
@@ -131,7 +131,7 @@ test("the Record step has the prompter with its green line, the dock and the Scr
   await open(page, baseURL!);
   await toStage(page);
   const stage = page.locator('[data-check="s2-stage"]');
-  const text = page.locator('[data-check="s2-stage-text"]');
+  const text = page.locator(".rst-prompter");
   await expect(text).toBeVisible();
   await expect(text.locator(".rst-line")).toHaveCount(1);
   await expect(text).toHaveAttribute("data-paused", "false");
@@ -139,7 +139,7 @@ test("the Record step has the prompter with its green line, the dock and the Scr
   // The dock holds flip, pause and Record; the panel holds the settings, not the pause button.
   const pause = page.locator('[data-check="s2-stage-cta-4"]');
   await expect(pause).toHaveAccessibleName("Pause script");
-  await expect(page.locator('[data-check="s2-stage-cta"]')).toHaveAccessibleName("Record");
+  await expect(page.locator(".rst-rec")).toHaveAccessibleName("Record");
   await expect(page.locator(".rst-panel").getByTestId("prompter-toggle")).toHaveCount(0);
   const heading = page.locator('[data-check="s2-stage-heading"]');
   await expect(heading).toHaveText("Script and camera");
@@ -149,5 +149,56 @@ test("the Record step has the prompter with its green line, the dock and the Scr
   await pause.click();
   await expect(pause).toHaveAccessibleName("Resume script");
   await expect(text).toHaveAttribute("data-paused", "true");
+  await expectNoSeriousAxeIssues(page);
+});
+
+async function toReview(page: Page) {
+  await toStage(page);
+  await page.getByRole("button", { name: "Record" }).click();
+  await expect(page.getByTestId("record-timer")).toBeVisible();
+  await page.waitForTimeout(2000);
+  await page.getByRole("button", { name: "Stop" }).click();
+  await expect(page.locator('[data-check="s2-stage-cta-2"]')).toBeVisible();
+}
+
+test("the Review step has the Your take panel, big play and the three actions (B2-T129)", async ({
+  page,
+  baseURL,
+}) => {
+  await open(page, baseURL!);
+  await toReview(page);
+  await expect(page.locator('[data-check="s2-stage"]')).toBeVisible();
+  await expect(page.locator('[data-check="s2-stage-media"]')).toBeVisible();
+  await expect(page.locator('[data-check="s2-stage-heading-2"]')).toContainText(
+    "recorded. Nothing has left this device yet.",
+  );
+  await expect(page.locator('[data-check="s2-stage-cta-2"]')).toHaveAccessibleName(
+    "Play your take",
+  );
+  await expect(page.getByRole("button", { name: "Use this take" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Record again" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Save to device" })).toBeVisible();
+  await expect(page.getByText("we cut the pauses, add your studio")).toBeVisible();
+  await expectNoSeriousAxeIssues(page);
+
+  const video = page.getByLabel("Your recording");
+  await expect(video).not.toHaveAttribute("controls", "");
+  await page.getByRole("button", { name: "Play your take" }).click();
+  await expect(page.getByRole("button", { name: "Play your take" })).toHaveCount(0);
+  await expect(video).toHaveAttribute("controls", "");
+});
+
+test("the Review step shows progress and Cancel while a take uploads (B2-T129)", async ({
+  page,
+  baseURL,
+}) => {
+  await open(page, baseURL!);
+  await page.route("**/api/uploads", () => new Promise(() => {})); // never answers: stays sending
+  await toReview(page);
+  await page.getByRole("button", { name: "Use this take" }).click();
+  await expect(page.locator('[data-check="s2-stage-heading-2"]')).toContainText("Sending it now.");
+  await expect(page.getByRole("progressbar")).toBeVisible();
+  await expect(page.getByText("Uploading. Keep this tab open.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Use this take" })).toHaveCount(0);
   await expectNoSeriousAxeIssues(page);
 });

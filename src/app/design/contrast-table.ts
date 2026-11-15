@@ -29,6 +29,7 @@ export const surfaces: Readonly<Record<string, Surface>> = {
   primary: { stack: [{ token: "color-ink" }], under: [WHITE] },
   "primary-hover": { stack: [{ token: "color-ink-soft" }], under: [WHITE] },
   lime: { stack: [{ token: "color-accent" }], under: [WHITE] },
+  "white-fill": { stack: [{ token: "color-on-dark" }], under: [WHITE] },
   stage: { stack: [{ token: "color-dark" }], under: [BLACK] },
   "stage-raised": { stack: [{ token: "color-dark-2" }], under: [BLACK] },
   // The sticky app top bar: glass over whatever scrolls under it, the dark stage included (B2-T136).
@@ -88,6 +89,12 @@ export const pairs: readonly Pair[] = [
     reason: "primary button label on hover",
   },
   { fg: "color-ink", on: "lime", kind: "text", reason: "text on the lime accent fill" },
+  {
+    fg: "color-ink",
+    on: "white-fill",
+    kind: "text",
+    reason: "Use this take label on the Review step, white fill over the dark stage",
+  },
   { fg: "color-on-dark", on: "stage", kind: "text", reason: "text on the stage" },
   { fg: "color-on-dark-75", on: "stage", kind: "text", reason: "body text on the stage" },
   { fg: "color-on-dark-60", on: "stage", kind: "text", reason: "meta text on the stage" },

@@ -10,7 +10,7 @@ export const TELEPROMPTER = {
   wpmStep: 10,
   wpmDefault: 140,
   sizes: [28, 36, 44, 54, 64],
-  sizeDefault: 44,
+  sizeDefault: 28,
   scriptMaxChars: 20_000,
   followFallbackMs: 5000,
 } as const;
