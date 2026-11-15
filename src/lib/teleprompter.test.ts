@@ -97,4 +97,9 @@ describe("commandForKey", () => {
     expect(commandForKey("p", null, { ...none, ctrl: true })).toBeNull();
     expect(commandForKey("-", null, { ...none, meta: true })).toBeNull();
   });
+  it("never fires while a modal dialog is open", () => {
+    expect(commandForKey("p", null, { ...none, modalOpen: true })).toBeNull();
+    expect(commandForKey("ArrowUp", null, { ...none, modalOpen: true })).toBeNull();
+    expect(commandForKey("p", null, { ...none, modalOpen: false })).toBe("toggle");
+  });
 });

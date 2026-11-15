@@ -74,6 +74,16 @@ export function holdCountdown(args: {
   return args.enabled && args.status === "connecting" && args.heldMs < VOICE_HOLD_MS;
 }
 
+/**
+ * May audio go to the voice service? Not once following has fallen back with the socket gone
+ * (`dropped`): a socket that opens after the hold ran out must stay silent, because the screen
+ * already says following is unavailable. Only `dropped` counts, never `off`, because the state
+ * the hook reads can still be the one from before this connection started.
+ */
+export function followAudioAllowed(state: FollowState): boolean {
+  return !state.dropped;
+}
+
 export function followReducer(state: FollowState, event: FollowEvent): FollowState {
   switch (event.type) {
     case "start":

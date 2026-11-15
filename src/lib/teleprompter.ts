@@ -137,8 +137,15 @@ export type PrompterCommand = "toggle" | "faster" | "slower" | "larger" | "small
 export function commandForKey(
   key: string,
   target: { readonly tagName?: string; readonly isContentEditable?: boolean } | null,
-  modifiers: { readonly ctrl: boolean; readonly alt: boolean; readonly meta: boolean },
+  modifiers: {
+    readonly ctrl: boolean;
+    readonly alt: boolean;
+    readonly meta: boolean;
+    /** A modal dialog is open: the stage behind it must not react. */
+    readonly modalOpen?: boolean;
+  },
 ): PrompterCommand | null {
+  if (modifiers.modalOpen) return null;
   if (modifiers.ctrl || modifiers.alt || modifiers.meta) return null;
   const tag = target?.tagName?.toUpperCase();
   if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable) {
