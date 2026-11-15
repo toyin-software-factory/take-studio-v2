@@ -34,13 +34,15 @@ export type GatePage = {
 
 const pct = (score: number) => String(Math.round(score * 100));
 
+const ALL_CATEGORIES: readonly GatedCategory[] = ["accessibility", "best-practices", "seo"];
+
 function scoreViolations(page: GatePage): readonly string[] {
-  const categories: readonly GatedCategory[] = page.indexable
-    ? ["accessibility", "best-practices", "seo"]
-    : ["accessibility", "best-practices"];
-  return categories.flatMap((category) => {
+  return ALL_CATEGORIES.flatMap((category) => {
     const score = page.scores[category];
+    // A null score fails everywhere, SEO on a noindex page included.
     if (score === null) return [`${page.name}: ${category} has no score, so it cannot be checked`];
+    // A noindex page is not held to the SEO minimum; its failing audit list is checked instead.
+    if (category === "seo" && !page.indexable) return [];
     if (score < MIN_SCORE[category]) {
       return [
         `${page.name}: ${category} is ${pct(score)}, the least allowed is ${pct(MIN_SCORE[category])}`,

@@ -57,7 +57,7 @@ The job then fails when a quality score drops below these recorded numbers (medi
 | Landing `/` | 100 | 100 | 100 |
 | Sign in, Library, Take page, Record (noindex on purpose) | 100 | 100 | not scored; `is-crawlable` must be the only failing SEO audit (SEO reads 63, and 66 on the library) |
 
-- A score Lighthouse cannot compute (n/a) fails the gate, because it cannot be checked.
+- A score Lighthouse cannot compute (n/a) fails the gate in every category, SEO on noindex pages included, because it cannot be checked.
 - A noindex page that stops failing `is-crawlable` also fails the gate: it may have lost its noindex.
 - Performance (LCP, CLS, TBT, the performance score) stays report only.
 - To change a number: edit `MIN_SCORE` or `NOINDEX_ALLOWED_SEO_FAILURES` in `scripts/lighthouse-gate.ts`, the test `src/lib/lighthouse-gate.test.ts`, and this table, in one PR.

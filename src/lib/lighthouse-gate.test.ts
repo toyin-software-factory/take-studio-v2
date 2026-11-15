@@ -44,6 +44,11 @@ describe("the Lighthouse score gate (B2-T114)", () => {
     expect(gateViolations([page])).toEqual([expect.stringContaining("lost its noindex")]);
   });
 
+  it("rejects a null SEO score on a noindex page too", () => {
+    const page = { ...library, scores: { ...clean, seo: null } };
+    expect(gateViolations([page])).toEqual([expect.stringContaining("seo has no score")]);
+  });
+
   it("treats a missing score as a failure, not a pass", () => {
     const page = { ...landing, scores: { ...clean, "best-practices": null } };
     expect(gateViolations([page])).toEqual([expect.stringContaining("has no score")]);
