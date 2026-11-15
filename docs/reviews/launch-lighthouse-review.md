@@ -33,7 +33,7 @@ Nothing real needed fixing, so before and after are the same. Everything that di
 
 The short header button label on `/` is now "Upload" instead of "Start" (`src/components/home/nav.tsx`, the `h-cta-short` span). Michael approved the copy (C-30, the recommended option). It is one word, says what the button does, and is not on Lighthouse's vague list. The wide label still says "Upload a take". Below 480 px the Sign in link is hidden, so the bar holds only the brand and this button, and the shorter word fits the same space without wrapping. The phone width test in `tests/home-motion.spec.ts` now looks for the link named "Upload".
 
-Result: check the `link-text` audit and the landing SEO score in the Lighthouse job on the B2-T112 PR. Expected: `link-text` passes and landing SEO goes from 92 to 100 (the 8 points came from this one audit). The measured number is added to the PR once the job has run.
+Result (Lighthouse job on PR #314): landing `/` accessibility 100, best practices 100, SEO 100 (was 92). The landing page no longer appears in the failed audits list, so `link-text` passes. The other pages are unchanged: `is-crawlable` on the noindex pages and the 503 console errors on the seeded take, both explained above.
 
 ## Where Lighthouse and axe disagree
 
