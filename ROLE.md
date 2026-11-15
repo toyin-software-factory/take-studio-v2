@@ -45,6 +45,15 @@ Upload a video take; get pauses trimmed, green screen swapped for a studio backg
 - The PR body has a `## Sync` section: the files `/sync` changed and how each "Heads up" item was cleared, or `No changes`. A prose-only PR writes `Not needed: docs only`. The `pr-sync` check fails while that section is missing or empty, and it reruns when the PR body is edited.
 - The lead never merges a PR without a filled `## Sync` section and a green `pr-sync` check, and doesn't need Toyin to remind it.
 
+## Corrections become checks
+
+Written rules are the weakest guard: agents miss them, over-apply them, or explain their way around them. Code, lint rules and tests hold every time, so the team spends its effort there first.
+
+- When Toyin, the lead or CodeRabbit corrects a code pattern (a wrong import, a browser API called directly instead of through its helper, a shortcut around the architecture), the fix makes it impossible to repeat: an ESLint rule (`no-restricted-imports`, `no-restricted-syntax` or `no-restricted-properties`) whose message says what to do instead, or a test that fails on the old pattern. Add a test that proves the rule fires. A line in `AGENTS.md` is only for what no check can catch.
+- A new ban removes the existing copies in the same PR. If there are too many for one PR, the ban starts as a warning or covers only the clean folders, so CI stays green, and the lead creates the cleanup task right away; the task ends by making the ban an error everywhere. Agents copy what the codebase already does, so old copies keep teaching the old way.
+- When `/sync` or `/audit` writes an `AGENTS.md` rule a check could enforce ("never import X", "always go through Y"), tell the lead, who creates a task to turn it into a check and notes "(ESLint enforces it)" on that line.
+- Never get past a check with a disable (`eslint-disable`, `@ts-ignore`, `@ts-expect-error`, `.skip`) or with a code comment explaining why the shortcut is fine. Fix the root cause. If the check is wrong for this case, ask the lead; a disable the lead agrees to says why after `--`.
+
 ## /sync is not fire and forget
 
 Read its "Heads up" list and clear every item before the task is done: context gap → run `/audit` on that area; stale or assumed spec → tell the lead, who runs `/architect`; conflict in curated docs → tell the lead, who decides and edits.
@@ -61,6 +70,7 @@ Read its "Heads up" list and clear every item before the task is done: context g
 - One task per branch and per PR. PR title `[TASK-ID] …`. Only touch the files your task lists; ask the lead before changing shared files.
 - Every acceptance criterion in the spec is the contract the PR is checked against.
 - Every PR that changes something a user can see or do shows proof, made with agent-browser (`.claude/skills/agent-browser`): screenshots at desktop and phone width, and a short video for any flow (forms, navigation, animation). Publish with `scripts/pr-proof.sh`, which puts the files on the `pr-assets` branch, and paste its output under `## Proof` in the PR body, mapped to the acceptance criteria. A PR whose task is done but has no proof isn't ready to merge. A change with nothing to show in a browser (a background job, a script, a library) shows the relevant test or command output in the PR instead. Docs-only and pure config PRs need no proof.
+- `docs/feature-map.md` lists every page and user-facing feature by the name Toyin uses, with its route, who can reach it and how to get there. Use its names in specs, proof and messages, and drive agent-browser from it. A PR that adds, renames, moves or removes a page or feature, or changes who can reach it or how, updates it.
 - Run the project's lint, typecheck and test commands before every push. Leave the full production build (`next build` and the like) to CI unless your task changes the build itself (build config, dependencies, bundling): see "Stay reachable while you work".
 - Wait for CI and CodeRabbit on your latest push, then fix their comments or reply why not. CodeRabbit puts out of diff comments in the review body, so read that too.
 - Retry limit: three attempts at a failing check or a CodeRabbit loop. Then stop and raise it with `ask_user` (lead) or to the lead (builders), with what you tried.

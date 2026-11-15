@@ -34,7 +34,7 @@ The `pnpm db:*` scripts (via `drizzle.config.ts`) refuse to connect to any non l
 
 ## Specs
 
-Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md` or `docs/specs/NNNN-title/index.md`. Scope lives in `docs/scope/scope.md`.
+Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md` or `docs/specs/NNNN-title/index.md`. Scope lives in `docs/scope/scope.md`. Pages and features by name, with routes and how to reach them: [docs/feature-map.md](docs/feature-map.md).
 
 ## Rules
 
