@@ -25,6 +25,8 @@ export default function GlobalError({
   return (
     <html lang="en" className={interTight.variable}>
       <body>
+        {/* React hoists this into the head; a client component cannot export metadata. */}
+        <title>Something went wrong · Take Studio</title>
         <header className="mx-auto flex w-full max-w-content items-center px-[clamp(16px,2.4vw,32px)] py-5">
           {/* A plain link: this page stands alone, so it must not depend on the router. */}
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- a full load is the point here */}
