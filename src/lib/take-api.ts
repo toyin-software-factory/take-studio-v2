@@ -93,6 +93,8 @@ export const takeDetailSchema = z.object({
     null,
   ),
   noGreenScreen: z._default(z.boolean(), false),
+  /** B2-T156: the source frame rate the render snapped its cuts to; null when unknown. */
+  sourceFps: z._default(z.nullable(z.number()), null),
   backgroundJob: z._default(
     z.nullable(
       z.object({

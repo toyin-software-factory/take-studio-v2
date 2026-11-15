@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { ORIGINAL_BACKGROUND } from "@/lib/background-api";
+import { renderedRemovedRanges } from "@/lib/cut-playback";
 import {
   type Edits,
   NO_EDITS,
@@ -79,6 +80,16 @@ export function useCutReview(
   const readOnly =
     goneOriginal || detail?.originalAvailable === false || originalState.kind === "gone";
 
+  // B2-T156: the render snaps its cuts to the source frame grid, so map the playhead with the
+  // ranges it really removed, not the stored milliseconds.
+  const storedRemoved = detail?.latestRender?.removedRanges;
+  const originalMs = detail?.take.durationMs ?? 0;
+  const sourceFps = detail?.sourceFps ?? null;
+  const renderRanges = useMemo(
+    () => renderedRemovedRanges(storedRemoved ?? [], originalMs, sourceFps),
+    [storedRemoved, originalMs, sourceFps],
+  );
+
   const edit = (fn: (e: Edits) => Edits) => {
     if (locked || readOnly) return;
     render.clearMessage();
@@ -116,7 +127,7 @@ export function useCutReview(
       setNames((n) => (n[id] === name ? n : { ...n, [id]: name })),
     items,
     ranges: pendingRanges(cuts, edits),
-    renderRanges: detail?.latestRender?.removedRanges ?? [],
+    renderRanges,
     hasEdits: pendingNow,
     cutEdits,
     locked,
