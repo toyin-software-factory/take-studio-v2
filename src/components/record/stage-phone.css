@@ -26,10 +26,25 @@
   .rst-live .rst-prompter {
     height: 32%;
   }
-  /* The draft keeps its camera box tall on a phone in review too, so the big play sits mid screen. */
+  /* Review is full screen on a phone too (draft): the take fills the top, the panel sits below. */
+  .rvw {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-modal);
+    border-radius: 0;
+    padding: 0;
+    height: 100svh;
+    grid-template-rows: minmax(0, 1fr) auto;
+    overflow-y: auto;
+  }
+  .rvw .rst-col {
+    height: 100%;
+  }
   .rvw .rst-cam {
     aspect-ratio: auto;
-    height: 53svh;
+    flex: 1;
+    min-height: 0;
+    border-radius: 0;
   }
   .rst-btn.rst-back {
     display: grid;
