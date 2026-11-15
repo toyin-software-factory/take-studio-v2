@@ -41,7 +41,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 17 | Product analytics | Launch | done |
 | 18 | Email sign in and take ready email | Slice 1 | done |
 | 19 | Cut quality measurement | Launch | done |
-| 20 | Record with script | Slice 8 | in-progress |
+| 20 | Record with script | Slice 8 | done |
 | 21 | Upload first, sign in after | Slice 9 | planned |
 | 23 | Before and after on the homepage | Slice 10 | planned |
 
@@ -327,7 +327,7 @@ Spec [0017](../specs/0017-cut-quality-measurement.md)
 
 ## Slice 8: Record with a script
 
-### 20. Record with script · in-progress
+### 20. Record with script · done
 Record a take inside Take Studio (phone or laptop camera and mic) while a teleprompter shows the creator's script near the lens, then send it straight into the normal upload and processing. Toyin approved it from creator feedback (C-46); it replaces the "Record in the browser" growth idea.
 **Done when:** a creator can paste a script, record with a teleprompter they control (speed, pause, text size), stop, and watch the take go through the normal pipeline; the voice follows the script by itself; and the AI keeps the best attempt of a repeated or fluffed line.
 - [x] Design it (spec): `/architect Record with script`
@@ -339,6 +339,8 @@ Record a take inside Take Studio (phone or laptop camera and mic) while a telepr
    - [x] Script aware cuts, cut quality cases and legal copy (tasks 10 to 12)
 - [x] Verify it: `/check verify Record with script`
 - [x] Test it: `/test Record with script` (backend in B2-T138; UI in B2-T147: `src/components/record/recorder-media.test.ts`, `tests/record-lifecycle.spec.ts`, `tests/record-sheet.spec.ts`, `tests/record-review-upload.spec.ts`; the rest was already covered by `tests/record*.spec.ts`)
+- [x] Review it: `/check review Record with script` (`docs/reviews/0021-record-with-script-review.md`, B2-T159)
+- [x] Document it: `/document Record with script` (CHANGELOG.md entry, docs/releases/record-with-script.md, B2-T159)
 Spec [0021](../specs/0021-record-with-script/index.md)
 
 ## Slice 9: Upload first, sign in after

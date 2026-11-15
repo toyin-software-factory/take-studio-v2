@@ -42,6 +42,7 @@ export async function handleGet(
     latestRender,
     background,
     noGreenScreen,
+    sourceFps,
     aiEdit,
     suggestion,
     backgroundJob,
@@ -63,6 +64,8 @@ export async function handleGet(
     // background change (for the "Try again" message).
     background: background ? { ...background, keyed: true } : null,
     noGreenScreen,
+    // B2-T156: the frame rate the render snapped its cuts to (the page maps the playhead with it).
+    sourceFps,
     backgroundJob,
     // Spec 0012: how the AI edit ended (done, unavailable, or unknown for older takes).
     aiEdit,

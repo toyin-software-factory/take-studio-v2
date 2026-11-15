@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, inArray, isNull, ne } from "drizzle-orm";
 import { z } from "zod";
-import { background, jobStep, processingJob, render, take } from "@/db/schema";
+import { background, jobStep, processingJob, render, take, transcript } from "@/db/schema";
 import type { Executor, JobStep, ProcessingJob, Render, Take } from "@/db/types";
 import { type Result, err, ok } from "@/lib/result";
 
@@ -21,6 +21,8 @@ export type TakeDetail = {
   readonly latestJob: (ProcessingJob & { readonly steps: readonly JobStep[] }) | null;
   /** The background the finished video is on (green replaced); null when it is the original. */
   readonly background: { readonly id: string | null; readonly name: string } | null;
+  /** B2-T156: the source frame rate the render snapped its cuts to (transcript row); null when no transcript. */
+  readonly sourceFps: number | null;
   /** The take has no usable green screen, so its background request kept the original (AC-3). */
   readonly noGreenScreen: boolean;
   /** Spec 0012: how the AI edit of the latest finished full run ended; null when unknown. */
@@ -112,6 +114,11 @@ export async function getForCreator(
     .from(render)
     .where(and(eq(render.takeId, takeId), eq(render.isLatest, true)));
 
+  const [fpsRow] = await db
+    .select({ sourceFps: transcript.sourceFps })
+    .from(transcript)
+    .where(eq(transcript.takeId, takeId));
+
   const keyedBackground =
     latestRender?.keyed && latestRender.backgroundName
       ? { id: latestRender.backgroundId, name: latestRender.backgroundName }
@@ -130,6 +137,7 @@ export async function getForCreator(
     latestJob: latestJob ? { ...latestJob, steps } : null,
     background: keyedBackground,
     noGreenScreen,
+    sourceFps: fpsRow?.sourceFps ?? null,
     aiEdit: aiEditState(aiStep),
     suggestion:
       suggested && found.suggestionReason

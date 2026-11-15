@@ -8,6 +8,7 @@ import {
   VOICE_HOLD_MS,
   type FollowEvent,
   followReducer,
+  followAudioAllowed,
   holdCountdown,
 } from "./follow-state";
 
@@ -115,6 +116,16 @@ describe("following that starts at the countdown (B2-T115)", () => {
     expect(s).toMatchObject({ status: "fallback", note: FOLLOW_NOTE_UNAVAILABLE, dropped: true });
     // A late open or match does not bring it back.
     expect(followReducer(s, { type: "match", index: 3, now: 9000 }).status).toBe("fallback");
+    // And the hook keeps its audio gate shut, so a socket that opens late sends nothing.
+    expect(followAudioAllowed(s)).toBe(false);
+  });
+
+  it("allows audio while connecting, ready and following, and not after the socket is gone", () => {
+    const s = early([]);
+    expect(followAudioAllowed(s)).toBe(true);
+    expect(followAudioAllowed(followReducer(s, { type: "open", now: 1 }))).toBe(true);
+    expect(followAudioAllowed(followReducer(s, { type: "closed" }))).toBe(false);
+    expect(followAudioAllowed(followReducer(s, { type: "unavailable" }))).toBe(false);
   });
 
   it("a refused token during the countdown ends the hold with the unavailable note", () => {
