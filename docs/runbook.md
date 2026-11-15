@@ -27,7 +27,7 @@ Production is four things: the **Worker** (the web app, Cloudflare, name `take-s
 
 Why this one and not "redeploy an older commit": the Deploy workflow always deploys the commit it was started on, which on `main` is the newest main commit, so an older commit cannot be redeployed from it (and it would rebuild, rerun the migration and ship new Trigger.dev tasks, which is slow and adds risk in an incident). A rollback only switches the Worker to a version Cloudflare already holds, with the bindings that version had. It takes seconds and touches nothing else. Migrations are backward compatible (expand, then contract later), so the older Worker still runs on the newer database.
 
-Guards: it runs only from `main`, only in the `production` environment (the same approval rules as a deploy), has its own concurrency group (so a later Deploy can never cancel a waiting rollback), and works with a **deploy freeze**: the Deploy workflow stops itself at its `order` step while the repository variable `DEPLOY_FREEZE` is `true`, and the rollback refuses to run unless that variable is `true` and no Deploy run is still going. GitHub cannot share one queue between two workflows without one cancelling the other, so the freeze is the shared lock. It only needs the Cloudflare secrets CI already holds.
+Guards: it runs only from `main`, only in the `production` environment (the same approval rules as a deploy), has its own concurrency group (so a later Deploy can never cancel a waiting rollback), and works with a **deploy freeze**: the Deploy workflow stops itself at its `order` step while the repository variable `DEPLOY_FREEZE` is `true`, and the rollback refuses to run unless that variable is `true` and no Deploy run is still going. GitHub cannot share one queue between two workflows without one cancelling the other, so the freeze is the shared lock. Unset or empty means Deploy runs as normal, so the variable only needs to exist during an incident. It only needs the Cloudflare secrets CI already holds.
 
 Steps:
 
@@ -35,7 +35,9 @@ Steps:
 2. Actions, `Roll back the Worker`, Run workflow, branch `main`, **mode `list`**. It prints the live deployment and the recent Worker versions with their IDs and times. Pick the last version from before the bad deploy (a version ID is a UUID, not a secret). Cross check with the commit SHAs in Sentry `release`.
 3. Run it again with **mode `rollback`**, the `version_id` (empty means the version just before the current one) and a short `reason` (under 100 characters, no personal data). Approve it if the environment asks.
 4. Open the Cloudflare Workers `take-studio` Deployments page, or read the last step of the run, to see the earlier version live. Check `/api/health` and the page that was broken.
-5. **Revert the bad commit on main through a PR now.** A rollback does not change the code on `main`. While `DEPLOY_FREEZE` is `true` no merge deploys, so nothing is lost, but nothing new ships either. Merge the revert, then set `DEPLOY_FREEZE` to `false` (or delete it): the next merge deploys the good code. The revert (a `git revert` PR, titled `[TASK-ID] Revert ...`) goes through CI like any change and deploys the good code properly.
+5. **Revert the bad commit on main through a PR now.** A rollback does not change the code on `main`. While `DEPLOY_FREEZE` is `true` no merge deploys, so nothing is lost, but nothing new ships either, and that includes the revert's own Deploy: it is skipped too. The revert (a `git revert` PR, titled `[TASK-ID] Revert ...`) goes through CI like any change. Merge it, and write down the revert commit SHA.
+6. **Lift the freeze and ship the revert by hand.** Set `DEPLOY_FREEZE` to `false` (or delete it). The skipped Deploy does not come back by itself, so in Actions open `Deploy`, Run workflow, branch `main` (workflow_dispatch). It deploys the newest commit on `main`, which is the revert, so confirm the revert is the tip first. Approve it if the environment asks.
+7. **Check the revert is live.** When that Deploy run ends green, check that the revert commit is the one live: the run's checkout and Sentry `release` use the commit SHA, so a new Sentry event (any `service`) should carry `release` equal to the revert SHA, and the Cloudflare Workers `take-studio` Deployments page should show a new version made at the time of that run, now at 100%. Check `/api/health` and the page that was broken. Until this passes, the incident is not closed.
 
 **What a Worker rollback does not undo** (check both before you say it is fixed):
 
@@ -52,7 +54,7 @@ Trigger.dev keeps every deployed version. The Worker rollback does not touch the
 2. Open the last good version and **promote** it (the Promote action on the deployment). New runs use that version at once. A run already in progress finishes on the version it started on.
 3. Pause the affected queue first if bad runs keep starting (section "First steps", step 4), promote, then resume.
 4. Failed runs are not retried by themselves. Replay a failed run from its page only after the good version is live. Check first that it is safe to run twice: `process-take` refunds usage once on failure, and `transcribe-take` never moves the take. When unsure, ask Michael.
-5. **Revert on main.** Promoting a version is a dashboard change. The next Deploy (any merge to main) deploys the task code on `main` again, bad or not, so open the revert PR as in section 1, step 4.
+5. **Revert on main.** Promoting a version is a dashboard change. The next Deploy (any merge to main) deploys the task code on `main` again, bad or not, so open the revert PR as in section 1, step 5, and ship it by hand as in step 6.
 
 The jobs read the database and R2 directly, so a job version that wrote bad rows also needs section 3.
 

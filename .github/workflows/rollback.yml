@@ -128,5 +128,5 @@ jobs:
             echo "### Worker rolled back"
             echo
             echo "Production runs an earlier Worker version now. This did not undo migrations or Trigger.dev tasks."
-            echo "Deploys stay frozen (DEPLOY_FREEZE is true). Open a PR that reverts the bad commit on main, merge it, then set DEPLOY_FREEZE to false so the next merge deploys again. Then follow docs/runbook.md."
+            echo "Deploys stay frozen (DEPLOY_FREEZE is true). Open a PR that reverts the bad commit on main, merge it, set DEPLOY_FREEZE to false, then run Deploy by hand on main (the revert's own Deploy was skipped) and check the revert is live. Then follow docs/runbook.md, section 1."
           } >> "$GITHUB_STEP_SUMMARY"
