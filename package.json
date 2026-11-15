@@ -42,6 +42,7 @@
     "test:legal-launch": "vitest run --config scripts/vitest.legal-launch.config.ts",
     "legal:drift": "tsx scripts/legal-drift.ts",
     "test:pipeline": "tsx tests/pipeline/run.ts",
+    "check:api-run": "tsx scripts/api-real-run.ts",
     "design-check": "node tools/design-check/src/cli.js"
   },
   "dependencies": {

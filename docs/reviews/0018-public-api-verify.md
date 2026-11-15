@@ -35,8 +35,44 @@ Run here: 12 unit and database test files for this spec plus the legal and clean
 
 ## Not done, and why
 
-- **Step 9, real run in production (AC-3, AC-5, AC-7):** a script that goes from upload to download with only a key on a real take, and a revoked key that stops in production. It needs a production account and a real take. Not done here (C-31). Someone with a production sign in runs it, then row 13 can close.
+- **Step 9, real run in production (AC-3, AC-5, AC-7):** the script now exists (`pnpm check:api-run`, B2-T110, see the next section) and has passed against the local stack. The production run itself needs a production account and a key made in the web app. Not done here (C-31). Someone with a production sign in runs it, then row 13 can close.
 - **Browser specs:** read, not run, here. CI runs them.
+
+## Step 9 script: local run (B2-T110)
+
+`pnpm check:api-run` (`scripts/api-real-run.ts`) uses only the public API listed in `/api/openapi.json` and a key from `TAKE_API_KEY`. Synthetic data only: the committed 6 second `tests/fixtures/media/speech-en.mp4`, never a real take. Run on 2026-11-15 against the local stack (`next dev` on port 3100, local Postgres, real R2, Trigger.dev dev and Deepgram), with a made up creator and a key made through the session route `POST /api/keys`. The script made no key route and the key never appears in the output; only IDs, statuses and counts do.
+
+Passing run (13 of 13, exit 0):
+
+```
+PASS  openapi: the document lists the routes this run uses  HTTP 200  22 paths
+PASS  usage: read the allowance  HTTP 200  3600 s left of 3600
+PASS  upload: start  HTTP 201  take <id>, 1 part(s)
+PASS  upload: send the parts to storage  HTTP 200  1 part sent
+PASS  upload: complete  HTTP 200  status uploading
+PASS  process: wait until the take is ready  HTTP 200  ready, 1 cut(s), 2133 ms removed
+PASS  cuts: list them  HTTP 200  1 cut(s)
+PASS  cuts: undo one  HTTP 202  cut <id> off, 0 ms removed
+PASS  cuts: redo it  HTTP 202  cut <id> on, 2133 ms removed
+PASS  video: the download link works  HTTP 200  70575 bytes, video/mp4
+PASS  transcript: the text file downloads  HTTP 200  75 bytes, text/plain; charset=utf-8
+PASS  delete: remove the take  HTTP 204  deleted, a read now gives 404
+REVOKE  In the web app open the account menu, API keys, and revoke the key used for this run.
+PASS  revoke: the key is refused after the creator revokes it  HTTP 401  invalid_api_key
+OK  13 of 13 steps passed
+```
+
+The local driver revoked the key through `DELETE /api/keys/{id}` (HTTP 204) when the script printed `REVOKE`; in production the creator does that in the web app.
+
+Forced failure (the key's last 3 characters changed, exit 1, later steps skipped, nothing was created so nothing to clean):
+
+```
+PASS  openapi: the document lists the routes this run uses  HTTP 200  22 paths
+FAIL  usage: read the allowance  HTTP 401  expected 200, got invalid_api_key
+FAILED  1 of 2 steps passed
+```
+
+AC-3 (a key works on the real routes from upload to download), AC-5 (a revoked key is refused) and AC-7 (usage readable by key) are met locally. They stay open for production until the run with a production key.
 
 ## Bigger gaps
 
