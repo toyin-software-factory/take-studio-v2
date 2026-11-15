@@ -347,7 +347,7 @@ Spec [0021](../specs/0021-record-with-script/index.md)
 
 ### 21. Upload first, sign in after · planned
 A visitor drops a video on the homepage and it uploads and processes with no account; the email for the magic link is asked for while it runs, and opening the link claims the take. Growth idea from Toyin, next in the recommended order (C-30 asks for the choices in the spec).
-**Done when:** a signed out visitor can drop a video, type an email while it processes, open the sign in link on any device and land on their finished take; anonymous uploads are capped, count against the 60 free minutes, and unclaimed ones are deleted after 24 hours.
+**Done when:** a signed out visitor can drop a video, type an email while it processes, open the sign in link on any device and land on their finished take; anonymous uploads are capped and, while unclaimed, count only against a shared guest budget; once claimed by a verified account they count against that account's 60 free minutes; and unclaimed ones are deleted after 24 hours.
 - [x] Design it (spec): `/architect Upload first, sign in after`
 - [ ] Build it: `/develop Upload first, sign in after`
    - [ ] Migration, guest upload thread and limits (tasks 1 to 3)
