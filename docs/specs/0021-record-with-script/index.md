@@ -152,7 +152,7 @@ Tasks 2 to 5 can run in any order after task 1 and in parallel with Jim's tasks.
 ## Follow-up
 
 - [ ] Flag for Michael (real product points, recommended options are in this spec): (1) voice following sends live audio to Deepgram, so Toyin should know before step 2 ships; (2) the word cut share for script takes starts at 65 percent and needs her measurement run; (3) a script is kept after the video expires, like the transcript.
-- [ ] Check at build whether `legal-facts` `COOKIES` must list the device only `localStorage` keys (`ts.prompter.<creatorId>`, `ts.scriptDraft.<creatorId>`).
+- [x] Done in B2-T153: `legal-facts` `DEVICE_STORAGE` lists these keys (and the home page's pause state) and the Privacy page shows them under "Cookies and device storage". Was: check at build whether `legal-facts` `COOKIES` must list the device only `localStorage` keys (`ts.prompter.<creatorId>`, `ts.scriptDraft.<creatorId>`).
 - [ ] Later: upload parts while recording so a crash loses nothing; use the script's rare words as Deepgram keyterms for the transcript (sends script words to Deepgram, needs its own legal line); a "Remove script" action on the take; the on device speech option if Deepgram cost or privacy objections appear.
 - [ ] Real iPhone and Android checks cannot run in CI; record the results in the verify report.
 - [ ] Toyin to choose before task 7: browser token with server side limits as written (simpler, a creator could keep a socket open or call other Deepgram APIs inside the spend limit) or a Worker audio proxy (the server can close the socket at the recording limit and the browser never holds a provider token, but it is more to build and run). Recommended: the token with a separate capped key for v1.

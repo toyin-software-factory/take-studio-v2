@@ -123,6 +123,41 @@ export const COOKIES: readonly CookieFact[] = [
   },
 ];
 
+export type DeviceStorageFact = {
+  readonly store: "localStorage" | "sessionStorage";
+  readonly name: string;
+  readonly holds: string;
+  readonly cleared: string;
+};
+
+/**
+ * Everything kept in this browser's own storage (not cookies, never sent to us by the page).
+ * It is the creator's own settings and an unsent draft, so no consent banner is needed, but the
+ * Privacy page lists it. A test scans `src` and fails when a storage key is used and not listed.
+ */
+export const DEVICE_STORAGE: readonly DeviceStorageFact[] = [
+  {
+    store: "localStorage",
+    name: "ts.prompter.<your account id>",
+    holds:
+      "Your teleprompter settings: speed, text size, whether Follow my voice is on and whether you have seen its note.",
+    cleared: "Stays on this device until you clear your browser data.",
+  },
+  {
+    store: "localStorage",
+    name: "ts.scriptDraft.<your account id>",
+    holds: "A draft of your script, so it is not lost if you leave the page.",
+    cleared:
+      "Removed once the take is made, when you sign out, or when you clear your browser data.",
+  },
+  {
+    store: "sessionStorage",
+    name: "take-studio:fan-paused",
+    holds: "Whether you paused the moving cards on the home page.",
+    cleared: "Removed when you close the tab.",
+  },
+];
+
 /** What the pages say about the creator's choices. */
 export const CHOICES = [
   "Delete a take at any time (every file and record goes).",
