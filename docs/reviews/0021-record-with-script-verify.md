@@ -1,8 +1,8 @@
-# Verify: record with script, spec 0021 (B2-T142 run, part 1)
+# Verify: record with script, spec 0021 (B2-T142 run, final on main)
 
-**Status: part 1 of 2.** Run on 2026-11-15 on `b2-t142-record-script-verify`, main at `21aa75e` (after B2-T128, the Record step). B2-T129 (the Review step redesign) is not merged, so the ACs that run through Review and the upload (AC-1, AC-3, AC-4, AC-7, AC-14) are re checked after it lands. The earlier report from 2026-11-14 follows below and still holds for what this run did not repeat. Synthetic scripts and test takes only; no real creator data, no production sign in.
+**Status: final (part 2 of 2).** Re run on 2026-11-15 on `main` with B2-T129 (#347, merge `92276eb`) merged, Worker built from that tree. The interim run on Dwight's branch is replaced by the results below. The earlier report from 2026-11-14 follows below and still holds for what this run did not repeat. Synthetic scripts and test takes only; no real creator data, no production sign in.
 
-**Part 2, interim (2026-11-15):** run on Dwight's `b2-t129-record-part-3` at `8df33f2` (#347, still open), Worker built from that branch. All pass: `record.spec.ts`, `record-prompter.spec.ts` (default text size reads 28 px), `record-failures.spec.ts`, `record-script-step.spec.ts` (19 and 4 tests, chromium), `record-a11y` (36, including the Pixel 7 run with the phone takeover and bottom sheet) and `record-limits` (7). So AC-1, AC-3, AC-4, AC-7, AC-14 and AC-10's phone part hold on the new Review step and phone layout, and the prompter default is 28 px. This is not final: it is re run on `main` after #347 merges, and row 20 is ticked only then. The AC-4 and AC-14 MP4 length note below is unchanged, and real devices are still owed.
+**Part 2, final (2026-11-15):** on `main` at `92276eb` or later, including the unread prompter lines at `color-on-dark-75`. All pass: `record.spec.ts`, `record-prompter.spec.ts` (default text size reads 28 px), `record-failures.spec.ts`, `record-script-step.spec.ts` (23 tests together, chromium), `record-a11y` (36, including the Pixel 7 run with the phone takeover and bottom sheet) and `record-limits` (7). So AC-1, AC-3, AC-4, AC-7, AC-14 and AC-10's phone part hold on the merged Review step and phone layout, and the prompter default is 28 px. No UI failures. The AC-4 and AC-14 MP4 length note below is unchanged (45 ms off), and real devices (iPhone Safari, Android Chrome, desktop Safari, Firefox) are still owed.
 
 ## What was run (this run)
 
@@ -22,11 +22,11 @@
 | AC-6 length and usage | Pass | `record-limits.spec.ts`, `recorder-rules.test.ts`. |
 | AC-8 script storage | Pass | Unit tests for storage, privacy, delete. **Gap found and closed:** nothing tested in the browser that the script and `source: "recording"` travel with the create, or that the device draft is cleared once the take exists; both are now in `record-script-storage.spec.ts`. |
 | AC-9 accessibility | Pass | `record-a11y.spec.ts` (every state, both themes, keyboard only, no trap), `record-follow-voice.spec.ts`. |
-| AC-10 phone and desktop | Desktop passes; phone behaviour re checked after B2-T129 | Desktop layout passes in `record-a11y.spec.ts`. The phone part (Pixel 7 layout, thumb reach, no sideways scroll) passes on today's `main`, but B2-T129 (#347) turns phone `/record` into a full screen takeover with a settings bottom sheet, so it is re run after #347 merges. Real iPhone Safari, Android Chrome, desktop Safari and Firefox are not reachable here. |
+| AC-10 phone and desktop | Passes on main after B2-T129 (desktop and Pixel 7) | Desktop layout passes in `record-a11y.spec.ts`. The phone part (Pixel 7 layout, thumb reach, no sideways scroll) also passes on `main` with B2-T129 merged (full screen phone takeover and settings bottom sheet, 36 tests in `record-a11y`). Real iPhone Safari, Android Chrome, desktop Safari and Firefox are not reachable here. |
 | AC-11 legal | Pass | `legal-facts` tests pass; `pnpm legal:drift` is run before the PR. |
 | AC-12 voice following | Pass in tests; live check pending | `record-follow-voice.spec.ts`, follow and realtime unit tests. Toyin's live retry (C-49) is still owed. |
 | AC-13 script aware cuts | Pass at code level; model score pending | `ai-edit` and `cut-quality` unit tests. Toyin's `ai-eval` run (C-29) is owed. |
-| AC-1, AC-3, AC-4, AC-7, AC-14, and AC-2's default text size | Passing today on `main`, re check after B2-T129 | `record.spec.ts` passes on the current Review step; B2-T129 redesigns it and changes the prompter's default text size (to 28 px, still inside AC-2's 28 to 64 range), so these are re run after it merges and the default is recorded then. |
+| AC-1, AC-3, AC-4, AC-7, AC-14, and AC-2's default text size | Pass on `main` after B2-T129 | `record.spec.ts` passes on the merged Review step; the prompter default text size reads 28 px (inside AC-2's 28 to 64 range), recorded in `record-prompter.spec.ts`. |
 
 No UI failure was found, so nothing was reported to Dwight and `src/components/record/` is untouched.
 
