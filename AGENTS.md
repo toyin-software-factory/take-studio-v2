@@ -44,7 +44,7 @@ Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md` or `docs/specs/NNNN-
 - **Errors**: expected failures return a typed result (`{ ok: true, data } | { ok: false, error }`) instead of throwing across boundaries. Creators see friendly messages; logs, error reports and job payloads carry IDs only, never video, transcripts, presigned links or secrets.
 - **Folders by feature inside the layers**: `src/app` (routes), `src/server/<feature>/`, `src/trigger/<feature>/`, `src/lib`, `src/db`. Job code never imports `src/app` or `src/server`; web code never imports job internals or heavy SDKs (ESLint enforces it).
 - **Small units**: one job per function or component; split a component past about 150 lines.
-- **No file past 250 lines**; `pnpm check:lines` enforces it (CI and the pre commit hook, staged files only). It counts like `wc -l` over tracked `.ts`, `.tsx`, `.js`, `.mjs` and `.css` files, skips generated files (`drizzle/`, `.next`, lockfiles) and the standalone `tools/design-check/` (not app code, never split). Split by topic instead of raising the limit.
+- **No file past 250 lines**; `pnpm check:lines` enforces it (CI and the pre commit hook, staged files only). It counts like `wc -l` over tracked `.ts`, `.tsx`, `.js`, `.mjs` and `.css` files, skips generated and vendored files (`drizzle/`, `.next`, lockfiles, `.claude/skills/`) and the standalone `tools/design-check/` (not app code, never split). Split by topic instead of raising the limit.
 - **Named exports only**, except where Next.js requires a default export (`page`, `layout`, `route`, `loading`, `error`, `not-found`) and the Worker entry `src/worker.ts` (ESLint enforces it, `import/no-default-export`, `src/lint-rules-more.test.ts`).
 - **Accessibility, WCAG AA**: semantic HTML, full keyboard use, visible focus, AA contrast, alt text, captions for video.
 - **Tooling**: ESLint (flat config) + Prettier, Vitest (unit), Playwright (browser); CI runs lint, typecheck, test, build and e2e on every PR. A pre commit hook formats and lints only the staged files (fast); typecheck and tests stay in CI and the before push rule.
@@ -64,6 +64,7 @@ Spec 0001 chose OpenNext: where a Cloudflare skill suggests vinext, OpenNext win
 - [vercel-react-best-practices](.claude/skills/vercel-react-best-practices/), [vercel-composition-patterns](.claude/skills/vercel-composition-patterns/), [web-design-guidelines](.claude/skills/web-design-guidelines/): `vercel-labs/agent-skills`, React and Next.js performance, composition, UI review
 - [speech-to-text](.claude/skills/speech-to-text/): `deepgram/skills`, Deepgram transcription (`/v1/listen`, Nova-3 options, response shape); spec 0007 uses plain `fetch`, not the SDK
 - [playwright-cli](.claude/skills/playwright-cli/): `microsoft/playwright-cli`, browser tests
+- [modern-web-guidance](.claude/skills/modern-web-guidance/): `GoogleChrome/modern-web-guidance` (vendored by `scripts/vendor-modern-web-guidance.sh`, runs offline, telemetry off), native HTML, CSS and browser API patterns for UI work; the project's specs, `design.md` and lint rules win where they differ (ROLE.md)
 
 MCP servers: Neon, Cloudflare, Trigger.dev (recommended, not connected yet)
 

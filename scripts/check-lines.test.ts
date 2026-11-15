@@ -41,12 +41,16 @@ describe("isChecked", () => {
       ".next/server/app.js",
       "node_modules/x/index.js",
       "tools/design-check/src/compare.js",
+      ".claude/skills/modern-web-guidance/modern-web.mjs",
     ])
       expect(isChecked(path), path).toBe(false);
   });
   it("still checks source files with lock in the name", () => {
     for (const path of ["src/lib/clock.ts", "src/components/blocks.tsx", "src/lock.js"])
       expect(isChecked(path), path).toBe(true);
+  });
+  it("checks a .claude folder outside the vendored skills", () => {
+    expect(isChecked(".claude/hooks/a.mjs")).toBe(true);
   });
   it("does not exempt the rest of tools/", () => {
     expect(isChecked("tools/other/src/a.js")).toBe(true);
