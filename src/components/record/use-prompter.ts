@@ -103,6 +103,8 @@ export function usePrompter(script: string, creatorId: string, active: boolean, 
         ctrl: event.ctrlKey,
         alt: event.altKey,
         meta: event.metaKey,
+        modalOpen:
+          document.querySelector('[role="dialog"][aria-modal="true"], dialog[open]') !== null,
       });
       if (!command) return;
       event.preventDefault();
@@ -119,6 +121,8 @@ export function usePrompter(script: string, creatorId: string, active: boolean, 
       position.current = 0;
       // eslint-disable-next-line react-hooks/set-state-in-effect -- the highlight restarts with the position
       setLineIndex(0);
+      // A pause belongs to one take: the next one starts running.
+      setPaused(false);
     }
   }, [active]);
   useEffect(() => {
