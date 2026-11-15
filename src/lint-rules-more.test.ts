@@ -141,7 +141,7 @@ const CREATE_WEB_DB = /\bcreateWebDb\b/;
 const AUTH_GET_SESSION = /\.\s*api\s*\.\s*getSession\b/;
 // A client kept at module level: a top of file `const x = getDb(...)` or `createWebDb(...)`.
 const MODULE_LEVEL_DB =
-  /^(?:export\s+)?(?:const|let|var)\s[^=\n]*=\s*(?:await\s+)?(?:getDb|createWebDb)\s*\(/m;
+  /^(?:export\s+)?(?:const|let|var)\s[^=\n]*=\s*(?:\(\s*|await\s+)*(?:getDb|createWebDb)\s*\(/m;
 const CREATE_WEB_DB_HOMES = [
   "src/server/request.ts",
   "src/db/client/web.ts",
@@ -164,6 +164,7 @@ describe("scans: where the database client and the session are made", () => {
         text: "(await getAuth())\n  .api\n  .getSession ({ headers })",
       },
       { file: "src/app/v/page.tsx", text: "const db = await getDb();\nexport default 1;" },
+      { file: "src/app/u/page.tsx", text: "export const db = (await getDb());" },
     ];
     expect(callsOutside(sources, CREATE_WEB_DB, CREATE_WEB_DB_HOMES)).toEqual([
       "src/app/x/page.tsx",
@@ -176,6 +177,7 @@ describe("scans: where the database client and the session are made", () => {
     expect(callsOutside(sources, MODULE_LEVEL_DB, [])).toEqual([
       "src/app/x/page.tsx",
       "src/app/v/page.tsx",
+      "src/app/u/page.tsx",
     ]);
   });
 
