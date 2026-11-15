@@ -18,7 +18,7 @@ The reviewer's major and two small minors were in scope, so they are fixed here 
 - ~~The Record button is disabled during the countdown, so keyboard focus drops.~~ Done in B2-T160: `aria-disabled`, clicks ignored, focus asserted in the keyboard a11y spec.
 - A hook level test for `useVoiceFollow` side effects (late open, close on stop and unmount) needs a React hook test setup first.
 - ~~The six nits below.~~ Done in B2-T160, including the two file splits (`use-countdown-start.ts`, `stage-dock.css`).
-- Still owed from verify: real iPhone and Android checks, Toyin's live follow retry (C-49) and the `ai-eval` run (C-29).
+- Still owed from verify: real iPhone and Android checks (a step by step list for a person is in [launch-manual-pass.md](./launch-manual-pass.md)), Toyin's live follow retry (C-49) and the `ai-eval` run (C-29).
 
 ## Major
 

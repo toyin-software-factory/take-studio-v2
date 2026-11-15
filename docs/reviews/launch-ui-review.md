@@ -28,9 +28,9 @@ How each page was checked: title, one `h1`, a `main` landmark with a skip link, 
 
 1. Insights has no axe or phone test. It needs a test viewer (`INSIGHTS_VIEWER_IDS` style env in the Playwright server) so a signed in test can open it.
 2. **Done (B2-T99 and B2-T155).** The two error pages had no test. A small route that throws only when `NODE_ENV` is test, or a Playwright `route` that makes the take API throw during render, would let axe check them.
-3. A real browser pass by someone with eyes on a phone (iOS Safari and Android Chrome) on the landing page, the record page and the take page. The sandbox cannot do this and axe does not catch it all (reading order, motion that feels too much).
+3. Steps in [launch-manual-pass.md](./launch-manual-pass.md) (B2-T164). A real browser pass by someone with eyes on a phone (iOS Safari and Android Chrome) on the landing page, the record page and the take page. The sandbox cannot do this and axe does not catch it all (reading order, motion that feels too much).
 4. Reduced motion has a test only on the landing page, the recorder and the design components (the cut timeline one is in #294). The other pages use the one global CSS rule, so risk is low, but nothing asserts it.
-5. A screen reader pass (VoiceOver and NVDA) on the cut timeline and the recorder. Automated checks cannot judge how the announcements sound.
+5. Steps in [launch-manual-pass.md](./launch-manual-pass.md) (B2-T164). A screen reader pass (VoiceOver and NVDA) on the cut timeline and the recorder. Automated checks cannot judge how the announcements sound.
 
 ## Not done
 
