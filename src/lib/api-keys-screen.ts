@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 import { API_KEYS, normalizeKeyName } from "./api-rules";
 
 /**
@@ -22,11 +22,11 @@ export const createdKeySchema = z.object({
   id: z.string(),
   name: z.string(),
   prefix: z.string(),
-  key: z.string().min(1),
+  key: z.string().check(z.minLength(1)),
   createdAt: z.string(),
 });
 
-const failureSchema = z.object({ error: z.string(), message: z.string() });
+export const failureSchema = z.object({ error: z.string(), message: z.string() });
 
 export const KEY_COPY = {
   nameLabel: "Key name",

@@ -30,9 +30,9 @@ JS is first load JavaScript from `route-bundle-stats.json`, raw KB / gzip KB.
 |---|---|---|---|
 | `/` landing | 686 / 212 | 580 / 182 | minus 106 raw, minus 30 gzip |
 | `/sign-in` | 680 / 210 | 575 / 180 | minus 105 raw, minus 30 gzip |
-| `/library` | 859 / 265 | 859 / 265 | none |
-| `/takes/[id]` | 929 / 287 | 929 / 288 | none (within rounding) |
-| `/record` | 897 / 280 | 897 / 280 | none |
+| `/library` | 859 / 265 | 812 / 252 | minus 47 raw, minus 13 gzip (B2-T108) |
+| `/takes/[id]` | 929 / 288 | 881 / 274 | minus 48 raw, minus 14 gzip (B2-T108) |
+| `/record` | 897 / 280 | 851 / 267 | minus 46 raw, minus 13 gzip (B2-T108) |
 
 LCP, CLS and TBT or INP: before and after are both "not measured here" for every page (see the last section). The JS numbers are the proxy: less first load JavaScript is less to download, parse and run on a mid phone, which is what moves TBT and INP.
 
@@ -67,13 +67,31 @@ LCP, CLS and TBT or INP: before and after are both "not measured here" for every
 - **Waterfall (fixed)**: same pattern as the library, same fix (`RecordWithUsage`).
 - **Long tasks**: not measured. The prompter keeps its position in a ref and moves one animation frame at a time, so it should not produce long tasks, but that is a reading of the code, not a measurement.
 
+## B2-T108: full zod out of the signed in first load
+
+**Route chosen: move the browser's response parsers to `zod/mini`.** The other route (parse on the server and send checked data) does not work here: the browser reads responses from routes the server owns, so the check at the client boundary would simply go away, and the rule is that every response is still checked there. `zod/mini` keeps the same checks with the same values passing and failing, and it is the same package (zod 4.x already installed), so no new dependency and no change to the legal facts. Server and job code keep full zod. No client schema is imported by server code.
+
+**What changed.** 14 modules that the signed in pages reach: `take-api`, `background-api`, `background-preview-api`, `oauth-screen`, `api-keys-screen`, `prompter-storage`, `realtime-stream`, `site`, `upload-client`, and in `src/components/takes` only the import and schema lines of `email-switch`, `rename-form`, `use-change-render`, `use-usage` and `use-waveform`. The method style changes (`z.nullable(x)`, `z._default(x, v)`, `.check(z.minLength(1))`), nothing else. Local schemas are now exported so a test can reach them.
+
+**Proof the answers did not change.** `src/lib/client-schema-oracle.ts` keeps the old full zod schemas word for word (only the test imports it, so it never reaches the browser). `src/lib/client-schemas.test.ts` runs every fixture, and every variation of it (each field dropped, nulled or given a wrong type or an odd number, an extra key added, arrays emptied or doubled), through the old and the new schema, and fails if the pass or fail answer or the parsed data differs in any case. It also checks the defaults of the take detail, and that `siteOrigin` answers as the old URL check did.
+
+**First load JS, raw KB / gzip KB** (`next build`, Turbopack, same machine and code, one change between runs):
+
+| Route | Before | After | Change |
+|---|---|---|---|
+| `/library` | 859 / 265 | 812 / 252 | minus 47 / minus 13 |
+| `/takes/[id]` | 929 / 288 | 881 / 274 | minus 48 / minus 14 |
+| `/record` | 897 / 280 | 851 / 267 | minus 46 / minus 13 |
+
+The zod chunk went from 107,707 bytes (all of zod) to 60,864 bytes (the `zod/mini` core, 17.6 KB gzip). It is still in the first load of all three routes: the core, its checks and its error text are shared by every schema, and a bundler cannot drop them. So the saving is about 47 KB raw and 13 KB gzip per route, less than the 85 KB I hoped for from measuring one small schema alone. Dropping the rest would mean hand written response checks, which is not safe to do in one task.
+
 ## Server waterfalls: what changed
 
 Before, on `/library`, `/record` and `/takes/[id]`: page read, then `AppShell`'s read, in a row. After: the page's second read starts first and is awaited in a small child component, with no `Suspense`, so the first paint and the streamed output are the same and the two reads overlap. The gain is one database round trip on every one of these pages (a few tens of ms on Neon through Hyperdrive, more when the database is cold; this is an estimate, not a measurement). `src/app/AGENTS.md` records the pattern so new pages follow it.
 
 ## Bigger items for Michael
 
-1. **Zod is still in every signed in page's first load** (about 105 KB raw, 30 KB gzip). The signed in client code imports it through `take-api.ts`, `upload-client.ts`, `use-usage.ts`, `use-waveform.ts` and others, to parse API responses. Options: move those parsers to `zod/mini` (same ideas, much smaller, but about 20 files and a different method style), or keep the parsing on the server and send already checked data. Biggest remaining JS win. Not done here: it touches many files and the response parsing that the API contract relies on.
+1. **Done in B2-T108: full zod is out of the signed in first load.** What is left is the small core of `zod/mini` (see the next section). The remaining question is whether that core can go too, by checking the responses without a library.
 2. **Take page and record page split points.** Things that appear only after a click could load on demand with `next/dynamic`: the delete dialog, the background picker and its preview overlay, the export and transcript download panels. Probably 50 to 100 KB raw off the take page. Not done here: it can change when a dialog appears and would need the full browser suite to prove nothing moved, which this sandbox cannot run.
 3. **Shared app frame chunk (154 KB).** Worth a bundle analyser pass in CI (`@next/bundle-analyzer` with Turbopack is not wired up) to see whether Radix select, tooltip and slider or the full sonner toast are needed on every page. Icons are imported by name already.
 4. **Sentry** is already after idle and out of the first load. Nothing to do.

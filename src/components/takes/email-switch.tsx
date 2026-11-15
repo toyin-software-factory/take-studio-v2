@@ -1,12 +1,12 @@
 "use client";
 
 import { useId, useState } from "react";
-import { z } from "zod";
+import * as z from "zod/mini";
 import { Switch } from "@/components/ui/switch";
 import { apiMessage } from "@/lib/take-api";
 import { callApi } from "./browser-io";
 
-const prefsSchema = z.object({ takeEmails: z.boolean() });
+export const prefsSchema = z.object({ takeEmails: z.boolean() });
 
 /**
  * "Email me when takes are ready" (spec 0006, AC-6): PATCH /api/account/email-prefs. Turns the
