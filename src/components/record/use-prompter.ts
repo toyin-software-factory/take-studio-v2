@@ -40,6 +40,7 @@ export function usePrompter(script: string, creatorId: string, active: boolean, 
   const [settings, setSettings] = useState<PrompterSettings>(DEFAULT_SETTINGS);
   const [paused, setPaused] = useState(false);
   const [announcement, setAnnouncement] = useState("");
+  const pausedNow = useRef(false);
   const reducedMotion = useReducedMotion();
   const position = useRef(0);
   // True while Follow my voice is connecting: the clock stands still (written by the page).
@@ -79,19 +80,20 @@ export function usePrompter(script: string, creatorId: string, active: boolean, 
   const run = useCallback(
     (command: PrompterCommand) => {
       if (command === "toggle") {
-        setPaused((was) => {
-          setAnnouncement(was ? "Script resumed" : "Script paused");
-          return !was;
-        });
+        // The state updater stays pure: the latest value is read from a ref, then both are set.
+        const next = !pausedNow.current;
+        pausedNow.current = next;
+        setPaused(next);
+        setAnnouncement(next ? "Script paused" : "Script resumed");
       } else if (command === "faster" || command === "slower") {
-        const next = stepWpm(settings.wpm, command === "faster" ? 1 : -1);
-        change({ ...settings, wpm: next }, `Speed ${next} words a minute`);
+        const next = stepWpm(latest.current.wpm, command === "faster" ? 1 : -1);
+        change({ ...latest.current, wpm: next }, `Speed ${next} words a minute`);
       } else {
-        const next = stepSize(settings.size, command === "larger" ? 1 : -1);
-        change({ ...settings, size: next }, `Text size ${next}`);
+        const next = stepSize(latest.current.size, command === "larger" ? 1 : -1);
+        change({ ...latest.current, size: next }, `Text size ${next}`);
       }
     },
-    [settings, change],
+    [change],
   );
 
   // Keyboard shortcuts; never while a text field has focus.
@@ -124,6 +126,7 @@ export function usePrompter(script: string, creatorId: string, active: boolean, 
       // eslint-disable-next-line react-hooks/set-state-in-effect -- the highlight restarts with the position
       setLineIndex(0);
       // A pause belongs to one take: the next one starts running.
+      pausedNow.current = false;
       setPaused(false);
     }
   }, [active]);

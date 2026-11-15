@@ -42,20 +42,19 @@ type Audio = {
   readonly stop: () => void;
 };
 
-/** A pipe failure that knows which stage it came from. */
-class PipeError extends Error {
-  constructor(readonly stage: "audio_context" | "worklet") {
-    super(stage);
-  }
-}
+/** How piping the microphone went: handles, no audio track, or a failure with its stage. */
+type PipeResult =
+  | { readonly kind: "ok"; readonly audio: Audio }
+  | { readonly kind: "no_track" }
+  | { readonly kind: "failed"; readonly stage: "audio_context" | "worklet" };
 
 /** Take the microphone only (never the video) and stream it as 16 kHz frames into `conn`. */
 async function pipeMicrophone(
   stream: MediaStream,
   send: (frame: ArrayBuffer) => void,
-): Promise<Audio | null> {
+): Promise<PipeResult> {
   const tracks = stream.getAudioTracks();
-  if (tracks.length === 0) return null;
+  if (tracks.length === 0) return { kind: "no_track" };
   let ctx: AudioContext;
   try {
     ctx = new AudioContext({ sampleRate: 16000 });
@@ -65,7 +64,7 @@ async function pipeMicrophone(
     try {
       ctx = new AudioContext();
     } catch {
-      throw new PipeError("audio_context");
+      return { kind: "failed", stage: "audio_context" };
     }
   }
   const url = URL.createObjectURL(new Blob([PCM_WORKLET_SOURCE], { type: "text/javascript" }));
@@ -74,11 +73,11 @@ async function pipeMicrophone(
     const node = new AudioWorkletNode(ctx, PCM_WORKLET_NAME, { numberOfOutputs: 0 });
     node.port.onmessage = (event: MessageEvent<ArrayBuffer>) => send(event.data);
     ctx.createMediaStreamSource(new MediaStream(tracks)).connect(node);
-    return { ctx, url, stop: keepRunning(ctx) };
-  } catch (error) {
+    return { kind: "ok", audio: { ctx, url, stop: keepRunning(ctx) } };
+  } catch {
     // The caller never gets the handles on failure, so release them here.
     releaseAudio({ ctx, url, stop: () => undefined });
-    throw error instanceof PipeError ? error : new PipeError("worklet");
+    return { kind: "failed", stage: "worklet" };
   }
 }
 
@@ -214,21 +213,21 @@ export function useVoiceFollow(args: {
     void (async () => {
       try {
         const piped = await pipeMicrophone(stream, (frame) => gate.current?.push(frame));
-        if (piped && cancelled) {
+        if (piped.kind === "ok" && cancelled) {
           // Follow was turned off while the worklet loaded: cleanup has run, so release now.
-          releaseAudio(piped);
+          releaseAudio(piped.audio);
           return;
         }
-        audio = piped;
-        if (!audio && !cancelled) {
-          reportFollowFailure("no_audio_track");
+        if (piped.kind === "ok") audio = piped.audio;
+        else if (!cancelled) {
+          reportFollowFailure(
+            piped.kind === "no_track" ? "no_audio_track" : pipeFailureCode(piped.stage),
+          );
           dispatch({ type: "unavailable" });
         }
-      } catch (error) {
+      } catch {
         if (!cancelled) {
-          reportFollowFailure(
-            pipeFailureCode(error instanceof PipeError ? error.stage : "worklet"),
-          );
+          reportFollowFailure(pipeFailureCode("worklet"));
           dispatch({ type: "unavailable" });
         }
       }

@@ -63,12 +63,19 @@ export function registerKeyboard(): void {
     await page.keyboard.press("Tab");
     await page.keyboard.press("Enter");
 
+    // B2-T160: the button the key just pressed stays focused and announced through the countdown
+    // (aria-disabled, not disabled), and is the same button that becomes Stop.
+    const recordButton = page.locator(".rst-rec");
+    await expect(recordButton).toBeFocused();
+    await expect(recordButton).toHaveAttribute("aria-disabled", "true");
+    await page.keyboard.press("Enter"); // ignored while counting down
     await expect(page.getByTestId("record-timer")).toBeVisible();
+    await expect(recordButton).toBeFocused();
     // No pointer: the shortcut must work with whatever the keyboard left focused.
     await page.keyboard.press("p");
     await expect(page.getByRole("button", { name: "Resume script" })).toBeVisible();
     await page.waitForTimeout(1500);
-    await tabTo(page, page.getByRole("button", { name: "Stop", exact: true }));
+    await expect(page.getByRole("button", { name: "Stop", exact: true })).toBeFocused();
     await expectVisibleFocus(page);
     await page.keyboard.press("Enter");
 
