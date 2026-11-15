@@ -48,6 +48,12 @@ Take studio v2 should feel like a calm Swiss product shell that opens onto an el
   --color-line-dark: rgba(255, 255, 255, 0.1);
   --color-ring-dark: rgba(255, 255, 255, 0.15);
   --color-glass: rgba(0, 0, 0, 0.3);
+  --color-media-glass: rgba(
+    0,
+    0,
+    0,
+    0.6
+  ); /* play and pause toggle over video frames, which can be white (B2-T139) */
   --color-nav-glass-light: rgba(255, 255, 255, 0.72);
   --color-nav-glass-dark: rgba(0, 0, 0, 0.6);
 
