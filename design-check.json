@@ -13,7 +13,7 @@
     {
       "name": "take-page-v2",
       "design": "docs/design/take-page-v2.tagged.html",
-      "build": "http://localhost:3000/take-page"
+      "build": "http://localhost:3000/takes/TAKE_ID"
     }
   ],
   "viewports": [
