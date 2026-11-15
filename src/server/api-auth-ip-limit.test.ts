@@ -70,8 +70,12 @@ describe("a flood of wrong bearers from one address", () => {
     const kinds = outs.map((o) => (o.ok ? "ok" : o.error.kind));
     expect(kinds.filter((k) => k === "invalid_api_key")).toHaveLength(BEARER_FAIL.perMinute);
     expect(kinds.filter((k) => k === "rate_limited")).toHaveLength(100 - BEARER_FAIL.perMinute);
-    // Every one was past the read, so each failure is counted (the overshoot is what was in flight).
-    expect((await rows(ip))[0]?.count).toBe(100);
+    // A request that reads 30 committed failures answers 429 and skips its upsert, so the stored
+    // count is anywhere from the budget (30) up to every request (100), depending on timing.
+    // The split above cannot flake: exactly the first 30 upserts return a count within the budget.
+    const stored = (await rows(ip))[0]?.count ?? 0;
+    expect(stored).toBeGreaterThanOrEqual(BEARER_FAIL.perMinute);
+    expect(stored).toBeLessThanOrEqual(100);
   });
 
   it("counts malformed values and unknown OAuth tokens too", async () => {
