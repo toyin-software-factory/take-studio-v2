@@ -11,7 +11,7 @@ import { ORIGIN, built, call } from "./background-test-helpers";
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  testDb = await openTestDb({ database: "take_studio_test_background_lock_order_cancelling" });
   db = testDb.db;
 });
 afterAll(async () => {

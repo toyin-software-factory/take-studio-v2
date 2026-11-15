@@ -12,7 +12,7 @@ import { NOT_FOUND, ORIGIN, SECRET, req, type Signed } from "./routes-test-helpe
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  testDb = await openTestDb({ database: "take_studio_test_routes_get_api_takes_2" });
   db = testDb.db;
 });
 afterAll(() => testDb?.close());

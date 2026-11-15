@@ -12,7 +12,7 @@ import { ORIGIN, SECRET, WORDS } from "./routes-test-helpers";
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  testDb = await openTestDb({ database: "take_studio_test_transcripts_routes_get_api_takes" });
   db = testDb.db;
 });
 afterAll(() => testDb?.close());

@@ -8,7 +8,7 @@ import { addManual, listForTake, reanalyse, setApplied } from ".";
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  testDb = await openTestDb({ database: "take_studio_test_cuts_creator_edits_racing" });
   db = testDb.db;
 });
 afterAll(() => testDb?.close()); /** A creator with a probed 10 second take. */

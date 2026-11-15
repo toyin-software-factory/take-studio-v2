@@ -27,7 +27,7 @@ import { SECRET, built } from "./account-test-helpers";
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  testDb = await openTestDb({ database: "take_studio_test_account_deletion_with" });
   db = testDb.db;
 });
 afterAll(async () => {

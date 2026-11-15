@@ -1,7 +1,13 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { background, processingJob, storageDeletion } from "@/db/schema";
-import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
+import {
+  type TestDb,
+  builtInTracker,
+  createCreator,
+  openTestDb,
+  seedTake,
+} from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import { backgroundKeys } from "@/lib/background-rules";
 import type { UploadPorts } from "./upload";
@@ -13,13 +19,17 @@ import {
 } from "./upload-http";
 import { GOOD, ORIGIN, req, type Calls } from "./upload-test-helpers";
 
+const builtIns = builtInTracker();
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  testDb = await openTestDb({ database: "take_studio_test_upload_delete_api_backgrounds" });
   db = testDb.db;
 });
-afterAll(() => testDb?.close());
+afterAll(async () => {
+  if (testDb) await builtIns.clean(db);
+  await testDb?.close();
+});
 function setup(
   creatorId: string | null,
   options: { stored?: boolean; failTrigger?: boolean; failPresign?: boolean } = {},
@@ -95,7 +105,7 @@ describe("DELETE /api/backgrounds/{id}", () => {
     const creator = await createCreator(db);
     const other = await createCreator(db);
     const theirs = await readyOne(other.id);
-    const builtIn = crypto.randomUUID();
+    const builtIn = builtIns.track({ id: crypto.randomUUID() }).id;
     await db.insert(background).values({
       id: builtIn,
       creatorId: null,

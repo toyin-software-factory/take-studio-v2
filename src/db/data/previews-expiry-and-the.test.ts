@@ -12,7 +12,7 @@ import { built } from "./previews-test-helpers";
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  testDb = await openTestDb({ database: "take_studio_test_previews_expiry_and_the" });
   db = testDb.db;
 });
 afterAll(async () => {

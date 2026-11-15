@@ -11,7 +11,7 @@ import { built } from "./background-rerender-test-helpers";
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  testDb = await openTestDb({ database: "take_studio_test_background_rerender_lock_order_with" });
   db = testDb.db;
 });
 afterAll(async () => {

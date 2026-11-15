@@ -25,7 +25,7 @@ import { SECRET, built, spyAfter } from "./delete-test-helpers";
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  testDb = await openTestDb({ database: "take_studio_test_delete_deletetake_removes_everythin" });
   db = testDb.db;
 });
 afterAll(async () => {

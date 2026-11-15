@@ -10,7 +10,7 @@ import { ORIGIN, fakeR2, file, request } from "./uploads-test-helpers";
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  testDb = await openTestDb({ database: "take_studio_test_uploads_delete_after_complete" });
   db = testDb.db;
 });
 afterAll(() =>

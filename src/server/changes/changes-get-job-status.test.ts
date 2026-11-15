@@ -11,7 +11,7 @@ import { A, B, ORIGIN, post } from "./changes-test-helpers";
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  testDb = await openTestDb({ database: "take_studio_test_changes_get_job_status" });
   db = testDb.db;
 });
 afterAll(() => testDb?.close());

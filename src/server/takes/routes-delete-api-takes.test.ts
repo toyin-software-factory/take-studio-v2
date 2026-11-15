@@ -11,7 +11,7 @@ import { NOT_FOUND, ORIGIN, SECRET, req } from "./routes-test-helpers";
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  testDb = await openTestDb({ database: "take_studio_test_routes_delete_api_takes" });
   db = testDb.db;
 });
 afterAll(() => testDb?.close());

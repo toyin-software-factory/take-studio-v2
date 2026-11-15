@@ -1,19 +1,29 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { background, take } from "@/db/schema";
-import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
+import {
+  type TestDb,
+  builtInTracker,
+  createCreator,
+  openTestDb,
+  seedTake,
+} from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
 import * as jobs from "../jobs";
 import * as renders from "../renders";
 import { attachUpload, getForCreator, listForCreator, rename } from ".";
 
+const builtIns = builtInTracker();
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  testDb = await openTestDb({ database: "take_studio_test_takes_getforcreator_listforcreator" });
   db = testDb.db;
 });
-afterAll(() => testDb?.close());
+afterAll(async () => {
+  if (testDb) await builtIns.clean(db);
+  await testDb?.close();
+});
 const SECRET = "test-usage-hash-secret-0123456789abcdef";
 describe("takes.getForCreator, listForCreator and rename", () => {
   it("reads a take with its latest job and render", async () => {
@@ -146,6 +156,7 @@ describe("takes.getForCreator, listForCreator and rename", () => {
 describe("takes.getForCreator suggestion (spec 0012 AC-5)", () => {
   async function seedBackground(over: Partial<typeof background.$inferInsert> = {}) {
     const id = crypto.randomUUID();
+    if (over.creatorId == null) builtIns.track({ id });
     await db.insert(background).values({
       id,
       name: "Sunny loft",

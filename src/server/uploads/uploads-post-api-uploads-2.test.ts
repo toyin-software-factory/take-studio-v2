@@ -17,7 +17,7 @@ const eventsOf = (db: Db, creatorId: string, name: string) =>
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  testDb = await openTestDb({ database: "take_studio_test_uploads_post_api_uploads_2" });
   db = testDb.db;
 });
 afterAll(() =>

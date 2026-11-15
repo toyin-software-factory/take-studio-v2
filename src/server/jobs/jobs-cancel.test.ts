@@ -9,7 +9,7 @@ import { NOW, SECRET } from "./jobs-test-helpers";
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
-  testDb = await openTestDb();
+  testDb = await openTestDb({ database: "take_studio_test_jobs_cancel" });
   db = testDb.db;
 });
 afterAll(() => testDb?.close());
