@@ -1,4 +1,4 @@
-# Cut quality test set (tests/cut-quality, spec 0017)
+# Cut quality test set (src/lib/cut-quality-data, spec 0017)
 
 A written, invented test set for the AI edit. No real creator words, no real take: every case is made up. The scorer and the case schema are `src/lib/cut-quality.ts`; the CI test is `src/lib/cut-quality.test.ts` (Vitest only runs `src/**/*.test.ts`, so the test lives there and imports from here).
 
@@ -6,7 +6,7 @@ A written, invented test set for the AI edit. No real creator words, no real tak
 
 - `cases/*.json`: one invented take each: `words` (`w`, `startMs`, `endMs`, `filler`, optional `conf`: the transcriber confidence, under 0.6 the AI sees the word flagged `u`), `pauses` (the pause candidates, already the cut span the rules propose), `durationMs`, and `expected` spans marked `cut` or `keep` with a kind (a `cut` span may add `either`, the other copy of a doubled word: cutting either copy scores as a right cut, and it must not overlap another span). A word cut span runs from the first word's start to the next word's start (like `validateAiEdit`), clipped at a kept pause.
 - `cases/holdout/*.json`: about a third of the set. Never read them while changing the prompt or rules; their score is checked against its own floor, so a good score means speech the prompt was not tuned on.
-- `src/lib/cut-quality-cases.ts` (moved out of `cases/index.ts`, B2-T125, so job code never imports `tests/`): static JSON imports of the cases and answers here (bundled, so a Trigger.dev task can import it), plus `CaseEntry` and `CASE_ENTRIES`. Add every new case here, with its answer.
+- `src/lib/cut-quality-cases.ts` (its place before B2-T125 was `cases/index.ts` here under `tests/`; the data moved into `src/` so no non test file under `src/` imports `tests/`): static JSON imports of the cases and answers here (bundled, so a Trigger.dev task can import it), plus `CaseEntry` and `CASE_ENTRIES`. Add every new case here, with its answer.
 - `answers/<id>.json`: the recorded model answer for the case, in the `aiEditAnswerSchema` shape, matching the B2-T27 prompt. They are hand written until someone runs `pnpm cut-quality:record` (spec 0017 step 3, local only, needs a real `ANTHROPIC_API_KEY`; see `scripts/AGENTS.md`), which refreshes them from the real model. After a refresh update `baseline.json` and `knownMisses` in the same PR.
 - `baseline.json`: floors for total precision and recall (all cases, held out only, and the rules path alone). They are the current scores rounded down, so losing one must cut span fails CI.
 

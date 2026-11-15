@@ -1,4 +1,4 @@
-import baseline from "../../../tests/cut-quality/baseline.json";
+import baseline from "@/lib/cut-quality-data/baseline.json";
 import { casesByTrouble, checkFloors } from "@/lib/ai-eval-record";
 import type { CutTestRun } from "@/server/analytics/report";
 

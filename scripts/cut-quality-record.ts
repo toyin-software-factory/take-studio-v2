@@ -1,7 +1,7 @@
 /**
  * Refreshes the recorded model answers (spec 0017, AC-10): `pnpm cut-quality:record`. Runs the
  * real model once per written case with the production request and writes the answer to
- * `tests/cut-quality/answers/<case id>.json`. LOCAL ONLY, with a real ANTHROPIC_API_KEY in your
+ * `src/lib/cut-quality-data/answers/<case id>.json`. LOCAL ONLY, with a real ANTHROPIC_API_KEY in your
  * shell where the key works (agent sandboxes cannot: C-29). It refuses to run in CI or in
  * Trigger.dev, and `--only <case id>` refreshes one case. An answer that cannot be parsed, is
  * refused by `validateAiEdit` or has dropped items is not written (the old file stays). It prints
@@ -32,7 +32,7 @@ if (!apiKey) {
 const onlyIndex = process.argv.indexOf("--only");
 const only = onlyIndex === -1 ? null : (process.argv[onlyIndex + 1] ?? "");
 
-const answersDir = resolve(import.meta.dirname, "../tests/cut-quality/answers");
+const answersDir = resolve(import.meta.dirname, "../src/lib/cut-quality-data/answers");
 let written = 0;
 let kept = 0;
 
