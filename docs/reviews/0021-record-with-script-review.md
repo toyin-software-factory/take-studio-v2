@@ -16,7 +16,7 @@ The reviewer's major and two small minors were in scope, so they are fixed here 
 ## Follow ups (not done in this PR)
 - A failed Deepgram grant keeps its mint slot, and the 429 `Retry-After` is the whole window (`src/server/realtime/http.ts:148`). Free the slot when the grant fails and compute Retry-After from the oldest counted mint, with a test next to "Deepgram fails" in `realtime-routes.test.ts`.
 - ~~The Record button is disabled during the countdown, so keyboard focus drops.~~ Done in B2-T160: `aria-disabled`, clicks ignored, focus asserted in the keyboard a11y spec.
-- A hook level test for `useVoiceFollow` side effects (late open, close on stop and unmount) needs a React hook test setup first.
+- ~~A hook level test for `useVoiceFollow` side effects (late open, close on stop and unmount) needs a React hook test setup first.~~ Done in B2-T163: `src/components/record/use-voice-follow.hook.test.ts` (fake socket, fake token call, fake microphone path) covers the late open after the hold, stop and unmount.
 - ~~The six nits below.~~ Done in B2-T160, including the two file splits (`use-countdown-start.ts`, `stage-dock.css`).
 - Still owed from verify: real iPhone and Android checks, Toyin's live follow retry (C-49) and the `ai-eval` run (C-29).
 
