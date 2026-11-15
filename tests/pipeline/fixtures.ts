@@ -7,6 +7,7 @@ import { db } from "./harness";
 import { type Creator } from "./creator";
 import { cutsOf, downloadRender, jobsOf, upload, waitFinal } from "./api";
 import { avSync, renderFacts } from "./inspect";
+import { plannedLengthMs } from "./frames";
 
 export type Expect = {
   readonly status: "ready" | "failed";
@@ -186,8 +187,8 @@ export async function fixtureScenario(
   );
 
   if (want.render) {
-    const file = await downloadRender(a, takeId);
-    const f = renderFacts(file);
+    const renderPath = await downloadRender(a, takeId);
+    const f = renderFacts(renderPath);
     check(
       label,
       "render size and orientation",
@@ -213,15 +214,21 @@ export async function fixtureScenario(
         f.colorTransfer === want.render.colorTransfer,
         f.colorTransfer,
       );
-    const expectedMs = (t.take.durationMs ?? 0) - removed;
+    // Since spec 0020 AC-7 (#261) a kept piece starts on the frame at or before its start and ends
+    // on the frame at or after its end, so a kept word is never trimmed: the render is the kept
+    // pieces snapped outward, up to a frame longer per edge than original minus cuts (12196 to 12300 ms on the sync fixture).
+    // A recording is 10 s of tone with one planned cut; its cut edges carry the 150 ms codec tolerance.
+    const expectedMs = want.recording
+      ? plannedLengthMs(file, [want.recording.cutMs], 10_000)
+      : plannedLengthMs(file, want.cuts ?? []);
     check(
       label,
-      "render length = original − removed (±1 frame)",
-      Math.abs(f.durationMs - expectedMs) <= 40,
+      "render length = kept pieces snapped to frames (±1 frame)",
+      Math.abs(f.durationMs - expectedMs) <= (want.recording ? 150 : 40),
       { render: f.durationMs, expectedMs },
     );
     if (want.sync) {
-      const s = avSync(file);
+      const s = avSync(renderPath);
       check(
         label,
         "A/V sync at every cut (≤ 1 frame)",
