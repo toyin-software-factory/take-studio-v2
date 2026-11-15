@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 import type { Container } from "./processing";
 import {
   LINK_REFRESH_MARGIN_MS,
@@ -59,16 +59,16 @@ export type UploadOutcome =
 
 const GENERIC_FAILURE = "The upload didn't go through. Check your connection and try again.";
 
-const errorBody = z.object({ message: z.string() });
-const createdBody = z.object({
+export const errorBody = z.object({ message: z.string() });
+export const createdBody = z.object({
   takeId: z.string(),
-  partSize: z.number().int().positive(),
-  partCount: z.number().int().positive(),
+  partSize: z.number().check(z.int(), z.positive()),
+  partCount: z.number().check(z.int(), z.positive()),
 });
-const sizeMismatch = z.object({ error: z.literal("size_mismatch") });
-const linksBody = z.object({
-  parts: z.array(z.object({ partNumber: z.number().int(), url: z.string() })),
-  expiresInSeconds: z.number().positive(),
+export const sizeMismatch = z.object({ error: z.literal("size_mismatch") });
+export const linksBody = z.object({
+  parts: z.array(z.object({ partNumber: z.int(), url: z.string() })),
+  expiresInSeconds: z.number().check(z.positive()),
 });
 
 function messageOf(reply: ApiReply): string {

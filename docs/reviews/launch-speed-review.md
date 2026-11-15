@@ -12,7 +12,8 @@ The sandbox cannot run a browser (no Playwright, no Lighthouse, no Chrome), so t
 | What is in the shared chunks | Measured | Searched each chunk for library signatures (zod, Sentry, Better Auth, Radix, sonner, lucide). |
 | Fonts, images, motion, layout shift setup | Read from the code | Compared with the vercel react best practices guidance. |
 | Server data waterfalls | Read from the code, fixed | See "Server waterfalls". |
-| LCP, CLS, TBT or INP, long tasks | **Not measured. Needs a CI run or a real phone.** | See "Numbers that need a CI or phone run" at the end. |
+| LCP, CLS, TBT | Measured in CI (B2-T106), before and after B2-T105 | Lighthouse mobile on the built Worker, median of 3 runs per page. See "Lighthouse numbers". |
+| INP, long tasks | **Not measured. Needs a real phone.** | See "Numbers that need a phone run" at the end. |
 
 All build numbers are the production build with `PIPELINE_BUILD=1` (it only skips type errors). Nothing here used production data or a production sign in (C-31).
 
@@ -30,11 +31,11 @@ JS is first load JavaScript from `route-bundle-stats.json`, raw KB / gzip KB.
 |---|---|---|---|
 | `/` landing | 686 / 212 | 580 / 182 | minus 106 raw, minus 30 gzip |
 | `/sign-in` | 680 / 210 | 575 / 180 | minus 105 raw, minus 30 gzip |
-| `/library` | 859 / 265 | 859 / 265 | none |
-| `/takes/[id]` | 929 / 287 | 929 / 288 | none (within rounding) |
-| `/record` | 897 / 280 | 897 / 280 | none |
+| `/library` | 859 / 265 | 812 / 252 | minus 47 raw, minus 13 gzip (B2-T108) |
+| `/takes/[id]` | 929 / 288 | 881 / 274 | minus 48 raw, minus 14 gzip (B2-T108) |
+| `/record` | 897 / 280 | 851 / 267 | minus 46 raw, minus 13 gzip (B2-T108) |
 
-LCP, CLS and TBT or INP: before and after are both "not measured here" for every page (see the last section). The JS numbers are the proxy: less first load JavaScript is less to download, parse and run on a mid phone, which is what moves TBT and INP.
+LCP, CLS and TBT are in "Lighthouse numbers" below. INP and long tasks are not measured. The JS numbers are the proxy: less first load JavaScript is less to download, parse and run on a mid phone, which is what moves TBT and INP.
 
 ### Landing (`/`)
 
@@ -67,25 +68,103 @@ LCP, CLS and TBT or INP: before and after are both "not measured here" for every
 - **Waterfall (fixed)**: same pattern as the library, same fix (`RecordWithUsage`).
 - **Long tasks**: not measured. The prompter keeps its position in a ref and moves one animation frame at a time, so it should not produce long tasks, but that is a reading of the code, not a measurement.
 
+## B2-T108: full zod out of the signed in first load
+
+**Route chosen: move the browser's response parsers to `zod/mini`.** The other route (parse on the server and send checked data) does not work here: the browser reads responses from routes the server owns, so the check at the client boundary would simply go away, and the rule is that every response is still checked there. `zod/mini` keeps the same checks with the same values passing and failing, and it is the same package (zod 4.x already installed), so no new dependency and no change to the legal facts. Server and job code keep full zod. No client schema is imported by server code.
+
+**What changed.** 14 modules that the signed in pages reach: `take-api`, `background-api`, `background-preview-api`, `oauth-screen`, `api-keys-screen`, `prompter-storage`, `realtime-stream`, `site`, `upload-client`, and in `src/components/takes` only the import and schema lines of `email-switch`, `rename-form`, `use-change-render`, `use-usage` and `use-waveform`. The method style changes (`z.nullable(x)`, `z._default(x, v)`, `.check(z.minLength(1))`), nothing else. Local schemas are now exported so a test can reach them.
+
+**Proof the answers did not change.** `src/lib/client-schema-oracle.ts` keeps the old full zod schemas word for word (only the test imports it, so it never reaches the browser). `src/lib/client-schemas.test.ts` runs every fixture, and every variation of it (each field dropped, nulled or given a wrong type or an odd number, an extra key added, arrays emptied or doubled), through the old and the new schema, and fails if the pass or fail answer or the parsed data differs in any case. It also checks the defaults of the take detail, and that `siteOrigin` answers as the old URL check did.
+
+**First load JS, raw KB / gzip KB** (`next build`, Turbopack, same machine and code, one change between runs):
+
+| Route | Before | After | Change |
+|---|---|---|---|
+| `/library` | 859 / 265 | 812 / 252 | minus 47 / minus 13 |
+| `/takes/[id]` | 929 / 288 | 881 / 274 | minus 48 / minus 14 |
+| `/record` | 897 / 280 | 851 / 267 | minus 46 / minus 13 |
+
+The zod chunk went from 107,707 bytes (all of zod) to 60,864 bytes (the `zod/mini` core, 17.6 KB gzip). It is still in the first load of all three routes: the core, its checks and its error text are shared by every schema, and a bundler cannot drop them. So the saving is about 47 KB raw and 13 KB gzip per route, less than the 85 KB I hoped for from measuring one small schema alone. Dropping the rest would mean hand written response checks, which is not safe to do in one task.
+
 ## Server waterfalls: what changed
 
 Before, on `/library`, `/record` and `/takes/[id]`: page read, then `AppShell`'s read, in a row. After: the page's second read starts first and is awaited in a small child component, with no `Suspense`, so the first paint and the streamed output are the same and the two reads overlap. The gain is one database round trip on every one of these pages (a few tens of ms on Neon through Hyperdrive, more when the database is cold; this is an estimate, not a measurement). `src/app/AGENTS.md` records the pattern so new pages follow it.
 
 ## Bigger items for Michael
 
-1. **Zod is still in every signed in page's first load** (about 105 KB raw, 30 KB gzip). The signed in client code imports it through `take-api.ts`, `upload-client.ts`, `use-usage.ts`, `use-waveform.ts` and others, to parse API responses. Options: move those parsers to `zod/mini` (same ideas, much smaller, but about 20 files and a different method style), or keep the parsing on the server and send already checked data. Biggest remaining JS win. Not done here: it touches many files and the response parsing that the API contract relies on.
+1. **Done in B2-T108: full zod is out of the signed in first load.** What is left is the small core of `zod/mini` (see the next section). The remaining question is whether that core can go too, by checking the responses without a library.
 2. **Take page and record page split points.** Things that appear only after a click could load on demand with `next/dynamic`: the delete dialog, the background picker and its preview overlay, the export and transcript download panels. Probably 50 to 100 KB raw off the take page. Not done here: it can change when a dialog appears and would need the full browser suite to prove nothing moved, which this sandbox cannot run.
-3. **Shared app frame chunk (154 KB).** Worth a bundle analyser pass in CI (`@next/bundle-analyzer` with Turbopack is not wired up) to see whether Radix select, tooltip and slider or the full sonner toast are needed on every page. Icons are imported by name already.
+3. **Shared app frame chunk (154 KB).** Done in B2-T109, see "Shared app frame chunk (B2-T109)" below.
 4. **Sentry** is already after idle and out of the first load. Nothing to do.
 5. **Take page polling and the player** need a profile on a real mid phone before anyone changes them.
 
-## Numbers that need a CI or phone run
+## Shared app frame chunk (B2-T109)
 
-These cannot come from this sandbox. Recommended, in this order:
+Question: what is in the frame chunk every signed in page loads, and what does not need to be there on first load? Rule: measure `/library`, `/takes/[id]` and `/record` before and after each change, and keep only changes that lower first load (B2-T107 showed that a small split can reshuffle the chunk graph and gain nothing).
 
-1. **Lighthouse mobile in CI.** Add a job in the pinned Playwright image that builds the Worker, starts `pnpm preview` with the synthetic test account, and runs `lighthouse` (mobile profile, simulated slow 4G, 4x CPU slowdown) on `/`, `/sign-in`, `/library`, a seeded ready take and `/record`. It gives LCP, CLS and TBT per page. The signed in pages need the test session the Playwright setup already makes (`tests/support/session.ts`).
-2. **A real mid phone** (an Android phone around the Pixel 6a class) for INP and long tasks: `/record` through a recording (the prompter and the level meter), and the take page while it polls and plays. `docs/reviews/launch-device-pass.md` already has the device run; add "note anything that feels slow or janky" to its motion rows.
-3. After 1 and 2, compare with the JS numbers above: the landing and sign in pages should already show the effect of this PR in TBT.
+### What was in it
+
+From `next experimental-analyze` on the production build (modules that only the frame pulls in, raw sizes):
+
+| Piece | About | Verdict |
+|---|---|---|
+| `sonner` plus the toast card and its icons | 34 KB | Moved out of first load (below). |
+| `tailwind-merge` (through `cn`) | 27 KB | Used by every component. Cannot leave. |
+| Radix select (`/record` only) | 19 KB | Kept: the device pickers are on screen in the first state of `/record`, so loading them later would make them pop in. |
+| Radix menu, tooltip, dialog, dismissable layer, collection, floating UI | 5 to 13 KB each | Kept: the user menu, sidebar sheet and tooltips are in the frame itself, and the dialog is already needed by the sheet. |
+| zod, react-dom, next internals | large | Not in scope (zod is B2-T108). |
+
+### What changed
+
+- **Toasts load after hydration.** `src/components/ui/sonner.tsx` is now a thin file: `Toaster` is `next/dynamic` with `ssr: false` and `notify` imports `sonner-impl.tsx` on demand. The impl holds sonner, the toast card and its icons. Behaviour is the same: `notify` waits until the toast region has mounted before it shows a toast, so a toast sent very early is never lost (it was never shown before the region existed either). No caller used the old return value, so `notify` now returns nothing.
+
+### Numbers (first load JavaScript, raw KB / gzip KB, same machine, `next build` with `PIPELINE_BUILD=1`)
+
+| Page | Before | After | Change |
+|---|---|---|---|
+| `/library` | 859 / 265 | 827 / 256 | minus 32 raw, minus 9 gzip |
+| `/takes/[id]` | 929 / 288 | 897 / 278 | minus 32 raw, minus 10 gzip |
+| `/record` | 897 / 280 | 866 / 271 | minus 31 raw, minus 9 gzip |
+
+### Tried or weighed and not done
+
+- Radix select on demand: 19 KB on `/record` only, but visible on first paint, so it would flash in. Not done (no visual change allowed).
+- Tooltip and slider: the tooltip provider wraps the frame, and the slider is in the player controls, which show as soon as a take is ready. Not worth a split.
+- `tailwind-merge`: would need a rewrite of `cn` across the app. Not safe here.
+
+Proof of "no behaviour change" is the full Playwright suite in CI (the toast spec waits for the toast to be visible, and the homepage spec still checks that no toaster code is in its first load).
+
+## Lighthouse numbers (B2-T106)
+
+What was measured: the new CI job (`Lighthouse mobile`) builds the Worker, starts the preview with the synthetic test account and a seeded ready take, and runs Lighthouse 12 with the mobile profile (simulated slow 4G, 4x CPU slowdown). Each page runs 3 times and the median is shown. The "before" leg is the same commit with the four B2-T105 page files put back to their pre B2-T105 versions (`d8e57f5`: the zod email check on the landing and sign in pages, and the serial reads on the library, take and record pages). Both legs ran in the same CI run (43655994721) on shared GitHub runners, so only large gaps mean anything.
+
+| Page | LCP before / after | CLS before / after | TBT before / after |
+|---|---|---|---|
+| Landing `/` | 3.41 s / 3.13 s | 0.000 / 0.000 | 99 ms / 133 ms |
+| Sign in `/sign-in` | 1.39 s / 1.86 s | 0.000 / 0.000 | 35 ms / 44 ms |
+| Library `/library` | 2.15 s / 2.58 s | 0.001 / 0.000 | 58 ms / 137 ms |
+| Take page `/takes/:id` | 3.68 s / 3.64 s | 0.000 / 0.000 | 148 ms / 173 ms |
+| Record `/record` | 2.75 s / 2.49 s | 0.000 / 0.000 | 116 ms / 144 ms |
+
+How to read it:
+
+- **No measurable gain, and the order is not stable.** Some pages look a little better after and some a little worse, in both LCP and TBT. That is the noise of a shared runner, not an effect of the change. The 106 KB of zod gzip (30 KB) removed from the landing and sign in pages is a small share of a page that Lighthouse already loads in about 1 to 3 seconds under simulation, and a single 3 run median cannot show it.
+- **The take page is measured in its unavailable state.** The seeded take's video files are not in the CI bucket, so the player shows its own unavailable message. Its LCP and TBT do not include a playing video.
+- **CLS is 0 everywhere**, before and after, as the code design intends.
+- **What the numbers do give us** is a baseline: the take page is the slowest (LCP about 3.6 s, TBT about 150 to 170 ms), then the landing page (LCP above 3 s, driven by the hero image). Those are the pages to look at first.
+- The server waterfall fix (one database round trip less) cannot show here: the CI database is on the same machine, so a round trip costs almost nothing. On Neon through Hyperdrive it is real, but this job cannot measure it.
+- To get a trustworthy before and after, the next step is more runs per page or a quieter machine, or the real phone run below. The JS numbers earlier in this file remain the firm result.
+
+## B2-T107: take page split tried, not kept
+
+- **Delete dialog split tried, not kept.** The delete dialog is the only panel on `/takes/[id]` that appears only after a click. Loaded with `next/dynamic` (prefetch on hover and focus of its triggers), its chunk is 2.6 KB and it leaves the first load, but the chunk graph reshuffled and the route went from 929 to 932 KB raw (288 KB gzip both), so there is no gain and it was dropped. The Export panel is the default tab, so it is visible on first paint. The background picker is not on this page (it is in the upload area). The preview overlay and the transcript downloads are tiny. Radix Dialog is already in the shared frame chunk, so only the dialog's own code could move. So bigger item 2 above is mostly closed: nothing on the take page is big enough to be worth a split.
+
+## Numbers that need a phone run
+
+These cannot come from CI. Recommended:
+
+1. **A real mid phone** (an Android phone around the Pixel 6a class) for INP and long tasks: `/record` through a recording (the prompter and the level meter), and the take page while it polls and plays. `docs/reviews/launch-device-pass.md` already has the device run; add "note anything that feels slow or janky" to its motion rows.
+2. Compare with the Lighthouse baseline above.
 
 ## Choices made (C-30)
 

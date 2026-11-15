@@ -1,7 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
-import { z } from "zod";
+import * as z from "zod/mini";
 import { CircleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
@@ -11,7 +11,7 @@ import { type TakeData, apiMessage, takeSchema } from "@/lib/take-api";
 import { TAKE_TITLE_MAX } from "@/lib/processing";
 import { callApi } from "./browser-io";
 
-const renamedSchema = z.object({ take: takeSchema });
+export const renamedSchema = z.object({ take: takeSchema });
 
 /**
  * Rename a take (AC-9): PATCH /api/takes/{id} { title }. The label stays visible, errors show

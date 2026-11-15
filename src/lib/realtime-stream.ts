@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 
 /**
  * Deepgram streaming for voice following (spec 0021 step 2, AC-12), browser side. Everything here
@@ -28,9 +28,11 @@ export const REALTIME_OPTIONS = {
 export const realtimeUrl = (): string =>
   `${REALTIME_LISTEN_URL}?${new URLSearchParams(REALTIME_OPTIONS).toString()}`;
 
-const resultsSchema = z.object({
+export const resultsSchema = z.object({
   type: z.literal("Results"),
-  channel: z.object({ alternatives: z.array(z.object({ transcript: z.string() })).min(1) }),
+  channel: z.object({
+    alternatives: z.array(z.object({ transcript: z.string() })).check(z.minLength(1)),
+  }),
 });
 
 /** The words of one Deepgram message, or null when it is not a result with words (metadata, empty). */
@@ -47,7 +49,10 @@ export function wordsFromMessage(data: unknown): readonly string[] | null {
   return text ? text.split(/\s+/) : null;
 }
 
-const tokenSchema = z.object({ token: z.string().min(1), expiresInSeconds: z.number().positive() });
+export const tokenSchema = z.object({
+  token: z.string().check(z.minLength(1)),
+  expiresInSeconds: z.number().check(z.positive()),
+});
 
 export type TokenFailure = "limit_exceeded" | "rate_limited" | "unavailable";
 export type TokenResult =
@@ -76,7 +81,7 @@ export async function fetchRealtimeToken(fetchFn: typeof fetch): Promise<TokenRe
 
 const failed = (error: TokenFailure, code: string): TokenResult => ({ ok: false, error, code });
 
-const stepSchema = z.object({ step: z.enum(["no_key", "usage", "grant"]) });
+export const stepSchema = z.object({ step: z.enum(["no_key", "usage", "grant"]) });
 
 /** `token_<status>`, plus the server's step name when it sent one (a code, never a body). */
 async function statusCode(res: Response): Promise<string> {
