@@ -30,7 +30,11 @@ export function ReviewPanel({
       <p className="rvw-eyebrow">Your take</p>
       <h3 data-check="s2-stage-heading-2">
         <span className="rvw-muted">{formatClock(take.durationMs)} recorded.</span>{" "}
-        {sending ? "Sending it now." : "Nothing has left this device yet."}
+        {sending
+          ? "Sending it now."
+          : failure
+            ? "Your recording is still on this device."
+            : "Nothing has left this device yet."}
       </h3>
       {take.note ? (
         <p role="status" className="rvw-alert">

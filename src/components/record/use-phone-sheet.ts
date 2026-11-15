@@ -18,7 +18,10 @@ export function usePhoneSheet(
 
   useEffect(() => {
     const query = window.matchMedia(PHONE);
-    const read = () => setPhone(query.matches);
+    const read = () => {
+      setPhone(query.matches);
+      if (!query.matches) setOpen(false);
+    };
     read();
     query.addEventListener("change", read);
     return () => query.removeEventListener("change", read);
@@ -40,17 +43,17 @@ export function usePhoneSheet(
     trigger.current?.focus();
   }, [trigger]);
 
+  const shown = phone && open;
   useEffect(() => {
-    if (!open) return;
+    if (!shown) return;
     sheet.current?.querySelector<HTMLElement>("button, select, [role='switch']")?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [open, close, sheet]);
+  }, [shown, close, sheet]);
 
-  // Leaving the phone layout while the sheet is open closes it.
-  const shown = phone && open;
+  // Leaving the phone layout while the sheet is open closes it (open is reset above).
   return { phone, open: shown, setOpen, close };
 }

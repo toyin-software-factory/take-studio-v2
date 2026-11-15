@@ -33,11 +33,16 @@ export function RecordReview({
   const [url, setUrl] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
   const video = useRef<HTMLVideoElement>(null);
+  const keyboardPlay = useRef(false);
   useEffect(() => {
     const made = URL.createObjectURL(take.blob);
     queueMicrotask(() => setUrl(made));
     return () => URL.revokeObjectURL(made);
   }, [take.blob]);
+  // Play leaves the page when playback starts; a keyboard user's focus moves to the video controls.
+  useEffect(() => {
+    if (started && keyboardPlay.current) video.current?.focus();
+  }, [started]);
 
   return (
     <section className="rst rvw" aria-label="Your take" data-check="s2-stage" data-check-section="">
@@ -61,7 +66,10 @@ export function RecordReview({
               className="rvw-play"
               aria-label="Play your take"
               data-check="s2-stage-cta-2"
-              onClick={() => void video.current?.play()}
+              onClick={(event) => {
+                keyboardPlay.current = event.detail === 0;
+                void video.current?.play();
+              }}
             >
               <Icon icon={Play} className="fill-current" />
             </button>
