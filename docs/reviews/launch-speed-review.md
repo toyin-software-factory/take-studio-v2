@@ -187,3 +187,21 @@ What moved out of the first load (both with `next/dynamic`, `ssr: false`, nothin
 Kept in the first load on purpose: the Export panel (the default tab, visible at first paint, splitting it would flash), the Transcript panel and its downloads (also `forceMount` and tied to the player bridge, and tiny), and the preview overlay (tiny, and the player needs it for the bridge).
 
 The result is about 15 KB raw, well under the 50 to 100 KB estimate, because Radix, the icons and the shared hooks are in the frame chunk already. It is kept because it lowers first load and changes nothing visible. The browser checks (take page, delete, background, cut review, transcript, axe) are in the PR.
+
+## B2-T158: click-only code on /record
+
+Measured the same way as above (`PIPELINE_BUILD=1 next build`, `route-bundle-stats.json`, raw plus per chunk gzip), same machine, main at b7147f2 before and the branch after.
+
+| Route | Before raw / gzip | After raw / gzip | Change |
+|---|---|---|---|
+| `/record` | 853.1 / 268.4 KB | 812.0 / 256.0 KB | minus 41.1 raw, minus 12.4 gzip |
+| `/library` (control) | 800.4 / 249.9 KB | 801.2 / 250.8 KB | plus 0.9 raw, plus 0.9 gzip |
+| `/takes/[id]` (control) | 856.4 / 268.2 KB | 857.4 / 269.1 KB | plus 1.0 raw, plus 0.9 gzip |
+
+What moved out of the first load: the **stage** (step 2: `RecordStage`, with the device pickers and their Radix select, the level meter, the prompter text and controls, the voice toggle and the consent dialog). It is behind `next/dynamic` with `ssr: false` in `src/components/record/lazy-steps.tsx`. Step 2 only appears after the creator clicks "Turn on camera" and the browser answers the permission prompt, so it is never on screen at first paint. The load starts when the browser is idle (1.5 s timeout) and at once when the camera button is pressed, so it is nearly always ready before the permission answer comes back.
+
+Tried and dropped: also splitting the **review** (step 3, `RecordReview`). With both split, `/record` was 819.3 KB raw (minus 33.8) and `/library` and `/takes/[id]` each grew by about 13 KB, because the bundler regrouped shared chunks (the B2-T107 effect). Stage only is smaller on `/record` and leaves the other routes within 1 KB, so the review stays in the first load.
+
+Kept in the first load on purpose: the setup step (script box, follow my voice option, the camera button, notices), because it is on screen at first paint, and `useVoiceFollow` and `usePrompter`, which `RecordView` calls on every render (hooks cannot be loaded later). The Deepgram follow code is therefore not split in this change: its hook lives in the page, and moving it needs a design change (a lazy start of the connection), noted as a possible next step.
+
+The two controls move by under 1 KB, which is within the chunk regrouping noise, not a regression.
