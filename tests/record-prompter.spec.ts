@@ -151,3 +151,51 @@ test("the Record step has the prompter with its green line, the dock and the Scr
   await expect(text).toHaveAttribute("data-paused", "true");
   await expectNoSeriousAxeIssues(page);
 });
+
+async function toReview(page: Page) {
+  await toStage(page);
+  await page.getByRole("button", { name: "Record" }).click();
+  await expect(page.getByTestId("record-timer")).toBeVisible();
+  await page.waitForTimeout(2000);
+  await page.getByRole("button", { name: "Stop" }).click();
+  await expect(page.locator('[data-check="s2-stage-cta-2"]')).toBeVisible();
+}
+
+test("the Review step has the Your take panel, big play and the three actions (B2-T129)", async ({
+  page,
+  baseURL,
+}) => {
+  await open(page, baseURL!);
+  await toReview(page);
+  await expect(page.locator('[data-check="s2-stage"]')).toBeVisible();
+  await expect(page.locator('[data-check="s2-stage-media"]')).toBeVisible();
+  await expect(page.locator('[data-check="s2-stage-heading-2"]')).toContainText(
+    "recorded. Nothing has left this device yet.",
+  );
+  await expect(page.locator('[data-check="s2-stage-cta-2"]')).toHaveAccessibleName("Use this take");
+  await expect(page.getByRole("button", { name: "Record again" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Save to device" })).toBeVisible();
+  await expect(page.getByText("we cut the pauses, add your studio")).toBeVisible();
+  await expectNoSeriousAxeIssues(page);
+
+  const video = page.getByLabel("Your recording");
+  await expect(video).not.toHaveAttribute("controls", "");
+  await page.getByRole("button", { name: "Play your take" }).click();
+  await expect(page.getByRole("button", { name: "Play your take" })).toHaveCount(0);
+  await expect(video).toHaveAttribute("controls", "");
+});
+
+test("the Review step shows progress and Cancel while a take uploads (B2-T129)", async ({
+  page,
+  baseURL,
+}) => {
+  await open(page, baseURL!);
+  await page.route("**/api/uploads", () => new Promise(() => {})); // never answers: stays sending
+  await toReview(page);
+  await page.locator('[data-check="s2-stage-cta-2"]').click();
+  await expect(page.locator('[data-check="s2-stage-heading-2"]')).toContainText("Sending it now.");
+  await expect(page.getByRole("progressbar")).toBeVisible();
+  await expect(page.getByText("Uploading. Keep this tab open.")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Use this take" })).toHaveCount(0);
+  await expectNoSeriousAxeIssues(page);
+});

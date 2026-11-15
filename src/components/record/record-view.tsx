@@ -107,20 +107,16 @@ export function RecordView({
     }
   };
 
-  if (state.kind === "uploading")
-    return (
-      <WithSteps step={3}>
-        <UploadProgress state={upload.state} onCancel={upload.cancel} />
-      </WithSteps>
-    );
-  if (state.kind === "review" || state.kind === "upload_failed") {
+  if (state.kind === "uploading" || state.kind === "review" || state.kind === "upload_failed") {
     return (
       <WithSteps step={3}>
         <RecordReview
           take={state.take}
           failure={state.kind === "upload_failed" ? state.message : null}
+          upload={state.kind === "uploading" ? upload.state : null}
           onUse={() => void submitTake()}
           onAgain={() => void recorder.again()}
+          onCancel={upload.cancel}
         />
       </WithSteps>
     );
