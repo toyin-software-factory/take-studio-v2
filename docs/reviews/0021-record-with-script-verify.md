@@ -2,6 +2,8 @@
 
 **Status: part 1 of 2.** Run on 2026-11-15 on `b2-t142-record-script-verify`, main at `21aa75e` (after B2-T128, the Record step). B2-T129 (the Review step redesign) is not merged, so the ACs that run through Review and the upload (AC-1, AC-3, AC-4, AC-7, AC-14) are re checked after it lands. The earlier report from 2026-11-14 follows below and still holds for what this run did not repeat. Synthetic scripts and test takes only; no real creator data, no production sign in.
 
+**Part 2, interim (2026-11-15):** run on Dwight's `b2-t129-record-part-3` at `8df33f2` (#347, still open), Worker built from that branch. All pass: `record.spec.ts`, `record-prompter.spec.ts` (default text size reads 28 px), `record-failures.spec.ts`, `record-script-step.spec.ts` (19 and 4 tests, chromium), `record-a11y` (36, including the Pixel 7 run with the phone takeover and bottom sheet) and `record-limits` (7). So AC-1, AC-3, AC-4, AC-7, AC-14 and AC-10's phone part hold on the new Review step and phone layout, and the prompter default is 28 px. This is not final: it is re run on `main` after #347 merges, and row 20 is ticked only then. The AC-4 and AC-14 MP4 length note below is unchanged, and real devices are still owed.
+
 ## What was run (this run)
 
 - Worker built with `bash tests/support/build-worker.sh` (clean env, placeholders only), Postgres local, chromium with Chromium's fake camera and microphone.
