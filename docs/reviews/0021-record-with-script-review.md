@@ -14,7 +14,7 @@ The reviewer's major and two small minors were in scope, so they are fixed here 
 - **Pause into the next take**: the prompter resets `paused` when recording ends, in the same effect that resets the position. This one has no unit test, because it is state inside a hook; the existing prompter browser tests still pass the pause flow.
 
 ## Follow ups (not done in this PR)
-- A failed Deepgram grant keeps its mint slot, and the 429 `Retry-After` is the whole window (`src/server/realtime/http.ts:148`). Free the slot when the grant fails and compute Retry-After from the oldest counted mint, with a test next to "Deepgram fails" in `realtime-routes.test.ts`.
+- ~~A failed Deepgram grant keeps its mint slot, and the 429 `Retry-After` is the whole window.~~ Done in B2-T161: the route frees the slot when the grant fails, and `Retry-After` is the time until the oldest counted mint leaves the window, both tested in `realtime-routes.test.ts`.
 - ~~The Record button is disabled during the countdown, so keyboard focus drops.~~ Done in B2-T160: `aria-disabled`, clicks ignored, focus asserted in the keyboard a11y spec.
 - A hook level test for `useVoiceFollow` side effects (late open, close on stop and unmount) needs a React hook test setup first.
 - ~~The six nits below.~~ Done in B2-T160, including the two file splits (`use-countdown-start.ts`, `stage-dock.css`).
@@ -29,7 +29,7 @@ The reviewer's major and two small minors were in scope, so they are fixed here 
 
 ## Minor
 
-### 🟡 A failed Deepgram grant still uses up one of the creator's mints, and Retry-After is the whole window, `src/server/realtime/http.ts:148`
+### 🟡 (fixed in B2-T161) A failed Deepgram grant still uses up one of the creator's mints, and Retry-After is the whole window, `src/server/realtime/http.ts:148`
 **Problem**: `reserveMint` inserts the row before `grant` runs (lines 148 to 158), so a Deepgram timeout or 5xx counts toward the 10 an hour and 40 a day caps. The 429 answer sets Retry-After to 3600 or 86400 (line 151) rather than the time until the oldest counted mint ages out.
 **Why it matters**: During a Deepgram incident, a creator who retries a few takes can lock themselves out of following for an hour for no fault of their own, and the header tells a client to wait far longer than needed.
 **Suggested fix**: In scope, small. Delete the reserved row when the grant fails (one delete by id), and compute Retry-After from the oldest mint in the window. Extend the existing "Deepgram fails" test in `src/server/realtime/realtime-routes.test.ts:190` to assert the slot is freed.
