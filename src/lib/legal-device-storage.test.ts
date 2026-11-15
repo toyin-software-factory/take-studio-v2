@@ -13,6 +13,21 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
+/** Key literals and storage call arguments in one file that no `DEVICE_STORAGE` fact covers. */
+function undisclosedKeys(raw: string): string[] {
+  const source = raw.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+  const names = new Set(DEVICE_STORAGE.map((d) => d.name));
+  const literals = [...source.matchAll(/(["`])((?:ts\.|take-studio:)[^"`]*)\1/g)].map((m) =>
+    (m[2] ?? "").replace(/\$\{[^}]*\}/g, "<your account id>"),
+  );
+  // Every key passed to getItem, setItem or removeItem must be a known builder or constant.
+  const calls = [
+    ...source.matchAll(/\.(?:get|set|remove)Item\(\s*((?:["`][^"`]*["`])|(?:\w+(?:\([^)]*\))?))/g),
+  ].map((m) => (m[1] ?? "").trim());
+  const allowedCalls = new Set(["settingsKey(creatorId)", "draftKey(creatorId)", "KEY"]);
+  return [...literals.filter((l) => !names.has(l)), ...calls.filter((c) => !allowedCalls.has(c))];
+}
+
 describe("device storage facts", () => {
   it("lists the prompter keys exactly as the code builds them", () => {
     const names = DEVICE_STORAGE.map((d) => d.name);
@@ -24,6 +39,23 @@ describe("device storage facts", () => {
     const source = readFileSync("src/components/home/motion/fan-state.ts", "utf8");
     const key = /const KEY = "([^"]+)"/.exec(source)?.[1];
     expect(DEVICE_STORAGE.find((d) => d.name === key)?.store).toBe("sessionStorage");
+  });
+
+  it("covers every key used inside the known storage files", () => {
+    for (const file of ["src/lib/prompter-storage.ts", "src/components/home/motion/fan-state.ts"])
+      expect(undisclosedKeys(readFileSync(file, "utf8")), file).toEqual([]);
+  });
+
+  it("flags an undisclosed key inside a known storage file", () => {
+    const extra =
+      'const k = "ts.extra"; store.setItem("ts.other", "1"); store.getItem(`ts.x.${id}`);';
+    expect(undisclosedKeys(extra)).toEqual([
+      "ts.extra",
+      "ts.other",
+      "ts.x.<your account id>",
+      '"ts.other"',
+      "`ts.x.${id}`",
+    ]);
   });
 
   it("fails when a file uses browser storage that no fact covers", () => {
