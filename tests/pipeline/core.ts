@@ -20,9 +20,9 @@ export async function coreScenarios(
   });
   check("limits", "over 2 GB → 422", tooBig.status === 422, tooBig.status);
   const badType = await a.api("POST", "/api/uploads", {
-    fileName: "clip.webm",
+    fileName: "clip.avi",
     sizeBytes: 1_000,
-    container: "webm",
+    container: "avi",
   });
   check("limits", "bad type → 422", badType.status === 422, badType.status);
 
