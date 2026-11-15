@@ -13,11 +13,11 @@ export function LevelMeter({ level }: { readonly level: Level }) {
         {Array.from({ length: LEVEL_STEPS }, (_, i) => (
           <span
             key={i}
-            className={`h-full flex-1 rounded-sm ${i < level.lit ? "bg-success" : "bg-border"}`}
+            className={`h-full flex-1 rounded-sm ${i < level.lit ? "bg-[var(--color-accent)]" : "bg-[var(--color-on-dark-20)]"}`}
           />
         ))}
       </div>
-      <span role="status" className="w-24 text-small text-muted-foreground">
+      <span role="status" className="w-20 text-small text-[var(--color-on-dark-75)]">
         {level.label}
       </span>
     </div>

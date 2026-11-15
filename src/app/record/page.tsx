@@ -5,6 +5,8 @@ import { AppShell } from "@/components/shell/app-shell";
 import "@/components/record/record-base.css";
 import "@/components/record/record-script.css";
 import "@/components/record/record-actions.css";
+import "@/components/record/stage.css";
+import "@/components/record/stage-panel.css";
 import { RecordView } from "@/components/record/record-view";
 import { parseUsageEnv } from "@/lib/env";
 import { getDb, getSession } from "@/server/request";
