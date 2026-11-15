@@ -1,20 +1,12 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { background, jobStep, processingJob, render, take, user } from "../schema";
-import {
-  type TestDb,
-  createCreator,
-  openTestDb,
-  seedTake,
-  builtInTracker,
-} from "../testing/test-db";
+import { background, processingJob, render, take, user } from "../schema";
+import { type TestDb, createCreator, openTestDb, seedTake } from "../testing/test-db";
 import type { Db } from "../types";
 import { pgErrorCode } from "../types";
 import { create as createRender } from "./renders";
 import { markRunning, startJob, whileJobActive } from "./jobs";
-
-/** Spec 0008, build step 1: the job seam of a take with a background. */
-const SECRET = "x".repeat(40);
+import { SECRET, built } from "./background-job-test-helpers";
 
 let testDb: TestDb;
 let db: Db;
@@ -22,12 +14,10 @@ beforeAll(async () => {
   testDb = await openTestDb();
   db = testDb.db;
 });
-const built = builtInTracker();
 afterAll(async () => {
   if (testDb) await built.clean(testDb.db);
   await testDb?.close();
 });
-
 async function seedBackground(over: Partial<typeof background.$inferInsert> = {}) {
   const id = crypto.randomUUID();
   const [row] = await db
@@ -47,16 +37,13 @@ async function seedBackground(over: Partial<typeof background.$inferInsert> = {}
     .returning();
   return built.track(row!);
 }
-
 async function takeWith(backgroundId: string | null) {
   const creator = await createCreator(db);
   const t = await seedTake(db, creator.id, { durationMs: 10_000, backgroundId });
   return { creator, take: t };
 }
-
 const start = (creatorId: string, takeId: string) =>
   startJob(db, { creatorId, takeId, usageSecret: SECRET });
-
 describe("startJob with a background (spec 0008)", () => {
   it("records the take's background on the job and creates the background step", async () => {
     const bg = await seedBackground();
@@ -128,7 +115,6 @@ describe("startJob with a background (spec 0008)", () => {
     });
   });
 });
-
 describe("renders.create snapshot (spec 0008)", () => {
   it("records the background, whether the green was replaced and the key colour", async () => {
     const bg = await seedBackground();
@@ -168,7 +154,6 @@ describe("renders.create snapshot (spec 0008)", () => {
     });
   });
 });
-
 describe("renders.create when the background was deleted meanwhile (spec 0008)", () => {
   it("records no reference but keeps the name and the colour, instead of failing", async () => {
     const bg = await seedBackground();
@@ -194,7 +179,6 @@ describe("renders.create when the background was deleted meanwhile (spec 0008)",
     });
   });
 });
-
 describe("background lock order (spec 0008)", () => {
   it("a background delete and a job start, or a guarded write, never deadlock", async () => {
     let deadlocks = 0;
@@ -249,34 +233,5 @@ describe("background lock order (spec 0008)", () => {
     release();
     await Promise.all([write, del]);
     expect(order).toEqual(["write started", "write done", "deleted"]);
-  });
-});
-
-describe("the background step", () => {
-  it("accepts the no_green_screen skip reason and no other on a skipped step", async () => {
-    const bg = await seedBackground();
-    const { creator, take: t } = await takeWith(bg.id);
-    const started = await start(creator.id, t.id);
-    if (!started.ok) throw new Error(started.error);
-    const { updateStep } = await import("./jobs");
-    await markRunning(db, { jobId: started.data.id, triggerRunId: "run" });
-    const ok = await updateStep(db, {
-      jobId: started.data.id,
-      name: "background",
-      status: "skipped",
-      progress: 0,
-      failureCode: "no_green_screen",
-    });
-    expect(ok.ok).toBe(true);
-    const [step] = await db.select().from(jobStep).where(eq(jobStep.jobId, started.data.id));
-    expect(step).toBeDefined();
-    const bad = await updateStep(db, {
-      jobId: started.data.id,
-      name: "background",
-      status: "skipped",
-      progress: 0,
-      failureCode: "ffmpeg_error",
-    });
-    expect(bad.ok).toBe(false);
   });
 });

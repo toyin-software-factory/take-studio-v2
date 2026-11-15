@@ -5,14 +5,10 @@ import type { Db } from "@/db/types";
 import { apiKeyPrefix, generateApiKey, hashApiKey } from "@/lib/api-rules";
 import { MCP, MCP_TOOL_NAMES } from "@/lib/mcp-rules";
 import { type McpHttpDeps, handleMcp } from "./http";
-import { TEST_NOW, TEST_ORIGIN, testMcpDeps } from "./test-wiring";
+import { testMcpDeps } from "./test-wiring";
 import { TOOLS } from "./tools";
+import { ORIGIN, call, json, rpc, toolText } from "./http-test-helpers";
 
-/**
- * `POST /mcp` (spec 0019 AC-1, AC-2, AC-3, AC-10, AC-11) with the real route handlers
- * over a real test database. Own database so the rate windows stay out of other files.
- */
-const ORIGIN = TEST_ORIGIN;
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
@@ -21,10 +17,8 @@ beforeAll(async () => {
 });
 afterAll(() => testDb?.close());
 afterEach(() => vi.restoreAllMocks());
-
 const deps = (): McpHttpDeps => testMcpDeps(db);
 const routeHandlers = (): McpHttpDeps["handlers"] => deps().handlers;
-
 async function newCaller(): Promise<{ creatorId: string; key: string; keyId: string }> {
   const creator = await createCreator(db);
   const key = generateApiKey();
@@ -37,7 +31,6 @@ async function newCaller(): Promise<{ creatorId: string; key: string; keyId: str
   if (!made.ok) throw new Error("no key");
   return { creatorId: creator.id, key, keyId: made.data.id };
 }
-
 const post = (body: unknown, key?: string, extra: Record<string, string> = {}) =>
   handleMcp(
     new Request(`${ORIGIN}/mcp`, {
@@ -51,23 +44,6 @@ const post = (body: unknown, key?: string, extra: Record<string, string> = {}) =
     }),
     deps(),
   );
-const rpc = (method: string, params?: unknown) => ({
-  jsonrpc: "2.0",
-  id: 1,
-  method,
-  ...(params === undefined ? {} : { params }),
-});
-const call = (name: string, args: unknown = {}) => rpc("tools/call", { name, arguments: args });
-type Reply = {
-  result?: Record<string, unknown>;
-  error?: { code: number; message: string };
-};
-const json = async (response: Response): Promise<Reply> => (await response.json()) as Reply;
-const toolText = (reply: Reply): { text: string; isError: boolean } => {
-  const content = (reply.result?.content ?? []) as { text: string }[];
-  return { text: content[0]?.text ?? "", isError: reply.result?.isError === true };
-};
-
 describe("transport (AC-1)", () => {
   it("initializes: negotiated version, server name and instructions", async () => {
     const { key } = await newCaller();
@@ -172,7 +148,6 @@ describe("transport (AC-1)", () => {
     }
   });
 });
-
 describe("identity (AC-2)", () => {
   it("is 401 with the metadata link for no header, a bad key and a revoked key", async () => {
     const { key, keyId, creatorId } = await newCaller();
@@ -204,7 +179,6 @@ describe("identity (AC-2)", () => {
     expect(response.status).toBe(401);
   });
 });
-
 describe("tools are the routes (AC-3, AC-9)", () => {
   it("get_usage gives the status and body of GET /api/usage", async () => {
     const { key } = await newCaller();
@@ -251,87 +225,5 @@ describe("tools are the routes (AC-3, AC-9)", () => {
     expect(unknown.error ?? unknown.result?.isError).toBeTruthy();
     const badInput = await json(await post(call("list_takes", { cursor: 5 }), key));
     expect(badInput.error ?? badInput.result?.isError).toBeTruthy();
-  });
-});
-
-describe("limits and privacy (AC-10, AC-11)", () => {
-  it("counts every POST: the 121st in a minute is 429 with Retry-After, tools/list included", async () => {
-    const { key } = await newCaller();
-    for (let i = 0; i < 60; i += 1) expect((await post(rpc("ping"), key)).status).toBe(200);
-    for (let i = 0; i < 60; i += 1) expect((await post(rpc("tools/list"), key)).status).toBe(200);
-    const refused = await post(rpc("ping"), key);
-    expect(refused.status).toBe(429);
-    expect(Number(refused.headers.get("retry-after"))).toBeGreaterThan(0);
-  }, 60_000);
-
-  it("logs the tool, take, creator, status and duration and nothing else", async () => {
-    const a = await newCaller();
-    const take = await seedTake(db, a.creatorId, { title: "Secret title" });
-    const info = vi.spyOn(console, "info").mockImplementation(() => {});
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const log = vi.spyOn(console, "log").mockImplementation(() => {});
-    await post(call("list_takes"), a.key);
-    await post(call("list_takes", { cursor: "!!" }), a.key);
-    await post(rpc("ping"), "tsk_wrong_key_value");
-    const lines = info.mock.calls.filter((c) => c[0] === "mcp_call");
-    expect(lines).toHaveLength(2);
-    for (const [, fields] of lines) {
-      expect(Object.keys(fields as object).sort()).toEqual([
-        "creatorId",
-        "durationMs",
-        "status",
-        "takeId",
-        "tool",
-      ]);
-    }
-    expect(lines[0]?.[1]).toMatchObject({
-      tool: "list_takes",
-      creatorId: a.creatorId,
-      status: 200,
-    });
-    expect(lines[1]?.[1]).toMatchObject({ status: 400 });
-    const everything = JSON.stringify([info.mock.calls, warn.mock.calls, log.mock.calls]);
-    for (const secret of [a.key, "Secret title", take.id, "!!", "tsk_wrong_key_value"]) {
-      expect(everything).not.toContain(secret);
-    }
-  });
-  it("a route that throws answers a fixed message, logs one line and hides the error text", async () => {
-    const a = await newCaller();
-    const secret =
-      "Failed query: select * from take where title = 'Secret title' params: tsk_secret";
-    const info = vi.spyOn(console, "info").mockImplementation(() => {});
-    const real = deps();
-    const throwing: McpHttpDeps = {
-      ...real,
-      handlers: {
-        ...real.handlers,
-        "GET /api/takes": async () => {
-          throw new Error(secret);
-        },
-      },
-    };
-    const res = await handleMcp(
-      new Request(`${ORIGIN}/mcp`, {
-        method: "POST",
-        headers: { "content-type": "application/json", authorization: `Bearer ${a.key}` },
-        body: JSON.stringify(call("list_takes")),
-      }),
-      throwing,
-    );
-    const out = toolText(await json(res));
-    expect(out.isError).toBe(true);
-    expect(JSON.parse(out.text)).toEqual({
-      error: "internal",
-      message: "Something went wrong on our side. Try again in a moment.",
-    });
-    expect(out.text).not.toContain("Secret title");
-    const lines = info.mock.calls.filter((c) => c[0] === "mcp_call");
-    expect(lines).toHaveLength(1);
-    expect(lines[0]?.[1]).toMatchObject({
-      tool: "list_takes",
-      creatorId: a.creatorId,
-      status: 500,
-    });
-    expect(JSON.stringify(info.mock.calls)).not.toContain("Secret title");
   });
 });

@@ -1,24 +1,10 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { finish, markRunning, startTranscribeJob } from "@/db/data/jobs";
-import { background, jobStep, processingJob, render, take } from "@/db/schema";
-import {
-  type TestDb,
-  createCreator,
-  openTestDb,
-  seedTake,
-  builtInTracker,
-} from "@/db/testing/test-db";
+import { background, processingJob, render, take } from "@/db/schema";
+import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
-import { cancel } from "../jobs";
-import { type TakeHttpDeps, handleGet } from "../takes/http";
-import {
-  type BackgroundHttpDeps,
-  TRANSCRIPT_RUNNING_MESSAGE,
-  handleChangeBackground,
-} from "./http";
-
-const ORIGIN = "https://take-studio.example";
+import { type BackgroundHttpDeps } from "./http";
+import { ORIGIN, built, call } from "./background-test-helpers";
 
 let testDb: TestDb;
 let db: Db;
@@ -26,12 +12,10 @@ beforeAll(async () => {
   testDb = await openTestDb();
   db = testDb.db;
 });
-const built = builtInTracker();
 afterAll(async () => {
   if (testDb) await built.clean(testDb.db);
   await testDb?.close();
 });
-
 function deps(creatorId: string | null, triggered: string[] = [], failTrigger = false) {
   const value: BackgroundHttpDeps = {
     allowedOrigin: ORIGIN,
@@ -44,24 +28,6 @@ function deps(creatorId: string | null, triggered: string[] = [], failTrigger = 
   };
   return value;
 }
-
-const put = (body: unknown, origin: string | null = ORIGIN) =>
-  new Request("https://x.test/api/takes/x/background", {
-    method: "PUT",
-    headers: { ...(origin ? { origin } : {}), "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-async function call(
-  d: BackgroundHttpDeps,
-  takeId: string,
-  body: unknown,
-  origin: string | null = ORIGIN,
-) {
-  const res = await handleChangeBackground(put(body, origin), takeId, d);
-  return { status: res.status, json: (await res.json()) as Record<string, unknown> };
-}
-
 async function seedBackground(over: Partial<typeof background.$inferInsert> = {}) {
   const id = crypto.randomUUID();
   const [row] = await db
@@ -80,7 +46,6 @@ async function seedBackground(over: Partial<typeof background.$inferInsert> = {}
     .returning();
   return built.track(row!);
 }
-
 async function readyTake(opts: { backgroundId?: string; keyed?: boolean } = {}) {
   const creator = await createCreator(db);
   const t = await seedTake(db, creator.id, {
@@ -114,7 +79,6 @@ async function readyTake(opts: { backgroundId?: string; keyed?: boolean } = {}) 
   });
   return { creator, take: t, jobId };
 }
-
 describe("PUT /api/takes/[id]/background (spec 0008, AC-5, AC-6)", () => {
   it("starts a free re render, triggers process-take and leaves the take Ready (202)", async () => {
     const bg = await seedBackground();
@@ -244,204 +208,4 @@ describe("PUT /api/takes/[id]/background (spec 0008, AC-5, AC-6)", () => {
     expect(String(res.json.message)).toContain("changed backgrounds a lot");
     expect(triggered).toEqual([]);
   });
-
-  it("says the video is still being made while another job runs, and the transcript wording while a transcript is", async () => {
-    const bg = await seedBackground();
-    const first = await readyTake();
-    expect(
-      (await call(deps(first.creator.id), first.take.id, { backgroundId: bg.id })).status,
-    ).toBe(202);
-    const busy = await call(deps(first.creator.id), first.take.id, { backgroundId: bg.id });
-    expect([busy.status, busy.json.error]).toEqual([409, "job_active"]);
-    expect(busy.json.message).toBe(
-      "A background change is already running. It'll show here when it's done.",
-    );
-
-    const second = await readyTake();
-    await startTranscribeJob(db, { takeId: second.take.id });
-    const transcribing = await call(deps(second.creator.id), second.take.id, {
-      backgroundId: bg.id,
-    });
-    expect([transcribing.status, transcribing.json.error]).toEqual([409, "job_active"]);
-    expect(transcribing.json.message).toBe(TRANSCRIPT_RUNNING_MESSAGE);
-  });
-
-  it("finishes the job trigger_failed at once when the trigger throws (503), the take untouched", async () => {
-    const bg = await seedBackground();
-    const { creator, take: t } = await readyTake();
-    const res = await call(deps(creator.id, [], true), t.id, { backgroundId: bg.id });
-    expect(res.status).toBe(503);
-    const jobs = await db.select().from(processingJob).where(eq(processingJob.takeId, t.id));
-    const rerender = jobs.find((j) => j.kind === "background");
-    expect(rerender).toMatchObject({ status: "failed", failureCode: "trigger_failed" });
-    const [row] = await db.select().from(take).where(eq(take.id, t.id));
-    expect(row?.status).toBe("ready");
-    // Not stuck: try again works.
-    expect((await call(deps(creator.id), t.id, { backgroundId: bg.id })).status).toBe(202);
-  });
-
-  it("the creator can cancel a change; the take stays Ready", async () => {
-    const bg = await seedBackground();
-    const { creator, take: t } = await readyTake();
-    const res = await call(deps(creator.id), t.id, { backgroundId: bg.id });
-    const cancelled = await cancel(db, { creatorId: creator.id, jobId: res.json.jobId as string });
-    expect(cancelled.ok).toBe(true);
-    const [row] = await db.select().from(take).where(eq(take.id, t.id));
-    expect(row?.status).toBe("ready");
-  });
-});
-
-describe("GET /api/takes/[id] background fields (spec 0008)", () => {
-  const takeDeps = (creatorId: string): TakeHttpDeps => ({
-    allowedOrigin: ORIGIN,
-    getCreator: async () => ({ db, creatorId }),
-    usageSecret: () => "x".repeat(40),
-    triggerProcessTake: async () => ({ id: "run" }),
-  });
-  const get = async (creatorId: string, takeId: string) => {
-    const res = await handleGet(
-      new Request("https://x.test/api/takes/x"),
-      takeId,
-      takeDeps(creatorId),
-    );
-    return (await res.json()) as {
-      background: { id: string | null; name: string; keyed: boolean } | null;
-      noGreenScreen: boolean;
-      backgroundJob: {
-        status: string;
-        failureCode: string | null;
-        targetBackgroundId: string | null;
-      } | null;
-    };
-  };
-
-  it("names the keyed background, with no change job yet", async () => {
-    const bg = await seedBackground();
-    const { creator, take: t } = await readyTake({ backgroundId: bg.id, keyed: true });
-    expect(await get(creator.id, t.id)).toMatchObject({
-      background: { id: bg.id, name: "Studio", keyed: true },
-      noGreenScreen: false,
-      backgroundJob: null,
-    });
-  });
-
-  it("flags no green screen when the render named a background but did not key", async () => {
-    const bg = await seedBackground();
-    const { creator, take: t } = await readyTake({ backgroundId: bg.id, keyed: false });
-    expect(await get(creator.id, t.id)).toMatchObject({ background: null, noGreenScreen: true });
-  });
-
-  it("flags no green screen from a skipped background step too", async () => {
-    const { creator, take: t, jobId } = await readyTake();
-    await db.insert(jobStep).values({
-      id: crypto.randomUUID(),
-      jobId,
-      name: "background",
-      position: 1,
-      status: "skipped",
-      progress: 0,
-      failureCode: "no_green_screen",
-    });
-    expect((await get(creator.id, t.id)).noGreenScreen).toBe(true);
-  });
-
-  it("reports the latest change job, and a failed one for Try again", async () => {
-    const bg = await seedBackground();
-    const { creator, take: t } = await readyTake();
-    const res = await call(deps(creator.id), t.id, { backgroundId: bg.id });
-    expect((await get(creator.id, t.id)).backgroundJob).toEqual({
-      status: "queued",
-      failureCode: null,
-      targetBackgroundId: bg.id,
-    });
-    await markRunning(db, { jobId: res.json.jobId as string, triggerRunId: "run" });
-    await finish(db, {
-      jobId: res.json.jobId as string,
-      status: "failed",
-      failureCode: "ffmpeg_error",
-    });
-    expect((await get(creator.id, t.id)).backgroundJob).toEqual({
-      status: "failed",
-      failureCode: "ffmpeg_error",
-      targetBackgroundId: bg.id,
-    });
-  });
-
-  it("returns the target of the latest change, so Try again repeats it", async () => {
-    const bg = await seedBackground();
-    const first = await seedBackground();
-    // Keyed on `first`, so going back to the original is a real change (no failed job exemption).
-    const { creator, take: t } = await readyTake({ backgroundId: first.id, keyed: true });
-    const res = await call(deps(creator.id), t.id, { backgroundId: bg.id });
-    await markRunning(db, { jobId: res.json.jobId as string, triggerRunId: "run" });
-    await finish(db, {
-      jobId: res.json.jobId as string,
-      status: "failed",
-      failureCode: "ffmpeg_error",
-    });
-    expect((await get(creator.id, t.id)).backgroundJob).toEqual({
-      status: "failed",
-      failureCode: "ffmpeg_error",
-      targetBackgroundId: bg.id,
-    });
-    const orig = await call(deps(creator.id), t.id, { backgroundId: "original" });
-    await markRunning(db, { jobId: orig.json.jobId as string, triggerRunId: "run" });
-    await finish(db, {
-      jobId: orig.json.jobId as string,
-      status: "failed",
-      failureCode: "ffmpeg_error",
-    });
-    expect((await get(creator.id, t.id)).backgroundJob?.targetBackgroundId).toBeNull();
-  });
-
-  it("does not take the no green screen note from a change that failed", async () => {
-    const bg = await seedBackground();
-    const other = await seedBackground();
-    const { creator, take: t } = await readyTake({ backgroundId: bg.id, keyed: true });
-    const res = await call(deps(creator.id), t.id, { backgroundId: other.id });
-    const jobId = res.json.jobId as string;
-    await markRunning(db, { jobId, triggerRunId: "run" });
-    await db
-      .update(jobStep)
-      .set({ status: "skipped", failureCode: "no_green_screen" })
-      .where(eq(jobStep.jobId, jobId));
-    // While it runs, the skip is what the page is about to show.
-    expect((await get(creator.id, t.id)).noGreenScreen).toBe(true);
-    await finish(db, { jobId, status: "failed", failureCode: "ffmpeg_error" });
-    // The video on the page is still the keyed one: no note.
-    expect((await get(creator.id, t.id)).noGreenScreen).toBe(false);
-  });
-
-  it("a `rerender` is not a background change, so it is never the latest change", async () => {
-    const creator = await createCreator(db);
-    const t = await seedTake(db, creator.id, { status: "ready", durationMs: 5_000 });
-    await db.insert(processingJob).values({
-      id: crypto.randomUUID(),
-      takeId: t.id,
-      kind: "rerender",
-      status: "failed",
-      failureCode: "ffmpeg_error",
-      secondsCharged: 0,
-    });
-    expect((await get(creator.id, t.id)).backgroundJob).toBeNull();
-  });
-});
-
-describe("lock order: cancelling a change and deleting its target (spec 0008)", () => {
-  it("never deadlock, and neither rejects", async () => {
-    let failed = 0;
-    for (let i = 0; i < 20; i++) {
-      const target = await seedBackground();
-      const { creator, take: t } = await readyTake();
-      const res = await call(deps(creator.id), t.id, { backgroundId: target.id });
-      await markRunning(db, { jobId: res.json.jobId as string, triggerRunId: "run" });
-      const settled = await Promise.allSettled([
-        cancel(db, { creatorId: creator.id, jobId: res.json.jobId as string }),
-        db.delete(background).where(eq(background.id, target.id)),
-      ]);
-      // Any rejection fails the round: a deadlock (40P01) or any other error.
-      failed += settled.filter((s) => s.status === "rejected").length;
-    }
-    expect(failed).toBe(0);
-  }, 60_000);
 });

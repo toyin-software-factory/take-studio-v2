@@ -20,13 +20,11 @@ const SECRET = "x".repeat(40);
 const NOW = new Date("2026-11-10T12:00:00Z");
 let testDb: TestDb;
 let db: Db;
-
 beforeAll(async () => {
   testDb = await openTestDb({ database: "take_studio_test_usage_routes" });
   db = testDb.db;
 });
 afterAll(() => testDb?.close());
-
 async function setSettings(enabled: boolean, seconds: number): Promise<void> {
   for (const row of [
     { key: "usage_limit_enabled", value: enabled },
@@ -39,7 +37,6 @@ async function setSettings(enabled: boolean, seconds: number): Promise<void> {
   }
 }
 beforeEach(() => setSettings(true, 100));
-
 async function account(usedSeconds = 0) {
   const creator = await createCreator(db);
   const hash = await usageAccountHash(creator.email, SECRET);
@@ -53,9 +50,7 @@ async function account(usedSeconds = 0) {
   }
   return { creator, hash };
 }
-
 const getCreator = (creatorId: string | null) => async () => (creatorId ? { db, creatorId } : null);
-
 describe("GET /api/usage (AC-8)", () => {
   const call = (creatorId: string | null) =>
     handleUsage(new Request("https://x.test/api/usage"), {
@@ -104,7 +99,6 @@ describe("GET /api/usage (AC-8)", () => {
     expect(res.status).toBe(503);
   });
 });
-
 describe("early refusal at upload (AC-7, AC-8)", () => {
   let created = 0;
   const uploadDeps = (creatorId: string | null, secret = true): HttpDeps => ({
@@ -178,7 +172,6 @@ describe("early refusal at upload (AC-7, AC-8)", () => {
     expect((await create(a.creator.id, {}, false)).status).toBe(201);
   });
 });
-
 describe("retry at the limit (AC-6)", () => {
   const retryDeps = (creatorId: string, triggered: string[]): TakeHttpDeps => ({
     allowedOrigin: ORIGIN,

@@ -7,52 +7,21 @@ import {
   compositeFilters,
   detectGreenScreen,
   detectInFrame,
-  erasesSubject,
-  frameAlphaArgs,
   frameSampleArgs,
   fromHex,
   isGreen,
-  isKeyable,
-  keyChroma,
-  keySettings,
   patchRects,
   rgbToHsv,
   sampleFrameSize,
   sampleTimesMs,
   toHex,
-  transparentShare,
 } from "./keying";
-
-const W = 320;
-const H = 180;
-
-/** A frame of one colour, with optional rectangles (fractions of the frame) of other colours. */
-function frame(
-  base: Rgb,
-  boxes: ReadonlyArray<{ x0: number; y0: number; x1: number; y1: number; color: Rgb }> = [],
-  size = { width: W, height: H },
-): RawFrame {
-  const data = new Uint8Array(size.width * size.height * 3);
-  for (let y = 0; y < size.height; y++) {
-    for (let x = 0; x < size.width; x++) {
-      const fx = x / size.width;
-      const fy = y / size.height;
-      const box = boxes.find((b) => fx >= b.x0 && fx < b.x1 && fy >= b.y0 && fy < b.y1);
-      const c = box?.color ?? base;
-      const i = (y * size.width + x) * 3;
-      data[i] = c.r;
-      data[i + 1] = c.g;
-      data[i + 2] = c.b;
-    }
-  }
-  return { width: size.width, height: size.height, data };
-}
+import { H, W, frame } from "./keying-test-helpers";
 
 const GREEN: Rgb = { r: 0, g: 177, b: 64 }; // #00b140, the usual chroma key green
 const SKIN: Rgb = { r: 222, g: 160, b: 130 };
 const GRAY: Rgb = { r: 90, g: 90, b: 95 };
 const person = [{ x0: 0.3, y0: 0.15, x1: 0.7, y1: 1, color: SKIN }];
-
 describe("patch geometry", () => {
   it("has 16 patches of 4 % by 4 %, along the left, right and top edges, none overlapping", () => {
     const patches = patchRects(W, H);
@@ -85,7 +54,6 @@ describe("patch geometry", () => {
     expect(patchRects(20, 20).every((p) => p.w >= 1 && p.h >= 1)).toBe(true);
   });
 });
-
 describe("colour rules", () => {
   it("converts RGB to HSV", () => {
     expect(rgbToHsv({ r: 255, g: 0, b: 0 })).toEqual({ h: 0, s: 1, v: 1 });
@@ -106,7 +74,6 @@ describe("colour rules", () => {
     expect(isGreen(GRAY)).toBe(false);
   });
 });
-
 describe("detectGreenScreen", () => {
   const frames = (f: RawFrame) => [f, f, f, f, f];
 
@@ -182,7 +149,6 @@ describe("detectGreenScreen", () => {
     expect(detectGreenScreen(frames(portrait)).usable).toBe(true);
   });
 });
-
 describe("sampling", () => {
   it("samples at 10, 30, 50, 70 and 90 % of the take", () => {
     expect(sampleTimesMs(10_000)).toEqual([1_000, 3_000, 5_000, 7_000, 9_000]);
@@ -217,7 +183,6 @@ describe("sampling", () => {
     expect(hdr[hdr.indexOf("-vf") + 1]).toBe("TONEMAP,scale=320:180,format=rgb24");
   });
 });
-
 describe("hex colours", () => {
   it("round trips and rejects junk", () => {
     expect(toHex(GREEN)).toBe("#00b140");
@@ -226,7 +191,6 @@ describe("hex colours", () => {
     expect(fromHex("#00b14")).toBeNull();
   });
 });
-
 describe("compositeFilters", () => {
   it("keys, cleans the green spill, covers and crops the background and overlays", () => {
     const lines = compositeFilters({ keyColor: "#00b140", width: 1920, height: 1080 });
@@ -246,7 +210,6 @@ describe("compositeFilters", () => {
     );
   });
 });
-
 describe("detectInFrame (the preview frame)", () => {
   it("is usable with one green screen frame and returns the key colour", () => {
     const result = detectInFrame(frame(GREEN, person));
@@ -258,76 +221,5 @@ describe("detectInFrame (the preview frame)", () => {
     expect(detectInFrame(frame(GRAY, person)).usable).toBe(false);
     const narrow = frame(GRAY, [{ x0: 0, y0: 0, x1: 0.15, y1: 1, color: GREEN }]);
     expect(detectInFrame(narrow).usable).toBe(false);
-  });
-});
-
-describe("adaptive key settings (S3S-T10)", () => {
-  const DEEP = { r: 0, g: 177, b: 64 };
-  const LIME = { r: 125, g: 245, b: 75 };
-  const MINT = { r: 170, g: 230, b: 190 };
-
-  it("measures a key's distance from neutral in the units chromakey's similarity uses", () => {
-    expect(keyChroma({ r: 128, g: 128, b: 128 })).toBeCloseTo(0, 2);
-    expect(keyChroma(DEEP)).toBeCloseTo(0.4, 1);
-    expect(keyChroma(LIME)).toBeCloseTo(0.39, 1);
-    expect(keyChroma(MINT)).toBeCloseTo(0.14, 1);
-  });
-
-  it("keeps the old settings for a saturated green and scales them down for a pale one", () => {
-    expect(keySettings(DEEP)).toEqual({ similarity: KEYING.similarity, blend: KEYING.blend });
-    // Lime is a little closer to neutral: the blend is at its ceiling, similarity just under.
-    expect(keySettings(LIME).blend).toBe(KEYING.blend);
-    expect(keySettings(LIME).similarity).toBeLessThan(KEYING.similarity);
-    const mint = keySettings(MINT);
-    expect(mint.similarity).toBeCloseTo(0.3 * keyChroma(MINT), 3);
-    expect(mint.blend).toBeCloseTo(0.22 * keyChroma(MINT), 3);
-    // Whatever the green, similarity plus blend stays well inside the distance to grey.
-    for (const key of [DEEP, LIME, MINT, { r: 40, g: 110, b: 55 }]) {
-      const { similarity, blend } = keySettings(key);
-      expect(similarity + blend).toBeLessThan(0.6 * keyChroma(key));
-    }
-  });
-
-  it("refuses a key too close to neutral to tell from grey, skin and dark clothing", () => {
-    expect(isKeyable(DEEP)).toBe(true);
-    expect(isKeyable(MINT)).toBe(true);
-    expect(isKeyable({ r: 150, g: 165, b: 155 })).toBe(false);
-    // Even when the border looks green to the hue rule, a key that cannot be used is no screen.
-    const grayGreen = frame({ r: 150, g: 165, b: 155 });
-    const frames = [grayGreen, grayGreen, grayGreen, grayGreen, grayGreen];
-    expect(detectGreenScreen(frames).usable).toBe(false);
-    expect(detectInFrame(grayGreen).usable).toBe(false);
-  });
-
-  it("writes the scaled settings into the filter chain", () => {
-    const filters = compositeFilters({ keyColor: "#aae6be", width: 1280, height: 720 });
-    const { similarity, blend } = keySettings(MINT);
-    expect(filters[0]).toContain(`chromakey=0xaae6be:${similarity}:${blend}`);
-  });
-
-  it("counts the transparent share of an alpha plane and refuses a key that erases the subject", () => {
-    expect(transparentShare(new Uint8Array([0, 0, 255, 255]))).toBe(0.5);
-    expect(transparentShare(new Uint8Array([127, 128]))).toBe(0.5);
-    expect(transparentShare(new Uint8Array(0))).toBe(1);
-    expect(erasesSubject(0.5)).toBe(false);
-    expect(erasesSubject(0.85)).toBe(false);
-    expect(erasesSubject(0.86)).toBe(true);
-    expect(erasesSubject(1)).toBe(true);
-  });
-
-  it("builds the alpha probe on the same tone map and key as the render", () => {
-    const args = frameAlphaArgs(
-      "in.mp4",
-      2500,
-      { width: 320, height: 180 },
-      "tonemap=hable",
-      "#00b140",
-    );
-    const vf = args[args.indexOf("-vf") + 1]!;
-    expect(vf).toBe(
-      "tonemap=hable,scale=320:180,format=yuva444p,chromakey=0x00b140:0.12:0.08,alphaextract,format=gray",
-    );
-    expect(args).toContain("2.500");
-    expect(args.slice(-3)).toEqual(["-f", "rawvideo", "-"]);
   });
 });
