@@ -3,7 +3,8 @@ import { gigabytes, minutes, resolution } from "./content-limits";
 /**
  * Everything the homepage says (spec 0010, AC-2). Copy describes only what works today: no line
  * claims the cut review timeline, undoing single cuts, AI agents choosing cuts or a monthly
- * limit before those ship; "coming soon" is only for the public API and MCP server. Limits come
+ * limit before those ship. The public API and MCP server are live (specs 0018, 0019) and link to
+ * their docs. Limits come
  * from the upload and retention rules, never typed by hand.
  */
 
@@ -96,13 +97,19 @@ export const STUDIO = {
     ],
   },
   agents: {
-    chip: "Coming soon",
+    chip: "Live now",
     title: "Your AI agent can drive it too",
     text: "A public API and an MCP server, so an agent can upload a take, pick a studio and fetch the captions without you opening the app.",
   },
   fill: ["No editing timeline.", "No retakes for a long pause.", "No typing captions by hand."],
   cta: "Upload your first take",
 } as const;
+
+/** The docs the fourth capabilities tile links to (the tile has no video). */
+export const AGENT_DOCS = [
+  { href: "/docs/api", label: "API docs" },
+  { href: "/docs/mcp", label: "MCP docs" },
+] as const;
 
 export const CAPABILITIES = {
   eyebrow: "What it does",
@@ -136,7 +143,7 @@ export const CAPABILITIES = {
     {
       key: "agents",
       title: "Built for agents",
-      text: "An API and MCP server so agents can do it for you. Coming soon.",
+      text: "An API and MCP server so agents can do it for you.",
       media: null,
       width: 840,
       height: 672,

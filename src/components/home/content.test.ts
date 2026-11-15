@@ -38,11 +38,27 @@ describe("homepage copy is true today (spec 0010, AC-2)", () => {
     }
   });
 
-  it("says coming soon only about the public API and the MCP server", () => {
-    const soon = content.STUDIO.agents.text + content.CAPABILITIES.tiles[3].text;
-    expect(soon).toMatch(/API and (an )?MCP/);
-    const lines = copy.split("\n").filter((l) => /coming soon|\(soon\)|^Soon\./i.test(l));
-    for (const line of lines) expect(line).toMatch(/API|MCP|Coming soon$|Soon\./);
+  it("says the public API and the MCP server are live, with no soon wording left", () => {
+    expect(content.STUDIO.agents.chip).toBe("Live now");
+    expect(content.STUDIO.agents.text).toMatch(/API and an MCP/);
+    expect(content.CAPABILITIES.tiles[3].text).toMatch(/API and MCP/);
+    expect(copy).not.toMatch(/coming soon|\(soon\)|\bsoon\b/i);
+  });
+
+  it("links the agents tile and the footer to the API and MCP docs", () => {
+    expect(content.AGENT_DOCS.map((d) => d.href)).toEqual(["/docs/api", "/docs/mcp"]);
+    const agents = content.FOOTER.columns.find((c) => c.label === "For agents");
+    expect(agents?.links.map((l) => [l.label, l.href])).toEqual([
+      ["Public API", "/docs/api"],
+      ["MCP server", "/docs/mcp"],
+    ]);
+  });
+
+  it("answers the agent question with what the docs say: an API key or signing in from Claude.ai", () => {
+    const item = content.FAQ.items.find((i) => i.q === "Can an AI agent use Take Studio?");
+    expect(item?.a).toMatch(/^Yes\./);
+    expect(item?.a).toMatch(/API key/);
+    expect(item?.a).toMatch(/Claude\.ai/);
   });
 
   it("has the closing sign in form (an email link, not an invite form) and the contact address", () => {

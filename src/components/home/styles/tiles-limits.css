@@ -66,14 +66,31 @@ html.js .h-tile-media[data-playing="true"] video {
 .h-tile-4 {
   aspect-ratio: 5 / 4;
 }
-.h-tile-soon {
-  display: grid;
-  place-items: center;
+.h-tile-docs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   height: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
   font-size: var(--fs-micro);
   letter-spacing: var(--ls-eyebrow);
   text-transform: uppercase;
+}
+.h-tile-docs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
   color: var(--color-on-dark-75);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.h-tile-docs a:hover {
+  color: var(--color-on-dark);
 }
 .h-cap {
   display: flex;
