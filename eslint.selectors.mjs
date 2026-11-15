@@ -4,7 +4,9 @@ const sonnerSource = String.raw`/^sonner(\/|$)|sonner-impl$/`;
 // Any declarator of a top level `const`, `let` or `var`, and the db calls it may not hold.
 const topLevelDeclarator =
   ":matches(Program, ExportNamedDeclaration) > VariableDeclaration > VariableDeclarator";
-const dbCall = "[callee.name=/^(getDb|createWebDb)$/]";
+const eager =
+  ":matches(AwaitExpression, ObjectExpression, Property, ArrayExpression, SpreadElement, SequenceExpression, ConditionalExpression, LogicalExpression, TSAsExpression, TSNonNullExpression, TSSatisfiesExpression)";
+const dbCall = "CallExpression[callee.name=/^(getDb|createWebDb)$/]";
 const fullscreenMethod = "/^(requestFullscreen|webkitRequestFullscreen|webkitEnterFullscreen)$/";
 
 export const zodSource = String.raw`/^zod(\/v[34])?$/`;
@@ -32,8 +34,10 @@ export const proseSelectors = [
     message:
       "Full screen goes through `enterFullscreen` from @/lib/fullscreen, which falls back to the WebKit methods iPhone Safari needs.",
   })),
-  ...[`CallExpression`, `AwaitExpression > CallExpression`].map((call) => ({
-    selector: `${topLevelDeclarator} > ${call}${dbCall}`,
+  // Each depth is one more step through a node that evaluates at once (`{ db: await getDb() }`,
+  // `[getDb()]`, `a ?? getDb()`); a function in between is not listed, so a call inside one is fine.
+  ...[0, 1, 2, 3, 4, 5].map((depth) => ({
+    selector: `${topLevelDeclarator} > ${`${eager} > `.repeat(depth)}${dbCall}`,
     message:
       "Never keep a database client at module level: call `getDb()` inside the request (src/db/AGENTS.md).",
   })),

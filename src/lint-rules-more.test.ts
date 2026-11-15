@@ -195,6 +195,9 @@ describe("no database client at module level", { timeout: 60_000 }, () => {
     "const db = (await getDb());",
     "const ready = true, db = await getDb();",
     "let db = createWebDb(env);",
+    "export const deps = { db: await getDb() };",
+    "const dbs = [getDb()];",
+    "const db = cached ?? (await getDb());",
   ];
   it("refuses each form, naming getDb", async () => {
     for (const line of bad) {
@@ -206,6 +209,10 @@ describe("no database client at module level", { timeout: 60_000 }, () => {
       expect(found, line).toHaveLength(1);
       expect(found[0]).toContain("getDb()");
     }
+  });
+  it("allows a call inside a function, even inside an object", async () => {
+    const nested = "export const deps = { load: async () => await getDb() };\n";
+    expect(await messages("no-restricted-syntax", "src/app/a/page.tsx", nested)).toEqual([]);
   });
   it("allows a call inside a function", async () => {
     const ok = "export const load = async () => { const db = await getDb(); return db; };\n";
