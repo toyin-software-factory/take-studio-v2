@@ -1,4 +1,5 @@
-import { defineConfig, devices } from "@playwright/test";
+import { existsSync } from "node:fs";
+import { defineConfig, devices, firefox, webkit, type BrowserType } from "@playwright/test";
 
 // Smoke tests run against the built Worker (`pnpm build:worker` first), served by
 // `opennextjs-cloudflare preview` on workerd, the same runtime as production.
@@ -13,6 +14,14 @@ const galleryVar = production ? "" : " --var DESIGN_GALLERY:1";
 const CROSS_BROWSER_SPEC = /cross-browser\.spec\.ts$/;
 const USAGE_SPECS = [/usage\.spec\.ts$/, /record-a11y\.spec\.ts$/, /record-limits\.spec\.ts$/];
 
+/**
+ * Safari's and Firefox's engines run in CI (the Playwright image has them). A local run includes
+ * one only when its browser is installed (`pnpm exec playwright install webkit firefox`), so a
+ * sandbox with Chromium alone is not red for browsers it never had (B2-T140).
+ */
+const engine = (type: BrowserType): boolean =>
+  !!process.env.CI || existsSync(type.executablePath());
+
 /** The run order between the usage suites (see the note on `projects`). */
 const chain = (names: string[]): string[] => (process.env.E2E_SPLIT ? [] : names);
 
@@ -23,6 +32,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
+  workers: process.env.CI ? undefined : 1,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: `http://${host}:${port}`,
@@ -38,16 +48,12 @@ export default defineConfig({
   // runs `usage`, `record-a11y` and `record-limits` one after another, each as its own command.
   // Without E2E_SPLIT (a local `pnpm test:e2e`) the chain keeps them in that order.
   projects: [
-    {
-      name: "webkit",
-      testMatch: CROSS_BROWSER_SPEC,
-      use: { ...devices["Desktop Safari"] },
-    },
-    {
-      name: "firefox",
-      testMatch: CROSS_BROWSER_SPEC,
-      use: { ...devices["Desktop Firefox"] },
-    },
+    ...(engine(webkit)
+      ? [{ name: "webkit", testMatch: CROSS_BROWSER_SPEC, use: { ...devices["Desktop Safari"] } }]
+      : []),
+    ...(engine(firefox)
+      ? [{ name: "firefox", testMatch: CROSS_BROWSER_SPEC, use: { ...devices["Desktop Firefox"] } }]
+      : []),
     { name: "chromium", testIgnore: USAGE_SPECS, use: { ...devices["Desktop Chrome"] } },
     {
       name: "usage",

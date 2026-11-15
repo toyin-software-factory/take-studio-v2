@@ -1,4 +1,5 @@
 import { chromium, type FullConfig } from "@playwright/test";
+import { workerOriginProblem } from "./built-env";
 import { signIn } from "./session";
 
 /**
@@ -9,6 +10,8 @@ import { signIn } from "./session";
 export default async function globalSetup(config: FullConfig): Promise<void> {
   const baseURL = config.projects[0]?.use.baseURL;
   if (!baseURL) throw new Error("playwright.config.ts has no baseURL");
+  const problem = workerOriginProblem(baseURL);
+  if (problem) throw new Error(problem);
   const browser = await chromium.launch();
   try {
     const context = await browser.newContext();
