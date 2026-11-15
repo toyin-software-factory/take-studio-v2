@@ -54,7 +54,7 @@ export function registerRecord(): void {
       await page.getByRole("button", { name: "Stop" }).click();
     });
 
-    test("a refused create keeps the take with the dated message and Save to your device", async ({
+    test("a refused create keeps the take with the dated message and Save to device", async ({
       page,
       baseURL,
     }) => {
@@ -83,7 +83,7 @@ export function registerRecord(): void {
       await expect(page.getByText("This take wasn't uploaded")).toBeVisible();
       await expect(page.getByText(/longer than the minutes you have left/)).toBeVisible();
       await expect(page.getByLabel("Your recording")).toBeVisible();
-      await expect(page.getByRole("link", { name: "Save to your device" })).toBeVisible();
+      await expect(page.getByRole("link", { name: "Save to device" })).toBeVisible();
       await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
       expect(created).toHaveLength(1);
       expect(created[0]?.source).toBe("recording");

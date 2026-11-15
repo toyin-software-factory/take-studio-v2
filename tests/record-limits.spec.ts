@@ -115,7 +115,7 @@ test("a refused upload (403) keeps the take and reads the numbers again (AC-6)",
   await page.getByRole("button", { name: "Use this take" }).click();
   await expect(page.getByText("This take wasn't uploaded")).toBeVisible();
   await expect(page.getByLabel("Your recording")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Save to your device" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Save to device" })).toBeVisible();
   await expect.poll(() => usageReads).toBeGreaterThan(0);
 });
 

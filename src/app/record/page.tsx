@@ -7,6 +7,8 @@ import "@/components/record/record-script.css";
 import "@/components/record/record-actions.css";
 import "@/components/record/stage.css";
 import "@/components/record/stage-panel.css";
+import "@/components/record/stage-phone.css";
+import "@/components/record/review.css";
 import { RecordView } from "@/components/record/record-view";
 import { parseUsageEnv } from "@/lib/env";
 import { getDb, getSession } from "@/server/request";
