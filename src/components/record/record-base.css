@@ -101,7 +101,7 @@
     animation-delay: calc(var(--i, 0) * var(--stagger));
   }
   .rec-flip {
-    animation: rec-flip var(--dur-enter) var(--ease-enter) both;
+    animation: rec-flip 600ms var(--ease-out) both; /* the draft's gsap power4.out, 0.6 s */
     display: inline-block;
   }
 }
