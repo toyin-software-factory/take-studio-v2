@@ -43,7 +43,8 @@ const METRICS = [
 type MetricKey = (typeof METRICS)[number]["key"];
 const CATEGORIES = ["performance", "accessibility", "best-practices", "seo"] as const;
 type CategoryId = (typeof CATEGORIES)[number];
-type Scores = Readonly<Record<CategoryId, number>>;
+/** A quality score is null when one of its audits errored; that is reported, not a failure. */
+type Scores = Readonly<Record<CategoryId, number | null>> & { readonly performance: number };
 type Sample = Readonly<Record<MetricKey, number>> & { readonly scores: Scores };
 type FailedAudit = {
   readonly id: string;
@@ -98,6 +99,11 @@ function median(values: readonly number[]): number {
   return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
 }
 
+function medianOrNull(values: readonly (number | null)[]): number | null {
+  const present = values.filter((v): v is number => v !== null);
+  return present.length > 0 ? median(present) : null;
+}
+
 /** The status of the page's own request, from Lighthouse's network audit. */
 function documentStatus(lhr: Lhr): number | null {
   const details = lhr.audits["network-requests"]?.details as
@@ -113,9 +119,7 @@ function loadProblem(lhr: Lhr, page: Page): string | null {
   if (final.pathname !== page.path) return `redirected to ${final.pathname}`;
   const status = documentStatus(lhr);
   if (status !== null && status >= 400) return `HTTP ${status}`;
-  for (const id of CATEGORIES) {
-    if (typeof lhr.categories[id]?.score !== "number") return `no ${id} score`;
-  }
+  if (typeof lhr.categories.performance?.score !== "number") return "no performance score";
   for (const { audit } of METRICS) {
     if (typeof lhr.audits[audit]?.numericValue !== "number") return `no ${audit} value`;
   }
@@ -131,9 +135,9 @@ function sample(lhr: Lhr): Sample {
     fcp: read("first-contentful-paint"),
     scores: {
       performance: lhr.categories.performance.score!,
-      accessibility: lhr.categories.accessibility.score!,
-      "best-practices": lhr.categories["best-practices"].score!,
-      seo: lhr.categories.seo.score!,
+      accessibility: lhr.categories.accessibility?.score ?? null,
+      "best-practices": lhr.categories["best-practices"]?.score ?? null,
+      seo: lhr.categories.seo?.score ?? null,
     },
   };
 }
@@ -142,7 +146,7 @@ function sample(lhr: Lhr): Sample {
 function failedAudits(lhr: Lhr): readonly FailedAudit[] {
   const found: FailedAudit[] = [];
   for (const category of CATEGORIES.slice(1)) {
-    for (const { id } of lhr.categories[category].auditRefs ?? []) {
+    for (const { id } of lhr.categories[category]?.auditRefs ?? []) {
       const audit = lhr.audits[id];
       if (!audit || typeof audit.score !== "number" || audit.score >= 1) continue;
       if (audit.scoreDisplayMode === "manual" || audit.scoreDisplayMode === "informative") continue;
@@ -176,7 +180,7 @@ async function measure(page: Page): Promise<Result> {
     const problem = loadProblem(lhr, page);
     if (problem) return { page, ok: false, problem };
     samples.push(sample(lhr));
-    for (const audit of failedAudits(lhr)) failed.set(audit.id, audit);
+    for (const audit of failedAudits(lhr)) failed.set(`${audit.category}:${audit.id}`, audit);
   }
   const med = (key: MetricKey) => median(samples.map((s) => s[key]));
   return {
@@ -189,9 +193,9 @@ async function measure(page: Page): Promise<Result> {
       fcp: med("fcp"),
       scores: {
         performance: median(samples.map((x) => x.scores.performance)),
-        accessibility: median(samples.map((x) => x.scores.accessibility)),
-        "best-practices": median(samples.map((x) => x.scores["best-practices"])),
-        seo: median(samples.map((x) => x.scores.seo)),
+        accessibility: medianOrNull(samples.map((x) => x.scores.accessibility)),
+        "best-practices": medianOrNull(samples.map((x) => x.scores["best-practices"])),
+        seo: medianOrNull(samples.map((x) => x.scores.seo)),
       },
     },
     failed: [...failed.values()],
@@ -202,7 +206,7 @@ const seconds = (ms: number) => `${(ms / 1000).toFixed(2)} s`;
 const millis = (ms: number) => `${Math.round(ms)} ms`;
 
 const pageLabel = (page: Page) => `${page.name} \`${page.path.replace(/[0-9a-f-]{36}/, ":id")}\``;
-const pct = (score: number) => String(Math.round(score * 100));
+const pct = (score: number | null) => (score === null ? "n/a" : String(Math.round(score * 100)));
 
 function failedList(results: readonly Result[]): readonly string[] {
   const lines = results.flatMap((r) =>
