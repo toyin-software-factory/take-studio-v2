@@ -11,7 +11,7 @@ name: Roll back the Worker
 # (expand, then contract), so the older Worker still runs on the newer schema.
 #
 # Guards: it only runs from main, in the `production` environment (the same approval rules as a
-# deploy), and shares the `deploy-production` group so it never overlaps a deploy. Nothing here
+# deploy), and refuses to start while a Deploy run is running or waiting (see the check step), so it never overlaps a deploy. It has its own concurrency group, so a later Deploy can never cancel a waiting rollback. Nothing here
 # reads a .env file or prints a secret; version IDs are not secrets.
 on:
   workflow_dispatch:
@@ -32,6 +32,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   rollback:
@@ -42,9 +43,11 @@ jobs:
     timeout-minutes: 10
     environment: production
     concurrency:
-      # Only a real rollback shares the production write queue with Deploy. A list run is read
-      # only and gets its own group, so it can never take the pending slot of a waiting deploy.
-      group: ${{ inputs.mode == 'rollback' && 'deploy-production' || format('rollback-list-{0}', github.run_id) }}
+      # Its own group, never `deploy-production`: a group keeps only one waiting run and cancels
+      # the older one, so a Deploy entering a shared group could cancel a waiting rollback. Here
+      # only another rollback can replace a waiting rollback (the newest one wins). The overlap
+      # with a Deploy is blocked by the "No Deploy run is going" step instead.
+      group: rollback-production-${{ inputs.mode == 'rollback' && 'write' || github.run_id }}
       cancel-in-progress: false
     env:
       WORKER_NAME: take-studio
@@ -76,6 +79,24 @@ jobs:
               echo "::error::Keep the reason under 100 characters."
               exit 1
             fi
+          fi
+
+      - name: No Deploy run is going
+        if: inputs.mode == 'rollback'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # A running Deploy could ship over the rollback, and a waiting one would put the bad
+          # commit back after it. Fail loudly instead of racing: cancel or wait, then run again.
+          busy=""
+          for state in in_progress queued waiting pending; do
+            found=$(gh run list --workflow deploy.yml --status "$state" --json databaseId --jq '.[].databaseId')
+            if [ -n "$found" ]; then busy="$busy $found"; fi
+          done
+          if [ -n "$busy" ]; then
+            echo "::error::A Deploy run is still going or waiting (run IDs:$busy). Cancel it in Actions (or wait for it to finish), then run this rollback again."
+            exit 1
           fi
 
       - name: Show the current deployment and recent versions
