@@ -19,7 +19,7 @@ pnpm install                  # install
 pnpm db:up && pnpm db:migrate # local Postgres (Docker) + migrations
 pnpm db:seed                  # install the built in studio backgrounds (R2 + rows; local database only)
 pnpm dev                      # next dev + trigger dev
-pnpm lint && pnpm typecheck && pnpm test   # run before every push (CI runs the build; see ROLE.md)
+pnpm lint && pnpm typecheck && pnpm test && pnpm check:lines   # run before every push (CI runs the build; see ROLE.md)
 pnpm test:e2e                 # Playwright smoke tests
 pnpm db:generate              # new migration after a schema change (commit it)
 ```
@@ -44,6 +44,7 @@ Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md` or `docs/specs/NNNN-
 - **Errors**: expected failures return a typed result (`{ ok: true, data } | { ok: false, error }`) instead of throwing across boundaries. Creators see friendly messages; logs, error reports and job payloads carry IDs only, never video, transcripts, presigned links or secrets.
 - **Folders by feature inside the layers**: `src/app` (routes), `src/server/<feature>/`, `src/trigger/<feature>/`, `src/lib`, `src/db`. Job code never imports `src/app` or `src/server`; web code never imports job internals or heavy SDKs (ESLint enforces it).
 - **Small units**: one job per function or component; split a component past about 150 lines.
+- **No file past 250 lines**; `pnpm check:lines` enforces it (CI and the pre commit hook, staged files only). It counts like `wc -l` over tracked `.ts`, `.tsx`, `.js`, `.mjs` and `.css` files, skips generated files (`drizzle/`, `.next`, lockfiles) and the standalone `tools/design-check/` (not app code, never split). Split by topic instead of raising the limit.
 - **Named exports only**, except where Next.js requires a default export (`page`, `layout`, `route`, `loading`, `error`, `not-found`).
 - **Accessibility, WCAG AA**: semantic HTML, full keyboard use, visible focus, AA contrast, alt text, captions for video.
 - **Tooling**: ESLint (flat config) + Prettier, Vitest (unit), Playwright (browser); CI runs lint, typecheck, test, build and e2e on every PR. A pre commit hook formats and lints only the staged files (fast); typecheck and tests stay in CI and the before push rule.

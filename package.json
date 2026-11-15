@@ -41,6 +41,7 @@
     "r2:lifecycle": "bash scripts/apply-r2-lifecycle.sh",
     "test:legal-launch": "vitest run --config scripts/vitest.legal-launch.config.ts",
     "legal:drift": "tsx scripts/legal-drift.ts",
+    "check:lines": "tsx scripts/check-lines.ts",
     "test:pipeline": "tsx tests/pipeline/run.ts",
     "check:api-run": "tsx scripts/api-real-run.ts",
     "design-check": "node tools/design-check/src/cli.js"

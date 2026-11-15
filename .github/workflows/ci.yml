@@ -83,6 +83,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: No file past 250 lines
+        run: pnpm check:lines
+
       - name: Format
         run: pnpm format:check
 
