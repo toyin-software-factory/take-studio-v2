@@ -94,9 +94,45 @@ Before, on `/library`, `/record` and `/takes/[id]`: page read, then `AppShell`'s
 
 1. **Done in B2-T108: full zod is out of the signed in first load.** What is left is the small core of `zod/mini` (see the next section). The remaining question is whether that core can go too, by checking the responses without a library.
 2. **Take page and record page split points.** Things that appear only after a click could load on demand with `next/dynamic`: the delete dialog, the background picker and its preview overlay, the export and transcript download panels. Probably 50 to 100 KB raw off the take page. Not done here: it can change when a dialog appears and would need the full browser suite to prove nothing moved, which this sandbox cannot run.
-3. **Shared app frame chunk (154 KB).** Worth a bundle analyser pass in CI (`@next/bundle-analyzer` with Turbopack is not wired up) to see whether Radix select, tooltip and slider or the full sonner toast are needed on every page. Icons are imported by name already.
+3. **Shared app frame chunk (154 KB).** Done in B2-T109, see "Shared app frame chunk (B2-T109)" below.
 4. **Sentry** is already after idle and out of the first load. Nothing to do.
 5. **Take page polling and the player** need a profile on a real mid phone before anyone changes them.
+
+## Shared app frame chunk (B2-T109)
+
+Question: what is in the frame chunk every signed in page loads, and what does not need to be there on first load? Rule: measure `/library`, `/takes/[id]` and `/record` before and after each change, and keep only changes that lower first load (B2-T107 showed that a small split can reshuffle the chunk graph and gain nothing).
+
+### What was in it
+
+From `next experimental-analyze` on the production build (modules that only the frame pulls in, raw sizes):
+
+| Piece | About | Verdict |
+|---|---|---|
+| `sonner` plus the toast card and its icons | 34 KB | Moved out of first load (below). |
+| `tailwind-merge` (through `cn`) | 27 KB | Used by every component. Cannot leave. |
+| Radix select (`/record` only) | 19 KB | Kept: the device pickers are on screen in the first state of `/record`, so loading them later would make them pop in. |
+| Radix menu, tooltip, dialog, dismissable layer, collection, floating UI | 5 to 13 KB each | Kept: the user menu, sidebar sheet and tooltips are in the frame itself, and the dialog is already needed by the sheet. |
+| zod, react-dom, next internals | large | Not in scope (zod is B2-T108). |
+
+### What changed
+
+- **Toasts load after hydration.** `src/components/ui/sonner.tsx` is now a thin file: `Toaster` is `next/dynamic` with `ssr: false` and `notify` imports `sonner-impl.tsx` on demand. The impl holds sonner, the toast card and its icons. Behaviour is the same: `notify` waits until the toast region has mounted before it shows a toast, so a toast sent very early is never lost (it was never shown before the region existed either). No caller used the old return value, so `notify` now returns nothing.
+
+### Numbers (first load JavaScript, raw KB / gzip KB, same machine, `next build` with `PIPELINE_BUILD=1`)
+
+| Page | Before | After | Change |
+|---|---|---|---|
+| `/library` | 859 / 265 | 827 / 256 | minus 32 raw, minus 9 gzip |
+| `/takes/[id]` | 929 / 288 | 897 / 278 | minus 32 raw, minus 10 gzip |
+| `/record` | 897 / 280 | 866 / 271 | minus 31 raw, minus 9 gzip |
+
+### Tried or weighed and not done
+
+- Radix select on demand: 19 KB on `/record` only, but visible on first paint, so it would flash in. Not done (no visual change allowed).
+- Tooltip and slider: the tooltip provider wraps the frame, and the slider is in the player controls, which show as soon as a take is ready. Not worth a split.
+- `tailwind-merge`: would need a rewrite of `cn` across the app. Not safe here.
+
+Proof of "no behaviour change" is the full Playwright suite in CI (the toast spec waits for the toast to be visible, and the homepage spec still checks that no toaster code is in its first load).
 
 ## Lighthouse numbers (B2-T106)
 
