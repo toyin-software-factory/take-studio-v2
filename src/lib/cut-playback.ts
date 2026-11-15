@@ -1,4 +1,5 @@
 import type { Range } from "./cut-rules";
+import { alignToFrames, keepRanges } from "./trim-cuts";
 
 /**
  * Pure playback maps for the cut review timeline (spec 0011, AC-3). Ranges are removed spans of
@@ -47,4 +48,28 @@ export function pendingTotalMs(durationMs: number, ranges: readonly Range[]): nu
 export function playEnd(ranges: readonly Range[], durationMs: number): number {
   const last = ranges.at(-1);
   return last && last.endMs >= durationMs ? last.startMs : durationMs;
+}
+
+/**
+ * The ranges a render actually removed (B2-T156). The render snaps each keep range to the source's
+ * frame grid (start down, end up, `alignToFrames`), so every cut is up to a frame shorter than
+ * the ms it was stored with, and the playhead mapping drifted by about a frame per cut. This is
+ * the complement of those aligned keep ranges, in the same ms units, for the maps above.
+ * `fps` null means unknown (the render assumed 30).
+ */
+export function renderedRemovedRanges(
+  removed: readonly Range[],
+  durationMs: number,
+  fps: number | null,
+): Range[] {
+  if (removed.length === 0 || !(durationMs > 0)) return [...removed];
+  const keep = alignToFrames(keepRanges(removed, durationMs), fps);
+  const gaps: Range[] = [];
+  let cursor = 0;
+  for (const k of keep) {
+    if (k.startMs - cursor > 1e-6) gaps.push({ startMs: cursor, endMs: k.startMs });
+    cursor = Math.max(cursor, k.endMs);
+  }
+  if (durationMs - cursor > 1e-6) gaps.push({ startMs: cursor, endMs: durationMs });
+  return gaps;
 }

@@ -13,7 +13,7 @@ export const PRIVACY_TOC = [
   { id: "collect", title: "What we collect, why, and how long we keep it" },
   { id: "keep", title: "How long we keep your videos, and deleting them" },
   { id: "services", title: "Who else handles your data" },
-  { id: "cookies", title: "Cookies" },
+  { id: "cookies", title: "Cookies and device storage" },
   { id: "choices", title: "Your choices and how to reach us" },
   { id: "changes", title: "Changes to this page" },
 ] as const;

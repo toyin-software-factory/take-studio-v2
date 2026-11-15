@@ -17,7 +17,6 @@ import { usePublishCurrentTake } from "@/components/shell/current-take";
 import { DELETED_PARAM } from "@/lib/take-delete";
 import { createWriteGuard } from "@/lib/take-poll-guard";
 import { callApi } from "./browser-io";
-import { DeleteTakeDialog } from "./delete-take-dialog";
 import { createPlayerBridge } from "./player-bridge";
 import { TakeHeader } from "./take-header";
 import { TakeResult } from "./take-result";
@@ -27,6 +26,14 @@ import { useLeaveGuard } from "./use-leave-guard";
 import { TakeStage } from "./take-stage";
 import { TakeInspector } from "./take-inspector";
 import { usePoll, type PollResult } from "./use-poll";
+import dynamic from "next/dynamic";
+import { useIdle } from "./use-idle";
+
+// The delete dialog only opens after a click, so its code loads after the first paint (B2-T154).
+const DeleteTakeDialog = dynamic(
+  () => import("./delete-take-dialog").then((m) => m.DeleteTakeDialog),
+  { ssr: false },
+);
 
 type Stop = "signed_out" | "not_found" | null;
 
@@ -59,6 +66,7 @@ export function TakeView({
   // goes back to whichever control opened it. Once deleted, polling stops for good.
   const router = useRouter();
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const pageIdle = useIdle();
   const [gone, setGone] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
   const openDelete = useCallback((from: HTMLElement | null) => {
@@ -174,23 +182,25 @@ export function TakeView({
               onDelete={openDelete}
             />
           </div>
-          <DeleteTakeDialog
-            takeId={takeId}
-            title={detail.take.title}
-            open={deleteOpen}
-            onOpenChange={setDeleteOpen}
-            returnFocus={() =>
-              // The opener can be gone (the Details section is replaced when the take becomes
-              // ready while the dialog is open): fall back to the header menu button.
-              opener.current?.isConnected
-                ? opener.current
-                : document.querySelector<HTMLElement>("[aria-label='More actions for this take']")
-            }
-            onDeleted={() => {
-              setGone(true);
-              router.push(`/library?${DELETED_PARAM}=1`);
-            }}
-          />
+          {pageIdle || deleteOpen ? (
+            <DeleteTakeDialog
+              takeId={takeId}
+              title={detail.take.title}
+              open={deleteOpen}
+              onOpenChange={setDeleteOpen}
+              returnFocus={() =>
+                // The opener can be gone (the Details section is replaced when the take becomes
+                // ready while the dialog is open): fall back to the header menu button.
+                opener.current?.isConnected
+                  ? opener.current
+                  : document.querySelector<HTMLElement>("[aria-label='More actions for this take']")
+              }
+              onDeleted={() => {
+                setGone(true);
+                router.push(`/library?${DELETED_PARAM}=1`);
+              }}
+            />
+          ) : null}
         </>
       ) : stop === null ? (
         <TakeSkeleton title={initialTitle} />
