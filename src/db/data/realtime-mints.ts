@@ -58,8 +58,9 @@ export async function mintRetryAfter(
   input: { readonly creatorId: string; readonly window: "hourly" | "daily"; readonly now: Date },
 ): Promise<number> {
   const windowMs = input.window === "hourly" ? REALTIME_TOKEN.hourMs : REALTIME_TOKEN.dayMs;
+  const limit = input.window === "hourly" ? REALTIME_TOKEN.perHour : REALTIME_TOKEN.perDay;
   const [oldest] = await db
-    .select({ at: min(realtimeTokenMint.mintedAt) })
+    .select({ at: min(realtimeTokenMint.mintedAt), n: count() })
     .from(realtimeTokenMint)
     .where(
       and(
@@ -67,6 +68,8 @@ export async function mintRetryAfter(
         gte(realtimeTokenMint.mintedAt, new Date(input.now.getTime() - windowMs)),
       ),
     );
+  // Reservations may have been released since the refusal: room again, so retry soon.
+  if ((oldest?.n ?? 0) < limit) return 1;
   return retryAfterSeconds({
     oldestMintedAtMs: (oldest?.at ?? input.now).getTime(),
     windowMs,
