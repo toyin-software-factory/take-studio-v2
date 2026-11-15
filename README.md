@@ -102,6 +102,21 @@ On a small machine (3 GB) add `PIPELINE_START=prod`: it builds the app once and 
 
 The migrate line gives the pipeline's default local database (`take_studio`) its tables, whatever `DATABASE_URL_DIRECT` your shell has. If you override `PIPELINE_DATABASE_URL`, point `DATABASE_URL_DIRECT` at that same database.
 
+## Production runbook
+
+A bad deploy, a bad migration or an incident: [`docs/runbook.md`](docs/runbook.md). It covers the Worker rollback (the `Roll back the Worker` workflow in GitHub Actions), going back a Trigger.dev version, Neon restore, what the R2 lifecycle rules delete, and the first steps in an incident.
+
+## API real run (before opening the public API)
+
+`pnpm check:api-run` is the one command check for scope row 13 (spec 0018 AC-3, AC-5, AC-7). It uses only the public API in `/api/openapi.json`, with a key you pass in the environment: read usage, upload a small synthetic clip (`tests/fixtures/media/speech-en.mp4`, never a real take), wait until it is ready, list the cuts, undo and redo one, fetch the video and transcript links, delete the take, then wait until the key is refused after you revoke it.
+
+```bash
+TAKE_API_KEY=tsk_... API_BASE_URL=http://localhost:3000 pnpm check:api-run
+# flags: --base <url>  --wait <seconds, default 600>  --revoke-wait <seconds, default 300>  --allow-remote
+```
+
+Make the key in the web app (account menu, API keys) for a throwaway or synthetic account. A base URL that is not localhost needs `--allow-remote` and https. Each step prints `PASS` or `FAIL` with the HTTP status and a short reason, and the exit code is 1 if any step fails. The key and every download link stay out of the output (IDs only). At the end the script prints a `REVOKE` line: revoke the key in the web app, and the script then confirms the next call is refused (`401 invalid_api_key`). Key create and revoke are session only, so the script never makes or removes a key itself. The server it talks to needs R2, Trigger.dev and Deepgram keys, like `pnpm test:pipeline`.
+
 ## CI and deploy
 
 - **CI** (`.github/workflows/ci.yml`, every PR): a `static` job (install, lint, format check, typecheck, Vitest, a check that `drizzle-kit generate` makes no new migration) and four parallel `e2e` shard jobs (each builds the Worker and runs one quarter of Playwright against it, with its own Postgres service container). The `check` job, named "Lint, typecheck, test, build, e2e", waits for all of them and is the one required check.

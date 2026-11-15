@@ -1,9 +1,6 @@
 "use client";
 
 import { useRef } from "react";
-import { Smartphone } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
 
 /**
  * The way forward on a phone whose browser cannot record in the page (AC-5): the phone's own
@@ -28,9 +25,9 @@ export function NativeCamera({ onFile }: { readonly onFile: (file: File) => void
           if (file) onFile(file);
         }}
       />
-      <Button size="lg" variant="secondary" onClick={() => input.current?.click()}>
-        <Icon icon={Smartphone} /> Record with your phone&rsquo;s camera
-      </Button>
+      <button type="button" className="rec-light" onClick={() => input.current?.click()}>
+        Use phone camera app
+      </button>
     </>
   );
 }

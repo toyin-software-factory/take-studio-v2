@@ -1,4 +1,4 @@
-import { z } from "zod";
+import * as z from "zod/mini";
 
 /**
  * The public site's fixed facts (spec 0010): name, one line description, the one contact address

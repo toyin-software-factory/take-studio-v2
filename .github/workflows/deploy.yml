@@ -130,12 +130,21 @@ jobs:
         # (workflow_run) deploys only while its commit is still the tip of main, so a rerun of CI
         # for an older commit can never put old code over newer. Otherwise it stops here with a
         # notice, without failing main (the newer commit has its own CI run and deploy). A manual
-        # run (workflow_dispatch) is exempt, so an intentional rollback stays possible.
+        # run (workflow_dispatch) is exempt from that tip check, so an intentional rollback stays
+        # possible. Every run, manual or automated, also stops here while the repository variable
+        # DEPLOY_FREEZE is `true` (docs/runbook.md, section 1): the freeze is set before a rollback
+        # and cleared after the revert merges, so no Deploy can put the bad Worker back.
+        env:
+          DEPLOY_FREEZE: ${{ vars.DEPLOY_FREEZE }}
         run: |
           stale=false
+          if [ "$DEPLOY_FREEZE" = "true" ]; then
+            stale=true
+            echo "::notice::Deploy skipped. DEPLOY_FREEZE is true (a rollback is in force); clear it after the revert merges."
+          fi
           if [ "$GITHUB_EVENT_NAME" = "workflow_run" ]; then
             tip=$(git ls-remote origin refs/heads/main | cut -f1)
-            if [ "$tip" != "$DEPLOY_SHA" ]; then
+            if [ "$tip" != "$DEPLOY_SHA" ] && [ "$stale" = "false" ]; then
               stale=true
               echo "::notice::Deploy skipped. $DEPLOY_SHA is no longer the tip of main (${tip:-unknown}); the tip deploys after its own CI run."
             fi

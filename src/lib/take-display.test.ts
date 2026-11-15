@@ -27,7 +27,6 @@ const emailBase = {
   takeUrl: "https://app.example.com/takes/1",
   unsubscribeUrl: "https://app.example.com/emails/off?u=1&s=2",
 };
-
 describe("formatClock (design.md Voice: mm:ss, h:mm:ss from an hour)", () => {
   it.each([
     [0, "0:00"],
@@ -60,7 +59,6 @@ describe("formatClock (design.md Voice: mm:ss, h:mm:ss from an hour)", () => {
     expect(removedNote(84_400)).toBe("Removed 1:24 of pauses");
   });
 });
-
 describe("expiryNote (AC-1)", () => {
   const now = new Date("2026-11-11T12:00:00Z");
   it.each([
@@ -84,7 +82,6 @@ describe("expiryNote (AC-1)", () => {
     expect(expiryNote(null, false, now)).toBeNull();
   });
 });
-
 describe("overallPercent (spec 0012: trim 10, transcript 5, AI edit 5, background 5, render 75, of the steps the job has)", () => {
   const step = (name: string, status: string, progress: number | null = null) => ({
     name,
@@ -120,7 +117,6 @@ describe("overallPercent (spec 0012: trim 10, transcript 5, AI edit 5, backgroun
     expect(stepStatusText(step("transcript", "failed"), { jobFailed: true })).toBe("Failed");
   });
 });
-
 describe("failures (AC-4, AC-10)", () => {
   it("names the limit for media failures", () => {
     expect(failureMessage({ failureCode: "too_long", durationMs: 14 * 60_000 })).toBe(
@@ -137,7 +133,6 @@ describe("failures (AC-4, AC-10)", () => {
     expect(isMediaFailure(null)).toBe(false);
   });
 });
-
 describe("tab titles and polling (AC-8, Flow step 7)", () => {
   it("prefixes the status", () => {
     expect(tabTitle("processing", "My take")).toBe("Processing… · My take · Take Studio");
@@ -153,13 +148,11 @@ describe("tab titles and polling (AC-8, Flow step 7)", () => {
     expect([0, 1, 2, 3].map((n) => pollDelay(2000, n))).toEqual([2000, 4000, 8000, 10_000]);
   });
 });
-
 describe("shortDate", () => {
   it("shows the UTC date whatever the host time zone", () => {
     expect(shortDate("2026-12-03T00:30:00Z")).toBe("3 Dec");
   });
 });
-
 describe("effectiveStatus", () => {
   const now = new Date("2026-11-11T12:00:00Z");
   it("turns a ready take into expired once its time has passed or the server says so", () => {
@@ -172,7 +165,6 @@ describe("effectiveStatus", () => {
     expect(effectiveStatus("ready", null, false, now)).toBe("ready");
   });
 });
-
 describe("failureMessage when the take can't be retried", () => {
   it("says to upload again instead of try again", () => {
     const take = { failureCode: "internal_error", durationMs: null };
@@ -180,7 +172,6 @@ describe("failureMessage when the take can't be retried", () => {
     expect(failureMessage(take)).toMatch(/Try again\.$/);
   });
 });
-
 describe("background change helpers (spec 0008)", () => {
   it("is active only while queued or running", () => {
     expect(backgroundChangeActive({ status: "queued" })).toBe(true);
@@ -197,7 +188,6 @@ describe("background change helpers (spec 0008)", () => {
     expect(backgroundFailureMessage(null)).toContain("Try again");
   });
 });
-
 describe("keepPolling (S3S-T13)", () => {
   const take = (status: string, expired = false) => ({ status, expired });
   it("keeps going while the take is in flight or a background change runs", () => {
@@ -214,7 +204,6 @@ describe("keepPolling (S3S-T13)", () => {
     expect(keepPolling({ take: take("expired") })).toBe(false);
   });
 });
-
 describe("pollDelay keeps the idle interval (S3S-T13)", () => {
   it("does not cap a base above the backoff cap", () => {
     expect(pollDelay(POLL.idleMs, 0)).toBe(POLL.idleMs);
@@ -226,7 +215,6 @@ describe("pollDelay keeps the idle interval (S3S-T13)", () => {
     expect(pollDelay(POLL.takeMs, 5)).toBe(POLL.maxBackoffMs);
   });
 });
-
 describe("previewStatusText (S3S-T14)", () => {
   it("says a still image is not a video and names Render", () => {
     expect(previewStatusText({ kind: "image" })).toBe(
@@ -239,7 +227,6 @@ describe("previewStatusText (S3S-T14)", () => {
     );
   });
 });
-
 describe("failureMessage limit_exceeded (spec 0014 AC-6)", () => {
   it("says the allowance is used up and the upload is kept, never 'something went wrong'", async () => {
     const { failureMessage } = await import("./take-display");

@@ -1,0 +1,111 @@
+/* Smooth scroll (Lenis) */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+/* Reduced motion: the bar still changes state, with no transitions */
+@media (prefers-reduced-motion: reduce) {
+  .h-nav,
+  .h-nav * {
+    transition-duration: 0ms !important;
+  }
+}
+
+/* ---------- Details (spec 0010 task 4) ---------- */
+.h-drift.is-drift {
+  flex-wrap: nowrap;
+  width: 116%;
+  max-width: none;
+  margin-left: -8%;
+  padding-inline: 0;
+  gap: 48px;
+  justify-content: space-between;
+  white-space: nowrap;
+}
+.h-flip {
+  display: inline-flex;
+}
+.h-flip-cell {
+  display: block;
+  height: 1em;
+  line-height: 1;
+  overflow: hidden;
+}
+.h-flip-col {
+  display: block;
+}
+.h-flip-col > span {
+  display: block;
+  height: 1em;
+}
+.edge-blur {
+  position: fixed;
+  inset: auto 0 0;
+  height: 12vh;
+  z-index: var(--z-edge-blur);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--dur-swap) var(--ease-ui);
+  display: none;
+}
+.edge-blur.is-on {
+  opacity: 1;
+}
+@media (min-width: 810px) {
+  .edge-blur {
+    display: block;
+  }
+}
+.edge-blur span {
+  position: absolute;
+  inset: 0;
+}
+.edge-blur span:nth-child(1) {
+  backdrop-filter: blur(1px);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 25%, #000 50%, transparent 62%);
+}
+.edge-blur span:nth-child(2) {
+  backdrop-filter: blur(2px);
+  mask-image: linear-gradient(to bottom, transparent 25%, #000 50%, #000 75%, transparent 87%);
+}
+.edge-blur span:nth-child(3) {
+  backdrop-filter: blur(4px);
+  mask-image: linear-gradient(to bottom, transparent 50%, #000 75%, #000 100%);
+}
+.edge-blur span:nth-child(4) {
+  backdrop-filter: blur(8px);
+  mask-image: linear-gradient(to bottom, transparent 75%, #000 100%);
+}
+.h-cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: var(--z-cursor);
+  display: grid;
+  place-items: center;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: var(--color-ink);
+  font-size: var(--fs-micro);
+  pointer-events: none;
+  transition:
+    width var(--dur-hover) var(--ease-ui),
+    height var(--dur-hover) var(--ease-ui);
+}
+.h-cursor span {
+  opacity: 0;
+  transition: opacity var(--dur-hover) var(--ease-ui);
+}
+.h-cursor.is-play {
+  width: 72px;
+  height: 72px;
+}
+.h-cursor.is-play span {
+  opacity: 1;
+}

@@ -13,10 +13,15 @@ import type { BrowserContext } from "@playwright/test";
 
 const localDatabase = "postgres://postgres:postgres@localhost:5432/take_studio";
 
-/** A value from the environment, else from the `.env` the Worker was built with. */
+/**
+ * A value from the `.env` the Worker was built with, else from the environment. The file wins:
+ * an agent sandbox sets its own BETTER_AUTH_SECRET in the shell, which the built Worker never
+ * sees, so reading the shell first forged cookies the Worker rejected (B2-T137). CI has no such
+ * variable and writes the file.
+ */
 export function setting(name: string): string | undefined {
-  if (process.env[name]) return process.env[name];
-  return existsSync(".env") ? parse(readFileSync(".env"))[name] : undefined;
+  const fromFile = existsSync(".env") ? parse(readFileSync(".env"))[name] : undefined;
+  return fromFile ?? process.env[name];
 }
 
 /** Better Auth (better-call) cookie format: `token.base64(HMAC-SHA256(secret, token))`, URI encoded. */
@@ -40,6 +45,13 @@ export function localDatabaseUrl(): string {
  * insights viewer. Never the real viewer's id (C-35): that exists only as a production secret.
  */
 export const INSIGHTS_TEST_VIEWER_ID = "00000000-0000-4000-8000-00000000e2e1";
+
+/**
+ * The made up usage hash secret of every e2e build: the CI placeholder `.env` and
+ * `tests/support/build-worker.sh` write this same value, so a test never depends on a secret that
+ * happens to be in the shell.
+ */
+export const USAGE_TEST_HASH_SECRET = "ci-only-placeholder-usage-secret-0123456789";
 
 export type TestUser = { readonly id: string; readonly name: string; readonly email: string };
 

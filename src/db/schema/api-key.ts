@@ -39,3 +39,22 @@ export const apiRateWindow = pgTable(
   },
   (t) => [primaryKey({ columns: [t.keyId, t.windowStart] })],
 );
+
+/**
+ * Failed bearer attempts per client address per UTC minute (B2-T103). The address is stored only
+ * as a SHA-256 hash, and a row is deleted by the cleanup sweep after an hour. Counted only when a
+ * key or token is wrong or malformed, so good clients never touch it. The index on `window_start`
+ * serves the batched purge (the primary key leads with the hash).
+ */
+export const bearerFailWindow = pgTable(
+  "bearer_fail_window",
+  {
+    ipHash: text("ip_hash").notNull(),
+    windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (t) => [
+    primaryKey({ columns: [t.ipHash, t.windowStart] }),
+    index("bearer_fail_window_start_idx").on(t.windowStart),
+  ],
+);

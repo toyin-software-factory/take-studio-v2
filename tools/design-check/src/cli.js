@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // design-check: does the built page match the design?
 //
-//   design-check check [--page name] [--design f --build url] [--reset] [--quick]
+//   design-check check [--page name] [--design f --build url | --build url] [--reset] [--quick]
 //   design-check loop  --builder "<command that fixes the build>" [--page name]
 //   design-check watch [--page name]       live checks while you build (code checks only)
 //   design-check hook                      Claude Code PostToolUse hook: passes new live results to the coder
@@ -18,6 +18,7 @@ import { openBrowser, tagDesign } from "./extract.js";
 import { toHtml, toMarkdown } from "./report.js";
 import { judgeRound, loadState, resetState, saveState } from "./verdict.js";
 import { init } from "./init.js";
+import { pagesFromFlags } from "./page-flags.js";
 
 const { values: opt, positionals } = parseArgs({
   allowPositionals: true,
@@ -46,14 +47,7 @@ function config() {
     viewports: opt.viewports ? opt.viewports.split(",") : undefined,
     judge: opt["no-judge"] ? { type: "none" } : undefined,
   });
-  if (opt.design && opt.build)
-    cfg.pages = [
-      {
-        name: path.basename(opt.design).replace(/\.[a-z]+$/i, ""),
-        design: path.resolve(opt.design),
-        build: opt.build,
-      },
-    ];
+  cfg.pages = pagesFromFlags(cfg.pages, opt);
   return cfg;
 }
 

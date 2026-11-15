@@ -2,13 +2,23 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { TakeDetail } from "@/lib/take-api";
-import { BackgroundChange } from "./background-change";
+import { useState } from "react";
+import dynamic from "next/dynamic";
 import type { PlayerBridge } from "./player-bridge";
 import type { CutReview } from "./use-cut-review";
 import { TakeDetails } from "./take-details";
 import { TakeExport } from "./take-export";
 import { TranscriptPanel } from "./transcript-panel";
 import { useTranscript } from "./use-transcript";
+import { useIdle } from "./use-idle";
+
+// The Background pane is hidden until its tab is clicked, so its code loads after the first
+// paint (idle, or at once when its tab is touched), and nothing moves: the pane is hidden
+// either way (B2-T154).
+const BackgroundChange = dynamic(
+  () => import("./background-change").then((m) => m.BackgroundChange),
+  { ssr: false },
+);
 
 /**
  * The inspector beside the stage (design.md §4b): pill tabs Export, Background, Transcript and
@@ -53,15 +63,25 @@ function ReadyInspector({
 }: InspectorProps) {
   const { take } = detail;
   const transcript = useTranscript(take.id);
+  const idle = useIdle();
+  const [wantBackground, setWantBackground] = useState(false);
   const pane = "mt-4 outline-hidden data-[state=inactive]:hidden";
   return (
     <div className="rounded-lg bg-card p-4 shadow-card min-[1200px]:sticky min-[1200px]:top-[88px]">
-      <Tabs defaultValue="export">
+      <Tabs
+        defaultValue="export"
+        onValueChange={(v) => v === "background" && setWantBackground(true)}
+      >
         <TabsList aria-label="Take tools" className="w-full justify-start gap-1.5">
           <TabsTrigger value="export" className="px-3">
             Export
           </TabsTrigger>
-          <TabsTrigger value="background" className="px-3">
+          <TabsTrigger
+            value="background"
+            className="px-3"
+            onPointerEnter={() => setWantBackground(true)}
+            onFocus={() => setWantBackground(true)}
+          >
             Background
           </TabsTrigger>
           <TabsTrigger value="transcript" className="px-3">
@@ -75,7 +95,9 @@ function ReadyInspector({
           <TakeExport detail={detail} transcript={transcript} />
         </TabsContent>
         <TabsContent value="background" forceMount className={pane}>
-          <BackgroundChange detail={detail} bridge={bridge} review={review} />
+          {idle || wantBackground ? (
+            <BackgroundChange detail={detail} bridge={bridge} review={review} />
+          ) : null}
         </TabsContent>
         <TabsContent value="transcript" forceMount className={pane}>
           <TranscriptPanel takeId={take.id} bridge={bridge} transcript={transcript} />

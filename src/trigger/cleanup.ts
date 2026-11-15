@@ -1,8 +1,8 @@
 import { logger, schedules } from "@trigger.dev/sdk";
 import { withJobDb } from "@/db/client/job";
 import { purgeOldAnalyticsEvents, repairAnalyticsEvents } from "@/db/data/analytics-repair";
-import { purgeOldRateWindows } from "@/db/data/api-keys";
-import { deleteExpiredOauthRows } from "@/db/data/oauth";
+import { purgeAllOldBearerFailures, purgeOldRateWindows } from "@/db/data/api-keys";
+import { deleteExpiredOauthRows, deleteUnusedOauthClients } from "@/db/data/oauth";
 import { purgeOldMints } from "@/db/data/realtime-mints";
 import { failStuckBackgrounds, purgeRemovedBackgrounds } from "@/db/data/backgrounds";
 import {
@@ -106,6 +106,15 @@ export const cleanupTask = schedules.task({
         });
         return null;
       });
+      // B2-T103: failed bearer counts per address, only the current minute matters.
+      const bearerFailuresPurged = await purgeAllOldBearerFailures(db, now).catch(
+        (error: unknown) => {
+          logger.error("bearer failure purge failed", {
+            error: error instanceof Error ? error.name : "unknown",
+          });
+          return null;
+        },
+      );
       // Spec 0021 step 2: the mint caps look back one day, so older mint rows can go.
       const mintsPurged = await purgeOldMints(db, now).catch((error: unknown) => {
         logger.error("realtime mint purge failed", {
@@ -120,10 +129,19 @@ export const cleanupTask = schedules.task({
         });
         return null;
       });
+      // Security review item 2: registrations nobody used (no consent, no token) for 30 days.
+      const oauthClientsPurged = await deleteUnusedOauthClients(db, now).catch((error: unknown) => {
+        logger.error("oauth client purge failed", {
+          error: error instanceof Error ? error.name : "unknown",
+        });
+        return null;
+      });
       return {
         analytics,
         rateWindowsPurged,
+        bearerFailuresPurged,
         oauthPurged,
+        oauthClientsPurged,
         mintsPurged,
         studiosInstalled,
         probesRedispatched: recovery.redispatched.length,

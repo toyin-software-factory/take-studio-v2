@@ -1,7 +1,10 @@
-import { authenticateApiKey, countApiRequest } from "@/db/data/api-keys";
+import { authenticateApiKey, countApiRequest, touchApiKey } from "@/db/data/api-keys";
+import { SESSION_REQUIRED_MESSAGE } from "@/lib/session-required";
+import { failureGate } from "./api-auth-gate";
 import type { Db } from "@/db/types";
 import {
   bearerKey,
+  clientIpOf,
   hashApiKey,
   isOverRateLimit,
   retryAfterFromSecond,
@@ -59,7 +62,23 @@ function logRejected(reason: "malformed" | "unknown" | "unavailable"): void {
 async function resolveKey(
   header: string,
   keyAuth: NonNullable<ApiAuthDeps["keyAuth"]>,
+  ip: string | null,
 ): Promise<Resolved> {
+  const gate = await failureGate(keyAuth, ip);
+  if (gate.blocked) return fail(gate.blocked);
+  return lookupBearer(header, keyAuth, async (reason) => {
+    logRejected(reason);
+    const over = await gate.countFailure();
+    return fail(over ?? { kind: "invalid_api_key" });
+  });
+}
+
+async function lookupBearer(
+  header: string,
+  keyAuth: NonNullable<ApiAuthDeps["keyAuth"]>,
+  onRejected: (reason: "malformed" | "unknown") => Promise<Resolved>,
+): Promise<Resolved> {
+  const rejected = onRejected;
   const key = bearerKey(header);
   const token = key === null && keyAuth.oauthResource ? bearerToken(header) : null;
   if (token !== null && keyAuth.oauthResource) {
@@ -72,10 +91,7 @@ async function resolveKey(
       keyAuth.oauthResource,
       keyAuth.now?.(),
     );
-    if (!found) {
-      logRejected("unknown");
-      return fail({ kind: "invalid_api_key" });
-    }
+    if (!found) return await rejected("unknown");
     // The same per minute limit as a key, counted for this app and creator.
     const at = keyAuth.now?.();
     const window = await countOauthRequest(db, found.clientId, found.creatorId, at);
@@ -87,16 +103,10 @@ async function resolveKey(
     }
     return ok({ db, creatorId: found.creatorId });
   }
-  if (key === null) {
-    logRejected("malformed");
-    return fail({ kind: "invalid_api_key" });
-  }
+  if (key === null) return await rejected("malformed");
   const db = await keyAuth.getDb();
   const found = await authenticateApiKey(db, await hashApiKey(key));
-  if (!found) {
-    logRejected("unknown");
-    return fail({ kind: "invalid_api_key" });
-  }
+  if (!found) return await rejected("unknown");
   const at = keyAuth.now?.();
   const window = await countApiRequest(db, found.keyId, at);
   if (isOverRateLimit(window.count)) {
@@ -105,6 +115,8 @@ async function resolveKey(
       retryAfter: at ? retryAfterSeconds(at) : retryAfterFromSecond(window.secondsIntoMinute),
     });
   }
+  // Only a request that is let through counts as use: a 429 leaves `last_used_at` alone.
+  await touchApiKey(db, found.keyId).catch(() => undefined);
   return ok({ db, creatorId: found.creatorId });
 }
 
@@ -119,7 +131,7 @@ export async function resolveCreator(
       logRejected("unavailable");
       return fail({ kind: "invalid_api_key" });
     }
-    return resolveKey(header, deps.keyAuth);
+    return resolveKey(header, deps.keyAuth, clientIpOf(request.headers));
   }
   const creator = await deps.getCreator(request);
   return creator ? ok(creator) : fail({ kind: "unauthorized" });
@@ -130,7 +142,7 @@ const MESSAGES: Readonly<Record<AuthFailure | "forbidden" | "session_required", 
   invalid_api_key: "That API key isn't valid. Check it, or make a new one.",
   rate_limited: "Too many requests. Wait a moment and try again.",
   forbidden: "This request isn't allowed.",
-  session_required: "This is only available when you're signed in, not with an API key.",
+  session_required: SESSION_REQUIRED_MESSAGE,
 };
 
 const STATUS = {

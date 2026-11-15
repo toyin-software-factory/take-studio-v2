@@ -6,7 +6,8 @@
  */
 import { asc, eq } from "drizzle-orm";
 import * as schema from "../../src/db/schema";
-import { type Creator, db } from "./harness";
+import { db } from "./harness";
+import { type Creator } from "./creator";
 import { renderFacts } from "./inspect";
 import { sleep, waitIdle } from "./wait";
 

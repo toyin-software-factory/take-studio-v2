@@ -32,7 +32,6 @@ function fakeSocket() {
   };
   return { s, sent };
 }
-
 function harness() {
   const { s, sent } = fakeSocket();
   const intervals: { fn: () => void; ms: number; id: number; cleared: boolean }[] = [];
@@ -52,10 +51,8 @@ function harness() {
   });
   return { s, sent, intervals, createSocket, handlers, conn };
 }
-
 const result = (transcript: string) =>
   JSON.stringify({ type: "Results", channel: { alternatives: [{ transcript }] }, is_final: false });
-
 describe("realtime stream (spec 0021 AC-12)", () => {
   it("asks for 16 kHz mono linear16 with interim results and no training", () => {
     const q = new URL(realtimeUrl()).searchParams;
@@ -133,7 +130,6 @@ describe("realtime stream (spec 0021 AC-12)", () => {
     expect(wordsFromMessage(undefined)).toBeNull();
   });
 });
-
 describe("fetchRealtimeToken", () => {
   const reply = (status: number, body: unknown = {}) =>
     vi.fn(async () => new Response(JSON.stringify(body), { status })) as unknown as typeof fetch;

@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { Circle, Square } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { ChevronLeft, SlidersHorizontal, SwitchCamera } from "lucide-react";
 import { Icon } from "@/components/ui/icon";
 import { shouldWarn } from "@/lib/recorder-rules";
 import { formatClock } from "@/lib/take-display";
@@ -10,12 +9,13 @@ import type { RecorderState } from "@/lib/recorder-state";
 import type { DeviceChoices } from "@/lib/recorder-devices";
 import { DevicePickers } from "./device-pickers";
 import { LevelMeter } from "./level-meter";
-import { PrompterControls } from "./prompter-controls";
+import { PauseButton, PrompterControls } from "./prompter-controls";
 import { FollowVoiceToggle } from "./follow-voice-toggle";
 import { PrompterText } from "./prompter-text";
 import type { Prompter } from "./use-prompter";
 import { useLevel } from "./use-level";
-import { useVoiceFollow } from "./use-voice-follow";
+import { usePhoneSheet } from "./use-phone-sheet";
+import type { VoiceFollow } from "./use-voice-follow";
 
 /**
  * The live preview (mirrored, display only: the file is never mirrored), the script over it,
@@ -24,9 +24,10 @@ import { useVoiceFollow } from "./use-voice-follow";
  */
 export function RecordStage({
   state,
-  script,
   stream,
   prompter,
+  follow,
+  holding,
   elapsedMs,
   limitMs,
   onRecord,
@@ -39,11 +40,14 @@ export function RecordStage({
   onCamera,
   onMic,
   onFlip,
+  onBack,
 }: {
   readonly state: RecorderState;
-  readonly script: string;
   readonly stream: MediaStream | null;
   readonly prompter: Prompter;
+  readonly follow: VoiceFollow;
+  /** The countdown is at 0, waiting for Follow my voice to connect (at most 5 seconds). */
+  readonly holding: boolean;
   readonly elapsedMs: number;
   readonly limitMs: number;
   readonly onRecord: () => void;
@@ -57,7 +61,12 @@ export function RecordStage({
   readonly onCamera: (id: string) => void;
   readonly onMic: (id: string) => void;
   readonly onFlip: (() => void) | null;
+  /** Phones: leave the full screen stage for the script step (only before recording). */
+  readonly onBack: () => void;
 }) {
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLElement>(null);
+  const sheet = usePhoneSheet(trigger, panel);
   const level = useLevel(stream);
   const video = useRef<HTMLVideoElement>(null);
   useEffect(() => {
@@ -66,103 +75,172 @@ export function RecordStage({
 
   const recording = state.kind === "recording";
   const countdown = state.kind === "countdown";
-  const follow = useVoiceFollow({
-    script,
-    stream,
-    enabled: prompter.settings.follow && prompter.total > 0,
-    recording,
-    startWord: () => prompter.position.current,
-  });
   const leftMs = Math.max(0, limitMs - elapsedMs);
   const warn = recording && shouldWarn(elapsedMs, limitMs);
-  const status = countdown
-    ? `Recording starts in ${state.secondsLeft}`
-    : warn
-      ? "One minute left"
-      : recording
-        ? "Recording"
-        : "";
+  const status = holding
+    ? "Connecting voice…"
+    : countdown
+      ? `Recording starts in ${state.secondsLeft}`
+      : warn
+        ? "One minute left"
+        : recording
+          ? "Recording"
+          : "";
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="relative aspect-video overflow-hidden rounded-lg bg-dark">
-        {/* Muted: no echo of your own voice. Mirrored for the creator only. */}
-        <video
-          ref={video}
-          autoPlay
-          muted
-          playsInline
-          aria-label="Camera preview"
-          className="size-full -scale-x-100 object-cover"
-        />
-        <div className="pointer-events-none absolute inset-x-3 top-3 bottom-12 flex flex-col gap-2">
-          <PrompterText
-            prompter={prompter}
-            followWordIndex={follow.status === "following" ? follow.wordIndex : null}
+    <section
+      className="rst rst-live"
+      aria-label="Recording stage"
+      data-recording={recording}
+      data-check="s2-stage"
+      data-check-section=""
+    >
+      <div className="rst-col">
+        <div className="rst-cam">
+          {/* Muted: no echo of your own voice. Mirrored for the creator only. */}
+          <video
+            ref={video}
+            autoPlay
+            muted
+            playsInline
+            aria-label="Camera preview"
+            data-check="s2-stage-media"
+            className="size-full -scale-x-100 object-cover"
           />
-        </div>
-        {countdown && state.secondsLeft > 0 ? (
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 grid place-items-center bg-glass text-[8rem] leading-none font-medium text-on-dark"
-          >
-            {state.secondsLeft}
+          {prompter.total > 0 ? (
+            <div data-paused={prompter.paused} className="rst-prompter">
+              <PrompterText
+                prompter={prompter}
+                followWordIndex={follow.status === "following" ? follow.wordIndex : null}
+              />
+              <span className="rst-line" aria-hidden="true" />
+            </div>
+          ) : null}
+          {countdown && state.secondsLeft > 0 ? (
+            <div aria-hidden="true" className="rst-count">
+              {state.secondsLeft}
+            </div>
+          ) : null}
+          {holding ? (
+            <div aria-hidden="true" className="rst-count" style={{ fontSize: "var(--fs-h3)" }}>
+              Connecting voice…
+            </div>
+          ) : null}
+          {!recording && !countdown ? (
+            <button
+              type="button"
+              className="rst-btn rst-back"
+              data-round
+              aria-label="Back to script"
+              data-check="s2-stage-cta"
+              onClick={onBack}
+            >
+              <Icon icon={ChevronLeft} />
+            </button>
+          ) : null}
+          <div className="rst-top">
+            <span className="rst-pill">
+              <i aria-hidden="true" />
+              <span data-testid={recording ? "record-timer" : "record-limit"}>
+                {recording
+                  ? `${formatClock(elapsedMs)} / ${formatClock(limitMs)}`
+                  : `Up to ${formatClock(limitMs)}`}
+              </span>
+            </span>
           </div>
+        </div>
+        <p role="status" className="sr-only">
+          {status}
+        </p>
+        {warn ? (
+          <p className="rst-warn-text">
+            {formatClock(leftMs)} left. The recording stops by itself at the limit.
+          </p>
         ) : null}
-        <span
-          data-testid={recording ? "record-timer" : "record-limit"}
-          className="mono absolute bottom-3 left-3 rounded-md bg-nav-glass-dark px-2 py-1 text-small text-on-dark"
-        >
-          {recording
-            ? `${formatClock(elapsedMs)} / ${formatClock(limitMs)}`
-            : `Up to ${formatClock(limitMs)}`}
-        </span>
+        {deviceNote ? (
+          <p role="alert" className="rst-warn-text">
+            {deviceNote}
+          </p>
+        ) : null}
+        <div className="rst-dock">
+          <div className="rst-dock-l">
+            {onFlip ? (
+              <button
+                type="button"
+                className="rst-btn"
+                data-round
+                data-check="s2-stage-cta-3"
+                aria-label="Flip camera"
+                disabled={state.kind !== "ready"}
+                onClick={onFlip}
+              >
+                <Icon icon={SwitchCamera} />
+              </button>
+            ) : null}
+            {prompter.total > 0 ? <PauseButton prompter={prompter} /> : null}
+          </div>
+          <button
+            type="button"
+            className="rst-rec"
+            data-recording={recording}
+            disabled={!recording && (countdown || switching || limitMs <= 0)}
+            onClick={recording ? onStop : onRecord}
+          >
+            <span className="rst-ring" aria-hidden="true">
+              <span className="rst-core" />
+            </span>
+            {recording ? "Stop" : countdown ? "Starting…" : "Record"}
+          </button>
+          <div className="rst-dock-l rst-dock-r">
+            <button
+              ref={trigger}
+              type="button"
+              className="rst-btn rst-more"
+              data-round
+              aria-label="Camera and script settings"
+              aria-expanded={sheet.open}
+              aria-controls="rst-sheet"
+              onClick={() => sheet.setOpen(true)}
+            >
+              <Icon icon={SlidersHorizontal} />
+            </button>
+          </div>
+        </div>
       </div>
-      {prompter.total > 0 ? <PrompterControls prompter={prompter} /> : null}
-      <p role="status" className="sr-only">
-        {status}
-      </p>
-      {warn ? (
-        <p className="text-small font-medium text-destructive">
-          {formatClock(leftMs)} left. The recording stops by itself at the limit.
-        </p>
-      ) : null}
-      <LevelMeter level={level} />
-      {deviceNote ? (
-        <p role="alert" className="text-small font-medium text-destructive">
-          {deviceNote}
-        </p>
-      ) : null}
-      <DevicePickers
-        choices={devices}
-        cameraId={cameraId}
-        micId={micId}
-        locked={state.kind !== "ready"}
-        onCamera={onCamera}
-        onMic={onMic}
-        onFlip={onFlip}
-      />
-      <div className="flex gap-3">
-        {recording ? (
-          <Button size="lg" variant="destructive" onClick={onStop}>
-            <Icon icon={Square} /> Stop
-          </Button>
-        ) : (
-          <Button size="lg" disabled={countdown || switching || limitMs <= 0} onClick={onRecord}>
-            <Icon icon={Circle} /> {countdown ? "Starting…" : "Record"}
-          </Button>
-        )}
-      </div>
-      {/* Below the Record and Stop row so Stop stays on the first screen of a phone (AC-10). */}
-      {prompter.total > 0 ? (
-        <FollowVoiceToggle
-          enabled={prompter.settings.follow}
-          onChange={prompter.setFollow}
-          disclosureSeen={prompter.settings.followDisclosed}
-          onDisclosureSeen={prompter.markFollowDisclosed}
-          follow={follow}
+      <div className="rst-scrim" data-on={sheet.open} aria-hidden="true" onClick={sheet.close} />
+      <aside
+        ref={panel}
+        id="rst-sheet"
+        className="rst-panel rst-sheet"
+        data-open={sheet.open}
+        inert={sheet.phone && !sheet.open}
+        aria-label="Recording settings"
+      >
+        <div className="rst-grab" aria-hidden="true" />
+        <h3 data-check="s2-stage-heading">Script and camera</h3>
+        {prompter.total > 0 ? <PrompterControls prompter={prompter} /> : null}
+        <div className="rst-row">
+          <LevelMeter level={level} />
+        </div>
+        <DevicePickers
+          choices={devices}
+          cameraId={cameraId}
+          micId={micId}
+          locked={state.kind !== "ready"}
+          onCamera={onCamera}
+          onMic={onMic}
+          onFlip={null}
         />
-      ) : null}
-    </div>
+        {prompter.total > 0 ? (
+          <FollowVoiceToggle
+            enabled={prompter.settings.follow}
+            onChange={prompter.setFollow}
+            disclosureSeen={prompter.settings.followDisclosed}
+            onDisclosureSeen={prompter.markFollowDisclosed}
+            follow={follow}
+          />
+        ) : null}
+      </aside>
+    </section>
   );
 }

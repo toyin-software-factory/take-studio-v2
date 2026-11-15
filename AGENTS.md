@@ -19,12 +19,12 @@ pnpm install                  # install
 pnpm db:up && pnpm db:migrate # local Postgres (Docker) + migrations
 pnpm db:seed                  # install the built in studio backgrounds (R2 + rows; local database only)
 pnpm dev                      # next dev + trigger dev
-pnpm lint && pnpm typecheck && pnpm test   # run before every push (CI runs the build; see ROLE.md)
+pnpm lint && pnpm typecheck && pnpm test && pnpm check:lines   # run before every push (CI runs the build; see ROLE.md)
 pnpm test:e2e                 # Playwright smoke tests
 pnpm db:generate              # new migration after a schema change (commit it)
 ```
 
-Production deploys run only from CI on merge to main (build and check the Worker, then migrate, then Trigger.dev, then ship the Worker). Never deploy by hand with `.env*` files present.
+Production deploys run only from CI on merge to main (build and check the Worker, then migrate, then Trigger.dev, then ship the Worker). Never deploy by hand with `.env*` files present. A bad deploy, a bad migration or an incident: follow [docs/runbook.md](docs/runbook.md); the Worker rolls back only through the `Roll back the Worker` workflow (`.github/workflows/rollback.yml`).
 
 Deploy the Worker only through `scripts/deploy-worker.sh`, never `wrangler deploy <file>` (it drops the bindings). The Sentry source map chain and the OpenNext patch are in [scripts/AGENTS.md](scripts/AGENTS.md).
 
@@ -34,7 +34,7 @@ The `pnpm db:*` scripts (via `drizzle.config.ts`) refuse to connect to any non l
 
 ## Specs
 
-Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md` or `docs/specs/NNNN-title/index.md`. Scope lives in `docs/scope/scope.md`.
+Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md` or `docs/specs/NNNN-title/index.md`. Scope lives in `docs/scope/scope.md`. Pages and features by name, with routes and how to reach them: [docs/feature-map.md](docs/feature-map.md).
 
 ## Rules
 
@@ -44,9 +44,10 @@ Stored in `docs/specs/`. Format: `docs/specs/NNNN-title.md` or `docs/specs/NNNN-
 - **Errors**: expected failures return a typed result (`{ ok: true, data } | { ok: false, error }`) instead of throwing across boundaries. Creators see friendly messages; logs, error reports and job payloads carry IDs only, never video, transcripts, presigned links or secrets.
 - **Folders by feature inside the layers**: `src/app` (routes), `src/server/<feature>/`, `src/trigger/<feature>/`, `src/lib`, `src/db`. Job code never imports `src/app` or `src/server`; web code never imports job internals or heavy SDKs (ESLint enforces it).
 - **Small units**: one job per function or component; split a component past about 150 lines.
-- **Named exports only**, except where Next.js requires a default export (`page`, `layout`, `route`, `loading`, `error`, `not-found`).
-- **Accessibility, WCAG AA**: semantic HTML, full keyboard use, visible focus, AA contrast, alt text, captions for video.
-- **Tooling**: ESLint (flat config) + Prettier, Vitest (unit), Playwright (browser); CI runs lint, typecheck, test, build and e2e on every PR. A pre commit hook formats and lints only the staged files (fast); typecheck and tests stay in CI and the before push rule.
+- **No file past 250 lines**; `pnpm check:lines` enforces it (CI and the pre commit hook, staged files only). It counts like `wc -l` over tracked `.ts`, `.tsx`, `.js`, `.mjs` and `.css` files, skips generated and vendored files (`drizzle/`, `.next`, lockfiles, `.claude/skills/`) and the standalone `tools/design-check/` (not app code, never split). Split by topic instead of raising the limit.
+- **Named exports only**, except where Next.js requires a default export (`page`, `layout`, `route`, `loading`, `error`, `not-found`) and the Worker entry `src/worker.ts` (ESLint enforces it, `import/no-default-export`, `src/lint-rules-more.test.ts`).
+- **Accessibility, WCAG AA**: semantic HTML, full keyboard use, visible focus, AA contrast (a test enforces it: `src/app/design/contrast-pairs.test.ts`, table in `contrast-table.ts`; a new colour token or text/surface pairing is added there with a reason), alt text, captions for video.
+- **Tooling**: ESLint (flat config) + Prettier, Vitest (unit), Playwright (browser); CI runs lint, typecheck, test, build and e2e on every PR. A pre commit hook formats and lints only the staged files (fast); typecheck and tests stay in CI and the before push rule. `pnpm typecheck` runs in about 25 s and 1.6 GB, fine for a 2 GB sandbox with no `NODE_OPTIONS`, because `allowJs` is off in `tsconfig.json` (B2-T145): with it on, a sandbox that had built the Worker made tsc follow `src/worker.ts` into the 28 MB `.open-next` bundle, which took 4 GB and about 90 s. Keep `allowJs` off; the type of that import comes from `src/worker/open-next.d.ts`.
 - **Legal facts**: a change that adds a service, a dependency, an env secret, a cookie, a stored personal field, a retention change, an analytics event or a payment step updates `src/lib/legal-facts.ts`, the Privacy and Terms copy and the `LEGAL_VERSION` date in the same PR (checklist in [src/lib/AGENTS.md](src/lib/AGENTS.md)). Run `pnpm legal:drift` before opening the PR; /sync runs it too and flags a hit. `pnpm test:legal-launch` is the launch gate and fails until Toyin's facts and the lawyer's review are recorded.
 - **Git**: one task = one branch = one PR titled `[TASK-ID] …`; the lead merges (squash). Tests where they matter: risky logic, data writes, regressions, shared code.
 
@@ -63,6 +64,7 @@ Spec 0001 chose OpenNext: where a Cloudflare skill suggests vinext, OpenNext win
 - [vercel-react-best-practices](.claude/skills/vercel-react-best-practices/), [vercel-composition-patterns](.claude/skills/vercel-composition-patterns/), [web-design-guidelines](.claude/skills/web-design-guidelines/): `vercel-labs/agent-skills`, React and Next.js performance, composition, UI review
 - [speech-to-text](.claude/skills/speech-to-text/): `deepgram/skills`, Deepgram transcription (`/v1/listen`, Nova-3 options, response shape); spec 0007 uses plain `fetch`, not the SDK
 - [playwright-cli](.claude/skills/playwright-cli/): `microsoft/playwright-cli`, browser tests
+- [modern-web-guidance](.claude/skills/modern-web-guidance/): `GoogleChrome/modern-web-guidance` (vendored by `scripts/vendor-modern-web-guidance.sh`, runs offline, telemetry off), native HTML, CSS and browser API patterns for UI work; the project's specs, `design.md` and lint rules win where they differ (ROLE.md)
 
 MCP servers: Neon, Cloudflare, Trigger.dev (recommended, not connected yet)
 

@@ -2,16 +2,26 @@
 
 import { useEffect, useReducer, useRef } from "react";
 import { followScript, normaliseWord, scriptWordsOf } from "@/lib/follow-script";
+import { callApi } from "@/components/takes/browser-io";
 import { keepRunning } from "./keep-running";
 import { FOLLOW_OFF, followReducer, type FollowStatus } from "@/lib/follow-state";
 import { pipeFailureCode, reportFollowFailure, socketCloseCode } from "@/lib/follow-diagnosis";
 import { PCM_WORKLET_NAME, PCM_WORKLET_SOURCE } from "@/lib/pcm-worklet";
 import {
+  type AudioGate,
   connectRealtime,
+  createAudioGate,
   fetchRealtimeToken,
   type RealtimeConnection,
   type SocketLike,
 } from "@/lib/realtime-stream";
+
+/** The token call through `callApi` (bounded, same origin), shaped like a `fetch` for `fetchRealtimeToken`. */
+const tokenFetch: typeof fetch = async (input) => {
+  const reply = await callApi(String(input), "POST");
+  const empty = reply.data === null || [204, 205, 304].includes(reply.status);
+  return new Response(empty ? null : JSON.stringify(reply.data), { status: reply.status });
+};
 
 export type VoiceFollow = {
   readonly status: FollowStatus;
@@ -67,9 +77,6 @@ async function pipeMicrophone(
   }
 }
 
-/** Frames kept while the socket is still opening (about 100 ms each), oldest dropped first. */
-const STARTUP_QUEUE_MAX = 100;
-
 function releaseAudio(audio: Audio): void {
   audio.stop();
   URL.revokeObjectURL(audio.url);
@@ -77,56 +84,63 @@ function releaseAudio(audio: Audio): void {
 }
 
 /**
- * Voice following for the prompter (spec 0021 step 2, AC-12). While `enabled` and `recording`, it
- * streams the microphone to Deepgram through a short lived token and reports where the creator is
- * in the script. No audio and no words are stored, logged or sent anywhere but Deepgram; any
- * trouble becomes the `fallback` status and the prompter keeps its timed scroll.
+ * Voice following for the prompter (spec 0021 step 2, AC-12; B2-T115). While `enabled`, the token
+ * is fetched and the Deepgram socket opened when the countdown starts, so it is ready before the
+ * creator reads. The microphone is only piped, and only goes to Deepgram, while `recording`: the
+ * audio gate drops anything earlier. No audio and no words are stored, logged or sent anywhere
+ * but Deepgram; any trouble becomes the `fallback` status and the prompter keeps its timed scroll.
  */
 export function useVoiceFollow(args: {
   readonly script: string;
   readonly stream: MediaStream | null;
   readonly enabled: boolean;
+  /** The 3 2 1 countdown is running: connect now, send no audio yet. */
+  readonly countdown: boolean;
   readonly recording: boolean;
   /** The prompter's current position in words, read when following starts and again when a heard phrase matches nothing near the last match (0 for a new take). */
   readonly startWord: () => number;
 }): VoiceFollow {
-  const { script, stream, enabled, recording } = args;
+  const { script, stream, enabled, countdown, recording } = args;
+  const connect = enabled && (countdown || recording);
   const startWord = useRef(args.startWord);
   useEffect(() => {
     startWord.current = args.startWord;
   }, [args.startWord]);
   const [state, dispatch] = useReducer(followReducer, FOLLOW_OFF);
+  // The latest state for the recording effect, which must not re-run when it changes.
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
   const scriptWords = useRef<readonly string[]>([]);
   const last = useRef(-1);
+  const gate = useRef<AudioGate | null>(null);
+  // Read once when the connection starts: true when it started before recording (the countdown).
+  const recordingNow = useRef(recording);
+  useEffect(() => {
+    recordingNow.current = recording;
+  }, [recording]);
 
   useEffect(() => {
     scriptWords.current = scriptWordsOf(script).map(normaliseWord);
   }, [script]);
 
+  // The connection: opened at the countdown (or when turned on while recording), closed when
+  // following is turned off, recording ends or the page is left.
   useEffect(() => {
-    if (!enabled || !recording || !stream) return;
+    if (!connect || !stream) return;
     let cancelled = false;
     let conn: RealtimeConnection | null = null;
-    let audio: Audio | null = null;
-    let open = false;
-    const queued: ArrayBuffer[] = [];
-    // Frames made before the socket opens wait here (bounded) so the opening words are not lost.
-    const send = (frame: ArrayBuffer) => {
-      if (open && conn) {
-        conn.sendAudio(frame);
-        return;
-      }
-      queued.push(frame);
-      if (queued.length > STARTUP_QUEUE_MAX) queued.shift();
-    };
+    const audioGate = createAudioGate((frame) => conn?.sendAudio(frame));
+    gate.current = audioGate;
     // Start matching where the prompter already is, so following turned on mid script can match
     // the words ahead instead of searching from the top.
     last.current = Math.max(-1, Math.floor(startWord.current()) - 1);
-    dispatch({ type: "start", now: Date.now() });
+    dispatch({ type: "start", now: Date.now(), early: !recordingNow.current });
     const timer = setInterval(() => dispatch({ type: "tick", now: Date.now() }), 1000);
 
     void (async () => {
-      const token = await fetchRealtimeToken(fetch);
+      const token = await fetchRealtimeToken(tokenFetch);
       if (cancelled) return;
       if (!token.ok) {
         reportFollowFailure(token.code);
@@ -137,8 +151,7 @@ export function useVoiceFollow(args: {
         token.token,
         {
           onOpen: () => {
-            open = true;
-            for (const frame of queued.splice(0)) conn?.sendAudio(frame);
+            audioGate.open();
             dispatch({ type: "open", now: Date.now() });
           },
           onClose: (code) => {
@@ -165,8 +178,32 @@ export function useVoiceFollow(args: {
           clearInterval: (id) => clearInterval(id as ReturnType<typeof setInterval>),
         },
       );
+    })();
+
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      conn?.close();
+      audioGate.stopRecording();
+      gate.current = null;
+      dispatch({ type: "stop" });
+    };
+  }, [connect, stream]);
+
+  // Recording started: start the clock for matches, then (and only then) pipe the microphone.
+  useEffect(() => {
+    if (!connect || !recording || !stream) return;
+    let cancelled = false;
+    let audio: Audio | null = null;
+    // Still connecting when the hold ends: the reducer falls back, so say why (one code, no data).
+    if (stateRef.current.early && stateRef.current.status === "connecting") {
+      reportFollowFailure("hold_expired");
+    }
+    dispatch({ type: "recording", now: Date.now() });
+    gate.current?.startRecording();
+    void (async () => {
       try {
-        const piped = await pipeMicrophone(stream, send);
+        const piped = await pipeMicrophone(stream, (frame) => gate.current?.push(frame));
         if (piped && cancelled) {
           // Follow was turned off while the worklet loaded: cleanup has run, so release now.
           releaseAudio(piped);
@@ -186,15 +223,12 @@ export function useVoiceFollow(args: {
         }
       }
     })();
-
     return () => {
       cancelled = true;
-      clearInterval(timer);
-      conn?.close();
+      gate.current?.stopRecording();
       if (audio) releaseAudio(audio);
-      dispatch({ type: "stop" });
     };
-  }, [enabled, recording, stream]);
+  }, [connect, recording, stream]);
 
   return {
     status: state.status,

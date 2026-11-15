@@ -56,7 +56,7 @@ test("desktop shell: skip link, landmarks, sidebar and active item", async ({ pa
     .getByRole("navigation", { name: "Main" })
     .getByRole("link", { name: "Takes" });
   await expect(active).toHaveAttribute("aria-current", "page");
-  await expect(active).toHaveCSS("font-weight", "500");
+  await expect(active).toHaveCSS("font-weight", "400"); // the record v2 draft sets nav items at weight 400
   // Nav items are a menu, not running text: no link underline.
   await expect(active).toHaveCSS("text-decoration-line", "none");
 });

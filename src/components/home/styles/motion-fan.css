@@ -1,0 +1,152 @@
+/* Word reveal masks (recipe 7.1) */
+.h-w-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+.h-w {
+  display: inline-block;
+  will-change: transform;
+}
+
+/* Fan: on a wheel once scripts run (recipe 7.2); a plain scrolling row without them */
+.h-fan {
+  position: relative;
+}
+.h-fan.is-fan {
+  height: clamp(360px, 42vw, 640px);
+  padding: 0;
+}
+.h-fan.is-fan .h-fan-list {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: visible; /* the panel clips the wheel; the list itself never cuts its cards off */
+  padding: 0;
+}
+.h-fan.is-fan .h-fan-list li {
+  position: static;
+}
+.h-fan.is-fan .h-fan-card {
+  position: absolute;
+  left: 50%;
+  top: clamp(40px, 4.5vw, 64px);
+  translate: -50% 0;
+  transform-origin: 50% 1100px;
+}
+
+/* The wheel's box is reserved from the first paint (no layout shift when `is-fan` is set after
+   hydration): wherever scripts run and motion is allowed, the panel already has the wheel's
+   height and the cards are stacked in its middle, ready for the opening animation. */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .h-fan {
+    height: clamp(360px, 42vw, 640px);
+    padding: 0;
+  }
+  .h-fan .h-fan-list {
+    position: absolute;
+    inset: 0;
+    display: block;
+    overflow: visible;
+    padding: 0;
+  }
+  .h-fan .h-fan-list li {
+    position: static;
+  }
+  .h-fan .h-fan-card {
+    position: absolute;
+    left: 50%;
+    top: clamp(40px, 4.5vw, 64px);
+    translate: -50% 0;
+    transform-origin: 50% 1100px;
+  }
+}
+
+/* Under 480 px the draft's wheel is a shorter panel with smaller cards (300 px tall, 160 wide) */
+@media (max-width: 479px) {
+  .h-fan-card {
+    width: 160px;
+  }
+  .h-fan.is-fan {
+    height: 300px;
+  }
+}
+@media (max-width: 479px) and (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .h-fan {
+    height: 300px;
+  }
+}
+
+/* Play and pause button for anything that moves on its own (WCAG 2.2.2): at least 44 px */
+.h-media-toggle {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--color-line-dark);
+  border-radius: var(--radius-pill);
+  background: var(--color-media-glass);
+  backdrop-filter: var(--blur-glass);
+  color: var(--color-on-dark);
+  cursor: pointer;
+  transition: border-color var(--dur-hover) var(--ease-ui);
+}
+.h-media-toggle:hover {
+  border-color: var(--color-on-dark-20);
+}
+.h-media-toggle:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.h-fan-toggle {
+  top: 12px;
+  right: 12px;
+}
+.h-reel-toggle {
+  right: calc(var(--container-pad) + 12px);
+  bottom: 12px;
+}
+.h-reel.is-scrub .h-reel-toggle {
+  /* inside the corner slot's rectangle (set by motion/reel.ts), which the clip never leaves */
+  right: var(--toggle-right, 24px);
+  bottom: var(--toggle-bottom, 24px);
+}
+
+/* Entrances (recipe 7.3): hidden only once scripts run, and only when motion is allowed */
+@keyframes h-enter {
+  from {
+    opacity: 0;
+    translate: 0 20px;
+  }
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .js [data-enter] {
+    opacity: 0;
+  }
+  .js [data-enter].is-in {
+    animation: h-enter var(--dur-enter) var(--ease-enter) both;
+    animation-delay: calc(var(--i, 0) * var(--stagger));
+  }
+}
+
+/* Load motion (home-v2 intro): the bar, headline and lead wait for the intro, which sets their start
+   states and removes the mark. Only while scripts run and motion is allowed; the inline guard
+   removes the mark after 3 s if the bundle never starts. */
+@media (prefers-reduced-motion: no-preference) {
+  html.h-intro-pending .h-nav,
+  html.h-intro-pending .h-hero-lead {
+    opacity: 0;
+  }
+  html.h-intro-pending .h-hero .h-h1 {
+    visibility: hidden;
+  }
+}

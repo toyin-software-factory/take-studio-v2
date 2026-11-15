@@ -40,8 +40,8 @@ export function historyProblems(lines: readonly RecordedHash[], today: string): 
  */
 export const FLOOR: Readonly<Record<"privacy" | "terms", { count: number; digest: string }>> = {
   privacy: {
-    count: 12,
-    digest: "94d6e9acde7d2b1220659bb3baaa5560156c1f54910765158a83f920ab74cdc2",
+    count: 14,
+    digest: "51239ef8d9a53c3f200497e25557a678c74cc3352f0a25768558623ad45ee738",
   },
   terms: { count: 6, digest: "fe371c2d5cf9f500f908a4b1a8afcd12793a29c07291400959b30140c0f3acf0" },
 };

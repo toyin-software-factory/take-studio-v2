@@ -2,10 +2,18 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/shell/app-shell";
+import "@/components/record/record-base.css";
+import "@/components/record/record-script.css";
+import "@/components/record/record-actions.css";
+import "@/components/record/stage.css";
+import "@/components/record/stage-panel.css";
+import "@/components/record/stage-phone.css";
+import "@/components/record/review.css";
 import { RecordView } from "@/components/record/record-view";
 import { parseUsageEnv } from "@/lib/env";
 import { getDb, getSession } from "@/server/request";
 import { usageForCreator } from "@/server/usage";
+import { awaitRead, startRead, type SettledRead } from "@/lib/settled-read";
 
 export const dynamic = "force-dynamic";
 
@@ -28,16 +36,31 @@ async function firstUsage(creatorId: string) {
   }
 }
 
+/**
+ * `RecordView` with the first usage read. The read starts in the page and is awaited here, so it
+ * runs beside `AppShell`'s own read instead of before it (one database round trip less on the
+ * way to the first byte). No `Suspense`: the first paint is the same.
+ */
+async function RecordWithUsage({
+  usage,
+  creatorId,
+}: {
+  readonly usage: Promise<SettledRead<Awaited<ReturnType<typeof firstUsage>>>>;
+  readonly creatorId: string;
+}) {
+  return <RecordView usage={await awaitRead(usage)} creatorId={creatorId} />;
+}
+
 /** Record a take in the browser (spec 0021). Signed out goes to sign in. */
 export default async function RecordPage() {
   const session = await getSession(await headers());
   if (!session) redirect("/sign-in");
-  const usage = await firstUsage(session.user.id);
+  const usage = startRead(firstUsage(session.user.id));
   return (
     <AppShell user={{ id: session.user.id, name: session.user.name, email: session.user.email }}>
-      <div className="flex max-w-3xl flex-col gap-6">
-        <h1 className="text-h1 font-medium">Record a take</h1>
-        <RecordView usage={usage} creatorId={session.user.id} />
+      <div className="rec-page">
+        <h1 className="sr-only">Record a take</h1>
+        <RecordWithUsage usage={usage} creatorId={session.user.id} />
       </div>
     </AppShell>
   );

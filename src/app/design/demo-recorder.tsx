@@ -1,7 +1,9 @@
 "use client";
 
 import { Circle, Square } from "lucide-react";
-import { PrompterControls } from "@/components/record/prompter-controls";
+import "@/components/record/stage.css";
+import "@/components/record/stage-panel.css";
+import { PauseButton, PrompterControls } from "@/components/record/prompter-controls";
 import { PrompterText } from "@/components/record/prompter-text";
 import { usePrompter } from "@/components/record/use-prompter";
 import { Button } from "@/components/ui/button";
@@ -30,11 +32,18 @@ export function RecorderDemo() {
         <div className="pointer-events-none absolute inset-x-3 top-3 bottom-12 flex flex-col gap-2">
           <PrompterText prompter={prompter} />
         </div>
+        <div className="absolute right-3 bottom-3">
+          <PauseButton prompter={prompter} />
+        </div>
         <span className="mono absolute bottom-3 left-3 rounded-md bg-nav-glass-dark px-2 py-1 text-small text-on-dark">
           Up to 60:00
         </span>
       </div>
-      <PrompterControls prompter={prompter} />
+      <div className="rounded-lg bg-dark p-3">
+        <div className="rst-panel">
+          <PrompterControls prompter={prompter} />
+        </div>
+      </div>
       <div className="flex flex-wrap gap-3">
         <Button size="lg">
           <Icon icon={Circle} /> Record

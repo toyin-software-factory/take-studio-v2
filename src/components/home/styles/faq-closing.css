@@ -1,0 +1,185 @@
+/* Questions */
+.h-faq {
+  display: grid;
+  gap: 48px;
+}
+@media (min-width: 1200px) {
+  .h-faq {
+    gap: 24px;
+    grid-template-columns: 4fr 8fr;
+  }
+}
+.h-faq .h-head {
+  margin-bottom: 0;
+}
+.h-acc-item {
+  border-bottom: 1px solid var(--color-line);
+}
+.h-acc-item:first-child {
+  border-top: 1px solid var(--color-line);
+}
+/* As in the draft, the question heading keeps the browser's h3 size and weight (the visible text is the h-h4 span). */
+.h-acc-item h3 {
+  font-size: 1.17em;
+  font-weight: 700;
+  line-height: 1.5;
+}
+.h-acc-trigger {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 44px;
+  padding: 24px 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+.h-acc-num {
+  font-size: var(--fs-small);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.h-acc-icon {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  transition: transform var(--dur-swap) var(--ease-in-out);
+}
+.h-acc-icon::before,
+.h-acc-icon::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1.5px;
+  background: currentcolor;
+}
+.h-acc-icon::after {
+  transform: rotate(90deg);
+}
+.h-acc-item[data-open="true"] .h-acc-icon {
+  transform: rotate(45deg);
+}
+.h-acc-panel {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-swap) var(--ease-in-out);
+}
+.h-acc-item[data-open="true"] .h-acc-panel {
+  grid-template-rows: 1fr;
+}
+.h-acc-inner {
+  min-height: 0;
+  overflow: hidden;
+  max-width: 64ch;
+  color: var(--color-text-muted);
+  opacity: 0;
+  translate: 0 -8px;
+  visibility: hidden;
+  transition:
+    opacity var(--dur-spread) var(--ease-settle),
+    translate var(--dur-spread) var(--ease-settle),
+    visibility 0s linear var(--dur-swap);
+}
+.h-acc-inner > p {
+  padding: 0 0 24px 48px;
+}
+.h-acc-item[data-open="true"] .h-acc-inner {
+  opacity: 1;
+  translate: 0 0;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+/* Closing call to action */
+.h-closing {
+  display: grid;
+  gap: 48px;
+  align-items: end;
+}
+@media (min-width: 1200px) {
+  .h-closing {
+    gap: 24px;
+    grid-template-columns: 1fr 1fr;
+  }
+}
+.h-closing .h-head {
+  margin-bottom: 0;
+}
+.h-closing-lead {
+  max-width: 44ch;
+}
+.h-closing .h-btn-split,
+.h-closing .h-btn-split-label,
+.h-closing .h-btn-split-icon {
+  text-align: center; /* the design's closing button is a <button>, which centres */
+}
+.h-closing-actions-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+}
+.h-form {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+.h-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.h-field label {
+  font-size: var(--fs-small);
+  color: var(--color-text-muted);
+  font-weight: var(--fw-regular);
+}
+.h-field input {
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid var(--color-line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: 16px;
+  font-weight: var(--fw-regular);
+  outline: none;
+  transition:
+    border-color var(--dur-ui) ease,
+    box-shadow var(--dur-ui) ease;
+}
+.h-field input:focus-visible {
+  border-bottom-color: var(--color-ink);
+  box-shadow: 0 1px 0 0 var(--color-ink);
+}
+.h-field input[aria-invalid="true"] {
+  border-bottom-color: var(--color-ink);
+}
+.h-form-status {
+  min-height: 1.5em;
+  font-size: var(--fs-body);
+}
+.h-closing .h-btn-split {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+.h-closing .h-btn-split:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.h-closing-note {
+  color: var(--color-text-muted);
+}

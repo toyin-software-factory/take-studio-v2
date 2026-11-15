@@ -1,0 +1,176 @@
+/* /record, step 1: actions, split button, side column and tips. */
+.rec-go {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px 24px;
+  margin-top: 32px;
+}
+.rec-split {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+}
+.rec-split__label {
+  display: inline-flex;
+  align-items: center;
+  height: 48px;
+  padding-inline: 24px;
+  border-radius: var(--radius-pill);
+  background: var(--color-ink);
+  color: #fff;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-regular);
+  transition: padding-inline var(--dur-swap) var(--ease-in-out);
+}
+.rec-split__icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-round);
+  background: var(--color-ink);
+  color: #fff;
+  transition: transform var(--dur-swap) var(--ease-in-out);
+}
+.rec-split__icon svg {
+  transform: rotate(-45deg);
+  transition: transform var(--dur-swap) var(--ease-in-out);
+}
+.rec-split:hover .rec-split__label,
+.rec-split:focus-visible .rec-split__label {
+  padding-inline: 32px 16px;
+}
+.rec-split:hover .rec-split__icon,
+.rec-split:focus-visible .rec-split__icon {
+  transform: translateX(-4px);
+}
+.rec-split:hover svg,
+.rec-split:focus-visible svg {
+  transform: rotate(0);
+}
+.rec-split:active {
+  transform: scale(0.98);
+}
+.rec-split:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 4px;
+  border-radius: var(--radius-pill);
+}
+.rec-split[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.rec-light {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 20px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-line);
+  background: var(--color-bg);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-regular);
+  cursor: pointer;
+  color: var(--color-ink);
+  transition: border-color var(--dur-hover) var(--ease-ui);
+}
+.rec-light:hover {
+  border-color: var(--color-ink);
+}
+.rec-light:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.rec-tlink {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-regular);
+  text-decoration: underline 1px var(--color-line);
+  text-underline-offset: 6px;
+  transition:
+    text-decoration-color var(--dur-color) var(--ease-ui),
+    text-underline-offset var(--dur-color) var(--ease-ui);
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.rec-tlink:hover {
+  text-decoration-color: currentColor;
+  text-underline-offset: 3px;
+}
+.rec-fine {
+  font-size: var(--fs-small);
+  color: var(--color-text-muted);
+  font-weight: var(--fw-regular);
+  margin-top: 16px;
+  max-width: 60ch;
+}
+
+.rec-side {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+@media (min-width: 1200px) {
+  .rec-side {
+    padding-top: 8px;
+  }
+}
+.rec-stat {
+  border-top: 1px solid var(--color-line);
+  padding-top: 24px;
+}
+.rec-stat__num {
+  font-size: var(--fs-display);
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-weight: var(--fw-regular);
+  font-variant-numeric: tabular-nums;
+}
+.rec-stat__num small {
+  font-size: var(--fs-h4);
+  color: var(--color-text-muted);
+  margin-left: 6px;
+  letter-spacing: var(--ls-heading);
+}
+.rec-stat__label {
+  font-size: var(--fs-small);
+  color: var(--color-text-muted);
+  font-weight: var(--fw-regular);
+  margin-top: 8px;
+}
+.rec-tips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--color-line);
+}
+.rec-tips li {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  gap: 8px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--color-line);
+  font-size: var(--fs-body);
+}
+.rec-tips li > span {
+  font-size: var(--fs-small);
+  color: var(--color-text-muted);
+  font-weight: var(--fw-regular);
+  font-variant-numeric: tabular-nums;
+  padding-top: 2px;
+}
+.rec-tips b {
+  font-weight: var(--fw-regular);
+}
+.rec-tips p {
+  color: var(--color-text-muted);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-regular);
+  margin-top: 2px;
+}

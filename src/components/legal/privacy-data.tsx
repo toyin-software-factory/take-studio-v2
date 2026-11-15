@@ -2,6 +2,7 @@ import {
   CHOICES,
   COLLECTED,
   COOKIES,
+  DEVICE_STORAGE,
   privacyContactEmail,
   type LegalEntity,
 } from "@/lib/legal-facts";
@@ -50,7 +51,7 @@ export function CollectedSection() {
 
 export function CookiesSection() {
   return (
-    <LegalSection id="cookies" title="Cookies">
+    <LegalSection id="cookies" title="Cookies and device storage">
       <p>
         We set one cookie, and it is needed to keep you signed in. We use no advertising cookie and
         no analytics cookie.
@@ -59,6 +60,20 @@ export function CookiesSection() {
         items={COOKIES.map((c) => (
           <>
             <code>{c.name}</code>: {c.purpose} Kept: {c.kept}
+          </>
+        ))}
+      />
+      <p>
+        Your browser also keeps a few things for the site on your own device. They are your own
+        settings and an unsent draft, they are not cookies and we do not read them, and they are
+        needed for the features to work, so there is nothing to accept.
+      </p>
+      <LegalList
+        items={DEVICE_STORAGE.map((d) => (
+          <>
+            <code>{d.name}</code> (
+            {d.store === "localStorage" ? "local storage" : "session storage"}
+            ): {d.holds} Cleared: {d.cleared}
           </>
         ))}
       />

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
@@ -58,8 +58,17 @@ describe("homepage media files (spec 0010, AC-11)", () => {
   });
 
   it("is not embedded as base64 anywhere in the page's source files", () => {
-    for (const file of ["content.ts", "home.css", "picture.tsx"]) {
-      const text = readFileSync(join(process.cwd(), "src/components/home", file), "utf8");
+    const dir = join(process.cwd(), "src/components/home");
+    const files = [
+      "content.ts",
+      "content-end.ts",
+      "content-limits.ts",
+      "home.css",
+      "picture.tsx",
+      ...readdirSync(join(dir, "styles")).map((name) => `styles/${name}`),
+    ];
+    for (const file of files) {
+      const text = readFileSync(join(dir, file), "utf8");
       expect(text).not.toMatch(/base64,/);
     }
   });

@@ -22,21 +22,20 @@ import { originalInput, STORED_IMAGE_INPUT, STORED_IMAGE_URL_INPUT } from "@/lib
 import { deadlineMs, runWithDeadline } from "@/lib/deadline";
 import { parseJobEnv } from "@/lib/env";
 import {
-  type RawFrame,
   detectInFrame,
   erasesSubject,
-  frameAlphaArgs,
-  frameSampleArgs,
   fromHex,
   isKeyable,
   sampleFrameSize,
   toHex,
-  transparentShare,
 } from "@/lib/keying";
 import { thumbnailSeconds } from "@/lib/probe";
-import { type R2, createR2 } from "@/lib/r2";
+import { createR2 } from "@/lib/r2";
 import { toneMapFilter } from "@/lib/trim";
-import { MediaToolError, probeUrl, runFfmpeg, runFfmpegBytes } from "./media";
+import { MediaToolError, probeUrl } from "./media";
+import { HTTP_INPUT, createPreviewIo, type PreviewIo } from "./preview-io";
+
+export type { PreviewIo };
 
 /**
  * `preview-background` (spec 0008, Pipeline 4; AC-4): one still of a take on a background, so a
@@ -50,40 +49,6 @@ import { MediaToolError, probeUrl, runFfmpeg, runFfmpegBytes } from "./media";
 
 // Limits (2 attempts of 3 minutes, so the shared 90 s deadline margin still leaves 90 s of work)
 // live in `PREVIEW_LIMITS` (src/lib/background-preview.ts): the web app's stale rule is derived from them.
-
-/** Input options for reading a presigned URL with range requests and reconnects. */
-const HTTP_INPUT = ["-rw_timeout", "30000000", "-reconnect", "1", "-reconnect_streamed", "1"];
-
-/** The outside world of one attempt, so tests can fake R2 and ffmpeg. */
-export type PreviewIo = {
-  readonly r2: Pick<R2, "presignGet" | "putObject" | "deleteObject">;
-  readonly probe: typeof probeUrl;
-  /** One RGB frame of `url` at `timeMs`, tone mapped, at `size` (for detection). */
-  readonly sampleFrame: (
-    url: string,
-    timeMs: number,
-    size: { readonly width: number; readonly height: number },
-    toneMap: string | null,
-    signal?: AbortSignal,
-  ) => Promise<RawFrame>;
-  /** The share of that frame keying with `keyColor` would make transparent (S3S-T10 guard). */
-  readonly sampleKeyedShare: (
-    url: string,
-    timeMs: number,
-    size: { readonly width: number; readonly height: number },
-    toneMap: string | null,
-    keyColor: string,
-    signal?: AbortSignal,
-  ) => Promise<number>;
-  /** Reads one image through ffmpeg `args` as raw `rgb24` of the given size (the final gate). */
-  readonly readImage: (
-    args: readonly string[],
-    size: { readonly width: number; readonly height: number },
-    signal?: AbortSignal,
-  ) => Promise<RawFrame>;
-  /** Runs ffmpeg with `args` (the job adds nothing); the result is the JPEG at `outPath`. */
-  readonly encode: (args: readonly string[], signal?: AbortSignal) => Promise<void>;
-};
 
 export type PreviewOutcome =
   | { readonly outcome: "skipped" }
@@ -260,45 +225,7 @@ export const previewBackgroundTask = task({
     const r2 = createR2(env);
     return runWithDeadline(deadlineMs(PREVIEW_LIMITS.maxDurationSeconds), (signal) =>
       withJobDb(env.DATABASE_URL, (db) =>
-        makePreview(
-          db,
-          payload.previewId,
-          {
-            r2,
-            probe: probeUrl,
-            sampleFrame: async (url, timeMs, size, toneMap, stop) => {
-              const bytes = await runFfmpegBytes(
-                [...HTTP_INPUT, ...frameSampleArgs(url, timeMs, size, toneMap)],
-                { timeoutMs: 60_000, signal: stop },
-              );
-              if (bytes.length !== size.width * size.height * 3) {
-                throw new MediaToolError("ffmpeg", null, false);
-              }
-              return { width: size.width, height: size.height, data: new Uint8Array(bytes) };
-            },
-            sampleKeyedShare: async (url, timeMs, size, toneMap, keyColor, stop) => {
-              const bytes = await runFfmpegBytes(
-                [...HTTP_INPUT, ...frameAlphaArgs(url, timeMs, size, toneMap, keyColor)],
-                { timeoutMs: 60_000, signal: stop },
-              );
-              if (bytes.length !== size.width * size.height) {
-                throw new MediaToolError("ffmpeg", null, false);
-              }
-              return transparentShare(new Uint8Array(bytes));
-            },
-            readImage: async (args, size, stop) => {
-              const bytes = await runFfmpegBytes([...args], { timeoutMs: 60_000, signal: stop });
-              if (bytes.length !== size.width * size.height * 3) {
-                throw new MediaToolError("ffmpeg", null, false);
-              }
-              return { width: size.width, height: size.height, data: new Uint8Array(bytes) };
-            },
-            encode: async (args, stop) => {
-              await runFfmpeg(args, { timeoutMs: 90_000, signal: stop });
-            },
-          },
-          signal,
-        ),
+        makePreview(db, payload.previewId, createPreviewIo(r2, probeUrl), signal),
       ),
     );
   },

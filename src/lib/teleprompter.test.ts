@@ -56,7 +56,7 @@ describe("speed and size", () => {
     expect(stepSize(64, 1)).toBe(64);
     expect(stepSize(28, -1)).toBe(28);
     expect(clampSize(50)).toBe(54);
-    expect(clampSize(NaN)).toBe(44);
+    expect(clampSize(NaN)).toBe(28);
   });
 });
 

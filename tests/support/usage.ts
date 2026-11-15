@@ -1,6 +1,6 @@
 import postgres from "postgres";
 import { usageAccountHash } from "../../src/lib/usage-hash";
-import { localDatabaseUrl, setting, type TestUser } from "./session";
+import { localDatabaseUrl, USAGE_TEST_HASH_SECRET, type TestUser } from "./session";
 
 /** Arbitrary key shared by every `setUsage` caller. */
 const USAGE_LOCK = 2100021;
@@ -8,7 +8,7 @@ const USAGE_LOCK = 2100021;
 /**
  * Test only: sets the monthly usage state of a test user in the local or CI Postgres (same
  * guard as `session.ts`): the two `app_setting` rows and this month's `usage_month` row. The
- * hash uses the same `USAGE_HASH_SECRET` the Worker was built with. The returned cleanup puts
+ * hash uses the made up `USAGE_TEST_HASH_SECRET`, which CI writes to `.env` and the local build script bakes in. The returned cleanup puts
  * the settings back as they were and removes the usage row.
  */
 export async function setUsage(
@@ -19,8 +19,7 @@ export async function setUsage(
     readonly allowanceSeconds?: number;
   },
 ): Promise<() => Promise<void>> {
-  const secret = setting("USAGE_HASH_SECRET");
-  if (!secret) throw new Error("USAGE_HASH_SECRET is not set (CI writes it to .env).");
+  const secret = USAGE_TEST_HASH_SECRET;
   const sql = postgres(localDatabaseUrl(), { max: 1 });
   const keys = ["usage_limit_enabled", "free_monthly_seconds"];
   let hash: string | null = null;

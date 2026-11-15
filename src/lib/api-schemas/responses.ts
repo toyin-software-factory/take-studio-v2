@@ -120,6 +120,7 @@ export const RESPONSE_SCHEMAS = {
       .object({ id: z.uuid().nullable(), name: z.string(), keyed: z.boolean() })
       .nullable(),
     noGreenScreen: z.boolean(),
+    sourceFps: z.number().nullable(),
     backgroundJob: z
       .object({
         status: z.enum(JOB_STATUSES),

@@ -159,3 +159,34 @@ describe("CI workflows", () => {
     }
   });
 });
+
+describe("the Lighthouse job (B2-T106)", () => {
+  const code = withoutComments(ci);
+  const start = code.indexOf("\n  lighthouse:");
+  const job = start === -1 ? "" : code.slice(start, code.indexOf("\n  check:", start));
+
+  it("runs in the pinned Playwright image on the runner's Node, with no apt", () => {
+    expect(job).toContain('"$PLAYWRIGHT_IMAGE"');
+    expect(job).toContain("-e NODE_DIR=");
+    expect(job).toMatch(/PATH="\$NODE_DIR\/bin:/);
+    expect(job).toContain("pnpm lighthouse:ci");
+  });
+
+  it("has timeouts, uploads its reports even on failure, and is not a required check", () => {
+    expect(job).toMatch(/Pull the Playwright image for Lighthouse[\s\S]*timeout-minutes:\s*\d+/);
+    expect(job).toMatch(/- name: Lighthouse run\s+timeout-minutes:\s*\d+/);
+    expect(job).toMatch(/upload-artifact@v4\s+if: always\(\)/);
+    // Report only until it has a clean record: the aggregate check does not wait for it.
+    expect(code).toMatch(/needs: \[static, e2e\]\s/);
+  });
+
+  it("gates the three quality scores, never performance (B2-T114)", () => {
+    const script = readFileSync("scripts/lighthouse-ci.ts", "utf8");
+    expect(script).toContain("did not load cleanly");
+    expect(script).toContain("gateViolations(");
+    // Performance numbers stay report only: no threshold on LCP, TBT or the performance score.
+    expect(script).not.toMatch(/lcp\s*[<>]|tbt\s*[<>]|performance\s*[<>]/);
+    const gate = readFileSync("scripts/lighthouse-gate.ts", "utf8");
+    expect(gate).not.toMatch(/performance\s*:\s*[01]/);
+  });
+});

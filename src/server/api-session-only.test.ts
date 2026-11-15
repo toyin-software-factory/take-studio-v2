@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { API_EXCLUSIONS, routeKey } from "@/lib/api-registry";
-import { handleCreate, handleList, handleRevoke } from "./api-keys/http";
+import { handleCreate, handleList, handleRevoke, type ApiKeyHttpDeps } from "./api-keys/http";
 import { handleDisconnect, handleList as handleConnectedList } from "./oauth/http";
 import { handleToken, type RealtimeHttpDeps } from "./realtime/http";
 
@@ -13,24 +13,25 @@ import { handleToken, type RealtimeHttpDeps } from "./realtime/http";
 const ORIGIN = "https://take-studio.example";
 const ID = "3f2b8c1e-5a47-4d0e-9b61-0c7a2d9e4f10";
 
+type Deps = { readonly keys: ApiKeyHttpDeps; readonly realtime: RealtimeHttpDeps };
+
 function makeDeps() {
   const state = { sessionReads: 0 };
-  const base = {
-    allowedOrigin: ORIGIN,
-    getCreator: async () => {
-      state.sessionReads++;
-      return null;
-    },
+  const getCreator = async () => {
+    state.sessionReads++;
+    return null;
   };
-  return { state, base };
+  const keys: ApiKeyHttpDeps = { allowedOrigin: ORIGIN, getCreator };
+  const realtime: RealtimeHttpDeps = { allowedOrigin: ORIGIN, getCreator, deepgramKey: () => null };
+  return { state, base: { keys, realtime } satisfies Deps };
 }
 
 type Call = (headers: Record<string, string>) => Promise<Response>;
 
-function calls(base: ReturnType<typeof makeDeps>["base"]): Readonly<Record<string, Call>> {
+function calls(base: Deps): Readonly<Record<string, Call>> {
   const url = (path: string) => `${ORIGIN}${path}`;
   return {
-    "GET /api/keys": (h) => handleList(new Request(url("/api/keys"), { headers: h }), base),
+    "GET /api/keys": (h) => handleList(new Request(url("/api/keys"), { headers: h }), base.keys),
     "POST /api/keys": (h) =>
       handleCreate(
         new Request(url("/api/keys"), {
@@ -38,22 +39,26 @@ function calls(base: ReturnType<typeof makeDeps>["base"]): Readonly<Record<strin
           headers: { "content-type": "application/json", ...h },
           body: JSON.stringify({ name: "x" }),
         }),
-        base,
+        base.keys,
       ),
     "DELETE /api/keys/{id}": (h) =>
-      handleRevoke(new Request(url(`/api/keys/${ID}`), { method: "DELETE", headers: h }), ID, base),
+      handleRevoke(
+        new Request(url(`/api/keys/${ID}`), { method: "DELETE", headers: h }),
+        ID,
+        base.keys,
+      ),
     "GET /api/connected-apps": (h) =>
-      handleConnectedList(new Request(url("/api/connected-apps"), { headers: h }), base),
+      handleConnectedList(new Request(url("/api/connected-apps"), { headers: h }), base.keys),
     "DELETE /api/connected-apps/{id}": (h) =>
       handleDisconnect(
         new Request(url(`/api/connected-apps/${ID}`), { method: "DELETE", headers: h }),
         ID,
-        base,
+        base.keys,
       ),
     "POST /api/realtime/token": (h) =>
       handleToken(
         new Request(url("/api/realtime/token"), { method: "POST", headers: h }),
-        base as unknown as RealtimeHttpDeps,
+        base.realtime,
       ),
   };
 }

@@ -1,8 +1,8 @@
-import { and, count, desc, eq, lt, sql } from "drizzle-orm";
+import { and, count, desc, eq, isNull, lt, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { API_KEYS, API_RATE, rateWindowStart } from "@/lib/api-rules";
+import { API_KEYS } from "@/lib/api-rules";
 import { type Result, err, ok } from "@/lib/result";
-import { apiKey, apiRateWindow, user } from "../schema";
+import { apiKey, user } from "../schema";
 import { runTx } from "../tx";
 import type { Executor } from "../types";
 
@@ -89,37 +89,11 @@ export async function revokeApiKey(
   return removed.length > 0 ? ok(null) : err("not_found");
 }
 
-/** Rows deleted per statement when purging old rate windows. */
-export const RATE_WINDOW_PURGE_BATCH = 1000;
-
-/**
- * Deletes one batch of rate window rows older than `API_RATE.keepMs` (spec 0018 AC-9). Only the
- * current minute matters for the limit, so an hour back is plenty. Returns how many rows went;
- * the next sweep continues.
- */
-export async function purgeOldRateWindows(
-  db: Executor,
-  now: Date,
-  batch: number = RATE_WINDOW_PURGE_BATCH,
-): Promise<number> {
-  const cutoff = new Date(now.getTime() - API_RATE.keepMs);
-  const old = db
-    .select({ keyId: apiRateWindow.keyId, windowStart: apiRateWindow.windowStart })
-    .from(apiRateWindow)
-    .where(lt(apiRateWindow.windowStart, cutoff))
-    .limit(batch);
-  const removed = await db
-    .delete(apiRateWindow)
-    .where(sql`(${apiRateWindow.keyId}, ${apiRateWindow.windowStart}) in (${old})`)
-    .returning({ keyId: apiRateWindow.keyId });
-  return removed.length;
-}
-
 /**
  * The key check (spec 0018 AC-3, AC-10): one `UPDATE ... RETURNING` by hash. It is a write, so
- * Hyperdrive never caches it and a revoked key stops at once. `last_used_at` moves at most once
- * an hour (database `now()`, so two requests at once write at most once). Null when no key has
- * that hash.
+ * Hyperdrive never caches it and a revoked key stops at once. It sets the column to itself, so
+ * nothing moves here: `last_used_at` is moved by `touchApiKey` once the request is let through
+ * (a 429 is not a use). Null when no key has that hash.
  */
 export async function authenticateApiKey(
   db: Executor,
@@ -127,40 +101,36 @@ export async function authenticateApiKey(
 ): Promise<{ readonly keyId: string; readonly creatorId: string } | null> {
   const [row] = await db
     .update(apiKey)
-    .set({
-      lastUsedAt: sql`case when ${apiKey.lastUsedAt} is null
-        or ${apiKey.lastUsedAt} < now() - interval '1 hour' then now() else ${apiKey.lastUsedAt} end`,
-    })
+    .set({ lastUsedAt: sql`${apiKey.lastUsedAt}` })
     .where(eq(apiKey.keyHash, keyHash))
     .returning({ keyId: apiKey.id, creatorId: apiKey.creatorId });
   return row ?? null;
 }
 
 /**
- * Counts one request in the key's current UTC minute and returns the count and the second into
- * the minute (spec 0018 AC-9). One atomic upsert, never a read then a write. `at` is for tests;
- * left out, the window and the second come from the database clock.
+ * Moves `last_used_at` for a key whose request was let through, at most once an hour (database
+ * `now()`, so two requests at once write at most once).
  */
-export async function countApiRequest(
-  db: Executor,
-  keyId: string,
-  at?: Date,
-): Promise<{ readonly count: number; readonly secondsIntoMinute: number }> {
-  const windowStart = at
-    ? rateWindowStart(at)
-    : sql<Date>`date_trunc('minute', now() at time zone 'utc') at time zone 'utc'`;
-  const [row] = await db
-    .insert(apiRateWindow)
-    .values({ keyId, windowStart, count: 1 })
-    .onConflictDoUpdate({
-      target: [apiRateWindow.keyId, apiRateWindow.windowStart],
-      set: { count: sql`${apiRateWindow.count} + 1` },
-    })
-    .returning({
-      count: apiRateWindow.count,
-      secondsIntoMinute: at
-        ? sql<number>`${at.getUTCSeconds()}::int`
-        : sql<number>`floor(extract(second from now()))::int`,
-    });
-  return row ?? { count: 1, secondsIntoMinute: 0 };
+export async function touchApiKey(db: Executor, keyId: string): Promise<void> {
+  await db
+    .update(apiKey)
+    .set({ lastUsedAt: sql`now()` })
+    .where(
+      and(
+        eq(apiKey.id, keyId),
+        or(isNull(apiKey.lastUsedAt), lt(apiKey.lastUsedAt, sql`now() - interval '1 hour'`)),
+      ),
+    );
 }
+
+// Split by job (B2-T117): the rate windows and the bearer failure counts are in `api-keys-rate`.
+// This file keeps the import path stable.
+export {
+  RATE_WINDOW_PURGE_BATCH,
+  bearerFailuresNow,
+  countApiRequest,
+  countBearerFailure,
+  purgeAllOldBearerFailures,
+  purgeOldBearerFailures,
+  purgeOldRateWindows,
+} from "./api-keys-rate";

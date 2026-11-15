@@ -103,7 +103,7 @@ test("records with a script, reviews, uploads and opens the take (AC-1, AC-3, AC
 
   await expect(page.getByLabel("Your recording")).toBeVisible();
   await expect(page.getByRole("button", { name: "Record again" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Save to your device" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Save to device" })).toBeVisible();
   await expectNoSeriousAxeIssues(page);
 
   await page.getByRole("button", { name: "Use this take" }).click();
@@ -128,7 +128,7 @@ test("Record again brings the camera back; a refused upload keeps the take (AC-1
   await expect(page.getByText("This take wasn't uploaded")).toBeVisible();
   await expect(page.getByLabel("Your recording")).toBeVisible();
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
-  const save = page.getByRole("link", { name: "Save to your device" });
+  const save = page.getByRole("link", { name: "Save to device" });
   await expect(save).toHaveAttribute("download", /\.(webm|mp4)$/);
   const [download] = await Promise.all([page.waitForEvent("download"), save.click()]);
   expect(download.suggestedFilename()).toMatch(/\.(webm|mp4)$/);

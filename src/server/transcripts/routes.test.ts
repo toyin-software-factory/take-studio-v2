@@ -7,12 +7,9 @@ import type { Db } from "@/db/types";
 import type { TranscriptWord } from "@/lib/transcript-rules";
 import { start } from "../jobs";
 import { type TranscriptHttpDeps, handleTranscriptDownload } from "./http";
-import { getTrimmedForCreator } from ".";
+import { ORIGIN, SECRET, WORDS, w } from "./routes-test-helpers";
 
-const ORIGIN = "https://take-studio.example";
-const SECRET = "x".repeat(40);
 const NOT_FOUND = { error: "not_found", message: "We couldn't find that take." };
-
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
@@ -20,38 +17,10 @@ beforeAll(async () => {
   db = testDb.db;
 });
 afterAll(() => testDb?.close());
-
 const deps = (creatorId: string | null): TranscriptHttpDeps => ({
   allowedOrigin: ORIGIN,
   getCreator: async () => (creatorId ? { db, creatorId } : null),
 });
-
-const w = (
-  word: string,
-  startMs: number,
-  endMs: number,
-  extra: Partial<TranscriptWord> = {},
-): TranscriptWord => ({
-  w: word,
-  startMs,
-  endMs,
-  conf: 0.99,
-  filler: false,
-  para: false,
-  ...extra,
-});
-
-// 20 s take; 3 s to 5.5 s is removed; "lost" is spoken inside the cut.
-const WORDS: TranscriptWord[] = [
-  w("Um,", 300, 500, { para: true, filler: true }),
-  w("Before", 500, 1000),
-  w("the", 1000, 1200),
-  w("pause.", 1200, 2800),
-  w("lost", 3500, 4500),
-  w("After", 5600, 6100, { para: true }),
-  w("it.", 6100, 6600),
-];
-
 async function seed(
   creatorId: string,
   options: {
@@ -91,7 +60,6 @@ async function seed(
   if (!saved.ok) throw new Error(saved.error);
   return t;
 }
-
 const get = (creatorId: string | null, takeId: string, format: string, query = "") =>
   handleTranscriptDownload(
     new Request(`${ORIGIN}/api/takes/${takeId}/transcript/${format}${query}`),
@@ -99,7 +67,6 @@ const get = (creatorId: string | null, takeId: string, format: string, query = "
     format,
     deps(creatorId),
   );
-
 describe("GET /api/takes/{id}/transcript/{format}", () => {
   it("sends the text on the trimmed timeline without fillers, as an attachment named from the title", async () => {
     const creator = await createCreator(db);
@@ -247,50 +214,5 @@ describe("GET /api/takes/{id}/transcript/{format}", () => {
       { kind: "transcript_srt" },
       { kind: "transcript_vtt" },
     ]);
-  });
-
-  it("does not need an Origin header (a read)", async () => {
-    const creator = await createCreator(db);
-    const t = await seed(creator.id);
-    const res = await handleTranscriptDownload(
-      new Request(`${ORIGIN}/x`, { headers: { origin: "https://evil.example" } }),
-      t.id,
-      "txt",
-      deps(creator.id),
-    );
-    expect(res.status).toBe(200);
-  });
-});
-
-describe("getTrimmedForCreator", () => {
-  it("returns trimmed paragraphs (fillers kept for the panel) and a version", async () => {
-    const creator = await createCreator(db);
-    const t = await seed(creator.id);
-    const view = await getTrimmedForCreator(db, creator.id, t.id);
-    if (!view.ok) throw new Error("expected a transcript");
-    expect(view.data.title).toBe("My interview");
-    expect(view.data.paragraphs.map((p) => [p.startMs, p.words.map((x) => x.w)])).toEqual([
-      [300, ["Um,", "Before", "the", "pause."]],
-      [3120, ["After", "it."]],
-    ]);
-    expect(view.data.paragraphs[0]?.words[0]?.filler).toBe(true);
-  });
-
-  it("changes version when the transcript is replaced or a new render lands", async () => {
-    const creator = await createCreator(db);
-    const t = await seed(creator.id);
-    const first = await getTrimmedForCreator(db, creator.id, t.id);
-    await new Promise((resolve) => setTimeout(resolve, 5));
-    await upsertTranscript(db, {
-      takeId: t.id,
-      language: "en",
-      text: "again",
-      words: WORDS,
-      sourceFps: 25,
-      model: "nova-3",
-    });
-    const second = await getTrimmedForCreator(db, creator.id, t.id);
-    if (!first.ok || !second.ok) throw new Error("expected transcripts");
-    expect(second.data.version).not.toBe(first.data.version);
   });
 });

@@ -1,13 +1,11 @@
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { reanalyse } from "@/db/data/cuts";
 import { analyticsEvent, cut, processingJob, render, take } from "@/db/schema";
 import { type TestDb, createCreator, openTestDb, seedTake } from "@/db/testing/test-db";
 import type { Db } from "@/db/types";
-import { type TakeHttpDeps, handleGet } from "../takes/http";
-import { type ChangesHttpDeps, handleChanges, handleJobStatus, handleWaveform } from "./http";
+import { type ChangesHttpDeps } from "./http";
+import { A, B, ORIGIN, post } from "./changes-test-helpers";
 
-const ORIGIN = "https://take-studio.example";
 let testDb: TestDb;
 let db: Db;
 beforeAll(async () => {
@@ -15,10 +13,6 @@ beforeAll(async () => {
   db = testDb.db;
 });
 afterAll(() => testDb?.close());
-
-const A = { startMs: 1000, endMs: 2000 };
-const B = { startMs: 5000, endMs: 6000 };
-
 async function readyTake() {
   const creator = await createCreator(db);
   const t = await seedTake(db, creator.id, { status: "ready", durationMs: 10_000 });
@@ -48,7 +42,6 @@ async function readyTake() {
   });
   return { creator, take: t, renderId, cutA, cutB };
 }
-
 function deps(creatorId: string | null, triggered: string[] = [], fail = false): ChangesHttpDeps {
   return {
     allowedOrigin: ORIGIN,
@@ -59,33 +52,12 @@ function deps(creatorId: string | null, triggered: string[] = [], fail = false):
       return { id: `run_${jobId}` };
     },
   };
-}
-
-async function post(
-  d: ChangesHttpDeps,
-  takeId: string,
-  body: unknown,
-  origin: string | null = ORIGIN,
-) {
-  const res = await handleChanges(
-    new Request("https://x.test/api/takes/x/changes", {
-      method: "POST",
-      headers: { ...(origin ? { origin } : {}), "content-type": "application/json" },
-      body: JSON.stringify(body),
-    }),
-    takeId,
-    d,
-  );
-  return { status: res.status, json: (await res.json()) as Record<string, unknown> };
-}
-
-/** The recorded events of one name for a creator (spec 0016). */
+} /** The recorded events of one name for a creator (spec 0016). */
 const eventsOf = (db: Db, creatorId: string, name: string) =>
   db
     .select()
     .from(analyticsEvent)
     .where(and(eq(analyticsEvent.creatorId, creatorId), eq(analyticsEvent.name, name)));
-
 describe("POST /api/takes/[id]/changes (spec 0011)", () => {
   it("starts one free job with the cut plan and triggers it (202)", async () => {
     const ctx = await readyTake();
@@ -193,7 +165,6 @@ describe("POST /api/takes/[id]/changes (spec 0011)", () => {
     expect(jobs.filter((j) => j.kind === "background").map((j) => j.status)).toEqual(["failed"]);
   });
 });
-
 describe("POST /changes on a take with no render", () => {
   it("accepts baseRenderId null as the expected no render state, and refuses it as stale otherwise", async () => {
     const ctx = await readyTake();
@@ -212,105 +183,5 @@ describe("POST /changes on a take with no render", () => {
       cuts: [{ id: withRender.cutA, applied: false }],
     });
     expect([stale.status, stale.json.error]).toEqual([409, "stale"]);
-  });
-});
-
-describe("GET job status and waveform", () => {
-  const get = (url: string) => new Request(url);
-
-  it("returns the status to the owner only", async () => {
-    const ctx = await readyTake();
-    const other = await readyTake();
-    const [job] = await db
-      .select()
-      .from(processingJob)
-      .where(eq(processingJob.takeId, ctx.take.id));
-    const ok = await handleJobStatus(
-      get("https://x.test/j"),
-      ctx.take.id,
-      job!.id,
-      deps(ctx.creator.id),
-    );
-    expect([ok.status, await ok.json()]).toEqual([200, { status: "succeeded" }]);
-    for (const [takeId, jobId, who] of [
-      [ctx.take.id, job!.id, other.creator.id],
-      [other.take.id, job!.id, other.creator.id],
-      [ctx.take.id, crypto.randomUUID(), ctx.creator.id],
-    ] as const) {
-      expect(
-        (await handleJobStatus(get("https://x.test/j"), takeId, jobId, deps(who))).status,
-      ).toBe(404);
-    }
-    expect(
-      (await handleJobStatus(get("https://x.test/j"), ctx.take.id, job!.id, deps(null))).status,
-    ).toBe(401);
-  });
-
-  it("returns the stored waveform, null before it is computed, 404 for others", async () => {
-    const ctx = await readyTake();
-    const read = async (who: string) =>
-      handleWaveform(get("https://x.test/w"), ctx.take.id, deps(who));
-    expect(await (await read(ctx.creator.id)).json()).toEqual({ waveform: null });
-    await db
-      .update(take)
-      .set({ waveform: [0, 3, 7] })
-      .where(eq(take.id, ctx.take.id));
-    expect(await (await read(ctx.creator.id)).json()).toEqual({ waveform: [0, 3, 7] });
-    expect((await read((await readyTake()).creator.id)).status).toBe(404);
-  });
-});
-
-describe("GET /api/takes/[id] cut review fields and re-analysis", () => {
-  const takeDeps = (creatorId: string): TakeHttpDeps => ({
-    allowedOrigin: ORIGIN,
-    getCreator: async () => ({ db, creatorId }),
-    usageSecret: () => "x".repeat(40),
-    triggerProcessTake: async () => ({ id: "run" }),
-  });
-  const read = async (creatorId: string, takeId: string) =>
-    (await (
-      await handleGet(new Request("https://x.test/t"), takeId, takeDeps(creatorId))
-    ).json()) as {
-      cuts: { id: string; startMs: number; endMs: number; kind: string; applied: boolean }[];
-      originalAvailable: boolean;
-      latestRender: { removedRanges: { startMs: number; endMs: number }[] };
-    };
-
-  it("lists cuts, originalAvailable and the render's removed ranges", async () => {
-    const ctx = await readyTake();
-    const body = await read(ctx.creator.id, ctx.take.id);
-    expect(body.cuts.map((c) => [c.id, c.applied]).sort()).toEqual(
-      [
-        [ctx.cutA, true],
-        [ctx.cutB, true],
-      ].sort(),
-    );
-    expect(body.originalAvailable).toBe(true);
-    expect(body.latestRender.removedRanges).toEqual([A, B]);
-    await db
-      .update(take)
-      .set({ videoExpiresAt: new Date(Date.now() - 1000) })
-      .where(eq(take.id, ctx.take.id));
-    expect((await read(ctx.creator.id, ctx.take.id)).originalAvailable).toBe(false);
-  });
-
-  it("re-analysis keeps a cut the creator restored", async () => {
-    const ctx = await readyTake();
-    const res = await post(deps(ctx.creator.id), ctx.take.id, {
-      baseRenderId: ctx.renderId,
-      cuts: [{ id: ctx.cutA, applied: false }],
-    });
-    const jobId = res.json.jobId as string;
-    // Stand in for the worker: the plan lands as the creator's choice.
-    await db
-      .update(cut)
-      .set({ applied: false, creatorChangedAt: new Date() })
-      .where(eq(cut.id, ctx.cutA));
-    await db.update(processingJob).set({ status: "succeeded" }).where(eq(processingJob.id, jobId));
-    const out = await reanalyse(db, { takeId: ctx.take.id, proposed: [] });
-    expect(out.ok).toBe(true);
-    const kept = (await db.select().from(cut).where(eq(cut.takeId, ctx.take.id))).map((c) => c.id);
-    expect(kept).toContain(ctx.cutA);
-    expect(kept).not.toContain(ctx.cutB);
   });
 });

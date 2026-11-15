@@ -1,75 +1,41 @@
 "use client";
 
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import {
-  interruptionNote,
-  interruptionReason,
-  nextCameraId,
-  setupProblem,
-  shouldRelockOnVisible,
-  stillAvailable,
-} from "@/lib/recorder-devices";
+import { nextCameraId } from "@/lib/recorder-devices";
 import {
   RECORDER,
   baseType,
-  classifyMediaError,
-  isLongEnough,
-  pickMimeType,
-  recordingFileName,
   recordingLimitMs,
   shouldAutoStop,
   type PickedType,
-  type SetupFailure,
 } from "@/lib/recorder-rules";
-import { INITIAL_RECORDER, recorderReducer, wouldLoseWork } from "@/lib/recorder-state";
+import { VOICE_HOLD_MS } from "@/lib/follow-state";
+import { INITIAL_RECORDER, recorderReducer } from "@/lib/recorder-state";
+import {
+  acquireMedia,
+  checkBrowser,
+  createRecorder,
+  finishedAction,
+  idsOf,
+} from "./recorder-media";
+import { useChooseDevices } from "./use-choose-devices";
 import { useDevices } from "./use-devices";
-
-/** Wake lock where the browser has it, so the screen stays on while recording; best effort. */
-async function keepAwake(): Promise<WakeLockSentinel | null> {
-  try {
-    return (await navigator.wakeLock?.request("screen")) ?? null;
-  } catch {
-    return null;
-  }
-}
-
-/** Ask the browser for the camera and microphone, the chosen ones or its defaults (AC-1). */
-function openMedia(camera: string | null, mic: string | null): Promise<MediaStream> {
-  return navigator.mediaDevices.getUserMedia({
-    video: {
-      ...(camera ? { deviceId: { exact: camera } } : { facingMode: "user" }),
-      width: { ideal: 1920 },
-      height: { ideal: 1080 },
-      frameRate: { ideal: 30 },
-    },
-    audio: mic ? { deviceId: { exact: mic } } : true,
-  });
-}
-
-/** The type to record in, or why this browser cannot record at all (AC-5). */
-function checkBrowser(): { picked: PickedType | null; problem: SetupFailure | null } {
-  const hasRecorder = typeof MediaRecorder !== "undefined";
-  const picked = hasRecorder ? pickMimeType((type) => MediaRecorder.isTypeSupported(type)) : null;
-  const problem = setupProblem({
-    secure: typeof window !== "undefined" && window.isSecureContext,
-    hasGetUserMedia: Boolean(navigator.mediaDevices?.getUserMedia),
-    hasMediaRecorder: hasRecorder,
-    hasRecordableType: picked !== null,
-  });
-  return { picked, problem };
-}
+import { useRecordingGuards } from "./use-recording-guards";
 
 /**
  * Camera, microphone and MediaRecorder for the /record page (spec 0021 task 1). The pure
  * state machine decides what is allowed; this hook only talks to the browser: it turns the
  * camera on when asked, counts down, records in one second chunks, stops at the length limit
- * and gives the finished take back as one Blob. The camera is released whenever nothing needs
- * it, and a warning shows before leaving with a recording or a take.
+ * and gives the finished take back as one Blob. The camera is released whenever nothing needs it.
+ *
+ * `holdForVoice` (B2-T115): when the countdown reaches 0 and Follow my voice is still connecting,
+ * the recorder waits up to `VOICE_HOLD_MS` for it, then starts anyway.
  */
-export function useRecorder(limitSeconds: number | null = null) {
+export function useRecorder(limitSeconds: number | null = null, holdForVoice = false) {
   const [state, dispatch] = useReducer(recorderReducer, INITIAL_RECORDER);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [holdExpired, setHoldExpired] = useState(false);
   const picked = useRef<PickedType | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
@@ -85,28 +51,24 @@ export function useRecorder(limitSeconds: number | null = null) {
   const devices = useDevices(stream);
   const limitMs = recordingLimitMs(limitSeconds);
 
-  const release = useCallback(() => {
+  /** Let the current stream go and keep `next` (null: nothing) in its place. */
+  const swap = useCallback((next: MediaStream | null) => {
     setStream((now) => {
       now?.getTracks().forEach((track) => track.stop());
-      return null;
+      return next;
     });
   }, []);
+  const release = useCallback(() => swap(null), [swap]);
 
-  /** The ids of the devices a stream actually uses (the browser may have chosen them). */
-  const idsOf = (media: MediaStream) => ({
-    camera: media.getVideoTracks()[0]?.getSettings().deviceId ?? null,
-    mic: media.getAudioTracks()[0]?.getSettings().deviceId ?? null,
-  });
-
-  const commit = useCallback((media: MediaStream) => {
-    const ids = idsOf(media);
-    setCameraId(ids.camera);
-    setMicId(ids.mic);
-    setStream((now) => {
-      now?.getTracks().forEach((track) => track.stop());
-      return media;
-    });
-  }, []);
+  const commit = useCallback(
+    (media: MediaStream) => {
+      const ids = idsOf(media);
+      setCameraId(ids.camera);
+      setMicId(ids.mic);
+      swap(media);
+    },
+    [swap],
+  );
 
   const acquire = useCallback(
     async (camera: string | null = null, mic: string | null = null) => {
@@ -116,29 +78,16 @@ export function useRecorder(limitSeconds: number | null = null) {
         dispatch({ type: "failed", failure: problem });
         return;
       }
-      try {
-        let media: MediaStream;
-        try {
-          media = await openMedia(camera, mic);
-        } catch (error) {
-          // A remembered device that is gone (an unplugged microphone) must not block the
-          // camera for good: ask again with the browser's defaults.
-          const name = error instanceof Error ? error.name : "";
-          const gone = name === "OverconstrainedError" || name === "NotFoundError";
-          if (!gone || (!camera && !mic)) throw error;
-          media = await openMedia(null, null);
-        }
+      const got = await acquireMedia(camera, mic, () => mounted.current);
+      if (!got) return;
+      if ("failure" in got) dispatch({ type: "failed", failure: got.failure });
+      else {
         if (!mounted.current) {
-          // The page was left while the browser was asking: nothing may keep the camera on.
-          media.getTracks().forEach((track) => track.stop());
+          got.media.getTracks().forEach((track) => track.stop());
           return;
         }
-        commit(media);
+        commit(got.media);
         dispatch({ type: "granted" });
-      } catch (error) {
-        if (!mounted.current) return;
-        const name = error instanceof Error ? error.name : "";
-        dispatch({ type: "failed", failure: classifyMediaError(name) });
       }
     },
     [commit],
@@ -148,69 +97,16 @@ export function useRecorder(limitSeconds: number | null = null) {
   useEffect(() => {
     kindNow.current = state.kind;
   }, [state.kind]);
-  /** Counts device changes, so only the newest answer is used. */
-  const selection = useRef(0);
-  const [deviceNote, setDeviceNote] = useState<string | null>(null);
-  /** True while a device change is in flight: the old stream may already be let go. */
-  const [switching, setSwitching] = useState(false);
 
-  /**
-   * Switch camera or microphone while the preview is on. A device that has gone away falls
-   * back to the browser's default. Some phones open one camera at a time: if the new one is
-   * refused, the current one is let go and the request is tried again, and if that also
-   * fails the old devices come back with a message (never a silent nothing).
-   */
-  const choose = useCallback(
-    async (camera: string | null, mic: string | null) => {
-      const mine = ++selection.current;
-      const next = {
-        camera: stillAvailable(devices.cameras, camera),
-        mic: stillAvailable(devices.microphones, mic),
-      };
-      const previous = { camera: cameraId, mic: micId };
-      // A result that arrives after Record was pressed (or after a newer change) is dropped.
-      const current = () =>
-        mounted.current && selection.current === mine && kindNow.current === "ready";
-      const settle = (media: MediaStream): boolean => {
-        if (!current()) {
-          media.getTracks().forEach((track) => track.stop());
-          return false;
-        }
-        commit(media);
-        return true;
-      };
-      setDeviceNote(null);
-      setSwitching(true);
-      try {
-        try {
-          settle(await openMedia(next.camera, next.mic));
-          return;
-        } catch {
-          if (!current()) return;
-        }
-        try {
-          live.current?.getTracks().forEach((track) => track.stop());
-          settle(await openMedia(next.camera, next.mic));
-          return;
-        } catch {
-          if (!current()) return;
-        }
-        try {
-          settle(await openMedia(previous.camera, previous.mic));
-          if (current()) setDeviceNote("That camera or microphone could not be turned on.");
-        } catch {
-          if (!current()) return;
-          setDeviceNote(
-            "Neither the new nor the previous camera or microphone could be turned on. Choose again.",
-          );
-        }
-      } finally {
-        // Only the newest change decides when switching is over.
-        if (mounted.current && selection.current === mine) setSwitching(false);
-      }
-    },
-    [devices, cameraId, micId, commit],
-  );
+  const { choose, deviceNote, setDeviceNote, switching } = useChooseDevices({
+    devices,
+    cameraId,
+    micId,
+    commit,
+    mounted,
+    kindNow,
+    live,
+  });
 
   const flip = useCallback(() => {
     const target = nextCameraId(devices.cameras, cameraId);
@@ -234,8 +130,9 @@ export function useRecorder(limitSeconds: number | null = null) {
       setDeviceNote("The camera is off. Choose a camera again.");
       return;
     }
+    setHoldExpired(false);
     dispatch({ type: "start", seconds: RECORDER.countdownSeconds });
-  }, []);
+  }, [live, setDeviceNote]);
 
   const stop = useCallback(() => {
     stoppedByPerson.current = true;
@@ -250,44 +147,35 @@ export function useRecorder(limitSeconds: number | null = null) {
       return () => clearTimeout(timer);
     }
     if (recorder.current) return;
+    // Wait at 0 for the voice service, but never longer than the hold.
+    if (holdForVoice && !holdExpired) {
+      const timer = setTimeout(() => setHoldExpired(true), VOICE_HOLD_MS);
+      return () => clearTimeout(timer);
+    }
     const { mimeType, container } = picked.current;
-    const next = new MediaRecorder(stream, {
-      mimeType,
-      videoBitsPerSecond: RECORDER.videoBitsPerSecond,
-      audioBitsPerSecond: RECORDER.audioBitsPerSecond,
-    });
+    const next = createRecorder(stream, mimeType, (chunk) => chunks.current.push(chunk));
     chunks.current = [];
     stoppedByPerson.current = false;
     hiddenDuring.current = false;
     trackEnded.current = false;
-    next.ondataavailable = (event) => {
-      if (event.data.size > 0) chunks.current.push(event.data);
-    };
     next.onstop = () => {
-      const durationMs = performance.now() - startedAt.current;
       const blob = new Blob(chunks.current, { type: baseType(mimeType) });
+      const action = finishedAction({
+        blob,
+        durationMs: performance.now() - startedAt.current,
+        container,
+        stoppedByPerson: stoppedByPerson.current,
+        hiddenDuring: hiddenDuring.current,
+        trackEnded: trackEnded.current,
+      });
       chunks.current = [];
       recorder.current = null;
-      if (!isLongEnough(durationMs) || blob.size === 0) dispatch({ type: "discarded" });
-      else {
-        release();
-        // The browser ended it (page hidden, camera taken): keep what was captured and say why.
-        const note = stoppedByPerson.current
-          ? undefined
-          : interruptionNote(
-              interruptionReason({
-                wasHidden: hiddenDuring.current,
-                trackEnded: trackEnded.current,
-              }),
-            );
-        dispatch({
-          type: "stopped",
-          take: { blob, durationMs, fileName: recordingFileName(new Date(), container), note },
-        });
-      }
+      if (action.type !== "discarded") release();
+      dispatch(action);
     };
     recorder.current = next;
     startedAt.current = performance.now();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- the timer restarts with the recorder
     setElapsedMs(0);
     try {
       next.start(RECORDER.timesliceMs);
@@ -296,13 +184,12 @@ export function useRecorder(limitSeconds: number | null = null) {
       next.onstop = null;
       recorder.current = null;
       chunks.current = [];
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- the camera must be let go when the recorder cannot start
       release();
       dispatch({ type: "start_failed", failure: "unavailable" });
       return;
     }
     dispatch({ type: "recording" });
-  }, [state, stream, release]);
+  }, [state, stream, release, holdForVoice, holdExpired]);
 
   // Timer, and the automatic stop at the limit.
   useEffect(() => {
@@ -315,51 +202,14 @@ export function useRecorder(limitSeconds: number | null = null) {
     return () => clearInterval(timer);
   }, [state.kind, limitMs, stop]);
 
-  // The screen stays on while recording, and the lock is asked for again when the page comes
-  // back (the browser releases it whenever the page is hidden).
-  useEffect(() => {
-    if (state.kind !== "recording") return;
-    let lock: WakeLockSentinel | null = null;
-    let ended = false;
-    const hold = () =>
-      void keepAwake().then((got) => {
-        if (ended) void got?.release().catch(() => undefined);
-        else lock = got;
-      });
-    hold();
-    const onVisibility = () => {
-      if (document.visibilityState === "hidden") hiddenDuring.current = true;
-      else if (shouldRelockOnVisible(true, document.visibilityState)) hold();
-    };
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      ended = true;
-      document.removeEventListener("visibilitychange", onVisibility);
-      void lock?.release().catch(() => undefined);
-    };
-  }, [state.kind]);
-
-  // A camera or microphone taken away mid recording (a call) ends it with what was captured.
-  useEffect(() => {
-    if (state.kind !== "recording" || !stream) return;
-    const lost = () => {
-      trackEnded.current = true;
-      if (recorder.current?.state === "recording") recorder.current.stop();
-    };
-    const tracks = stream.getTracks();
-    tracks.forEach((track) => track.addEventListener("ended", lost));
-    return () => tracks.forEach((track) => track.removeEventListener("ended", lost));
-  }, [state.kind, stream]);
-
-  useEffect(() => {
-    if (!wouldLoseWork(state)) return;
-    const warn = (event: BeforeUnloadEvent) => {
-      event.preventDefault();
-      event.returnValue = "";
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [state]);
+  const onHidden = useCallback(() => {
+    hiddenDuring.current = true;
+  }, []);
+  const onTrackLost = useCallback(() => {
+    trackEnded.current = true;
+    if (recorder.current?.state === "recording") recorder.current.stop();
+  }, []);
+  useRecordingGuards(state, stream, onHidden, onTrackLost);
 
   // Leaving the page turns everything off.
   useEffect(() => {

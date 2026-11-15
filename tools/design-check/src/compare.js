@@ -60,7 +60,9 @@ function finding(vp, label, prop, design, build, message, extra = {}) {
 }
 
 // --- structure & style -----------------------------------------------------------
-export function compareElements(D, B, vp, tol) {
+// `stepPage`: the design is measured after click-through steps (`designActions`), so a label the
+// draft keeps hidden in this step (another step's content) is not expected in the build.
+export function compareElements(D, B, vp, tol, { stepPage = false } = {}) {
   const out = [];
   const dMap = new Map(D.elements.map((e) => [e.label, e]));
   const bMap = new Map(B.elements.map((e) => [e.label, e]));
@@ -93,6 +95,7 @@ export function compareElements(D, B, vp, tol) {
   for (const [label, d] of dMap) {
     const b = bMap.get(label);
     if (!b) {
+      if (stepPage && !d.visible) continue;
       out.push(
         finding(
           vp,
@@ -602,10 +605,12 @@ const describe = (m) =>
 
 // Returns [findings, judgeQuestions]. Easings written in different systems (a GSAP name vs a
 // CSS cubic-bezier) cannot be compared in code, so those become questions for the judge.
-export function compareMotion(D, B, vp, tol, { strictMotion = false } = {}) {
+export function compareMotion(D, B, vp, tol, { strictMotion = false, stepPage = false } = {}) {
   const out = [],
     questions = [];
   const labels = new Set(D.elements.map((e) => e.label.split("#")[0]));
+  // On a step page a label the draft hides at that step is not expected in the build either.
+  const shown = new Set(D.elements.filter((e) => e.visible).map((e) => e.label.split("#")[0]));
   const byLabel = (list) => {
     const m = new Map();
     for (const x of list) {
@@ -624,6 +629,7 @@ export function compareMotion(D, B, vp, tol, { strictMotion = false } = {}) {
       const bs = bList.filter((m) => triggerGroup(m.trigger) === trig);
       const id = `${vp}:${label}:motion-${trig}`;
       if (!bs.length) {
+        if (stepPage && !shown.has(label)) continue;
         out.push({
           id,
           source: "code",

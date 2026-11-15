@@ -42,6 +42,8 @@ jobs:
       FFMPEG_SHA256: 49df247d3908323bf1d99c00480fed8603506cc0cb2a10ad8f905a961c3ceab8
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v4
 
@@ -80,6 +82,9 @@ jobs:
 
       - name: Lint
         run: pnpm lint
+
+      - name: No file past 250 lines
+        run: pnpm check:lines
 
       - name: Format
         run: pnpm format:check
@@ -131,7 +136,7 @@ jobs:
       matrix:
         # 1 to 4 split the chromium project; `usage` runs the suites that write the shared monthly
         # usage settings, one after another.
-        shard: [1, 2, 3, 4, usage]
+        shard: [1, 2, 3, 4, usage, browsers]
     services:
       postgres:
         image: postgres:17-alpine
@@ -218,7 +223,7 @@ jobs:
             -e CI -e E2E_SPLIT=1 -e SHARD -e SHARDS -e PNPM_HOME -e NODE_DIR="$node_dir" -e DATABASE_URL -e DATABASE_URL_DIRECT \
             -e CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE -e NEXT_TELEMETRY_DISABLED \
             -v "$GITHUB_WORKSPACE":/work -v "$pnpm_dir":"$pnpm_dir":ro -v "$node_dir":"$node_dir":ro -w /work \
-            "$PLAYWRIGHT_IMAGE" bash -c 'export PATH="$NODE_DIR/bin:$PNPM_HOME:$PATH" && node --version && if [ "$SHARD" = usage ]; then for p in usage record-a11y record-limits; do pnpm exec playwright test --project=$p || exit 1; done; else pnpm exec playwright test --project=chromium --shard=$SHARD/$SHARDS; fi'
+            "$PLAYWRIGHT_IMAGE" bash -c 'export PATH="$NODE_DIR/bin:$PNPM_HOME:$PATH" && node --version && if [ "$SHARD" = usage ]; then for p in usage record-a11y record-limits; do pnpm exec playwright test --project=$p || exit 1; done; elif [ "$SHARD" = browsers ]; then pnpm exec playwright test --project=webkit --project=firefox; else pnpm exec playwright test --project=chromium --shard=$SHARD/$SHARDS; fi'
 
       # The production check: the same built Worker, served as production serves it (no
       # `--var DESIGN_GALLERY:1`, which the normal run adds; the build is the same, the gallery is
@@ -254,6 +259,101 @@ jobs:
           name: playwright-report-${{ matrix.shard }}
           path: playwright-report/
           retention-days: 7
+
+  # Lighthouse mobile (B2-T106): LCP, CLS and TBT for the landing page, sign in, library, a seeded
+  # ready take and /record, on the built Worker, in the pinned Playwright image. Report only: a
+  # score never fails the job, a page that errors or does not load does (scripts/lighthouse-ci.ts).
+  # It runs beside the E2E shards, so it is not on the critical path, and it is NOT in the
+  # `check` job's needs: a new, shared runner measurement stays advisory until it has a clean
+  # record over several runs (a flaky red check would block merges for no product reason). The
+  lighthouse:
+    name: Lighthouse mobile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: take_studio
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d take_studio"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      PLAYWRIGHT_IMAGE: mcr.microsoft.com/playwright:v1.65.0-noble
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/take_studio
+      DATABASE_URL_DIRECT: postgres://postgres:postgres@localhost:5432/take_studio
+      CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE: postgres://postgres:postgres@localhost:5432/take_studio
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Apply migrations
+        run: pnpm db:migrate
+
+      - name: Dummy env for the preview Worker
+        # Not secrets: placeholders so the env schema passes (same as the e2e job).
+        run: |
+          cat > .env <<ENV
+          BETTER_AUTH_SECRET=ci-only-placeholder-secret-not-real-0123456789
+          BETTER_AUTH_URL=http://127.0.0.1:8787
+          GOOGLE_CLIENT_ID=ci
+          GOOGLE_CLIENT_SECRET=ci
+          R2_ACCOUNT_ID=ci
+          R2_ACCESS_KEY_ID=ci
+          R2_SECRET_ACCESS_KEY=ci
+          R2_BUCKET=ci
+          TRIGGER_SECRET_KEY=ci
+          USAGE_HASH_SECRET=ci-only-placeholder-usage-secret-0123456789
+          INSIGHTS_VIEWER_USER_ID=00000000-0000-4000-8000-00000000e2e1
+          ENV
+
+      - name: Build the Worker
+        run: pnpm build:worker
+
+      - name: Pull the Playwright image for Lighthouse
+        timeout-minutes: 5
+        run: docker pull "$PLAYWRIGHT_IMAGE"
+
+      - name: Lighthouse run
+        timeout-minutes: 15
+        # Same container recipe as the e2e step: host networking, the runner's Node and pnpm
+        # mounted read only, no apt. The Worker preview starts inside the container, the script
+        # waits for it, then measures and stops it.
+        run: |
+          pnpm_dir="$(dirname "$PNPM_HOME")"
+          node_dir="$(dirname "$(dirname "$(command -v node)")")"
+          docker run --rm --network host --ipc=host --init \
+            --user "$(id -u):$(id -g)" -e HOME=/tmp \
+            -e CI -e GITHUB_STEP_SUMMARY -e PNPM_HOME -e NODE_DIR="$node_dir" -e DATABASE_URL -e DATABASE_URL_DIRECT \
+            -e CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE -e NEXT_TELEMETRY_DISABLED \
+            -v "$GITHUB_WORKSPACE":/work -v "$pnpm_dir":"$pnpm_dir":ro -v "$node_dir":"$node_dir":ro \
+            -v "$(dirname "$GITHUB_STEP_SUMMARY")":"$(dirname "$GITHUB_STEP_SUMMARY")" -w /work \
+            "$PLAYWRIGHT_IMAGE" bash -c 'export PATH="$NODE_DIR/bin:$PNPM_HOME:$PATH" && pnpm lighthouse:ci'
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lighthouse-reports
+          path: lighthouse-reports/
+          if-no-files-found: ignore
+          retention-days: 14
 
   # The one required check. Its name is what branch protection waits for, so it stays
   # "Lint, typecheck, test, build, e2e" and reports one result for all of the jobs above.

@@ -1,0 +1,143 @@
+/* /record, step 1: script box, meta row and option switch. */
+.rec-script {
+  margin-top: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rec-script label {
+  font-size: var(--fs-small);
+  color: var(--color-text-muted);
+  font-weight: var(--fw-regular);
+  display: flex;
+  justify-content: space-between;
+}
+.rec-script textarea {
+  width: 100%;
+  min-height: clamp(220px, 32vh, 360px);
+  resize: vertical;
+  border: 0;
+  border-top: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
+  border-radius: 0;
+  padding: 20px 0;
+  font: var(--fw-light) var(--fs-lead) / 1.6 var(--font-sans);
+  letter-spacing: var(--ls-body);
+  color: var(--color-ink);
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  transition: border-color var(--dur-ui) ease;
+}
+.rec-script textarea:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+  border-bottom-color: var(--color-ink);
+  box-shadow: 0 1px 0 0 var(--color-ink);
+}
+.rec-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  font-size: var(--fs-small);
+  color: var(--color-text-muted);
+  font-weight: var(--fw-regular);
+  font-variant-numeric: tabular-nums;
+}
+.rec-meta button {
+  margin-left: auto;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: var(--color-ink);
+  text-decoration: underline 1px var(--color-line);
+  text-underline-offset: 5px;
+  min-height: 32px;
+}
+@media (pointer: coarse) {
+  /* The draft's 32 px row stays: the button is a real 44 px box, pulled back 6 px above and below. */
+  .rec-meta button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    min-height: 44px;
+    min-width: 44px;
+    margin-block: -6px;
+  }
+}
+.rec-meta button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.rec-meta button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.rec-opt {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--color-line);
+}
+.rec-opt b {
+  display: block;
+  font-weight: var(--fw-regular);
+  font-size: var(--fs-body);
+}
+.rec-opt small {
+  display: block;
+  font-size: var(--fs-small);
+  color: var(--color-text-muted);
+  font-weight: var(--fw-regular);
+  max-width: 52ch;
+}
+.rec-switch {
+  position: relative;
+  width: 52px;
+  height: 32px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-line-strong);
+  background: transparent;
+  cursor: pointer;
+  flex: none;
+  padding: 1px 6px;
+  transition:
+    background var(--dur-ui) ease,
+    border-color var(--dur-ui) ease;
+}
+.rec-switch > span {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--color-ink);
+  translate: 0 -50%;
+  transition:
+    translate var(--dur-swap) var(--ease-in-out),
+    background var(--dur-ui) ease;
+}
+.rec-switch[aria-checked="true"] {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+}
+.rec-switch[aria-checked="true"] > span {
+  translate: 20px -50%;
+  background: var(--color-accent);
+}
+.rec-switch::before {
+  content: "";
+  position: absolute;
+  inset: -6px -4px; /* a 44 px touch target around the 32 px track */
+}
+.rec-switch:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}

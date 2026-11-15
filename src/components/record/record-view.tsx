@@ -1,19 +1,23 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { usedUpMessage, type UsageView } from "@/components/takes/usage-meter";
 import { useUsage } from "@/components/takes/use-usage";
 import { UploadProgress } from "@/components/takes/upload-progress";
 import { useLeaveGuard } from "@/components/takes/use-leave-guard";
 import { useUpload } from "@/components/takes/use-upload";
+import { holdCountdown } from "@/lib/follow-state";
 import { wouldLoseWork } from "@/lib/recorder-state";
 import { clearDraft, deviceStore, loadDraft, saveDraft } from "@/lib/prompter-storage";
+import { usageDisplay } from "@/lib/usage-rules";
 import { isUsedUp, usageLimitSeconds, type RecordingContainer } from "@/lib/recorder-rules";
 import { RecordReview } from "./record-review";
 import { RecordSetup } from "./record-setup";
 import { RecordStage } from "./record-stage";
+import { RecordSteps } from "./steps";
 import { usePrompter } from "./use-prompter";
 import { useRecorder } from "./use-recorder";
+import { useVoiceFollow } from "./use-voice-follow";
 
 /** The container a file name ends in (the recorder named it from the type it picked). */
 const containerOf = (fileName: string): RecordingContainer =>
@@ -39,7 +43,9 @@ export function RecordView({
 }) {
   const [usageKey, setUsageKey] = useState("");
   const usage = useUsage(firstUsage, usageKey);
-  const recorder = useRecorder(usageLimitSeconds(usage));
+  // The countdown waits at 0 while the voice service connects (set below, once its status is known).
+  const [holdForVoice, setHoldForVoice] = useState(false);
+  const recorder = useRecorder(usageLimitSeconds(usage), holdForVoice);
   const upload = useUpload();
   const [script, setScript] = useState("");
   const { state, dispatch } = recorder;
@@ -49,6 +55,26 @@ export function RecordView({
   const onStage =
     state.kind === "ready" || state.kind === "countdown" || state.kind === "recording";
   const prompter = usePrompter(script, creatorId, state.kind === "recording", onStage);
+  const followOn = prompter.settings.follow && prompter.total > 0;
+  const follow = useVoiceFollow({
+    script,
+    stream: recorder.stream,
+    enabled: followOn,
+    countdown: state.kind === "countdown",
+    recording: state.kind === "recording",
+    startWord: prompter.getPosition,
+  });
+  const hold =
+    state.kind === "countdown" &&
+    state.secondsLeft === 0 &&
+    holdCountdown({ enabled: followOn, status: follow.status, heldMs: 0 });
+  // Adjusting state while rendering: React re-renders at once, before anything is drawn.
+  if (hold !== holdForVoice) setHoldForVoice(hold);
+  // The prompter stands still at its first line while the voice service connects.
+  const { setStill } = prompter;
+  useEffect(() => {
+    setStill(followOn && follow.status === "connecting");
+  }, [setStill, followOn, follow.status]);
 
   // The script draft is remembered on this device and cleared once the take is created.
   // eslint-disable-next-line react-hooks/set-state-in-effect -- reading device storage after hydration
@@ -81,59 +107,96 @@ export function RecordView({
     }
   };
 
-  if (state.kind === "uploading")
-    return <UploadProgress state={upload.state} onCancel={upload.cancel} />;
-  if (state.kind === "review" || state.kind === "upload_failed") {
+  if (state.kind === "uploading" || state.kind === "review" || state.kind === "upload_failed") {
     return (
-      <RecordReview
-        take={state.take}
-        failure={state.kind === "upload_failed" ? state.message : null}
-        onUse={() => void submitTake()}
-        onAgain={() => void recorder.again()}
-      />
+      <WithSteps step={3}>
+        <RecordReview
+          take={state.take}
+          failure={state.kind === "upload_failed" ? state.message : null}
+          upload={state.kind === "uploading" ? upload.state : null}
+          onUse={() => void submitTake()}
+          onAgain={() => void recorder.again()}
+          onCancel={upload.cancel}
+        />
+      </WithSteps>
     );
   }
   if (state.kind === "ready" || state.kind === "countdown" || state.kind === "recording") {
     return (
-      <RecordStage
-        state={state}
-        script={script}
-        stream={recorder.stream}
-        prompter={prompter}
-        elapsedMs={recorder.elapsedMs}
-        limitMs={recorder.limitMs}
-        onRecord={recorder.begin}
-        onStop={recorder.stop}
-        devices={recorder.devices}
-        deviceNote={recorder.deviceNote}
-        switching={recorder.switching}
-        cameraId={recorder.cameraId}
-        micId={recorder.micId}
-        onCamera={recorder.chooseCamera}
-        onMic={recorder.chooseMic}
-        onFlip={recorder.flip}
-      />
+      <WithSteps step={2}>
+        <RecordStage
+          state={state}
+          stream={recorder.stream}
+          prompter={prompter}
+          follow={follow}
+          holding={hold}
+          elapsedMs={recorder.elapsedMs}
+          limitMs={recorder.limitMs}
+          onRecord={recorder.begin}
+          onStop={recorder.stop}
+          devices={recorder.devices}
+          deviceNote={recorder.deviceNote}
+          switching={recorder.switching}
+          cameraId={recorder.cameraId}
+          micId={recorder.micId}
+          onCamera={recorder.chooseCamera}
+          onMic={recorder.chooseMic}
+          onFlip={recorder.flip}
+          onBack={() => {
+            recorder.stream?.getTracks().forEach((track) => track.stop());
+            recorder.dispatch({ type: "leave" });
+          }}
+        />
+      </WithSteps>
     );
   }
   // A photo or video from the phone's own camera goes through the same upload.
-  if (upload.busy) return <UploadProgress state={upload.state} onCancel={upload.cancel} />;
+  if (upload.busy)
+    return (
+      <WithSteps step={3}>
+        <UploadProgress state={upload.state} onCancel={upload.cancel} />
+      </WithSteps>
+    );
+  const allowance = usage?.enforced
+    ? usageDisplay(usage.allowanceSeconds, usage.usedSeconds)
+    : null;
   return (
-    <RecordSetup
-      uploadNote={
-        upload.state.kind === "rejected"
-          ? upload.state.message
-          : upload.state.kind === "cancelled"
-            ? "The upload was cancelled."
-            : null
-      }
-      usedUp={usage && isUsedUp(usage) ? usedUpMessage(usage) : null}
-      script={script}
-      onScript={editScript}
-      failure={state.kind === "failed" ? state.failure : null}
-      busy={state.kind === "requesting"}
-      touch={isTouchDevice()}
-      onStart={() => void recorder.request()}
-      onNativeFile={(file) => void upload.start(file)}
-    />
+    <WithSteps step={1}>
+      <RecordSetup
+        uploadNote={
+          upload.state.kind === "rejected"
+            ? upload.state.message
+            : upload.state.kind === "cancelled"
+              ? "The upload was cancelled."
+              : null
+        }
+        usedUp={usage && isUsedUp(usage) ? usedUpMessage(usage) : null}
+        script={script}
+        onScript={editScript}
+        failure={state.kind === "failed" ? state.failure : null}
+        busy={state.kind === "requesting"}
+        touch={isTouchDevice()}
+        wpm={prompter.settings.wpm}
+        leftMinutes={allowance ? allowance.leftMinutes : null}
+        follow={{
+          enabled: prompter.settings.follow,
+          onChange: prompter.setFollow,
+          disclosureSeen: prompter.settings.followDisclosed,
+          onDisclosureSeen: prompter.markFollowDisclosed,
+        }}
+        onStart={() => void recorder.request()}
+        onNativeFile={(file) => void upload.start(file)}
+      />
+    </WithSteps>
+  );
+}
+
+/** The three step marker above whichever step is showing. */
+function WithSteps({ step, children }: { readonly step: 1 | 2 | 3; readonly children: ReactNode }) {
+  return (
+    <>
+      <RecordSteps current={step} />
+      {children}
+    </>
   );
 }

@@ -1,12 +1,10 @@
-import { and, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
-import { API_RATE, rateWindowStart } from "@/lib/api-rules";
+import { and, desc, eq, gt, isNull, or, sql } from "drizzle-orm";
 import { ok } from "@/lib/result";
 import { runTx } from "../tx";
 import {
   oauthAccessToken,
   oauthClient,
   oauthConsent,
-  oauthRateWindow,
   oauthRefreshToken,
   verification,
 } from "../schema";
@@ -177,41 +175,6 @@ export async function revokeGrantOnRefreshReuse(
   return true;
 }
 
-/**
- * Cleanup sweep: deletes access tokens that expired or were revoked more than a day ago, and
- * refresh tokens that expired more than a day ago (a revoked one is kept until then, so a reused
- * one is still detected). Returns the counts.
- */
-export async function deleteExpiredOauthRows(
-  db: Executor,
-  now: Date = new Date(),
-): Promise<{
-  readonly accessTokens: number;
-  readonly refreshTokens: number;
-  readonly rateWindows: number;
-}> {
-  const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const access = await db
-    .delete(oauthAccessToken)
-    .where(or(lt(oauthAccessToken.expiresAt, cutoff), lt(oauthAccessToken.revoked, cutoff)))
-    .returning({ id: oauthAccessToken.id });
-  // A rotated (revoked) refresh token stays until it expires: presenting it again is how a copy
-  // is detected and the grant revoked, so a revoked row is never purged early.
-  const refresh = await db
-    .delete(oauthRefreshToken)
-    .where(lt(oauthRefreshToken.expiresAt, cutoff))
-    .returning({ id: oauthRefreshToken.id });
-  const windows = await db
-    .delete(oauthRateWindow)
-    .where(lt(oauthRateWindow.windowStart, new Date(now.getTime() - API_RATE.keepMs)))
-    .returning({ clientId: oauthRateWindow.clientId });
-  return {
-    accessTokens: access.length,
-    refreshTokens: refresh.length,
-    rateWindows: windows.length,
-  };
-}
-
 /** Disconnects by consent row ID; false when it is not this creator's (or already gone). */
 export async function disconnectConsent(
   db: Executor,
@@ -244,32 +207,11 @@ export async function getConsentClient(
   return row ? { name: row.name, redirectUris: row.redirectUris ?? [] } : null;
 }
 
-/**
- * Counts one request for a connected app of a creator in the current minute (spec 0019 AC-14),
- * one atomic upsert like `countApiRequest`. `at` is for tests; left out, the window and the
- * second come from the database clock.
- */
-export async function countOauthRequest(
-  db: Executor,
-  clientId: string,
-  userId: string,
-  at?: Date,
-): Promise<{ readonly count: number; readonly secondsIntoMinute: number }> {
-  const windowStart = at
-    ? rateWindowStart(at)
-    : sql<Date>`date_trunc('minute', now() at time zone 'utc') at time zone 'utc'`;
-  const [row] = await db
-    .insert(oauthRateWindow)
-    .values({ clientId, userId, windowStart, count: 1 })
-    .onConflictDoUpdate({
-      target: [oauthRateWindow.clientId, oauthRateWindow.userId, oauthRateWindow.windowStart],
-      set: { count: sql`${oauthRateWindow.count} + 1` },
-    })
-    .returning({
-      count: oauthRateWindow.count,
-      secondsIntoMinute: at
-        ? sql<number>`${at.getUTCSeconds()}::int`
-        : sql<number>`floor(extract(second from now()))::int`,
-    });
-  return row ?? { count: 1, secondsIntoMinute: 0 };
-}
+// Split by job (B2-T117): the cleanup sweep and the request count are in `oauth-cleanup`.
+// This file keeps the import path stable.
+export {
+  UNUSED_CLIENT_DAYS,
+  countOauthRequest,
+  deleteExpiredOauthRows,
+  deleteUnusedOauthClients,
+} from "./oauth-cleanup";

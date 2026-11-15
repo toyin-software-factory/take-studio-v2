@@ -24,6 +24,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/seed-backgrounds.ts",
+    "lighthouse:ci": "bash scripts/lighthouse-ci.sh",
     "usage:reconcile": "tsx scripts/reconcile-usage.ts",
     "analytics:backfill": "tsx scripts/backfill-analytics.ts",
     "cut-quality:record": "tsx scripts/cut-quality-record.ts",
@@ -40,7 +41,9 @@
     "r2:lifecycle": "bash scripts/apply-r2-lifecycle.sh",
     "test:legal-launch": "vitest run --config scripts/vitest.legal-launch.config.ts",
     "legal:drift": "tsx scripts/legal-drift.ts",
+    "check:lines": "tsx scripts/check-lines.ts",
     "test:pipeline": "tsx tests/pipeline/run.ts",
+    "check:api-run": "tsx scripts/api-real-run.ts",
     "design-check": "node tools/design-check/src/cli.js"
   },
   "dependencies": {
@@ -91,6 +94,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.6",
     "eslint-config-prettier": "^10",
+    "lighthouse": "12.8.2",
     "lint-staged": "16.4.0",
     "prettier": "3.9.10",
     "simple-git-hooks": "2.14.0",
