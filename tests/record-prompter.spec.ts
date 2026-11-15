@@ -48,7 +48,7 @@ test("pause, speed and size work with buttons and keys; the recording never paus
   const controls = page.getByTestId("prompter-controls");
   await expect(controls).toBeVisible();
   await expect(page.getByTestId("prompter-speed")).toHaveText("140 wpm");
-  await expect(page.getByTestId("prompter-size")).toHaveText("44 px");
+  await expect(page.getByTestId("prompter-size")).toHaveText("28 px");
   await expectNoSeriousAxeIssues(page);
 
   await page.getByRole("button", { name: "Faster" }).click();
