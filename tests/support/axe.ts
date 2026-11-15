@@ -8,16 +8,36 @@ import { expect, type Page } from "@playwright/test";
  * skipped: they never settle, and the page is checked as it is.
  */
 async function waitForAnimationsToSettle(page: Page): Promise<void> {
-  await page.waitForFunction(
-    () =>
+  try {
+    await page.waitForFunction(
+      () =>
+        document
+          .getAnimations()
+          .every(
+            (a) =>
+              a.playState !== "running" || a.effect?.getComputedTiming().iterations === Infinity,
+          ),
+      undefined,
+      { timeout: 10_000 },
+    );
+  } catch (error) {
+    // Name what is still running, so a slow machine can be told from a real endless animation.
+    const running = await page.evaluate(() =>
       document
         .getAnimations()
-        .every(
-          (a) => a.playState !== "running" || a.effect?.getComputedTiming().iterations === Infinity,
-        ),
-    undefined,
-    { timeout: 10_000 },
-  );
+        .filter((a) => a.playState === "running")
+        .map((a) => {
+          const t = a.effect?.getComputedTiming();
+          const target = a.effect instanceof KeyframeEffect ? a.effect.target : null;
+          return `${a.constructor.name} ${a.id || "(no id)"} on ${target?.tagName ?? "?"}.${
+            target?.className ?? ""
+          } duration ${t?.duration} iterations ${t?.iterations} at ${a.currentTime}`;
+        }),
+    );
+    throw new Error(`animations still running after 10 s:\n${running.join("\n")}`, {
+      cause: error,
+    });
+  }
 }
 
 /** axe at WCAG 2.2 AA: no serious or critical issues on the page as it is now. */
