@@ -1,10 +1,9 @@
 import { SESSION_REQUIRED_MESSAGE } from "@/lib/session-required";
 import { guard } from "../api-auth";
-import { reserveMint } from "@/db/data/realtime-mints";
+import { mintRetryAfter, releaseMint, reserveMint } from "@/db/data/realtime-mints";
 import type { Db } from "@/db/types";
 import {
   DEEPGRAM_GRANT_URL,
-  REALTIME_TOKEN,
   type RealtimeToken,
   grantRequestBody,
   grantResponseSchema,
@@ -148,11 +147,21 @@ export async function handleToken(request: Request, deps: RealtimeHttpDeps): Pro
   const slot = await reserveMint(creator.db, { creatorId: creator.creatorId, now });
   if (!slot.ok) {
     if (slot.error === "not_found") return refuse("unauthorized");
-    const retryAfter = slot.error === "hourly" ? REALTIME_TOKEN.hourMs : REALTIME_TOKEN.dayMs;
-    return refuse("rate_limited", { "retry-after": String(Math.ceil(retryAfter / 1000)) });
+    const wait = await mintRetryAfter(creator.db, {
+      creatorId: creator.creatorId,
+      window: slot.error,
+      now,
+    });
+    return refuse("rate_limited", { "retry-after": String(wait) });
   }
   const minted = await grant(key, deps);
   if ("failure" in minted) {
+    // No token was issued, so the slot goes back: a Deepgram incident must not lock the creator out.
+    try {
+      await releaseMint(creator.db, { id: slot.data.id, creatorId: creator.creatorId });
+    } catch {
+      // The slot stays counted until it ages out; the answer to the creator is the same.
+    }
     (deps.log ?? (() => undefined))("realtime token grant failed", { reason: minted.failure });
     return unavailable("grant");
   }

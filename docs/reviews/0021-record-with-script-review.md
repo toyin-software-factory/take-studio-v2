@@ -14,10 +14,10 @@ The reviewer's major and two small minors were in scope, so they are fixed here 
 - **Pause into the next take**: the prompter resets `paused` when recording ends, in the same effect that resets the position. This one has no unit test, because it is state inside a hook; the existing prompter browser tests still pass the pause flow.
 
 ## Follow ups (not done in this PR)
-- A failed Deepgram grant keeps its mint slot, and the 429 `Retry-After` is the whole window (`src/server/realtime/http.ts:148`). Free the slot when the grant fails and compute Retry-After from the oldest counted mint, with a test next to "Deepgram fails" in `realtime-routes.test.ts`.
-- The Record button is disabled during the countdown, so keyboard focus drops (`record-stage.tsx:186`). Use `aria-disabled` and ignore clicks, and assert focus in `tests/record-a11y.spec.ts`. It needs a browser run, so it is its own task.
-- A hook level test for `useVoiceFollow` side effects (late open, close on stop and unmount) needs a React hook test setup first.
-- The six nits below.
+- ~~A failed Deepgram grant keeps its mint slot, and the 429 `Retry-After` is the whole window.~~ Done in B2-T161: the route frees the slot when the grant fails, and `Retry-After` is the time until the oldest counted mint leaves the window, both tested in `realtime-routes.test.ts`.
+- ~~The Record button is disabled during the countdown, so keyboard focus drops.~~ Done in B2-T160: `aria-disabled`, clicks ignored, focus asserted in the keyboard a11y spec.
+- ~~A hook level test for `useVoiceFollow` side effects (late open, close on stop and unmount) needs a React hook test setup first.~~ Done in B2-T163: `src/components/record/use-voice-follow.hook.test.ts` (fake socket, fake token call, fake microphone path) covers the late open after the hold, stop and unmount.
+- ~~The six nits below.~~ Done in B2-T160, including the two file splits (`use-countdown-start.ts`, `stage-dock.css`).
 - Still owed from verify: real iPhone and Android checks, Toyin's live follow retry (C-49) and the `ai-eval` run (C-29).
 
 ## Major
@@ -29,12 +29,12 @@ The reviewer's major and two small minors were in scope, so they are fixed here 
 
 ## Minor
 
-### 🟡 A failed Deepgram grant still uses up one of the creator's mints, and Retry-After is the whole window, `src/server/realtime/http.ts:148`
+### 🟡 (fixed in B2-T161) A failed Deepgram grant still uses up one of the creator's mints, and Retry-After is the whole window, `src/server/realtime/http.ts:148`
 **Problem**: `reserveMint` inserts the row before `grant` runs (lines 148 to 158), so a Deepgram timeout or 5xx counts toward the 10 an hour and 40 a day caps. The 429 answer sets Retry-After to 3600 or 86400 (line 151) rather than the time until the oldest counted mint ages out.
 **Why it matters**: During a Deepgram incident, a creator who retries a few takes can lock themselves out of following for an hour for no fault of their own, and the header tells a client to wait far longer than needed.
 **Suggested fix**: In scope, small. Delete the reserved row when the grant fails (one delete by id), and compute Retry-After from the oldest mint in the window. Extend the existing "Deepgram fails" test in `src/server/realtime/realtime-routes.test.ts:190` to assert the slot is freed.
 
-### 🟡 The Record button is disabled during the countdown, so keyboard focus drops to the page, `src/components/record/record-stage.tsx:186`
+### 🟡 (fixed in B2-T160) The Record button is disabled during the countdown, so keyboard focus drops to the page, `src/components/record/record-stage.tsx:186`
 **Problem**: `disabled={!recording && (countdown || ...)}` disables the very button the creator just pressed. Browsers move focus to the body when the focused element becomes disabled, and there is no Stop shortcut, so a keyboard or switch user has to tab back through the page to find Stop once recording starts.
 **Why it matters**: WCAG 2.4.3 focus order and 2.1.1 keyboard use; this is the main action of the page.
 **Suggested fix**: In scope, small. Use `aria-disabled` and ignore clicks while counting down, so focus stays on the button that becomes Stop. Add an assertion to `tests/record-a11y.spec.ts` that focus is still on the button after the countdown.
@@ -50,12 +50,12 @@ The reviewer's major and two small minors were in scope, so they are fixed here 
 **Suggested fix**: In scope, small. Reset `paused` to false when the stage starts a new countdown.
 
 ## Nits
-- ⚪ `src/components/record/use-voice-follow.ts:41`, `class PipeError extends Error` breaks the "no classes where a function works" rule; a tagged Result or a plain object with a code fits the rest of the file.
-- ⚪ `src/components/record/record-stage.tsx:125`, inline `style={{ fontSize: "var(--fs-h3)" }}`; a class in `stage.css` keeps tokens in CSS.
-- ⚪ `src/components/record/use-prompter.ts:82`, `setAnnouncement` is called inside the `setPaused` updater; updaters should be pure (Strict Mode runs them twice).
-- ⚪ `src/components/record/use-prompter.ts:87`, faster and slower read the `settings` closure instead of `latest.current`, so two quick presses can drop one.
-- ⚪ `src/components/record/record-view.tsx:145`, `onBack` stops the tracks but keeps the dead `stream` in state; set it to null so nothing reads an ended stream.
-- ⚪ `src/components/record/use-recorder.ts` and `src/components/record/stage.css` are exactly at the 250 line limit; the next change must split them, so plan where (the countdown effect is a natural hook of its own).
+- ✅ (fixed in B2-T160) `src/components/record/use-voice-follow.ts:41`, `class PipeError extends Error` breaks the "no classes where a function works" rule; a tagged Result or a plain object with a code fits the rest of the file.
+- ✅ (fixed in B2-T160) `src/components/record/record-stage.tsx:125`, inline `style={{ fontSize: "var(--fs-h3)" }}`; a class in `stage.css` keeps tokens in CSS.
+- ✅ (fixed in B2-T160) `src/components/record/use-prompter.ts:82`, `setAnnouncement` is called inside the `setPaused` updater; updaters should be pure (Strict Mode runs them twice).
+- ✅ (fixed in B2-T160) `src/components/record/use-prompter.ts:87`, faster and slower read the `settings` closure instead of `latest.current`, so two quick presses can drop one.
+- ✅ (fixed in B2-T160) `src/components/record/record-view.tsx:145`, `onBack` stops the tracks but keeps the dead `stream` in state; set it to null so nothing reads an ended stream.
+- ✅ (fixed in B2-T160) `src/components/record/use-recorder.ts` and `src/components/record/stage.css` are exactly at the 250 line limit; the next change must split them, so plan where (the countdown effect is a natural hook of its own).
 
 ## Strengths
 - The token route is ordered well: Origin and session first, a missing key answers 503 without touching the database, usage is checked before a slot is taken, the mint count locks the user row so parallel requests cannot pass the cap, the grant has a 10 second timeout, and only a status or error name is logged, never the token or key.
