@@ -294,7 +294,7 @@ Built from `docs/design/take-page-v2.html`. The same tokens as the homepage, no 
 
 - At 1024px and wider: a 264px sticky left sidebar (white, 1px `--color-hairline` right border, padding 20px 16px) and the main column. Under 1024px the sidebar hides and a menu button in the top bar opens it as a sheet (focus trapped, Esc closes, `role="dialog"`).
 - Sidebar, top to bottom: logo, primary "Upload a take" pill (full width), nav (Takes; later slices add their own items), "Recent takes" (title plus status and duration, the current take marked with `aria-current="page"`), and the user menu at the bottom (initials avatar, name, sign out).
-- Top bar: sticky, min height 72px, nav glass (`--color-nav-glass-light` with `--blur-nav`), breadcrumb "Takes / <take title>", status chip, and the page actions on the right.
+- Top bar: sticky, min height 72px, glass (`--background` at 92% with `--blur-nav`; the 72% nav glass let the dark stage show through, 2.96:1 for the green status chip, B2-T136), breadcrumb "Takes / <take title>", status chip, and the page actions on the right.
 - Page gutters: `clamp(16px, 2.4vw, 32px)`.
 
 **Take page**
