@@ -128,11 +128,13 @@ test("follows the spoken words and ignores an ad lib (AC-12)", async ({ page, ba
   await say("welcome everyone to my short");
   await expect(following).toBeVisible();
   // The app drops back to the timer after 5 s with no matched word (FOLLOW_FALLBACK_MS), so no slow
-  // step (the axe scan) may sit between a match and the next assertion: the scan runs last. The ad
-  // lib and the next real phrase go in together, so the real clock cannot decide the outcome.
-  await say("so anyway that was a funny thing", "synthetic demonstration about gardening");
+  // step (the axe scan) may sit between a match and the next assertion: the scan runs last. Each
+  // assertion follows its phrase at once, so the real clock cannot decide the outcome.
+  await say("so anyway that was a funny thing");
   await expect(following).toBeVisible();
   await expect(page.getByText(/scrolling on a timer/)).toHaveCount(0);
+  await say("synthetic demonstration about gardening");
+  await expect(following).toBeVisible();
   await expectNoSeriousAxeIssues(page);
 });
 
