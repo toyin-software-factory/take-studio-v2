@@ -159,3 +159,30 @@ describe("CI workflows", () => {
     }
   });
 });
+
+describe("the Lighthouse job (B2-T106)", () => {
+  const code = withoutComments(ci);
+  const start = code.indexOf("\n  lighthouse:");
+  const job = start === -1 ? "" : code.slice(start, code.indexOf("\n  check:", start));
+
+  it("runs in the pinned Playwright image on the runner's Node, with no apt", () => {
+    expect(job).toContain('"$PLAYWRIGHT_IMAGE"');
+    expect(job).toContain("-e NODE_DIR=");
+    expect(job).toMatch(/PATH="\$NODE_DIR\/bin:/);
+    expect(job).toContain("pnpm lighthouse:ci");
+  });
+
+  it("has timeouts, uploads its reports even on failure, and is not a required check", () => {
+    expect(job).toMatch(/Pull the Playwright image for Lighthouse[\s\S]*timeout-minutes:\s*\d+/);
+    expect(job).toMatch(/- name: Lighthouse run\s+timeout-minutes:\s*\d+/);
+    expect(job).toMatch(/upload-artifact@v4\s+if: always\(\)/);
+    // Report only until it has a clean record: the aggregate check does not wait for it.
+    expect(code).toMatch(/needs: \[static, e2e\]\s/);
+  });
+
+  it("only reports: the script fails on a load problem, never on a score", () => {
+    const script = readFileSync("scripts/lighthouse-ci.ts", "utf8");
+    expect(script).toContain("did not load cleanly");
+    expect(script).not.toMatch(/score\s*[<>]=?\s*0?\.\d|lcp\s*[<>]/);
+  });
+});
