@@ -4,9 +4,27 @@
       "name": "home",
       "design": "docs/design/home-v2.tagged.html",
       "build": "http://localhost:3000/"
+    },
+    {
+      "name": "record-v2",
+      "design": "docs/design/record-v2.tagged.html",
+      "build": "http://localhost:3000/record"
+    },
+    {
+      "name": "take-page-v2",
+      "design": "docs/design/take-page-v2.tagged.html",
+      "build": "http://localhost:3000/take-page"
     }
   ],
-  "viewports": ["desktop", "phone"],
-  "watch": ["src"],
-  "judge": { "type": "jev", "model": "jev-1.14.0" }
+  "viewports": [
+    "desktop",
+    "phone"
+  ],
+  "watch": [
+    "src"
+  ],
+  "judge": {
+    "type": "jev",
+    "model": "jev-1.14.0"
+  }
 }
