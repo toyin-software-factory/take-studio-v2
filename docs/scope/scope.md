@@ -336,7 +336,7 @@ Record a take inside Take Studio (phone or laptop camera and mic) while a telepr
    - [x] Voice following with live audio, then its legal copy (tasks 7 to 9)
    - [x] Script aware cuts, cut quality cases and legal copy (tasks 10 to 12)
 - [x] Verify it: `/check verify Record with script`
-- [ ] Test it: `/test Record with script` (backend done in B2-T138: script storage, voice token route, script aware cuts, usage; the UI part waits for the /record redesign)
+- [x] Test it: `/test Record with script` (backend in B2-T138; UI in B2-T147: `src/components/record/recorder-media.test.ts`, `tests/record-lifecycle.spec.ts`, `tests/record-sheet.spec.ts`, `tests/record-review-upload.spec.ts`; the rest was already covered by `tests/record*.spec.ts`)
 Spec [0021](../specs/0021-record-with-script/index.md)
 
 ## Deferred
