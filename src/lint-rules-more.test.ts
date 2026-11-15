@@ -67,6 +67,14 @@ describe("the browser reads through zod/mini only", { timeout: 60_000 }, () => {
     expect(found).toHaveLength(1);
     expect(found[0]).toContain("zod/mini");
   });
+  it("refuses a dynamic import of full zod, and allows import(zod/mini)", async () => {
+    const bad = 'export const load = () => import("zod");\n';
+    const found = await messages("no-restricted-syntax", "src/components/x/a.ts", bad);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain("zod/mini");
+    const ok = 'export const load = () => import("zod/mini");\n';
+    expect(await messages("no-restricted-syntax", "src/components/x/a.ts", ok)).toEqual([]);
+  });
   it("allows zod/mini, and full zod outside components", async () => {
     expect(
       await messages(

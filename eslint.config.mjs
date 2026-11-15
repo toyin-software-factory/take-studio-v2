@@ -2,6 +2,7 @@ import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 import prettier from "eslint-config-prettier/flat";
+import { fetchMessage, proseSelectors, zodMessage, zodSource } from "./eslint.selectors.mjs";
 
 // Code boundaries from spec 0001 (Runtime rules). They keep heavy job code out of the
 // Worker bundle and keep Worker only code out of jobs.
@@ -10,17 +11,6 @@ const jobInternals = ["@/trigger", "@/trigger/*", "**/trigger/**"];
 const heavySdks = ["@anthropic-ai/sdk", "@anthropic-ai/sdk/*", "fluent-ffmpeg", "ffmpeg-static"];
 const testsDir = ["@/tests", "@/tests/*", "**/tests/**"];
 const workerOnly = ["@opennextjs/cloudflare", "next", "next/*", "react", "react-dom"];
-
-// Selectors for rules that used to be prose in AGENTS.md (see the block before globalIgnores).
-const sonnerSource = String.raw`/^sonner(\/|$)|sonner-impl$/`;
-// Any declarator of a top level `const`, `let` or `var`, and the db calls it may not hold.
-const topLevelDeclarator =
-  ":matches(Program, ExportNamedDeclaration) > VariableDeclaration > VariableDeclarator";
-const dbCall = "[callee.name=/^(getDb|createWebDb)$/]";
-const fullscreenMethod = "/^(requestFullscreen|webkitRequestFullscreen|webkitEnterFullscreen)$/";
-
-const fetchMessage =
-  "Browser calls to our API go through `callApi` from @/components/takes/browser-io: it times out after 30 seconds.";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -129,31 +119,25 @@ const eslintConfig = defineConfig([
       "src/lib/fullscreen.ts",
     ],
     rules: {
+      "no-restricted-syntax": ["error", ...proseSelectors],
+    },
+  },
+  {
+    // Components also refuse a dynamic `import("zod")` (a block of its own replaces the one above, so it repeats its selectors).
+    files: ["src/components/**/*.{ts,tsx}"],
+    ignores: [
+      "src/**/*.test.{ts,tsx}",
+      "src/components/ui/sonner.tsx",
+      "src/components/ui/sonner-impl.tsx",
+    ],
+    rules: {
       "no-restricted-syntax": [
         "error",
-        ...[
-          "ImportDeclaration",
-          "ImportExpression",
-          "ExportNamedDeclaration",
-          "ExportAllDeclaration",
-        ].map((node) => ({
-          selector: `${node}[source.value=${sonnerSource}]`,
-          message:
-            "Toasts go through `notify` from @/components/ui/sonner. Importing sonner or sonner-impl directly puts about 32 KB back in the first load (B2-T109).",
-        })),
-        ...[
-          `MemberExpression[property.name=${fullscreenMethod}]`,
-          `MemberExpression[computed=true][property.value=${fullscreenMethod}]`,
-        ].map((selector) => ({
-          selector,
-          message:
-            "Full screen goes through `enterFullscreen` from @/lib/fullscreen, which falls back to the WebKit methods iPhone Safari needs.",
-        })),
-        ...[`CallExpression`, `AwaitExpression > CallExpression`].map((call) => ({
-          selector: `${topLevelDeclarator} > ${call}${dbCall}`,
-          message:
-            "Never keep a database client at module level: call `getDb()` inside the request (src/db/AGENTS.md).",
-        })),
+        ...proseSelectors,
+        {
+          selector: `ImportExpression[source.value=${zodSource}]`,
+          message: zodMessage,
+        },
       ],
     },
   },
@@ -196,8 +180,7 @@ const eslintConfig = defineConfig([
         {
           paths: ["zod", "zod/v3", "zod/v4"].map((name) => ({
             name,
-            message:
-              'The browser reads responses through zod/mini only: `import * as z from "zod/mini"` (B2-T108).',
+            message: zodMessage,
           })),
           patterns: [
             {
