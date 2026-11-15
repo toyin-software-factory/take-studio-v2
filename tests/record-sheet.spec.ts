@@ -65,7 +65,7 @@ test("on a phone the sheet opens from its button, closes on Escape or the scrim,
     // The scrim closes it too.
     await trigger(page).tap();
     await expect(trigger(page)).toHaveAttribute("aria-expanded", "true");
-    await page.locator(".rst-scrim").dispatchEvent("click");
+    await page.locator(".rst-scrim").tap({ position: { x: 10, y: 10 } });
     await expect(trigger(page)).toHaveAttribute("aria-expanded", "false");
     await expect(trigger(page)).toBeFocused();
   } finally {
@@ -89,7 +89,9 @@ test("turning a phone wide closes the sheet and gives the panel back (AC-9)", as
     await expect(trigger(page)).toHaveAttribute("aria-expanded", "true");
     await page.setViewportSize({ width: 1200, height: 800 });
     await expect(page.locator("#rst-sheet")).not.toHaveAttribute("inert", "");
-    expect(await page.evaluate(() => document.documentElement.style.overflow)).not.toBe("hidden");
+    await expect
+      .poll(() => page.evaluate(() => document.documentElement.style.overflow))
+      .not.toBe("hidden");
     await page.setViewportSize({ width: 412, height: 800 });
     // Back on a phone the sheet starts closed, not reopened.
     await expect(trigger(page)).toHaveAttribute("aria-expanded", "false");
