@@ -14,8 +14,69 @@ const TAKE_STATUS_HOMES = [
   "src/db/data/deletion.ts",
 ];
 
-const UPDATE_TAKE_SET = /\.\s*update\(\s*take\s*\)\s*\.\s*set\(\s*(\{[^}]*\}|[^{)][^)]*)\)/g;
-const STATUS_KEY = /(^|[{,\s])status\s*[:,}]|["']status["']\s*:|\.\.\./;
+const UPDATE_TAKE_SET = /\.\s*update\(\s*take\s*\)\s*\.\s*set\(/g;
+
+/** The index after the string or template literal that starts at `i` (`${...}` is skipped whole). */
+function skipQuoted(text: string, i: number): number {
+  const quote = text[i];
+  let j = i + 1;
+  while (j < text.length && text[j] !== quote) {
+    if (text[j] === "\\") j += 1;
+    else if (quote === "`" && text[j] === "$" && text[j + 1] === "{")
+      j = skipBalanced(text, j + 1) - 1;
+    j += 1;
+  }
+  return j + 1;
+}
+
+/** The index after the bracket group that opens at `i`, whatever strings or nesting is inside. */
+function skipBalanced(text: string, i: number): number {
+  let depth = 0;
+  let j = i;
+  while (j < text.length) {
+    const c = text[j]!;
+    if (c === '"' || c === "'" || c === "`") {
+      j = skipQuoted(text, j);
+      continue;
+    }
+    if ("({[".includes(c)) depth += 1;
+    if (")}]".includes(c)) depth -= 1;
+    j += 1;
+    if (depth === 0) return j;
+  }
+  return j;
+}
+
+/** The top level parts of an object literal body, split on commas outside any nesting or string. */
+function topLevelParts(body: string): string[] {
+  const parts: string[] = [];
+  let start = 0;
+  let j = 0;
+  while (j < body.length) {
+    const c = body[j]!;
+    if (c === '"' || c === "'" || c === "`") j = skipQuoted(body, j);
+    else if ("({[".includes(c)) j = skipBalanced(body, j);
+    else {
+      if (c === ",") {
+        parts.push(body.slice(start, j));
+        start = j + 1;
+      }
+      j += 1;
+    }
+  }
+  parts.push(body.slice(start));
+  return parts;
+}
+
+/** True when the `.set(` argument after `open` writes `status` or cannot be read as an object literal. */
+function setsStatus(text: string, open: number): boolean {
+  const arg = text.slice(open, skipBalanced(text, open - 1) - 1).trim();
+  if (!arg.startsWith("{") || skipBalanced(arg, 0) !== arg.length) return true;
+  return topLevelParts(arg.slice(1, -1)).some((part) => {
+    const p = part.trim();
+    return p.startsWith("...") || /^(status|["']status["'])\s*(:|$)/.test(p);
+  });
+}
 
 /** Files (other than `allowed`) with an `update(take).set(...)` that writes `status`, or whose
  * `.set(...)` argument is not an object literal (so it cannot be read). */
@@ -23,9 +84,7 @@ export function statusWritesOutside(sources: readonly Source[], allowed: readonl
   return sources
     .filter((s) => !allowed.includes(s.file))
     .filter((s) =>
-      [...s.text.matchAll(UPDATE_TAKE_SET)].some(
-        (m) => STATUS_KEY.test(m[1] ?? "") || !m[1]?.startsWith("{"),
-      ),
+      [...s.text.matchAll(UPDATE_TAKE_SET)].some((m) => setsStatus(s.text, m.index + m[0].length)),
     )
     .map((s) => s.file);
 }
@@ -54,9 +113,20 @@ describe("scan: a take's status changes only through transitionTake", () => {
       "src/server/x.ts",
     ]);
     expect(statusWritesOutside(bad("changes"), TAKE_STATUS_HOMES)).toEqual(["src/server/x.ts"]);
+    // A `}` inside an earlier value (a template interpolation) does not hide the status key.
+    expect(
+      statusWritesOutside(bad('{ title: sql`${take.title}`, status: "ready" }'), TAKE_STATUS_HOMES),
+    ).toEqual(["src/server/x.ts"]);
   });
   it("allows other columns, other tables, and the allow listed files", () => {
     expect(statusWritesOutside(bad("{ title }"), TAKE_STATUS_HOMES)).toEqual([]);
+    // The word "status:" inside a value, or a nested object's key, is not a status key.
+    expect(statusWritesOutside(bad('{ title: "new status: ready" }'), TAKE_STATUS_HOMES)).toEqual(
+      [],
+    );
+    expect(
+      statusWritesOutside(bad("{ title: sql`${x}`, note: { status: 1 } }"), TAKE_STATUS_HOMES),
+    ).toEqual([]);
     expect(
       statusWritesOutside(
         [{ file: "src/db/data/x.ts", text: 'tx.update(render).set({ status: "failed" })' }],
