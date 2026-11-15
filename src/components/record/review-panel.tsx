@@ -52,7 +52,7 @@ export function ReviewPanel({
         <Sending upload={upload} onCancel={onCancel} />
       ) : (
         <div className="rvw-acts">
-          <button type="button" className="rec-split" data-check="s2-stage-cta-2" onClick={onUse}>
+          <button type="button" className="rec-split" onClick={onUse}>
             <span className="rec-split__label">{failure ? "Try again" : "Use this take"}</span>
             <span className="rec-split__icon" aria-hidden="true">
               <ArrowRight size={18} strokeWidth={1.5} />

@@ -85,9 +85,10 @@ export function PrompterText({
       role="region"
       aria-label="Your script"
       data-testid="script-scroll"
+      data-check="s2-stage-text"
       data-paused={paused ? "true" : "false"}
       style={{ fontSize: `${settings.size}px`, scrollBehavior: "auto" }}
-      className="mx-auto max-h-full w-full max-w-3xl overflow-hidden rounded-md bg-nav-glass-dark px-4 py-2 text-center leading-snug font-medium text-on-dark"
+      className="mx-auto max-h-full w-full max-w-3xl overflow-hidden rounded-md bg-nav-glass-dark px-4 py-2 text-center leading-snug font-normal text-on-dark"
     >
       {lines.map((line, index) => (
         <p

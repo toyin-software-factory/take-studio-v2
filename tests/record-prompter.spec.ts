@@ -131,7 +131,7 @@ test("the Record step has the prompter with its green line, the dock and the Scr
   await open(page, baseURL!);
   await toStage(page);
   const stage = page.locator('[data-check="s2-stage"]');
-  const text = page.locator('[data-check="s2-stage-text"]');
+  const text = page.locator(".rst-prompter");
   await expect(text).toBeVisible();
   await expect(text.locator(".rst-line")).toHaveCount(1);
   await expect(text).toHaveAttribute("data-paused", "false");
@@ -139,7 +139,7 @@ test("the Record step has the prompter with its green line, the dock and the Scr
   // The dock holds flip, pause and Record; the panel holds the settings, not the pause button.
   const pause = page.locator('[data-check="s2-stage-cta-4"]');
   await expect(pause).toHaveAccessibleName("Pause script");
-  await expect(page.locator('[data-check="s2-stage-cta"]')).toHaveAccessibleName("Record");
+  await expect(page.locator(".rst-rec")).toHaveAccessibleName("Record");
   await expect(page.locator(".rst-panel").getByTestId("prompter-toggle")).toHaveCount(0);
   const heading = page.locator('[data-check="s2-stage-heading"]');
   await expect(heading).toHaveText("Script and camera");

@@ -40,9 +40,9 @@ export function RecordReview({
   }, [take.blob]);
 
   return (
-    <div className="rst rvw" data-check="s2-stage">
+    <section className="rst rvw" aria-label="Camera" data-check="s2-stage" data-check-section="">
       <div className="rst-col">
-        <div className="rst-cam" data-check="s2-stage-media">
+        <div className="rst-cam">
           {url ? (
             <video
               ref={video}
@@ -50,6 +50,7 @@ export function RecordReview({
               controls={started}
               playsInline
               aria-label="Your recording"
+              data-check="s2-stage-media"
               className="size-full object-cover"
               onPlay={() => setStarted(true)}
             />
@@ -59,6 +60,7 @@ export function RecordReview({
               type="button"
               className="rvw-play"
               aria-label="Play your take"
+              data-check="s2-stage-cta-2"
               onClick={() => void video.current?.play()}
             >
               <Icon icon={Play} className="fill-current" />
@@ -83,6 +85,6 @@ export function RecordReview({
         onAgain={onAgain}
         onCancel={onCancel}
       />
-    </div>
+    </section>
   );
 }

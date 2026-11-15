@@ -81,9 +81,15 @@ export function RecordStage({
           : "";
 
   return (
-    <div className="rst" data-recording={recording} data-check="s2-stage">
+    <section
+      className="rst"
+      aria-label="Camera"
+      data-recording={recording}
+      data-check="s2-stage"
+      data-check-section=""
+    >
       <div className="rst-col">
-        <div className="rst-cam" data-check="s2-stage-media">
+        <div className="rst-cam">
           {/* Muted: no echo of your own voice. Mirrored for the creator only. */}
           <video
             ref={video}
@@ -91,10 +97,11 @@ export function RecordStage({
             muted
             playsInline
             aria-label="Camera preview"
+            data-check="s2-stage-media"
             className="size-full -scale-x-100 object-cover"
           />
           {prompter.total > 0 ? (
-            <div data-check="s2-stage-text" data-paused={prompter.paused} className="rst-prompter">
+            <div data-paused={prompter.paused} className="rst-prompter">
               <PrompterText
                 prompter={prompter}
                 followWordIndex={follow.status === "following" ? follow.wordIndex : null}
@@ -156,7 +163,6 @@ export function RecordStage({
           <button
             type="button"
             className="rst-rec"
-            data-check="s2-stage-cta"
             data-recording={recording}
             disabled={!recording && (countdown || switching || limitMs <= 0)}
             onClick={recording ? onStop : onRecord}
@@ -194,6 +200,6 @@ export function RecordStage({
           />
         ) : null}
       </aside>
-    </div>
+    </section>
   );
 }

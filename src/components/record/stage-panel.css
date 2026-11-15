@@ -67,8 +67,12 @@
   cursor: default;
 }
 .rst-btn[data-round] {
+  width: 48px;
+  height: 48px;
   padding: 0;
   border-radius: 50%;
+  background: var(--color-glass);
+  backdrop-filter: var(--blur-glass);
 }
 .rst-stepper {
   display: flex;

@@ -42,6 +42,21 @@
   overflow: hidden;
   background: var(--color-dark);
 }
+/* The preview breathes a little (draft: 9 s loop); the review shows the take still. */
+@media (prefers-reduced-motion: no-preference) {
+  .rst:not(.rvw) .rst-cam video {
+    transform-origin: 50% 40%;
+    animation: rst-breathe 9s var(--ease-loop) infinite alternate;
+  }
+}
+@keyframes rst-breathe {
+  from {
+    transform: scale(1.02) translate(0, 0);
+  }
+  to {
+    transform: scale(1.06) translate(-1%, 1%);
+  }
+}
 .rst-cam::after {
   content: "";
   position: absolute;
