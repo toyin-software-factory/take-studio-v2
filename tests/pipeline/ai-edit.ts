@@ -19,7 +19,8 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { eq } from "drizzle-orm";
 import * as schema from "../../src/db/schema";
-import { type Creator, db, work } from "./harness";
+import { db, work } from "./harness";
+import { type Creator } from "./creator";
 
 const MAX_SECONDS = 120; // AC-6
 const MAX_TAKE_SECONDS = 600; // a take is at most 10 minutes
