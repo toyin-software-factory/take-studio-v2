@@ -1,0 +1,4 @@
+# Vendored Modern Web Guidance skill: generated search index and bundled CLI (scripts/vendor-modern-web-guidance.sh)
+.claude/skills/modern-web-guidance/** linguist-vendored
+.claude/skills/modern-web-guidance/gen/** -diff
+.claude/skills/modern-web-guidance/*.mjs -diff
