@@ -42,6 +42,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 18 | Email sign in and take ready email | Slice 1 | done |
 | 19 | Cut quality measurement | Launch | done |
 | 20 | Record with script | Slice 8 | in-progress |
+| 22 | Billing & plans | Slice 9 | planned |
 
 ## Foundations
 
@@ -339,9 +340,19 @@ Record a take inside Take Studio (phone or laptop camera and mic) while a telepr
 - [x] Test it: `/test Record with script` (backend in B2-T138; UI in B2-T147: `src/components/record/recorder-media.test.ts`, `tests/record-lifecycle.spec.ts`, `tests/record-sheet.spec.ts`, `tests/record-review-upload.spec.ts`; the rest was already covered by `tests/record*.spec.ts`)
 Spec [0021](../specs/0021-record-with-script/index.md)
 
+## Slice 9: Billing & plans
+
+### 22. Billing & plans · planned
+A paid Creator plan on top of the free 60 minutes a month, sold through a merchant of record (taxes and VAT handled for us), with a locked founding price for the first 50 founding members (C-26). The spec is written now; the build is in month 2. Prices and the provider are decisions for Toyin, with recommended defaults in the spec. Test mode only until she opens the provider account.
+**Done when:** a creator can pay for the plan, get the bigger monthly allowance at once, manage or cancel from a billing page, and fall back to free calmly when a payment fails; founding members get their locked price; the usage limit reads the plan in one place.
+- [x] Design it (spec): `/architect Billing & plans`
+- [ ] Build it: `/develop Billing & plans`
+- [ ] Verify it: `/check verify Billing & plans`
+- [ ] Test it: `/test Billing & plans`
+Spec [0024](../specs/0024-billing-and-plans.md)
+
 ## Deferred
 Out of scope for this build pass, kept so the plan stays honest.
-- **Billing & plans**: paid plans beyond the free monthly allowance · needs a decision · GA
 - **Chat assistant in the app**: creators give edits in plain words instead of clicking · needs a decision
 - **Burned in captions**: captions rendered into the video · needs a decision
 - **More languages**: transcripts for languages other than English · needs a decision
