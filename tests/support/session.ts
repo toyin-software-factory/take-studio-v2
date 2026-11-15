@@ -46,6 +46,13 @@ export function localDatabaseUrl(): string {
  */
 export const INSIGHTS_TEST_VIEWER_ID = "00000000-0000-4000-8000-00000000e2e1";
 
+/**
+ * The made up usage hash secret of every e2e build: the CI placeholder `.env` and
+ * `tests/support/build-worker.sh` write this same value, so a test never depends on a secret that
+ * happens to be in the shell.
+ */
+export const USAGE_TEST_HASH_SECRET = "ci-only-placeholder-usage-secret-0123456789";
+
 export type TestUser = { readonly id: string; readonly name: string; readonly email: string };
 
 /** Signs a fresh test user in for `context`. Call the returned cleanup after the test. */

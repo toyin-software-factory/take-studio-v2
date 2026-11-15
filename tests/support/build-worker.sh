@@ -5,8 +5,9 @@
 # environment so the sandbox shell's own BETTER_AUTH_* never leaks in, and sets the values the
 # tests need. A build bakes in only names that an env file or the process lists, and the Worker
 # reads nothing else, so the made up INSIGHTS_VIEWER_USER_ID (tests/support/session.ts, never the
-# real viewer) and the USAGE_HASH_SECRET the tests read from .env or the shell go in a throwaway
-# .env.production.local, which wins over .env and is removed afterwards. .env is not changed.
+# real viewer) and the CI placeholder USAGE_HASH_SECRET (USAGE_TEST_HASH_SECRET in
+# tests/support/session.ts) go in a throwaway .env.production.local, which wins over .env and is
+# removed afterwards. Nothing is read from the shell or .env: no real secret is baked or used.
 set -euo pipefail
 cd "$(dirname "$0")/.."/..
 local_file=.env.production.local
@@ -14,8 +15,6 @@ local_file=.env.production.local
 trap 'rm -f "$local_file"' EXIT
 {
   echo "INSIGHTS_VIEWER_USER_ID=00000000-0000-4000-8000-00000000e2e1"
-  if ! grep -q '^USAGE_HASH_SECRET=.' .env 2>/dev/null && [ -n "${USAGE_HASH_SECRET:-}" ]; then
-    echo "USAGE_HASH_SECRET=$USAGE_HASH_SECRET"
-  fi
+  echo "USAGE_HASH_SECRET=ci-only-placeholder-usage-secret-0123456789"
 } > "$local_file"
 env -i PATH="$PATH" HOME="$HOME" BETTER_AUTH_URL="http://127.0.0.1:8787" pnpm build:worker
