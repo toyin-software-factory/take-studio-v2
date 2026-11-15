@@ -2,6 +2,7 @@
 
 import { useEffect, useReducer, useRef } from "react";
 import { followScript, normaliseWord, scriptWordsOf } from "@/lib/follow-script";
+import { callApi } from "@/components/takes/browser-io";
 import { keepRunning } from "./keep-running";
 import { FOLLOW_OFF, followReducer, type FollowStatus } from "@/lib/follow-state";
 import { pipeFailureCode, reportFollowFailure, socketCloseCode } from "@/lib/follow-diagnosis";
@@ -14,6 +15,13 @@ import {
   type RealtimeConnection,
   type SocketLike,
 } from "@/lib/realtime-stream";
+
+/** The token call through `callApi` (bounded, same origin), shaped like a `fetch` for `fetchRealtimeToken`. */
+const tokenFetch: typeof fetch = async (input) => {
+  const reply = await callApi(String(input), "POST");
+  const empty = reply.data === null || [204, 205, 304].includes(reply.status);
+  return new Response(empty ? null : JSON.stringify(reply.data), { status: reply.status });
+};
 
 export type VoiceFollow = {
   readonly status: FollowStatus;
@@ -132,7 +140,7 @@ export function useVoiceFollow(args: {
     const timer = setInterval(() => dispatch({ type: "tick", now: Date.now() }), 1000);
 
     void (async () => {
-      const token = await fetchRealtimeToken(fetch);
+      const token = await fetchRealtimeToken(tokenFetch);
       if (cancelled) return;
       if (!token.ok) {
         reportFollowFailure(token.code);
