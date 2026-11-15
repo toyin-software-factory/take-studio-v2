@@ -34,7 +34,7 @@ export const FAQ = {
     },
     {
       q: "Can an AI agent use Take Studio?",
-      a: "Soon. A public API and an MCP server will let agents do everything the web app does.",
+      a: "Yes. The public API and the MCP server let an agent upload a take, pick a studio and fetch the captions. Make an API key from your account, or connect Claude.ai by signing in.",
     },
   ],
 } as const;
@@ -79,8 +79,8 @@ export const FOOTER = {
     {
       label: "For agents",
       links: [
-        { href: "#studio", label: "Public API (soon)" },
-        { href: "#studio", label: "MCP server (soon)" },
+        { href: "/docs/api", label: "Public API" },
+        { href: "/docs/mcp", label: "MCP server" },
       ],
     },
     {

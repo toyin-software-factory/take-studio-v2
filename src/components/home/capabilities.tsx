@@ -1,4 +1,5 @@
-import { CAPABILITIES } from "./content";
+import Link from "next/link";
+import { AGENT_DOCS, CAPABILITIES } from "./content";
 import { SectionHead } from "./head";
 import { TileVideo } from "./tile-video";
 
@@ -11,7 +12,7 @@ const tileChecks = (i: number) =>
       : undefined;
 const headingCheck = (i: number) => `s5-capabilities-heading-${i + 2}`;
 
-/** What it does: four uneven tiles, each with a caption. The fourth is text only (coming soon). */
+/** What it does: four uneven tiles, each with a caption. The fourth has no video: it links to the API and MCP docs. */
 export function HomeCapabilities() {
   return (
     <section
@@ -46,7 +47,13 @@ export function HomeCapabilities() {
                     checks={tileChecks(i)}
                   />
                 ) : (
-                  <p className="h-tile-soon">Coming soon</p>
+                  <ul className="h-tile-docs">
+                    {AGENT_DOCS.map((doc) => (
+                      <li key={doc.href}>
+                        <Link href={doc.href}>{doc.label}</Link>
+                      </li>
+                    ))}
+                  </ul>
                 )}
               </div>
               <figcaption>
