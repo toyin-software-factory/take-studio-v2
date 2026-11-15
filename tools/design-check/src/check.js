@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { compareElements, compareMotion } from "./compare.js";
+import { actionsProblem } from "./actions.js";
 import { extractPage, openBrowser, toUrl } from "./extract.js";
 import { comparePixels } from "./pixels.js";
 import { runJudge } from "./judge.js";
@@ -21,11 +22,22 @@ export function resolvePages(cfg, only) {
     design: toUrl(p.design, cfg.base),
     build: toUrl(p.build, cfg.base),
     designFile: /^https?:/.test(p.design) ? null : path.resolve(cfg.base, p.design),
+    media: p.media,
+    actions: p.actions,
+    designActions: p.designActions,
     storageState:
       p.storageState || cfg.storageState
         ? path.resolve(cfg.base, p.storageState || cfg.storageState)
         : undefined,
   }));
+  for (const p of pages) {
+    if (p.media !== undefined && p.media !== "fake")
+      throw new Error(`Page "${p.name}": media must be "fake" (or left out).`);
+    for (const key of ["actions", "designActions"]) {
+      const bad = actionsProblem(p[key]);
+      if (bad) throw new Error(`Page "${p.name}": ${key} ${bad}.`);
+    }
+  }
   if (!pages.length)
     throw new Error(
       'No pages to check. Add "pages" to design-check.json, or pass --design and --build.',
@@ -77,8 +89,11 @@ async function extractDesign(browser, page, vp, dir, cfg) {
     for (const dep of localDependencies(page.designFile))
       hash.update(dep).update(fs.readFileSync(dep));
     // A new version of the measuring code invalidates the cache too.
-    for (const f of ["probe.js", "extract.js"])
+    for (const f of ["probe.js", "extract.js", "actions.js"])
       hash.update(fs.readFileSync(new URL(`./${f}`, import.meta.url)));
+    // The same draft reached through other steps is another measurement.
+    if (page.media || page.designActions)
+      hash.update(JSON.stringify([page.media, page.designActions]));
     const h = hash.digest("hex").slice(0, 12);
     prefix = `design-${h}${cfg.hover ? "" : "-nohover"}`;
     key = path.join(dir, `${prefix}-${vp}.json`);
@@ -92,6 +107,8 @@ async function extractDesign(browser, page, vp, dir, cfg) {
     prefix,
     settleMs: cfg.settleMs,
     hover: cfg.hover,
+    media: page.media,
+    actions: page.designActions,
   });
   if (key) fs.writeFileSync(key, JSON.stringify(res));
   return res;
@@ -126,8 +143,25 @@ function sectionFacts(snapshot, sectionLabel) {
     }));
 }
 
+// One browser per way of launching: the plain one every page uses, and the fake camera one only for
+// pages that ask for it. A browser is opened when first needed.
+function browserPool() {
+  const open = new Map();
+  return {
+    get: (media) => {
+      const key = media || "";
+      if (!open.has(key)) open.set(key, openBrowser({ media }));
+      return open.get(key);
+    },
+    closeAll: async () => {
+      for (const b of open.values()) await (await b).close().catch(() => {});
+    },
+  };
+}
+
 export async function runRound(cfg, pages, { quick = false } = {}) {
-  const browser = await openBrowser();
+  const pool = browserPool();
+  const browser = await pool.get();
   const result = { at: new Date().toISOString(), quick, pages: [] };
   try {
     for (const page of pages) {
@@ -144,19 +178,16 @@ export async function runRound(cfg, pages, { quick = false } = {}) {
       };
       for (const vp of cfg.viewports) {
         log(`${page.name} @ ${vp}`);
-        const D = await extractDesign(
-          browser,
-          page,
-          vp,
-          dir,
-          quick ? { ...cfg, hover: false } : cfg,
-        );
-        const B = await extractPage(browser, page.build, vp, {
+        const media = await pool.get(page.media);
+        const D = await extractDesign(media, page, vp, dir, quick ? { ...cfg, hover: false } : cfg);
+        const B = await extractPage(media, page.build, vp, {
           outDir: dir,
           prefix: quick ? "live-build" : "build", // watch never overwrites a full check's captures
           settleMs: cfg.settleMs,
           hover: !quick && cfg.hover,
           storageState: page.storageState,
+          media: page.media,
+          actions: page.actions,
         });
         pr.viewports.push({
           viewport: vp,
@@ -164,9 +195,14 @@ export async function runRound(cfg, pages, { quick = false } = {}) {
           buildElements: B.elements.length,
           buildErrors: B.consoleErrors,
         });
-        pr.findings.push(...compareElements(D, B, vp, cfg.tolerance));
+        pr.findings.push(
+          ...compareElements(D, B, vp, cfg.tolerance, {
+            stepPage: Array.isArray(page.designActions),
+          }),
+        );
         const [motion, motionQs] = compareMotion(D, B, vp, cfg.tolerance, {
           strictMotion: cfg.motion === "strict",
+          stepPage: Array.isArray(page.designActions),
         });
         pr.findings.push(...motion);
         if (quick) continue;
@@ -302,7 +338,7 @@ export async function runRound(cfg, pages, { quick = false } = {}) {
       result.pages.push(pr);
     }
   } finally {
-    await browser.close();
+    await pool.closeAll();
   }
   if (!quick) {
     // Question ids carry the page, so two pages with the same section label never share an answer.

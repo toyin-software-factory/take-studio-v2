@@ -4,6 +4,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { runActions } from "./actions.js";
 import { autoTag, motionRecorder, probeElements, readHoverStyle } from "./probe.js";
 
 const MAX_SHOT_HEIGHT = 12000;
@@ -28,12 +29,20 @@ async function loadChromium() {
   );
 }
 
-export async function openBrowser() {
+// Chromium's own test camera and microphone (a test pattern and a beep), accepted without a prompt.
+const FAKE_MEDIA_ARGS = ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream"];
+
+// `media: "fake"` is a launch flag, so a page that sets it is measured in its own browser (see check.js).
+export async function openBrowser({ media } = {}) {
   const chromium = await loadChromium();
   const executablePath = process.env.DESIGN_CHECK_CHROMIUM || undefined;
   return chromium.launch({
     executablePath,
-    args: ["--disable-gpu-vsync", "--force-color-profile=srgb"],
+    args: [
+      "--disable-gpu-vsync",
+      "--force-color-profile=srgb",
+      ...(media === "fake" ? FAKE_MEDIA_ARGS : []),
+    ],
   });
 }
 
@@ -42,7 +51,7 @@ export function toUrl(target, base = process.cwd()) {
   return pathToFileURL(path.resolve(base, target)).href;
 }
 
-async function newContext(browser, vpName, js = true, storageState) {
+async function newContext(browser, vpName, js = true, storageState, media) {
   const vp = VIEWPORTS[vpName];
   if (!vp)
     throw new Error(
@@ -56,6 +65,7 @@ async function newContext(browser, vpName, js = true, storageState) {
     javaScriptEnabled: js,
     reducedMotion: "no-preference",
     ...(storageState ? { storageState } : {}),
+    ...(media === "fake" ? { permissions: ["camera", "microphone"] } : {}),
   });
 }
 
@@ -188,10 +198,10 @@ export async function extractPage(
   browser,
   url,
   vpName,
-  { outDir, prefix, settleMs = 1500, hover = true, storageState },
+  { outDir, prefix, settleMs = 1500, hover = true, storageState, media, actions },
 ) {
   fs.mkdirSync(outDir, { recursive: true });
-  const ctx = await newContext(browser, vpName, true, storageState);
+  const ctx = await newContext(browser, vpName, true, storageState, media);
   await ctx.addInitScript(motionRecorder);
   const page = await ctx.newPage();
   const consoleErrors = [];
@@ -201,6 +211,11 @@ export async function extractPage(
     await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
     await page.evaluate(() => document.fonts && document.fonts.ready).catch(() => {});
     await page.waitForTimeout(settleMs);
+    if (actions && actions.length) {
+      await runActions(page, actions);
+      await page.waitForLoadState("networkidle", { timeout: 8000 }).catch(() => {});
+      await page.waitForTimeout(settleMs);
+    }
     await page.evaluate(() => window.__dc && window.__dc.setPhase("scroll"));
     await scrollTour(page);
     await page.evaluate(() => window.__dc && window.__dc.setPhase("idle"));

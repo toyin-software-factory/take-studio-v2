@@ -77,6 +77,49 @@ node tools/design-check/src/cli.js tag <design.html> [--out file]
 | `hover`        | `true`                                         | Probe hover states on desktop.                                                                                                                                                          |
 | `motion`       | `"design"`                                     | `"design"`: flag motion the design has that the build lacks or does differently; motion only the build has is listed in the report as a note. `"strict"`: send that to the builder too. |
 
+## Pages that need a camera or a click first
+
+Some screens only appear after a camera grant and a few clicks (a wizard's second step, a dialog). Two optional settings on a page in `design-check.json` reach them. A page without them is measured exactly as before.
+
+| Key             | Meaning                                                                                                                                                                                                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `media`         | `"fake"`: the page (design and build) is measured in a Chromium launched with `--use-fake-ui-for-media-stream` and `--use-fake-device-for-media-stream`, with the camera and microphone permissions granted. The camera shows Chromium's test pattern, never a real camera or person. |
+| `actions`       | Steps run on the **build** after it loads and settles, before anything is measured.                                                                                                                                                                                                   |
+| `designActions` | The same kind of steps, run on the **design** draft. Use `[]` when the page is the draft's first step but the build shows only that step: labels the draft keeps hidden are then not reported as missing in the build.                                                                |
+
+A step is an object with one key:
+
+```json
+{ "click": "#start" }
+{ "click": { "role": "button", "name": "Record" } }
+{ "fill": { "selector": "textarea", "value": "Some script" } }
+{ "fill": { "label": "Script", "value": "Some script" } }
+{ "waitFor": "text=Use this take" }
+{ "wait": 3000 }
+```
+
+`click` takes a CSS selector or a role and exact accessible name. `fill` takes a selector or a label. `waitFor` waits until the element is visible (15 s). `wait` is milliseconds, 30000 at most. A step that cannot finish stops the page's measurement with its step number, so a broken click-through never measures the wrong state. A bad list is refused before the browser starts.
+
+Each state is its own page, sharing the draft. For a recorder with a Script, a Record and a Review step:
+
+```json
+{
+  "name": "record-v2-stage",
+  "design": "docs/design/record-v2.tagged.html",
+  "build": "http://localhost:3000/record",
+  "storageState": ".design-check/auth.json",
+  "media": "fake",
+  "designActions": [{ "click": "#start" }, { "waitFor": "#rec" }],
+  "actions": [
+    { "fill": { "selector": "textarea", "value": "Some script" } },
+    { "click": { "role": "button", "name": "Turn on camera" } },
+    { "waitFor": "[data-check=\"s2-stage\"]" }
+  ]
+}
+```
+
+A label the draft shows only in another step is not reported as missing when `designActions` is set. Steps only click and type: keep test hooks out of the app. The `actions` steps are part of the design measurement's cache key, so changing `designActions` re-measures the draft.
+
 ## Judge
 
 | `judge`                                                                    | Uses                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |

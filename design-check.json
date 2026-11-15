@@ -9,7 +9,102 @@
       "name": "record-v2",
       "design": "docs/design/record-v2.tagged.html",
       "build": "http://localhost:3000/record",
-      "storageState": ".design-check/auth.json"
+      "storageState": ".design-check/auth.json",
+      "designActions": []
+    },
+    {
+      "name": "record-v2-stage",
+      "design": "docs/design/record-v2.tagged.html",
+      "build": "http://localhost:3000/record",
+      "storageState": ".design-check/auth.json",
+      "media": "fake",
+      "actions": [
+        {
+          "fill": {
+            "selector": "textarea",
+            "value": "So this is me testing. I'm seeing that it works. I'm not seeing a teleprompter yet."
+          }
+        },
+        {
+          "click": {
+            "role": "button",
+            "name": "Turn on camera"
+          }
+        },
+        {
+          "waitFor": "[data-check=\"s2-stage\"]"
+        }
+      ],
+      "designActions": [
+        {
+          "click": "#start"
+        },
+        {
+          "waitFor": "#rec"
+        }
+      ]
+    },
+    {
+      "name": "record-v2-review",
+      "design": "docs/design/record-v2.tagged.html",
+      "build": "http://localhost:3000/record",
+      "storageState": ".design-check/auth.json",
+      "media": "fake",
+      "actions": [
+        {
+          "fill": {
+            "selector": "textarea",
+            "value": "So this is me testing. I'm seeing that it works. I'm not seeing a teleprompter yet."
+          }
+        },
+        {
+          "click": {
+            "role": "button",
+            "name": "Turn on camera"
+          }
+        },
+        {
+          "waitFor": "[data-check=\"s2-stage\"]"
+        },
+        {
+          "click": {
+            "role": "button",
+            "name": "Record"
+          }
+        },
+        {
+          "wait": 4500
+        },
+        {
+          "click": {
+            "role": "button",
+            "name": "Stop"
+          }
+        },
+        {
+          "waitFor": "text=Use this take"
+        }
+      ],
+      "designActions": [
+        {
+          "click": "#start"
+        },
+        {
+          "waitFor": "#rec"
+        },
+        {
+          "click": "#rec"
+        },
+        {
+          "wait": 2500
+        },
+        {
+          "click": "#rec"
+        },
+        {
+          "waitFor": "#review"
+        }
+      ]
     },
     {
       "name": "take-page-v2",
