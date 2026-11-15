@@ -141,9 +141,64 @@ test("the breadcrumb and chip in the top bar follow a rename", async ({ page, ba
   await expect(page.getByRole("banner").getByText("Ready")).toBeVisible();
 
   await page.getByRole("button", { name: "Rename" }).click();
-  const field = page.getByLabel("Title");
+  const field = page.getByRole("main").getByLabel("Title");
   await field.fill("Founder intro, final");
+  // Wait on the real signals: the save reply, then the form closing, then the top bar.
+  const saved = page.waitForResponse(
+    (r) => r.request().method() === "PATCH" && r.url().endsWith(`/api/takes/${id}`),
+  );
   await field.press("Enter");
+  expect((await saved).status()).toBe(200);
+  await expect(field).toHaveCount(0);
+  await expect(crumb.locator("[aria-current=page]")).toHaveText("Founder intro, final");
+});
+
+test("a poll reply that started before a rename does not bring the old title back (B2-T144)", async ({
+  page,
+  baseURL,
+}) => {
+  const id = await seedReady(page, baseURL!, "Founder intro");
+  await page.goto(`/takes/${id}`);
+  const crumb = page.getByRole("navigation", { name: "Breadcrumb" });
+  await expect(crumb.locator("[aria-current=page]")).toHaveText("Founder intro");
+  await expect(page.getByRole("banner").getByText("Ready")).toBeVisible();
+  // Hold the next poll: its request goes out, and its reply (the old title) is kept back.
+  let release = () => {};
+  const held = new Promise<void>((resolve) => (release = resolve));
+  let asked = () => {};
+  const pollAsked = new Promise<void>((resolve) => (asked = resolve));
+  await page.route(`**/api/takes/${id}`, async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    const stale = await route.fetch();
+    asked();
+    await held;
+    return route.fulfill({ response: stale });
+  });
+  // A tab that comes back to the front polls at once.
+  await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+  await pollAsked;
+  await page.getByRole("button", { name: "Rename" }).click();
+  const field = page.getByRole("main").getByLabel("Title");
+  await field.fill("Founder intro, final");
+  const saved = page.waitForResponse(
+    (r) => r.request().method() === "PATCH" && r.url().endsWith(`/api/takes/${id}`),
+  );
+  await field.press("Enter");
+  expect((await saved).status()).toBe(200);
+  await expect(crumb.locator("[aria-current=page]")).toHaveText("Founder intro, final");
+
+  // The old reply lands after the rename; the title must stay.
+  const used = page.waitForResponse(
+    (r) => r.request().method() === "GET" && r.url().endsWith(`/api/takes/${id}`),
+  );
+  release();
+  await used;
+  await page.evaluate(
+    () =>
+      new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))),
+  );
+  const h1 = page.getByRole("main").getByRole("heading", { level: 1 });
+  await expect(h1).toHaveText("Founder intro, final");
   await expect(crumb.locator("[aria-current=page]")).toHaveText("Founder intro, final");
 });
 
