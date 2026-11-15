@@ -1,6 +1,6 @@
 # Feature map
 
-Every page and user-facing feature, by the name Toyin uses, with its route, who can reach it and how to get there. Use these names in specs, proof and messages, and drive agent-browser from this list (see ROLE.md, Teamwork). A PR that adds, renames or removes a page or feature updates this file.
+Every page and user-facing feature, by the name Toyin uses, with its route, who can reach it and how to get there. Use these names in specs, proof and messages, and drive agent-browser from this list (see ROLE.md, Teamwork). A PR that adds, renames, moves or removes a page or feature, or changes who can reach it or how, updates this file.
 
 Signed in pages need a session. In e2e tests and local agent-browser runs, sign in with the test helper in `tests/support/session.ts` (seeds a user and sets the session cookie against the local Postgres); never use a real account.
 
