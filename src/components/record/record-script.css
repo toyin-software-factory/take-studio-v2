@@ -30,6 +30,8 @@
   transition: border-color var(--dur-ui) ease;
 }
 .rec-script textarea:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
   border-bottom-color: var(--color-ink);
   box-shadow: 0 1px 0 0 var(--color-ink);
 }
@@ -124,6 +126,11 @@
 .rec-switch[aria-checked="true"] > span {
   translate: 20px -50%;
   background: var(--color-accent);
+}
+.rec-switch::before {
+  content: "";
+  position: absolute;
+  inset: -6px -4px; /* a 44 px touch target around the 32 px track */
 }
 .rec-switch:focus-visible {
   outline: 2px solid var(--focus);

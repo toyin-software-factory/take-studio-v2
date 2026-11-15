@@ -174,13 +174,3 @@
   font-weight: var(--fw-regular);
   margin-top: 2px;
 }
-@media (min-width: 810px) {
-  .rec-only-phone {
-    display: none !important;
-  }
-}
-@media (max-width: 809px) {
-  .rec-only-wide {
-    display: none !important;
-  }
-}

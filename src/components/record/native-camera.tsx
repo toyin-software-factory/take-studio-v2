@@ -25,11 +25,7 @@ export function NativeCamera({ onFile }: { readonly onFile: (file: File) => void
           if (file) onFile(file);
         }}
       />
-      <button
-        type="button"
-        className="rec-light rec-only-phone"
-        onClick={() => input.current?.click()}
-      >
+      <button type="button" className="rec-light" onClick={() => input.current?.click()}>
         Use phone camera app
       </button>
     </>
