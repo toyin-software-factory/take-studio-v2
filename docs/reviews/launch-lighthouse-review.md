@@ -55,7 +55,7 @@ The job then fails when a quality score drops below these recorded numbers (medi
 | Page | Accessibility | Best practices | SEO |
 |---|---|---|---|
 | Landing `/` | 100 | 100 | 100 |
-| Sign in, Library, Take page, Record (noindex on purpose) | 100 | 100 | not scored; `is-crawlable` must be the only failing SEO audit (the 63) |
+| Sign in, Library, Take page, Record (noindex on purpose) | 100 | 100 | not scored; `is-crawlable` must be the only failing SEO audit (SEO reads 63, and 66 on the library) |
 
 - A score Lighthouse cannot compute (n/a) fails the gate, because it cannot be checked.
 - A noindex page that stops failing `is-crawlable` also fails the gate: it may have lost its noindex.
@@ -63,3 +63,5 @@ The job then fails when a quality score drops below these recorded numbers (medi
 - To change a number: edit `MIN_SCORE` or `NOINDEX_ALLOWED_SEO_FAILURES` in `scripts/lighthouse-gate.ts`, the test `src/lib/lighthouse-gate.test.ts`, and this table, in one PR.
 - The gate's unit test shows each drop failing (accessibility, best practices, SEO on the landing page, a noindex page's extra SEO failure, a missing score).
 - The job is not part of the required `check` job, so a gate failure turns the Lighthouse job red without blocking the merge button.
+
+First run with the gate (PR #316): best practices 100 and accessibility 100 on all five pages, landing SEO 100, SEO 63 on sign in, take page and record, and 66 on the library. The only failed audits listed are `is-crawlable` on the four noindex pages, so the 503 console errors are gone. The gate looks at the failed audit list on noindex pages, not at the 63 or 66, which is why a small SEO weight difference between pages does not matter.
