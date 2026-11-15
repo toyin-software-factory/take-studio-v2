@@ -129,10 +129,12 @@ test.describe("the particle field loads lazily (AC-6, AC-10)", () => {
       });
     });
     const slowdown = Math.max(1, cpu / IDLE_SPIN_MS);
-    test.info().annotations.push(
-      { type: "average frame ms", description: ms.toFixed(1) },
-      { type: "cpu slowdown", description: slowdown.toFixed(2) },
-    );
+    test
+      .info()
+      .annotations.push(
+        { type: "average frame ms", description: ms.toFixed(1) },
+        { type: "cpu slowdown", description: slowdown.toFixed(2) },
+      );
     expect(ms).toBeLessThan(FRAME_BUDGET_MS * slowdown);
     // Scrolled away: the loop stops drawing.
     await page.evaluate(() => window.scrollTo(0, 0));
