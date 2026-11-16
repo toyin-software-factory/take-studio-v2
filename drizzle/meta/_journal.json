@@ -159,8 +159,15 @@
     {
       "idx": 22,
       "version": "7",
-      "when": 1794817142760,
-      "tag": "0022_quiet_stephen_strange",
+      "when": 1794815156265,
+      "tag": "0022_public_loki",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794819645113,
+      "tag": "0023_sturdy_nitro",
       "breakpoints": true
     }
   ]

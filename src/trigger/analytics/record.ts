@@ -7,6 +7,7 @@ import { isBackgroundKind, isTranscribeKind } from "@/lib/processing";
 import {
   type AnalyticsEventInput,
   aiEditOutcome,
+  NO_CREATOR_EVENTS,
   hasRequiredTakeId,
   parseEventProps,
 } from "@/lib/analytics-events";
@@ -18,7 +19,9 @@ import {
  */
 export async function recordJobEvent(db: Executor, event: AnalyticsEventInput): Promise<boolean> {
   const props = parseEventProps(event.name, event.props);
-  if (!props || !hasRequiredTakeId(event.name, event.takeId)) {
+  const creatorOk =
+    event.creatorId !== null || (NO_CREATOR_EVENTS as readonly string[]).includes(event.name);
+  if (!props || !creatorOk || !hasRequiredTakeId(event.name, event.takeId)) {
     logger.error("analytics event refused", { name: event.name, takeId: event.takeId ?? null });
     return false;
   }

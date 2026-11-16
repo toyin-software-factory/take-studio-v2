@@ -23,4 +23,32 @@ describe("guest accounts in the counts (spec 0023, G5)", () => {
     expect(await funnel(db, "all")).toEqual(before.funnel);
     expect(await foundingMembers(db)).toEqual(before.founding);
   });
+
+  it("counts the four guest events, with no personal data (AC-12)", async () => {
+    const before = (await funnel(db, "all")).guest;
+    await recordEvent(db, { name: "guest_drop", creatorId: null });
+    await recordEvent(db, { name: "guest_email_added", creatorId: null });
+    await recordEvent(db, { name: "guest_expired", creatorId: null, props: { hadEmail: true } });
+    await recordEvent(db, { name: "guest_expired", creatorId: null, props: { hadEmail: false } });
+    const g = (await funnel(db, "all")).guest;
+    expect(g.drops - before.drops).toBe(1);
+    expect(g.emailsAdded - before.emailsAdded).toBe(1);
+    expect(g.expired - before.expired).toBe(2);
+    expect(g.expiredWithEmail - before.expiredWithEmail).toBe(1);
+  });
+
+  it("accepts a null creator only for the three guest events", async () => {
+    expect((await recordEvent(db, { name: "take_downloaded", creatorId: null } as never)).ok).toBe(
+      false,
+    );
+    expect(
+      (
+        await recordEvent(db, {
+          name: "guest_drop",
+          creatorId: null,
+          props: { email: "x" },
+        } as never)
+      ).ok,
+    ).toBe(false);
+  });
 });

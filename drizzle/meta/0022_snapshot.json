@@ -1,5 +1,5 @@
 {
-  "id": "bd81e944-36f0-455e-8568-596db59babb7",
+  "id": "013a962c-554c-4ca8-98dc-ede0c072bb39",
   "prevId": "464e1410-f10d-4c8d-8c8e-8e40788d852d",
   "version": "7",
   "dialect": "postgresql",
@@ -683,12 +683,6 @@
           "notNull": true,
           "default": "'file'"
         },
-        "credit_choice": {
-          "name": "credit_choice",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "script": {
           "name": "script",
           "type": "text",
@@ -865,10 +859,6 @@
         "take_source_check": {
           "name": "take_source_check",
           "value": "\"take\".\"source\" IN ('file', 'recording')"
-        },
-        "take_credit_choice_check": {
-          "name": "take_credit_choice_check",
-          "value": "\"take\".\"credit_choice\" IS NULL OR \"take\".\"credit_choice\" IN ('on', 'off')"
         },
         "take_script_length_check": {
           "name": "take_script_length_check",
@@ -1233,7 +1223,7 @@
       "checkConstraints": {
         "processing_job_kind_check": {
           "name": "processing_job_kind_check",
-          "value": "\"processing_job\".\"kind\" IN ('initial', 'rerender', 'background', 'credit', 'transcribe', 'reanalyse')"
+          "value": "\"processing_job\".\"kind\" IN ('initial', 'rerender', 'background', 'transcribe', 'reanalyse')"
         },
         "processing_job_seconds_charged_check": {
           "name": "processing_job_seconds_charged_check",
@@ -1454,13 +1444,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
-        },
-        "credit_applied": {
-          "name": "credit_applied",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -2252,7 +2235,7 @@
       "checkConstraints": {
         "analytics_event_name_check": {
           "name": "analytics_event_name_check",
-          "value": "\"analytics_event\".\"name\" IN ('signup', 'take_uploaded', 'take_ready', 'ai_edit_used', 'change_requested', 'take_downloaded', 'transcript_downloaded', 'take_failed', 'cuts_reviewed', 'cut_missed', 'limit_hit')"
+          "value": "\"analytics_event\".\"name\" IN ('signup', 'take_uploaded', 'take_ready', 'ai_edit_used', 'change_requested', 'take_downloaded', 'transcript_downloaded', 'take_failed', 'cuts_reviewed', 'cut_missed', 'limit_hit', 'guest_drop', 'guest_email_added', 'guest_claimed', 'guest_expired')"
         }
       },
       "isRLSEnabled": false

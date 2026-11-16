@@ -12,6 +12,7 @@ import { LegalList, LegalSection } from "./section";
 export const TERMS_TOC = [
   { id: "using", title: "Using Take Studio" },
   { id: "account", title: "Your account" },
+  { id: "guest", title: "Dropping a video before you sign in" },
   { id: "content", title: "Your videos, transcripts and scripts" },
   { id: "rules", title: "What you may not upload" },
   { id: "storage", title: "Storage and deleting" },
@@ -41,6 +42,13 @@ export function TermsCopy({
         <p>
           You sign in with Google or with a one time link we email you. The link works for you only,
           so do not share it. You are responsible for what happens in your account.
+        </p>
+      </LegalSection>
+      <LegalSection id="guest" title="Dropping a video before you sign in">
+        <p>
+          You can drop one video on the home page before you sign in. These Terms apply to it from
+          that moment. We keep it for 24 hours so you can sign in and add it to your account; if you
+          do not, we delete it. A free drop is limited in size, length and number per day.
         </p>
       </LegalSection>
       <LegalSection id="content" title="Your videos, transcripts and scripts">
