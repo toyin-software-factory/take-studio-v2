@@ -92,11 +92,15 @@ async function saveAddress(
   claimId: string,
   next: { readonly email: string; readonly emailHash: string },
 ): Promise<boolean> {
-  const saved = await runTx(db, async (tx) => {
-    await tx.update(guestClaim).set(next).where(eq(guestClaim.id, claimId));
-    return ok(true as const);
-  });
-  return saved.ok;
+  try {
+    const saved = await runTx(db, async (tx) => {
+      await tx.update(guestClaim).set(next).where(eq(guestClaim.id, claimId));
+      return ok(true as const);
+    });
+    return saved.ok;
+  } catch {
+    return false;
+  }
 }
 
 /** A send that did not go out gives its slot back. */
@@ -151,9 +155,7 @@ export async function handleGuestEmail(request: Request, deps: GuestEmailDeps): 
     await giveBack(db, claimId);
     return refuse(sent.error === "invalid_email" ? "invalid" : sent.error);
   }
-  if (!(await saveAddress(db, claimId, { email, emailHash }))) {
-    await giveBack(db, claimId);
-    return refuse("send_failed");
-  }
+  // The link already went out, so a failed save keeps its send slot counted.
+  if (!(await saveAddress(db, claimId, { email, emailHash }))) return refuse("send_failed");
   return Response.json({ ok: true }, { headers: { "cache-control": "private, no-store" } });
 }
