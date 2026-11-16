@@ -11,6 +11,7 @@ import { type Result, err, ok } from "@/lib/result";
 import {} from "@/lib/take-rules";
 import { UPLOAD, partCount } from "@/lib/uploads";
 import { recordEvent } from "../analytics/record";
+import { finishParkedClaim } from "../guest/claim-finish";
 import { type UploadDeps, type UploadError, ownedTake } from "./base";
 
 /**
@@ -74,7 +75,10 @@ export async function completeUpload(
 ): Promise<Result<{ readonly takeId: string; readonly status: Take["status"] }, UploadError>> {
   const t = await ownedTake(deps.db, creatorId, takeId);
   if (!t) return err("not_found");
-  if (AFTER_UPLOAD.has(t.status)) return ok({ takeId: t.id, status: t.status });
+  if (AFTER_UPLOAD.has(t.status)) {
+    if (t.guestOrigin) await finishParkedClaim(deps.db, t.id);
+    return ok({ takeId: t.id, status: t.status });
+  }
   if (t.status !== "uploading" || !t.uploadId) return err("not_uploading");
 
   const parsed = uploadCompleteSchema.safeParse(input);
@@ -128,6 +132,8 @@ export async function completeUpload(
     // Safe to call complete again: the upload is done and the dispatch is idempotent.
     return err("dispatch_failed");
   }
+  // A guest claimed this take while it was uploading: it moves now that the probe is dispatched.
+  if (t.guestOrigin) await finishParkedClaim(deps.db, t.id);
   return ok({ takeId: t.id, status: "uploading" });
 }
 
@@ -157,5 +163,8 @@ export async function abortUpload(
     failureCode: "upload_abandoned",
     uploadId: null,
   });
-  return failed.ok ? ok({ takeId: t.id }) : err("not_uploading");
+  if (!failed.ok) return err("not_uploading");
+  // A cancelled guest upload still goes to the account that claimed it (it shows as failed).
+  if (t.guestOrigin) await finishParkedClaim(deps.db, t.id);
+  return ok({ takeId: t.id });
 }
