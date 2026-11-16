@@ -11,9 +11,10 @@ describe("creditPlacement (AC-2)", () => {
       startSeconds: 26,
     });
   });
-  it("portrait: 10% top inset", () => {
+  it("portrait: 14% top and 6% left inset, clear of the Reels zone (5a)", () => {
     const p = creditPlacement({ width: 1080, height: 1920, durationSeconds: 30 });
-    expect(p.y).toBe(192);
+    expect(p.y).toBe(269);
+    expect(p.x).toBe(65);
     expect(p.width).toBe(432);
   });
   it("short video shows the last half", () => {
