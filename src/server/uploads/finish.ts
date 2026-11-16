@@ -76,7 +76,7 @@ export async function completeUpload(
   const t = await ownedTake(deps.db, creatorId, takeId);
   if (!t) return err("not_found");
   if (AFTER_UPLOAD.has(t.status)) {
-    if (t.guestOrigin) await finishParkedClaim(deps.db, t.id);
+    if (t.guestOrigin) await finishParkedClaim(deps.db, t.id, deps.usageSecret);
     return ok({ takeId: t.id, status: t.status });
   }
   if (t.status !== "uploading" || !t.uploadId) return err("not_uploading");
@@ -133,7 +133,7 @@ export async function completeUpload(
     return err("dispatch_failed");
   }
   // A guest claimed this take while it was uploading: it moves now that the probe is dispatched.
-  if (t.guestOrigin) await finishParkedClaim(deps.db, t.id);
+  if (t.guestOrigin) await finishParkedClaim(deps.db, t.id, deps.usageSecret);
   return ok({ takeId: t.id, status: "uploading" });
 }
 
@@ -165,6 +165,6 @@ export async function abortUpload(
   });
   if (!failed.ok) return err("not_uploading");
   // A cancelled guest upload still goes to the account that claimed it (it shows as failed).
-  if (t.guestOrigin) await finishParkedClaim(deps.db, t.id);
+  if (t.guestOrigin) await finishParkedClaim(deps.db, t.id, deps.usageSecret);
   return ok({ takeId: t.id });
 }

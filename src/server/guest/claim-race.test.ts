@@ -66,6 +66,7 @@ describe("a claim while the upload finishes (spec 0023, AC-4)", () => {
       db: testDb.db,
       r2: { ...r2, headObject: async () => ({ size: 5 }) },
       dispatchProbe: async () => undefined,
+      usageSecret: SECRET,
     };
     const done = await completeUpload(deps, g.guestId, t.id, { parts: parts(1) });
     expect(done.ok).toBe(true);

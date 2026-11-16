@@ -3,11 +3,12 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { finish, startJob } from "@/db/data/jobs";
 import { getUsedSeconds } from "@/db/data/usage";
 import { MONTH, NOW, SECRET } from "@/db/data/usage-test-helpers";
-import { appSetting, processingJob, take, usageMonth } from "@/db/schema";
+import { appSetting, guestClaim, processingJob, take, usageMonth } from "@/db/schema";
 import { type TestDb, openTestDb, seedTake } from "@/db/testing/test-db";
 import { usageAccountHash } from "@/lib/usage-hash";
 import { fakeR2 } from "../uploads/uploads-test-helpers";
 import { claimGuest } from "./claim";
+import { finishParkedClaim } from "./claim-finish";
 import { seedAccount, seedGuest } from "./claim-test-helpers";
 
 /** Spec 0023 step 6 (AC-8, G19): which account a guest take's minutes are charged to, and when. */
@@ -85,6 +86,30 @@ describe("a guest take at job start (AC-8, G19)", () => {
     expect(done.ok).toBe(true);
     expect((await jobOf(g.takeId)).refunded).toBe(true);
     expect((await db().select().from(usageMonth)).length).toBe(before);
+  });
+});
+
+describe("a parked claim that moves its take (AC-8)", () => {
+  it("charges the claimant for a job that started while the take was parked", async () => {
+    const g = await guestWithTake(125);
+    const me = await seedAccount(db(), email());
+    const hash = await usageAccountHash(me.email, SECRET);
+    const started = await start(g.guestId, g.takeId);
+    expect(started.ok).toBe(true);
+    await db().update(guestClaim).set({ claimUserId: me.id }).where(eq(guestClaim.id, g.claimId));
+    const before = await used(hash);
+    expect(await finishParkedClaim(db(), g.takeId, SECRET)).toBe(true);
+    expect((await jobOf(g.takeId)).chargedAccountHash).toBe(hash);
+    expect((await used(hash)) - before).toBe(125);
+  });
+
+  it("does nothing without the usage secret, so the take waits for the next call", async () => {
+    const g = await guestWithTake(60);
+    const me = await seedAccount(db(), email());
+    await db().update(guestClaim).set({ claimUserId: me.id }).where(eq(guestClaim.id, g.claimId));
+    expect(await finishParkedClaim(db(), g.takeId, undefined)).toBe(false);
+    const [row] = await db().select().from(take).where(eq(take.id, g.takeId));
+    expect(row?.creatorId).toBe(g.guestId);
   });
 });
 

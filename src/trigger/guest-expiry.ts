@@ -29,6 +29,8 @@ export async function sweepExpiredGuests(
   };
   const expired =
     (await deleteExpiredGuestTakes(db, now).catch(fail("guest take sweep failed"))) ?? [];
+  // First: the takes and their run IDs are already deleted, so a later sweep cannot find the runs.
+  await cancelRuns(expired.flatMap((t) => t.runIds));
   let abortFailures = 0;
   for (const t of expired) {
     if (t.uploadId === null) continue;
@@ -40,7 +42,6 @@ export async function sweepExpiredGuests(
       logger.warn("multipart abort failed", { takeId: t.takeId });
     }
   }
-  await cancelRuns(expired.flatMap((t) => t.runIds));
   const guests = (await deleteExpiredGuests(db, now).catch(fail("guest sweep failed"))) ?? 0;
   const counts = (await purgeOldGuestCounts(db, now).catch(fail("guest count purge failed"))) ?? 0;
   return { takes: expired.length, guests, counts, abortFailures };

@@ -74,6 +74,15 @@ describe("deleting expired guest takes (AC-9)", () => {
     expect(await takeExists(g.takeId)).toBe(true);
   });
 
+  it("deletes a failed take of a parked claim: an abandoned upload has nothing to move", async () => {
+    const g = await dropAt(48);
+    const me = await seedAccount(db(), `${crypto.randomUUID()}@example.com`);
+    await db().update(guestClaim).set({ claimUserId: me.id }).where(eq(guestClaim.id, g.claimId));
+    await db().update(take).set({ status: "failed" }).where(eq(take.id, g.takeId));
+    await deleteExpiredGuestTakes(db(), NOW);
+    expect(await takeExists(g.takeId)).toBe(false);
+  });
+
   it("reports the upload id of a take still uploading, so the caller can abort it", async () => {
     const g = await dropAt(30);
     await db()

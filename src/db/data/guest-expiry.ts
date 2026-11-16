@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, lt, lte, notExists, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lt, lte, notExists, or, sql } from "drizzle-orm";
 import { GUEST_TTL_HOURS } from "@/lib/guest-rules";
 import { guestBudgetDay, guestClaim, guestIpDay, take, user } from "../schema";
 import { runTx } from "../tx";
@@ -47,7 +47,9 @@ export async function deleteExpiredGuestTakes(
       and(
         eq(user.guest, true),
         eq(take.guestOrigin, true),
-        isNull(guestClaim.claimUserId),
+        // A parked claim keeps its takes (they move when the upload ends), except a failed one:
+        // an abandoned parked upload holds nothing to move and expires on the normal schedule.
+        or(isNull(guestClaim.claimUserId), eq(take.status, "failed")),
         lte(take.createdAt, cutoff),
       ),
     )
@@ -65,13 +67,13 @@ export async function deleteExpiredGuestTakes(
             uploadId: take.uploadId,
             guest: user.guest,
             hadEmail: sql<boolean>`${guestClaim.email} is not null`,
-            parked: sql<boolean>`${guestClaim.claimUserId} is not null`,
+            parked: sql<boolean>`${guestClaim.claimUserId} is not null and ${take.status} <> 'failed'`,
           })
           .from(take)
           .innerJoin(user, eq(user.id, take.creatorId))
           .innerJoin(guestClaim, eq(guestClaim.guestUserId, user.id))
           .where(eq(take.id, id))
-          .for("update", { of: take });
+          .for("update", { of: [take, guestClaim] });
         // Moved to an account, parked or gone since the read: not ours to delete.
         if (!locked || !locked.guest || locked.parked) return { ok: true as const, data: null };
         const deleted = await deleteTakesInTx(tx, [id]);

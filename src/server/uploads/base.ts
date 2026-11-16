@@ -19,6 +19,8 @@ import {} from "../analytics/record";
 
 export type UploadDeps = {
   readonly db: Db;
+  /** USAGE_HASH_SECRET: a parked guest take charges its claimant when it moves (spec 0023 AC-8). */
+  readonly usageSecret?: string;
   readonly r2: Pick<
     R2,
     | "createMultipartUpload"
