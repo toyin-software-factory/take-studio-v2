@@ -6,9 +6,10 @@ This task changes docs only (the runbook and spec 0026). No code, no migration. 
 
 | Check | Result |
 |---|---|
-| Go live SQL step 1 sets the date once and says `UPDATE 1` | Pass, run on the local database inside a transaction that was rolled back |
-| A second run of step 1 changes nothing (`UPDATE 0`), so a set date cannot be overwritten | Pass, same run |
-| Step 2 sets `credit_enabled` to `true`, and the check query shows `true` and the date | Pass, same run |
+| Go live SQL step 2 sets the date once and says `UPDATE 1` | Pass, run on the local database inside a transaction that was rolled back |
+| A second run of step 2 changes nothing (`UPDATE 0`), so a set date cannot be overwritten | Pass, same run |
+| Step 1 rejects a day that does not exist (`2026-11-31`) and accepts a real one | Pass, run on the local database |
+| Step 3 sets `credit_enabled` to `true`, and the check query shows `true` and the date | Pass, same run |
 | The kill switch line sets `credit_enabled` false and never clears `credit_starts_at` | Pass by reading, same table and shape as the guest upload line next to it |
 | The date format is read by `parseCreditSettings` | Pass, ISO string as JSON, as `credit-rules` expects |
 

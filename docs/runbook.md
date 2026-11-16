@@ -31,13 +31,14 @@ Production is four things: the **Worker** (the web app, Cloudflare, name `take-s
 
 Toyin runs this, only after she has given the go (Michael relays it): the Terms update is deployed, the Terms notice email has been sent (B2-T186, Toyin approved the run) and the portrait check is recorded. The order is the email first, then this SQL. Nothing here is a deploy. In the Neon console, production branch, SQL editor, in this order, with `<DATE>` the agreed start as a UTC time, for example `2026-11-24T09:00:00Z` (it must not be in the past, or takes made earlier today count as new; write it exactly in this form, with a `T` and a trailing `Z`, because any other form, such as a space instead of the `T` or `+00`, is not read and leaves the credit off with no error):
 
-1. Set the start date once. This refuses to overwrite a date that is already set:
+1. Check the date first, because the app refuses a day that does not exist (31 November) but the update below would still store it and block a retry. Run `SELECT '<DATE>'::timestamptz;`: it must return the date you meant, and an error means a bad date, so fix it before going on.
+2. Set the start date once. This refuses to overwrite a date that is already set:
    `UPDATE app_setting SET value = to_jsonb('<DATE>'::text), updated_at = now() WHERE key = 'credit_starts_at' AND value = 'null'::jsonb;`
    It must say `UPDATE 1`. `UPDATE 0` means a date is already there: stop and tell Michael.
-2. Switch it on:
+3. Switch it on:
    `UPDATE app_setting SET value = 'true', updated_at = now() WHERE key = 'credit_enabled';`
-3. Check: `SELECT key, value FROM app_setting WHERE key IN ('credit_enabled', 'credit_starts_at');` shows `true` and the date.
-4. After the start time, upload a new test take on a free test account (use a recording with speech and at least one cut, because a take with no cuts or no audio is handed back as it is and never gets a credit) and open the finished video: the last seconds show "Edited with Take Studio" top left. A take made before the start date carries none. Say so to Michael.
+4. Check: `SELECT key, value FROM app_setting WHERE key IN ('credit_enabled', 'credit_starts_at');` shows `true` and the date.
+5. After the start time, upload a new test take on a free test account (use a recording with speech and at least one cut, because a take with no cuts or no audio is handed back as it is and never gets a credit) and open the finished video: the last seconds show "Edited with Take Studio" top left. A take made before the start date carries none. Say so to Michael.
 
 To switch it off again, see the credit line in "First steps in an incident". Never clear the date.
 
