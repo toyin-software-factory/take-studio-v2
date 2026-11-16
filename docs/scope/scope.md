@@ -45,6 +45,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 21 | Upload first, sign in after | Slice 9 | planned |
 | 22 | Billing & plans | Slice 9 | planned |
 | 23 | Before and after on the homepage | Slice 10 | planned |
+| 24 | Edited with Take Studio credit | Slice 11 | in-progress |
 
 ## Foundations
 
@@ -383,6 +384,21 @@ One take we record ourselves, shown raw next to the finished version from our ow
 - [ ] Verify it: `/check verify Before and after on the homepage`
 - [ ] Test it: `/test Before and after on the homepage`
 Spec [0025](../specs/0025-before-and-after-homepage.md)
+
+## Slice 11: Edited with Take Studio credit
+
+### 24. Edited with Take Studio credit · in-progress
+A small "Edited with Take Studio" credit in the corner of rendered videos made on a free account, drawn by the render, off by default and switchable per take on paid plans. Growth idea from Toyin (Slack, 2026-11-16).
+**Done when:** a free account's new render ends with the credit for its last four seconds (the last half for a video under eight seconds) without changing length, captions or charged seconds, takes made before launch are never changed, the take page says whether the credit is on, a paid creator can switch it per take, and the Terms say so.
+- [x] Design it (spec): `/architect Edited with Take Studio credit`
+- [ ] Build it: `/develop Edited with Take Studio credit`
+   - [ ] Rules, overlay PNG and filter, with the contrast pair (task 1)
+   - [ ] Migration and the render thread, with fallback and keyed gate (task 2)
+   - [ ] Take page line, Terms copy and legal version (tasks 3 and 4)
+   - [ ] Paid switch and change job, after the billing build, then go live (tasks 5 and 6)
+- [ ] Verify it: `/check verify Edited with Take Studio credit`
+- [ ] Test it: `/test Edited with Take Studio credit`
+Spec [0026](../specs/0026-edited-with-credit.md)
 
 ## Deferred
 Out of scope for this build pass, kept so the plan stays honest.
