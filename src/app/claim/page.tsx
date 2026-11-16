@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { ClaimConfirm } from "@/components/claim/claim-confirm";
 import { ClaimShell } from "@/components/claim/claim-shell";
 import { ClaimWaiting } from "@/components/claim/claim-waiting";
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { claimPath, claimTarget } from "@/lib/guest-rules";
 import { claimGuest } from "@/server/guest/claim";
 import { realClaimDeps } from "@/server/guest/claim-deps";
@@ -67,9 +67,9 @@ export default async function ClaimPage({
       ) : (
         <>
           <h1 className="text-h2">{NONE_COPY}</h1>
-          <Link href="/library" className={buttonVariants({ className: "self-start" })}>
-            Go to your library
-          </Link>
+          <Button asChild className="self-start">
+            <Link href="/library">Go to your library</Link>
+          </Button>
         </>
       )}
     </ClaimShell>
