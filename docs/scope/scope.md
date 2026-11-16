@@ -389,7 +389,7 @@ Spec [0025](../specs/0025-before-and-after-homepage.md)
 
 ### 24. Edited with Take Studio credit · in-progress
 A small "Edited with Take Studio" credit in the corner of rendered videos made on a free account, drawn by the render, off by default and switchable per take on paid plans. Growth idea from Toyin (Slack, 2026-11-16).
-**Done when:** a free account's new render ends with the credit for its last four seconds without changing length, captions or charged seconds, takes made before launch are never changed, the take page says whether the credit is on, a paid creator can switch it per take, and the Terms say so.
+**Done when:** a free account's new render ends with the credit for its last four seconds (the last half for a video under eight seconds) without changing length, captions or charged seconds, takes made before launch are never changed, the take page says whether the credit is on, a paid creator can switch it per take, and the Terms say so.
 - [x] Design it (spec): `/architect Edited with Take Studio credit`
 - [ ] Build it: `/develop Edited with Take Studio credit`
    - [ ] Rules, overlay PNG and filter, with the contrast pair (task 1)
