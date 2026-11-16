@@ -31,6 +31,15 @@ export function ServicesSection() {
             <dd>
               <span className="text-muted-foreground">Where:</span> {p.location}
             </dd>
+            {p.addendumUrl ? (
+              <dd>
+                How {p.name} handles the check is also described in{" "}
+                <a href={p.addendumUrl} rel="noopener noreferrer" className="underline">
+                  Cloudflare&apos;s Turnstile Privacy Addendum
+                </a>
+                .
+              </dd>
+            ) : null}
           </div>
         ))}
       </dl>
