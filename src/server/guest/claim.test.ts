@@ -1,4 +1,6 @@
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { analyticsEvent, processingJob } from "@/db/schema";
 import { type TestDb, openTestDb } from "@/db/testing/test-db";
 import { SECRET } from "@/db/data/usage-test-helpers";
 import { fakeR2 } from "../uploads/uploads-test-helpers";
@@ -103,5 +105,51 @@ describe("the claim (spec 0023, AC-3, AC-5)", () => {
     expect(res.ok && res.data.kind === "done" && res.data.pending).toEqual([g.takes[1]?.id]);
     expect(await takesOf(testDb.db, me.id)).toHaveLength(1);
     expect(await guestExists(testDb.db, g.guestId)).toBe(true);
+  });
+
+  it("records guest_claimed with timing parked when a take is still uploading (AC-12)", async () => {
+    const g = await seedGuest(testDb.db, { statuses: ["uploaded", "uploading"] });
+    const me = await seedAccount(testDb.db, `${crypto.randomUUID()}@example.com`);
+    await run({ claimId: g.claimId, userId: me.id, cookie: g.token });
+    const rows = await testDb.db
+      .select()
+      .from(analyticsEvent)
+      .where(eq(analyticsEvent.creatorId, me.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      name: "guest_claimed",
+      props: { via: "cookie", timing: "parked" },
+    });
+  });
+  it("records guest_claimed once when the same account repeats a parked claim", async () => {
+    const g = await seedGuest(testDb.db, { statuses: ["uploaded", "uploading"] });
+    const me = await seedAccount(testDb.db, `${crypto.randomUUID()}@example.com`);
+    await run({ claimId: g.claimId, userId: me.id, cookie: g.token });
+    const again = await run({ claimId: g.claimId, userId: me.id, cookie: g.token });
+    expect(again).toMatchObject({ ok: true, data: { kind: "done" } });
+    const rows = await testDb.db
+      .select()
+      .from(analyticsEvent)
+      .where(eq(analyticsEvent.creatorId, me.id));
+    expect(rows).toHaveLength(1);
+  });
+
+  it("records after_start for a job that started and was refunded before the claim (AC-12)", async () => {
+    const g = await seedGuest(testDb.db);
+    const me = await seedAccount(testDb.db, `${crypto.randomUUID()}@example.com`);
+    await testDb.db.insert(processingJob).values({
+      id: crypto.randomUUID(),
+      takeId: g.takes[0]?.id ?? "",
+      kind: "initial",
+      status: "failed",
+      secondsCharged: 100,
+      refunded: true,
+    });
+    await run({ claimId: g.claimId, userId: me.id, cookie: g.token });
+    const [row] = await testDb.db
+      .select()
+      .from(analyticsEvent)
+      .where(eq(analyticsEvent.creatorId, me.id));
+    expect(row).toMatchObject({ props: { via: "cookie", timing: "after_start" } });
   });
 });

@@ -14,6 +14,7 @@ import {
 } from "@/lib/guest-rules";
 import { type Result, err, ok } from "@/lib/result";
 import { UPLOAD, containerContentType, partCount } from "@/lib/uploads";
+import { recordEvent } from "../analytics/record";
 import { attachUpload, create } from "../takes";
 import type { CreatedUpload, UploadDeps } from "../uploads/base";
 
@@ -104,6 +105,8 @@ export async function createGuestUpload(
   }
   const attached = await attachUpload(deps.db, t.creatorId, t.id, uploadId);
   if (!attached.ok) return err("storage_error");
+  // Spec 0023 AC-12: no creator (the guest row goes), no address, file name or size.
+  await recordEvent(deps.db, { name: "guest_drop", creatorId: null, takeId: t.id });
   return ok({ takeId: t.id, partSize: UPLOAD.partSize, partCount: partCount(sizeBytes), token });
 }
 

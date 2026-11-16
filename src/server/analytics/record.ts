@@ -1,6 +1,7 @@
 import { insertAnalyticsEvent } from "@/db/data/analytics";
 import type { Executor } from "@/db/types";
 import {
+  NO_CREATOR_EVENTS,
   hasRequiredTakeId,
   parseEventProps,
   type AnalyticsEventInput,
@@ -20,7 +21,9 @@ export async function recordEvent(
   event: AnalyticsEventInput,
 ): Promise<Result<boolean, RecordError>> {
   const props = parseEventProps(event.name, event.props);
-  if (!props || !hasRequiredTakeId(event.name, event.takeId)) {
+  const creatorOk =
+    event.creatorId !== null || (NO_CREATOR_EVENTS as readonly string[]).includes(event.name);
+  if (!props || !creatorOk || !hasRequiredTakeId(event.name, event.takeId)) {
     console.error("analytics event refused", { name: event.name, takeId: event.takeId ?? null });
     return err("invalid");
   }

@@ -5,7 +5,8 @@ import type { Executor } from "../types";
 
 export type NewAnalyticsRow = {
   readonly name: AnalyticsEventName;
-  readonly creatorId: string;
+  /** Null only for the guest events (spec 0023). */
+  readonly creatorId: string | null;
   readonly takeId: string | null;
   readonly props: Readonly<Record<string, unknown>>;
   readonly occurredAt?: Date;

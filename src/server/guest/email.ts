@@ -7,6 +7,7 @@ import { guestEmailSchema } from "@/lib/api-schemas/requests";
 import { GUEST_EMAIL_SUFFIX, GUEST_MAX_EMAIL_SENDS, claimPath } from "@/lib/guest-rules";
 import { type Result, err, ok } from "@/lib/result";
 import { usageAccountHash } from "@/lib/usage-hash";
+import { recordEvent } from "../analytics/record";
 import { guestCookieValue, liveGuest } from "./session";
 
 /**
@@ -157,5 +158,7 @@ export async function handleGuestEmail(request: Request, deps: GuestEmailDeps): 
   }
   // The link already went out, so a failed save keeps its send slot counted.
   if (!(await saveAddress(db, claimId, { email, emailHash }))) return refuse("send_failed");
+  // Spec 0023 AC-12: the event holds no address, hash, link or claim id.
+  await recordEvent(db, { name: "guest_email_added", creatorId: null });
   return Response.json({ ok: true }, { headers: { "cache-control": "private, no-store" } });
 }
