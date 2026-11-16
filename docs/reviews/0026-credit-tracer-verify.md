@@ -19,7 +19,7 @@
 | 7 | Failure falls back clean (AC-10) | `take-run/credit.test.ts` (clean retry after a non zero exit or the credited cap, never after an abort), `credit-filter.test.ts` (`isUsableCreditPng`) | Passes |
 | 8 | The `credit` job kind belongs to the background family | `processing.test.ts` (`jobFamily`, `isBackgroundKind`, steps) | Passes |
 | 9 | The longest allowed take fits the time limit | A synthetic 10 min 1080p30 test pattern with audio, plain render | Clean encode 318 s, credited 288 s, against the 20 min (1200 s) cap, about 3.8 times of room. The source is easy content, so a real take is slower, still far inside it |
-| 10 | The whole repo is green | `pnpm lint && pnpm typecheck && pnpm test && pnpm check:lines` | Lint 0 errors, typecheck clean, check:lines clean, and the test run after merging main passed except two items that were my own mistakes (a stale local test database and a job kind list in `processing.test.ts`). Both are fixed and re run green (100 tests across the 17 credit related files). A last full run is in the PR |
+| 10 | The whole repo is green | `pnpm lint && pnpm typecheck && pnpm test && pnpm check:lines` | Lint 0 errors, typecheck clean, check:lines clean, and the final run on the merged branch passed: 309 test files, 2759 tests. An earlier run after merging main had two failures of my own (a stale local test database and a job kind list in `processing.test.ts`), both fixed |
 
 ## Found and fixed during this check
 
