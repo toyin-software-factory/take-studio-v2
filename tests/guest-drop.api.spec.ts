@@ -9,6 +9,8 @@ import { setGuestSettings, TURNSTILE_TEST_TOKEN } from "./support/guest";
 // `src/server/guest/*.test.ts` against a real database, and the card in `home-drop.spec.ts`.
 const HAS_KEYS = Boolean(setting("TURNSTILE_SECRET_KEY") ?? process.env.TURNSTILE_SITE_KEY);
 test.skip(!HAS_KEYS, "needs the Turnstile test keys");
+// Two tests change the shared app_setting rows; serial keeps each restore ahead of the next test.
+test.describe.configure({ mode: "serial" });
 
 const MiB = 1024 * 1024;
 const body = (extra: Record<string, unknown> = {}) => ({
@@ -55,7 +57,7 @@ test("the kill switch pauses the drop box (AC-7)", async ({ request, baseURL }) 
 });
 
 test("a spent daily budget refuses the next drop (AC-8)", async ({ request, baseURL }) => {
-  const restore = await setGuestSettings({ dailyMinutes: 0 });
+  const restore = await setGuestSettings({ enabled: true, dailyMinutes: 0 });
   try {
     const res = await request.post("/api/guest/uploads", {
       data: body(),
