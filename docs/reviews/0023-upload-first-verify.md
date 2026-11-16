@@ -20,8 +20,8 @@
 | AC-8 | met | e2e `guest_daily_minutes = 0` gives `guest_budget_spent`; `claim-usage.test.ts` covers the charge timing |
 | AC-9 | met by unit test | `guest-expiry.test.ts` (sweep deletes file, rows, email, guest); the sweep is a Trigger.dev job, so the scheduled run needs a deployed check |
 | AC-10 | met except the result view | e2e: a guest cookie gets no `/library` and no `/api/takes/<id>`; the view only result route and player are **owned by B2-T182 (route) and B2-T183 (player and e2e)** |
-| AC-11 | waiting on #383 (B2-T175) | `pnpm legal:drift` is clean on this branch; the legal facts and copy land with #383 |
-| AC-12 | waiting on #383 (B2-T175) | the four analytics events land with #383 |
+| AC-11 | pass | #383 is on main and merged in here. `pnpm legal:drift` says nothing flagged, and the legal facts and analytics unit tests pass (5 files, 50 tests) |
+| AC-12 | pass | the four events (`guest_drop`, `guest_email_added`, `guest_claimed`, `guest_expired`) are on main; props are an empty object, enums or one boolean, all strict, so no email, file name or address can be stored |
 | AC-13 | met | `home-drop.spec.ts` keyboard path and axe; claim screens axe clean |
 
 ## Specced surfaces
@@ -34,4 +34,4 @@ Real Resend email, real multipart upload to R2, the scheduled sweep, the live Tu
 
 ## Scope and spec
 
-Scope row 21 and the spec status are updated by /sync once #383 and B2-T183 land; this PR only records the verify.
+Scope row 21 and the spec status are updated by /sync once B2-T183 lands (#383 is in); this PR only records the verify.
