@@ -133,3 +133,52 @@
   outline: 2px solid var(--color-ink);
   outline-offset: 3px;
 }
+.h-drop-steps {
+  margin: 0;
+}
+.h-drop-step-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.h-drop-step {
+  display: grid;
+  gap: var(--space-1);
+  text-align: left;
+  font-size: var(--fs-small);
+  color: var(--color-text-muted);
+}
+.h-drop-step[data-state="now"] {
+  color: var(--color-ink);
+  font-weight: 600;
+}
+.h-drop-step[data-state="past"] {
+  color: var(--color-ink);
+}
+.h-drop-step-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-line);
+}
+.h-drop-step[data-state="now"] .h-drop-step-bar,
+.h-drop-step[data-state="past"] .h-drop-step-bar {
+  background: var(--color-ink);
+}
+.h-drop-tick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  border-radius: 999px;
+  background: var(--color-ink);
+  color: var(--color-bg);
+}
+.h-drop-stop {
+  margin: 0;
+  font-size: var(--fs-h3, 1.25rem);
+}

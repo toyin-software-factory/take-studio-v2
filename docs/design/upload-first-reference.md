@@ -119,3 +119,7 @@ Each state keeps the same card size so nothing shifts. Every message names the n
 - Should the card live inside the hero or directly under it? (Spec 0010 owns the layout.)
 - Final copy for the limit and expiry messages.
 - Whether to add "Open Gmail" and "Open Outlook" shortcuts on the claim screen.
+
+## B2-T184 polish note
+
+Toyin's designer review added six details to the drop card (a too long check, numbers in the refusals, a file row with a tick, a three step indicator, stop headings, a clearer email error). Only those six were taken. The invite form, the "coming soon" labels and the example caption with a real name stay out.

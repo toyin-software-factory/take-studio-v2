@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRef } from "react";
-import { DROP_COPY } from "@/lib/guest-drop";
+import { DROP_COPY, REFUSAL_HEADING, dropStep } from "@/lib/guest-drop";
 import { DropEmailForm, DropSent } from "./drop-email";
 import { DropProgress } from "./drop-progress";
 import { DropResult } from "./drop-result";
+import { DropSteps } from "./drop-steps";
 import { DropZone } from "./drop-zone";
 import { dropBusy, useGuestDrop } from "./use-guest-drop";
 
@@ -26,6 +27,7 @@ export function DropCard({ siteKey }: { readonly siteKey: string | null }) {
       <h2 className="h-drop-h" id="drop-title">
         {DROP_COPY.heading}
       </h2>
+      <DropSteps step={dropStep(drop.kind, email.kind === "sent")} />
       <p className="h-sr-only" role="status">
         {live}
       </p>
@@ -33,6 +35,9 @@ export function DropCard({ siteKey }: { readonly siteKey: string | null }) {
         <DropProgress state={drop} onCancel={g.cancel} />
       ) : drop.kind === "refused" ? (
         <div className="h-drop-refused" role="alert">
+          {REFUSAL_HEADING[drop.refusal] ? (
+            <h3 className="h-drop-stop">{REFUSAL_HEADING[drop.refusal]}</h3>
+          ) : null}
           <p>{drop.message}</p>
           <Link className="h-btn h-drop-btn" href="/sign-in">
             {DROP_COPY.signIn}
@@ -42,6 +47,7 @@ export function DropCard({ siteKey }: { readonly siteKey: string | null }) {
         <DropZone
           onFile={g.choose}
           alert={drop.kind === "rejected" || drop.kind === "failed" ? drop.message : undefined}
+          kept
           retry={
             drop.kind === "failed" && drop.canRetry
               ? { label: DROP_COPY.retry, run: g.retry }

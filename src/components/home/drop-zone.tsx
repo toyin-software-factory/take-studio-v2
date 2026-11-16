@@ -12,11 +12,14 @@ export function DropZone({
   onFile,
   alert,
   retry,
+  kept,
 }: {
-  readonly onFile: (file: File | undefined) => void;
+  readonly onFile: (file: File | undefined) => void | Promise<void>;
   /** A friendly message from the last attempt, shown above the zone. */
   readonly alert?: string;
   readonly retry?: { readonly label: string; readonly run: () => void };
+  /** Said only when Try again really reuses the file the creator already chose. */
+  readonly kept?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -76,6 +79,7 @@ export function DropZone({
           </button>
         ) : null}
       </div>
+      {retry && kept ? <p className="h-drop-muted">{DROP_COPY.kept}</p> : null}
       <p className="h-drop-rules">{DROP_COPY.rules}</p>
     </div>
   );
