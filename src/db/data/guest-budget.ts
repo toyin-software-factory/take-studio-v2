@@ -50,6 +50,13 @@ export async function reserveGuestMinutes(
   const minutes = minutesToReserve(input.durationMs);
   const settings = await readGuestSettings(db);
   const result = await runTx(db, async (tx) => {
+    // Take first, then the day (the order release uses): a repeat admission reserves nothing more.
+    const [current] = await tx
+      .select({ reserved: take.guestReservedMinutes })
+      .from(take)
+      .where(eq(take.id, input.takeId))
+      .for("update");
+    if (current && current.reserved !== null) return ok(true);
     await tx.insert(guestBudgetDay).values({ day }).onConflictDoNothing();
     const rows = await tx
       .update(guestBudgetDay)

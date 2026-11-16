@@ -1,4 +1,6 @@
 import { eq } from "drizzle-orm";
+import { ok } from "@/lib/result";
+import { runTx } from "../tx";
 import { GUEST_MAX_SECONDS } from "@/lib/guest-rules";
 import { take } from "../schema";
 import type { Executor } from "../types";
@@ -31,9 +33,14 @@ export async function admitGuestTake(
     .where(eq(take.id, takeId));
   if (!row?.guestOrigin || row.status !== "uploaded" || row.reserved !== null) return "admitted";
 
+  // The failed move and the deletion row share one transaction: no original is left unqueued.
   const refuse = async (code: "guest_too_long" | "guest_budget_spent") => {
-    const moved = await transitionTake(db, takeId, "uploaded", "failed", { failureCode: code });
-    if (moved.ok) await queueDeletions(db, [row.originalKey]);
+    await runTx(db, async (tx) => {
+      const moved = await transitionTake(tx, takeId, "uploaded", "failed", { failureCode: code });
+      if (!moved.ok) return moved;
+      await queueDeletions(tx, [row.originalKey]);
+      return ok(true);
+    });
     return code;
   };
   const durationMs = row.durationMs ?? 0;

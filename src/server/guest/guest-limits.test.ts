@@ -1,5 +1,5 @@
 import { desc, eq } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { admitGuestTake } from "@/db/data/guest-admit";
 import { releaseGuestMinutes, reserveGuestMinutes } from "@/db/data/guest-budget";
 import { transitionTake } from "@/db/data/takes";
@@ -13,6 +13,13 @@ import { handleGuestCreate } from "./http";
 let testDb: TestDb;
 beforeAll(async () => {
   testDb = await openTestDb({ database: "take_studio_test_guest_limits" });
+  // The database is reused between runs: start with default settings and an empty budget.
+  await testDb.db.delete(appSetting);
+  await testDb.db.delete(guestBudgetDay);
+});
+// A test that throws before clearing its setting must not leave it for the next one.
+afterEach(async () => {
+  await testDb.db.delete(appSetting);
 });
 afterAll(() => testDb?.close());
 
