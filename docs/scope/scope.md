@@ -43,6 +43,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 19 | Cut quality measurement | Launch | done |
 | 20 | Record with script | Slice 8 | done |
 | 21 | Upload first, sign in after | Slice 9 | planned |
+| 22 | Billing & plans | Slice 9 | planned |
 | 23 | Before and after on the homepage | Slice 10 | planned |
 
 ## Foundations
@@ -358,6 +359,17 @@ A visitor drops a video on the homepage and it uploads and processes with no acc
 - [ ] Test it: `/test Upload first, sign in after`
 Spec [0023](../specs/0023-upload-first-sign-in-after.md)
 
+## Slice 9: Billing & plans
+
+### 22. Billing & plans · planned
+A paid Creator plan on top of the free 60 minutes a month, sold through a merchant of record (taxes and VAT handled for us), with a locked founding price for the first 50 founding members (C-26). The spec is written now; the build is in month 2. Prices and the provider are decisions for Toyin, with recommended defaults in the spec. Test mode only until she opens the provider account.
+**Done when:** a creator can pay for the plan, get the bigger monthly allowance at once, manage or cancel from a billing page, and fall back to free calmly when a payment fails; founding members get their locked price; the usage limit reads the plan in one place.
+- [x] Design it (spec): `/architect Billing & plans`
+- [ ] Build it: `/develop Billing & plans`
+- [ ] Verify it: `/check verify Billing & plans`
+- [ ] Test it: `/test Billing & plans`
+Spec [0024](../specs/0024-billing-and-plans.md)
+
 ## Slice 10: Before and after on the homepage
 
 ### 23. Before and after on the homepage · planned
@@ -374,7 +386,6 @@ Spec [0025](../specs/0025-before-and-after-homepage.md)
 
 ## Deferred
 Out of scope for this build pass, kept so the plan stays honest.
-- **Billing & plans**: paid plans beyond the free monthly allowance · needs a decision · GA
 - **Chat assistant in the app**: creators give edits in plain words instead of clicking · needs a decision
 - **Burned in captions**: captions rendered into the video · needs a decision
 - **More languages**: transcripts for languages other than English · needs a decision
