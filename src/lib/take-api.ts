@@ -93,6 +93,15 @@ export const takeDetailSchema = z.object({
     null,
   ),
   noGreenScreen: z._default(z.boolean(), false),
+  /** Spec 0026: whether the stored video carries the credit; older bodies say no. */
+  credit: z._default(
+    z.object({
+      applied: z.boolean(),
+      canChange: z._default(z.boolean(), false),
+      choice: z._default(z.nullable(z.enum(["on", "off"])), null),
+    }),
+    { applied: false, canChange: false, choice: null },
+  ),
   /** B2-T156: the source frame rate the render snapped its cuts to; null when unknown. */
   sourceFps: z._default(z.nullable(z.number()), null),
   backgroundJob: z._default(

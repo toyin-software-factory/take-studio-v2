@@ -25,6 +25,8 @@ export type TakeSeed = {
   readonly steps?: readonly StepSeed[];
   /** A succeeded latest render removing these ranges. */
   readonly removedRanges?: readonly { readonly startMs: number; readonly endMs: number }[];
+  /** The latest render carries the "Edited with Take Studio" credit (spec 0026). */
+  readonly creditApplied?: boolean;
   /** The creator's script (spec 0021); null or absent for none. Synthetic text only. */
   readonly script?: string | null;
   /** Minutes ago the take was created, for ordering. */
@@ -69,10 +71,11 @@ export async function seedTakes(creatorId: string, seeds: readonly TakeSeed[]): 
                   values (${randomUUID()}, ${jobId}, ${step.name}, ${position}, ${step.status}, ${step.progress ?? 0})`;
       }
       if (seed.removedRanges) {
-        await sql`insert into render (id, take_id, job_id, status, video_key, duration_ms, removed_ranges, is_latest)
+        await sql`insert into render (id, take_id, job_id, status, video_key, duration_ms, removed_ranges, is_latest, credit_applied)
                   values (${randomUUID()}, ${id}, ${jobId}, 'succeeded', ${`renders/${id}/r.mp4`},
                     ${(seed.durationMs ?? 0) - seed.removedRanges.reduce((s, r) => s + r.endMs - r.startMs, 0)},
-                    ${sql.json(seed.removedRanges as unknown as postgres.JSONValue)}, true)`;
+                    ${sql.json(seed.removedRanges as unknown as postgres.JSONValue)}, true,
+                    ${seed.creditApplied ?? false})`;
       }
     }
   } finally {

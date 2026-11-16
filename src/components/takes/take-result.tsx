@@ -4,6 +4,7 @@ import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import type { TakeDetail } from "@/lib/take-api";
+import { creditNote } from "@/lib/credit-copy";
 import { TAKE_NOTES, removedNote } from "@/lib/take-display";
 import { useTakeDownloads } from "./use-take-downloads";
 
@@ -16,9 +17,11 @@ export function TakeResult({ detail }: { readonly detail: TakeDetail }) {
   const { pending, download } = useTakeDownloads(detail.take.id);
   const { take, note, removedMs } = detail;
   if (take.status !== "ready" || take.expired) return null;
+  // No paid plan wording until billing and the paid switch exist (spec 0026 AC-8).
+  const credit = creditNote(detail.credit, false);
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
       <p className="font-medium">{note ? TAKE_NOTES[note] : removedNote(removedMs)}</p>
       <div className="flex flex-wrap gap-2">
         <Button loading={pending === "download"} onClick={() => void download("download")}>
@@ -33,6 +36,12 @@ export function TakeResult({ detail }: { readonly detail: TakeDetail }) {
           Download original
         </Button>
       </div>
+      {credit ? (
+        <p className="text-small text-muted-foreground sm:basis-full" data-check="credit-note">
+          {credit.text}
+          {credit.paid ? ` ${credit.paid}` : ""}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -135,6 +135,20 @@ describe("GET /api/takes/{id} (AC-7, AC-8, AC-9)", () => {
     expect(body.removedMs).toBe(500);
   });
 
+  it("reports the credit: applied only on a succeeded render that carries it, never changeable yet (0026 AC-8, AC-9)", async () => {
+    const creator = await createCreator(db);
+    const asIs = await readyTake(creator.id);
+    const credited = await readyTake(creator.id, { render: "succeeded" });
+    await db.update(render).set({ creditApplied: true }).where(eq(render.takeId, credited.id));
+    const plain = await readyTake(creator.id, { render: "succeeded" });
+    const credit = async (id: string) =>
+      (await (await handleGet(req("GET", "/x"), id, takeDeps(creator.id))).json()).credit;
+    const none = { applied: false, canChange: false, choice: null };
+    expect(await credit(asIs.id)).toEqual(none);
+    expect(await credit(plain.id)).toEqual(none);
+    expect(await credit(credited.id)).toEqual({ applied: true, canChange: false, choice: null });
+  });
+
   it("notes no cuts and no audio (AC-7)", async () => {
     const creator = await createCreator(db);
     const noCuts = await readyTake(creator.id);
