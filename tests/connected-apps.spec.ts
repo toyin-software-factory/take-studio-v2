@@ -80,6 +80,22 @@ test("disconnect asks first; Keep returns focus; Disconnect removes it at once (
   await expect(page.getByText("No apps are connected.")).toBeVisible();
 });
 
+test("focus lands on the heading when the page runs slowly after Disconnect (B2-T165)", async ({
+  page,
+  baseURL,
+}) => {
+  await setup(page, baseURL!);
+  await page.getByRole("button", { name: "Disconnect Synthetic Assistant" }).click();
+  // A slow page finishes closing the dialog after the next frame: the focus move must wait for the
+  // close (onCloseAutoFocus), or Radix's own restore overwrites it.
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 });
+  await page.getByRole("dialog").getByRole("button", { name: "Disconnect" }).click();
+  await expect(page.getByRole("dialog")).toBeHidden();
+  await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+  await expect(page.getByRole("heading", { level: 2, name: "Connected apps" })).toBeFocused();
+});
+
 test("a failed disconnect keeps the dialog open with an alert", async ({ page, baseURL }) => {
   await setup(page, baseURL!);
   await page.route("**/api/connected-apps/*", (route) =>
