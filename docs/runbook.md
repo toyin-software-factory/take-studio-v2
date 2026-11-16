@@ -20,9 +20,27 @@ Production is four things: the **Worker** (the web app, Cloudflare, name `take-s
    - **Turn off guest uploads** (spec 0023, the homepage drop box for people who are not signed in) if guest drops are the problem (abuse, bot traffic, cost). In the Neon console, production branch, SQL editor, run:
      `INSERT INTO app_setting (key, value) VALUES ('guest_upload_enabled', 'false') ON CONFLICT (key) DO UPDATE SET value = 'false', updated_at = now();`
      It takes effect on the next drop, no deploy. New drops are refused and the drop card asks people to sign in; drops already uploading finish. To turn them back on, run the same line with `'true'`. Signed in creators are not affected. Say so to Michael.
+   - **Turn off the "Edited with Take Studio" credit** (spec 0026) if it is a problem (a render fault, a complaint, a wrong start date). In the Neon console, production branch, SQL editor, run:
+     `UPDATE app_setting SET value = 'false', updated_at = now() WHERE key = 'credit_enabled';`
+     New renders carry no credit from then on, no deploy. Videos already made keep the credit in their stored file, and so can a render that was already queued or encoding when you ran this (the credit decision is stored on its row when it is created), so a credit may still appear for a few minutes. **Never clear `credit_starts_at`**: it is the date that tells old takes from new ones, and clearing it and turning the switch back on would change what happens to every take. To turn the credit back on, run the same line with `'true'`. Say so to Michael.
    - Anything beyond this (taking the site down) is Michael's decision with Toyin. If you think you need it, say so; do not improvise.
 5. **Fix forward through a PR.** The fix, or the revert, is a normal PR to main. CI deploys it. Nobody deploys by hand.
 6. **After it is calm:** write down what happened (time, cause, what was lost) in a short note to Michael, and add the lesson here if this page was wrong or missing a step.
+
+## Go live: the credit (spec 0026, one time)
+
+Toyin runs this, only after she has given the go (Michael relays it): the Terms update is deployed, the Terms notice email has been sent (B2-T186, Toyin approved the run) and the portrait check is recorded. The order is the email first, then this SQL. Nothing here is a deploy. In the Neon console, production branch, SQL editor, in this order, with `<DATE>` the agreed start as a UTC time, for example `2026-11-24T09:00:00Z` (it must not be in the past, or takes made earlier today count as new; write it exactly in this form, with a `T` and a trailing `Z`, because any other form, such as a space instead of the `T` or `+00`, is not read and leaves the credit off with no error):
+
+1. Check the date first, because the app refuses a day that does not exist (31 November) but the update below would still store it and block a retry. Run `SELECT '<DATE>'::timestamptz;`: it must return the date you meant, and an error means a bad date, so fix it before going on.
+2. Set the start date once. This refuses to overwrite a date that is already set:
+   `UPDATE app_setting SET value = to_jsonb('<DATE>'::text), updated_at = now() WHERE key = 'credit_starts_at' AND value = 'null'::jsonb;`
+   It must say `UPDATE 1`. `UPDATE 0` means a date is already there: stop and tell Michael.
+3. Switch it on:
+   `UPDATE app_setting SET value = 'true', updated_at = now() WHERE key = 'credit_enabled';`
+4. Check: `SELECT key, value FROM app_setting WHERE key IN ('credit_enabled', 'credit_starts_at');` shows `true` and the date.
+5. After the start time, upload a new test take on a free test account (use a recording with speech and at least one cut, because a take with no cuts or no audio is handed back as it is and never gets a credit) and open the finished video: the last seconds show "Edited with Take Studio" top left. A take made before the start date carries none. Say so to Michael.
+
+To switch it off again, see the credit line in "First steps in an incident". Never clear the date.
 
 ## 1. Roll back the Worker
 
