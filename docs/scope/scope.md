@@ -395,7 +395,8 @@ A small "Edited with Take Studio" credit in the corner of rendered videos made o
    - [ ] Rules, overlay PNG and filter, with the contrast pair (task 1)
    - [ ] Migration and the render thread, with fallback and keyed gate (task 2)
    - [ ] Take page line, Terms copy and legal version (tasks 3 and 4)
-   - [ ] Paid switch and change job, after the billing build, then go live (tasks 5 and 6)
+   - [ ] Go live, with the Terms copy only mentioning paid plans once billing is on (task 6)
+   - [ ] Paid switch and change job, after the billing build (task 5)
 - [ ] Verify it: `/check verify Edited with Take Studio credit`
 - [ ] Test it: `/test Edited with Take Studio credit`
 Spec [0026](../specs/0026-edited-with-credit.md)
