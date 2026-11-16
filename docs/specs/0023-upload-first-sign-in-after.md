@@ -196,7 +196,7 @@ Tracer Bullet: one thin thread first (drop, claim, see the take), then thicken.
 7. [x] Cleanup sweep for expired guests through the existing delete path. Satisfies **AC-9**
 8. Homepage drop zone and email step UI, with Mobbin checked and `design-check`. Satisfies **AC-1, AC-2, AC-13**
 9. Legal facts, cookie list, Privacy and Terms copy, `LEGAL_VERSION`, text hash line. Satisfies **AC-11**
-10. Analytics events and funnel on `/insights`. Satisfies **AC-12**
+10. Analytics events and funnel on `/insights`. Satisfies **AC-12**. Also records `guest_expired` after the sweep: `deleteExpiredGuestTakes` (`src/db/data/guest-expiry.ts`) already returns `{ takeId, hadEmail }` per deleted take, and `sweepExpiredGuests` (`src/trigger/guest-expiry.ts`) is where to call `recordEvent` with a null creator. Adding the name needs the CHECK migration and the legal facts line (agreed with Michael)
 11. Playwright end to end and `/check verify`. Satisfies **AC-1 to AC-13**
 
 ## Consequences
