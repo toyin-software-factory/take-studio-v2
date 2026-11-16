@@ -52,7 +52,6 @@ export function useGuestDrop(siteKey: string | null, mount: RefObject<HTMLDivEle
   const controller = useRef<AbortController | null>(null);
   const chosen = useRef<File | null>(null);
   const queued = useRef<string | null>(null);
-  const reading = useRef(false);
 
   useEffect(() => {
     if (!dropBusy(drop)) return;
@@ -125,20 +124,26 @@ export function useGuestDrop(siteKey: string | null, mount: RefObject<HTMLDivEle
 
   const choose = useCallback(
     async (file: File | undefined) => {
-      if (!file || controller.current || reading.current) return;
+      if (!file || controller.current) return;
       const check = checkGuestFile({ name: file.name, size: file.size, type: file.type });
       if (!check.ok) return setDrop({ kind: "rejected", message: check.message });
       // The length comes from the file's own metadata; unreadable within about 1.5 s goes ahead.
-      reading.current = true;
+      // Cancel works here too: the same controller aborts the read and no upload starts.
+      const abort = new AbortController();
+      controller.current = abort;
       setDrop({ kind: "checking", fileName: file.name, meta: fileMeta(file.size, null) });
-      const seconds = await readDuration(file);
-      reading.current = false;
+      const seconds = await readDuration(file, abort.signal);
+      if (controller.current === abort) controller.current = null;
+      if (abort.signal.aborted) {
+        discardQueued();
+        return setDrop({ kind: "idle" });
+      }
       const long = checkGuestDuration(seconds);
       if (long) return setDrop({ kind: "rejected", message: long.message });
       chosen.current = file;
       void run(file, check.container, fileMeta(file.size, seconds));
     },
-    [run],
+    [run, discardQueued],
   );
 
   const retry = useCallback(() => {

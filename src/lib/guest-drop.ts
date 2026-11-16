@@ -1,5 +1,6 @@
 import type { Container } from "./processing";
 import { GUEST_MAX_BYTES, GUEST_MAX_SECONDS, GUEST_TTL_HOURS } from "./guest-rules";
+import { formatClock } from "./take-display-status";
 import { checkFile } from "./upload-rules";
 
 /**
@@ -68,8 +69,10 @@ export const REFUSAL_HEADING: Readonly<Partial<Record<DropRefusal, string>>> = {
 
 /** The step a card state is on: 1 choose, 2 upload and email, 3 check your email. */
 export function dropStep(drop: string, emailSent: boolean): 1 | 2 | 3 {
-  if (emailSent) return 3;
-  return drop === "checking" || drop === "uploading" || drop === "done" ? 2 : 1;
+  // A sent email counts only while the upload is active or done: after a cancel or a failure the
+  // card is back on step 1.
+  if (drop !== "checking" && drop !== "uploading" && drop !== "done") return 1;
+  return emailSent ? 3 : 2;
 }
 
 export function formatBytes(bytes: number): string {
@@ -77,15 +80,9 @@ export function formatBytes(bytes: number): string {
   return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 }
 
-export function formatDuration(seconds: number): string {
-  const whole = Math.max(0, Math.round(seconds));
-  const m = Math.floor(whole / 60);
-  return `${m}:${String(whole % 60).padStart(2, "0")}`;
-}
-
 /** The small line under the file name while it uploads, for example "48.2 MB · 1:12". */
 export const fileMeta = (bytes: number, seconds: number | null): string =>
-  seconds === null ? formatBytes(bytes) : `${formatBytes(bytes)} · ${formatDuration(seconds)}`;
+  seconds === null ? formatBytes(bytes) : `${formatBytes(bytes)} · ${formatClock(seconds * 1000)}`;
 
 /**
  * Advice from the length the browser read from the video's metadata. `null` means it could not

@@ -7,7 +7,6 @@ import {
   dropStep,
   fileMeta,
   formatBytes,
-  formatDuration,
   percentLabel,
   refusalOf,
   stepLabel,
@@ -105,9 +104,8 @@ describe("file row and steps", () => {
   it("formats size and length", () => {
     expect(formatBytes(48.2 * 1024 * 1024)).toBe("48.2 MB");
     expect(formatBytes(2048)).toBe("2 KB");
-    expect(formatDuration(72)).toBe("1:12");
-    expect(formatDuration(5)).toBe("0:05");
     expect(fileMeta(48.2 * 1024 * 1024, 72)).toBe("48.2 MB · 1:12");
+    expect(fileMeta(1024 * 1024, 2.501)).toBe("1.0 MB · 0:02");
     expect(fileMeta(48.2 * 1024 * 1024, null)).toBe("48.2 MB");
   });
   it("names the step for screen readers", () => {
@@ -116,5 +114,9 @@ describe("file row and steps", () => {
     expect(dropStep("uploading", false)).toBe(2);
     expect(dropStep("done", false)).toBe(2);
     expect(dropStep("done", true)).toBe(3);
+    // A sent email does not keep step 3 after a cancel or a failure.
+    expect(dropStep("idle", true)).toBe(1);
+    expect(dropStep("failed", true)).toBe(1);
+    expect(dropStep("refused", true)).toBe(1);
   });
 });

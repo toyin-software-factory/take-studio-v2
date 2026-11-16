@@ -7,6 +7,7 @@ export const DURATION_WAIT_MS = 1500;
  */
 export function readDuration(
   file: Blob,
+  signal?: AbortSignal,
   waitMs: number = DURATION_WAIT_MS,
 ): Promise<number | null> {
   return new Promise((resolve) => {
@@ -24,6 +25,7 @@ export function readDuration(
     video.muted = true;
     video.onloadedmetadata = () => done(Number.isFinite(video.duration) ? video.duration : null);
     video.onerror = () => done(null);
+    signal?.addEventListener("abort", () => done(null), { once: true });
     video.src = url;
   });
 }
