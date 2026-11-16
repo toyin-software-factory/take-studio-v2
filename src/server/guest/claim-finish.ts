@@ -17,6 +17,7 @@ export async function finishParkedClaim(
   db: Db,
   takeId: string,
   usageSecret: string | undefined,
+  now: Date = new Date(),
 ): Promise<boolean> {
   // Without the secret the claimant cannot be charged, so the take waits for the next call.
   if (!usageSecret) return false;
@@ -47,7 +48,7 @@ export async function finishParkedClaim(
       const accountHash = await usageAccountHash(claimant.email, usageSecret);
       await moveTake(tx, t.id, t.creatorId, claim.claimUserId);
       // A job that started while the take was parked charged nobody: it charges the claimant now.
-      await chargeClaimedJobs(tx, { takeId: t.id, accountHash, now: new Date() });
+      await chargeClaimedJobs(tx, { takeId: t.id, accountHash, now });
       await closeGuestIfEmpty(tx, t.creatorId, claim.claimUserId);
       return true;
     });

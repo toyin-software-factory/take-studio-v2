@@ -98,7 +98,7 @@ describe("a parked claim that moves its take (AC-8)", () => {
     expect(started.ok).toBe(true);
     await db().update(guestClaim).set({ claimUserId: me.id }).where(eq(guestClaim.id, g.claimId));
     const before = await used(hash);
-    expect(await finishParkedClaim(db(), g.takeId, SECRET)).toBe(true);
+    expect(await finishParkedClaim(db(), g.takeId, SECRET, NOW)).toBe(true);
     expect((await jobOf(g.takeId)).chargedAccountHash).toBe(hash);
     expect((await used(hash)) - before).toBe(125);
   });
