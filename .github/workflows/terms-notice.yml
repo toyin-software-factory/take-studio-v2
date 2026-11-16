@@ -1,0 +1,55 @@
+name: Terms change notice
+
+# One off email to every account about a material Terms or Privacy change (spec 0015 decision 7,
+# B2-T186). Manual only: nothing here runs on a push. The job uses the `production` environment, so
+# it waits for the same approval as a deploy. `dry_run` starts ticked: a dry run prints only a
+# count and sends nothing. Untick it for the real send, after Toyin approved it.
+on:
+  workflow_dispatch:
+    inputs:
+      notice_id:
+        description: "Notice id from NOTICES in src/lib/email/terms-notice.ts (for example 2026-11-credit)"
+        required: true
+        type: string
+      dry_run:
+        description: "Dry run: print the number of recipients and send nothing"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# One notice run at a time, and a started run is never cancelled halfway through a send.
+concurrency:
+  group: terms-notice
+  cancel-in-progress: false
+
+jobs:
+  send:
+    name: Send the notice (dry run unless unticked)
+    runs-on: ubuntu-24.04
+    environment: production
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Send (counts and user ids only in the log)
+        env:
+          NOTICE_ID: ${{ inputs.notice_id }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
+          MIGRATE_TARGET: prod
+          BETTER_AUTH_URL: ${{ secrets.BETTER_AUTH_URL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          EMAIL_FROM: ${{ secrets.EMAIL_FROM }}
+        run: pnpm tsx scripts/send-terms-notice.ts

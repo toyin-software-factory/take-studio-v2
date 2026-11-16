@@ -94,6 +94,16 @@ The bucket's own **lifecycle rules** (`src/lib/storage-lifecycle.ts`, applied by
 
 The built in studios under `backgrounds/builtin/` are rebuilt by the `cleanup` task if they go missing. Uploaded backgrounds are not.
 
+## Terms change notice email (one off, manual)
+
+Spec 0015 decision 7: a material change to the Terms or Privacy Policy also gets an email. Run it only after Toyin approved the real send. Nothing runs from a sandbox.
+
+1. Add the notice to `NOTICES` in `src/lib/email/terms-notice.ts` (an id, the date, one or two sentences) and merge it.
+2. In GitHub, open Actions, `Terms change notice`, `Run workflow`. Give the notice id. Leave `dry_run` ticked first: the log prints only how many accounts would get the email.
+3. For the real send, run it again with `dry_run` unticked and approve the `production` environment, as for a deploy. The log shows counts and user ids only, never an address.
+4. The email goes to every account that is not an unclaimed guest. The take email opt out is ignored on purpose (a Terms notice is not a take email).
+5. A failed send lists user ids and the job turns red. Run it again with the same notice id: the key `terms-<notice id>-<user id>` stops a second email to anyone already sent. Resend keeps a key for only about 24 hours, so a rerun more than a day later can email people twice. Rerun the same day.
+
 ## Who to tell and where things live
 
 | What | Where |

@@ -87,7 +87,7 @@ export const PROCESSORS: readonly Processor[] = [
   {
     id: "resend",
     name: "Resend",
-    role: "Sends sign in links and take ready or failed emails.",
+    role: "Sends sign in links, take ready or failed emails, and a notice when our Terms or Privacy Policy change.",
     receives: "Your email address and the message we send.",
     doesNotReceive: "Your videos or transcripts.",
     location: "Resend cloud.",

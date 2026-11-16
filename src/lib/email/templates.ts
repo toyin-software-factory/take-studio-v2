@@ -33,7 +33,7 @@ type Block = {
   readonly footerLink?: { readonly label: string; readonly url: string };
 };
 
-function render(block: Block): { readonly html: string; readonly text: string } {
+export function render(block: Block): { readonly html: string; readonly text: string } {
   const p = (t: string) =>
     `<p style="margin:0 0 16px;font-size:16px;line-height:24px;color:#030303">${escapeHtml(t)}</p>`;
   const button = block.button
