@@ -61,6 +61,18 @@ export const API_EXCLUSIONS: readonly ApiExclusion[] = [
     "guest",
     "The drop box for visitors without an account: a bot check and a cookie, never a key.",
   ),
+  exclusion(
+    "POST",
+    "/api/guest/email",
+    "guest",
+    "Sends the one sign in link for a guest drop. Needs the guest cookie, never a key.",
+  ),
+  exclusion(
+    "POST",
+    "/api/guest/claim",
+    "guest",
+    "Adds a guest drop to the signed in account after the confirm click. Session only.",
+  ),
   exclusion("GET", "/api/health", "operations", "Liveness check for our own monitoring."),
   exclusion("GET", "/api/sentry-check", "operations", "Error reporting check for our own use."),
   exclusion(

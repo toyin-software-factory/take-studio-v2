@@ -35,6 +35,7 @@ export const PRIVATE_PATHS = [
   "/api/",
   "/emails",
   "/sign-in",
+  "/claim",
 ] as const;
 
 /** The one file under `/api/` that search engines may read: the OpenAPI document (spec 0018 AC-11). */

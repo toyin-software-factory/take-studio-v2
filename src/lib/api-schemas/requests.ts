@@ -35,6 +35,14 @@ export const uploadGuestCreateSchema = z
   })
   .strict();
 
+/** POST /api/guest/claim (spec 0023): the confirm click for an email only match. */
+export const guestClaimSchema = z.object({ claimId: z.uuid() }).strict();
+
+/** POST /api/guest/email (spec 0023): the one address the sign in link goes to. */
+export const guestEmailSchema = z
+  .object({ email: z.string().trim().toLowerCase().max(254).pipe(z.email()) })
+  .strict();
+
 /**
  * POST /api/uploads as the docs show it: the body above plus the optional length hint the handler
  * reads on its own (`hintSchema` in `src/server/uploads/http.ts`) to refuse a too long video before

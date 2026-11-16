@@ -116,7 +116,8 @@ describe("no route builds its own identity check (AC-5)", () => {
     );
 
   it("calls deps.getCreator and getSession only inside the shared guard and its deps", () => {
-    const allowed = new Set(["api-auth.ts", "api-auth-deps.ts", "request.ts"]);
+    // claim-deps.ts: the guest claim is cookie session only by design (spec 0023, no API keys).
+    const allowed = new Set(["api-auth.ts", "api-auth-deps.ts", "request.ts", "claim-deps.ts"]);
     const offenders = [...files("src/server"), ...files("src/app/api")].filter((f) => {
       if (allowed.has(f.split("/").pop() ?? "")) return false;
       const text = readFileSync(f, "utf8");
