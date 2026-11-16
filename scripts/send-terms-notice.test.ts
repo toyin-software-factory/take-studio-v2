@@ -8,7 +8,7 @@ import {
   termsNoticeEmail,
   type Recipient,
 } from "../src/lib/email/terms-notice";
-import { sendAll } from "./send-terms-notice";
+import { missingSendEnv, sendAll } from "./send-terms-notice";
 
 const user = (id: string, over: Partial<Recipient> = {}): Recipient => ({
   id,
@@ -81,5 +81,22 @@ describe("sendAll", () => {
     );
     expect(r).toEqual({ recipients: 2, sent: 1, failed: ["b"] });
     expect(logs).toEqual(["terms-notice: failed for user b"]);
+  });
+});
+
+describe("missingSendEnv", () => {
+  it("names the missing or empty secrets and never a value", () => {
+    const got = missingSendEnv({
+      RESEND_API_KEY: "secret-value",
+      EMAIL_FROM: " ",
+      BETTER_AUTH_URL: undefined,
+    });
+    expect(got).toEqual(["EMAIL_FROM", "BETTER_AUTH_URL"]);
+    expect(got.join()).not.toContain("secret-value");
+  });
+  it("is empty when all three are set", () => {
+    expect(missingSendEnv({ RESEND_API_KEY: "a", EMAIL_FROM: "b", BETTER_AUTH_URL: "c" })).toEqual(
+      [],
+    );
   });
 });

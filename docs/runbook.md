@@ -98,6 +98,7 @@ The built in studios under `backgrounds/builtin/` are rebuilt by the `cleanup` t
 
 Spec 0015 decision 7: a material change to the Terms or Privacy Policy also gets an email. Run it only after Toyin approved the real send. Nothing runs from a sandbox.
 
+0. Once: add the GitHub repository secrets `RESEND_API_KEY`, `EMAIL_FROM` and `BETTER_AUTH_URL`, with the same values as the Worker's (Toyin does it; values never go in Slack). The dry run fails with the missing names if any is absent.
 1. Add the notice to `NOTICES` in `src/lib/email/terms-notice.ts` (an id, the date, one or two sentences) and merge it.
 2. In GitHub, open Actions, `Terms change notice`, `Run workflow`. Give the notice id. Leave `dry_run` ticked first: the log prints only how many accounts would get the email.
 3. For the real send, run it again with `dry_run` unticked and approve the `production` environment, as for a deploy. The log shows counts and user ids only, never an address.

@@ -2,7 +2,7 @@
  * The one off Terms change notice (spec 0015 decision 7, B2-T186): run only
  * by the manual workflow `terms-notice.yml`. Sends one plain email per real account through the
  * existing Resend sender, with the key `terms-<notice id>-<user id>` so a rerun never sends twice.
- * A dry run (the default) prints only a count and needs no Resend key. Logs hold counts and
+ * A dry run (the default) prints only a count and sends nothing, but it still fails when a send secret is missing, so a green dry run proves the real send can start. Logs hold counts and
  * user ids, never an email address. It uses the database guard of `pnpm db:seed`.
  */
 import { drizzle } from "drizzle-orm/postgres-js";
@@ -22,6 +22,15 @@ import * as schema from "../src/db/schema";
 const PAUSE_MS = 600; // Resend allows 2 requests a second by default.
 const RETRIES = 3;
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+const SEND_ENV = ["RESEND_API_KEY", "EMAIL_FROM", "BETTER_AUTH_URL"] as const;
+
+/** Names (never values) of the send secrets that are missing or empty. */
+export function missingSendEnv(
+  env: Readonly<Record<string, string | undefined>>,
+): readonly string[] {
+  return SEND_ENV.filter((name) => (env[name] ?? "").trim() === "");
+}
 
 export type Summary = {
   readonly recipients: number;
@@ -81,6 +90,13 @@ async function main() {
   const notice = NOTICES[env.NOTICE_ID];
   if (!notice) throw new Error(`Unknown notice id. Known: ${Object.keys(NOTICES).join(", ")}`);
 
+  // Dry run too: a green dry run must mean the real send would not throw on a missing secret.
+  const missing = missingSendEnv(env);
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing secrets: ${missing.join(", ")}. Add them as GitHub repository secrets (see the runbook, step 0).`,
+    );
+  }
   const host = new URL(env.DATABASE_URL_DIRECT).hostname;
   const local = ["localhost", "127.0.0.1", "::1", "[::1]"].includes(host);
   if (!local && env.CI !== "true" && env.MIGRATE_TARGET !== "prod") {
@@ -104,9 +120,7 @@ async function main() {
     );
     if (env.DRY_RUN === "true") return console.log("terms-notice: dry run, nothing sent");
 
-    if (!env.RESEND_API_KEY || !env.EMAIL_FROM || !env.BETTER_AUTH_URL) {
-      throw new Error("A real send needs RESEND_API_KEY, EMAIL_FROM and BETTER_AUTH_URL.");
-    }
+    if (!env.RESEND_API_KEY || !env.EMAIL_FROM || !env.BETTER_AUTH_URL) return;
     const email = termsNoticeEmail(notice, env.BETTER_AUTH_URL);
     const send = resendSender({ RESEND_API_KEY: env.RESEND_API_KEY, EMAIL_FROM: env.EMAIL_FROM });
     const summary = await sendAll(recipients, env.NOTICE_ID, email, send);
