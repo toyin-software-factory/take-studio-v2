@@ -42,7 +42,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 18 | Email sign in and take ready email | Slice 1 | done |
 | 19 | Cut quality measurement | Launch | done |
 | 20 | Record with script | Slice 8 | done |
-| 21 | Upload first, sign in after | Slice 9 | planned |
+| 21 | Upload first, sign in after | Slice 9 | done |
 | 22 | Billing & plans | Slice 9 | planned |
 | 23 | Before and after on the homepage | Slice 10 | planned |
 | 24 | Edited with Take Studio credit | Slice 11 | in-progress |
@@ -347,17 +347,17 @@ Spec [0021](../specs/0021-record-with-script/index.md)
 
 ## Slice 9: Upload first, sign in after
 
-### 21. Upload first, sign in after · planned
+### 21. Upload first, sign in after · done
 A visitor drops a video on the homepage and it uploads and processes with no account; the email for the magic link is asked for while it runs, and opening the link claims the take. Growth idea from Toyin, next in the recommended order (C-30 asks for the choices in the spec).
 **Done when:** a signed out visitor can drop a video, type an email while it processes, open the sign in link on any device and land on their finished take; anonymous uploads are capped and, while unclaimed, count only against a shared guest budget; once claimed by a verified account they count against that account's 60 free minutes; and unclaimed ones are deleted after 24 hours.
 - [x] Design it (spec): `/architect Upload first, sign in after`
-- [ ] Build it: `/develop Upload first, sign in after`
-   - [ ] Migration, guest upload thread and limits (tasks 1 to 3)
-   - [ ] Email step, claim and usage charge (tasks 4 to 6)
-   - [ ] Cleanup sweep and homepage drop zone (tasks 7 and 8)
-   - [ ] Legal copy and analytics events (tasks 9 and 10)
-- [ ] Verify it: `/check verify Upload first, sign in after`
-- [ ] Test it: `/test Upload first, sign in after`
+- [x] Build it: `/develop Upload first, sign in after`
+   - [x] Migration, guest upload thread and limits (tasks 1 to 3)
+   - [x] Email step, claim and usage charge (tasks 4 to 6)
+   - [x] Cleanup sweep and homepage drop zone (tasks 7 and 8)
+   - [x] Legal copy and analytics events (tasks 9 and 10)
+- [x] Verify it: `/check verify Upload first, sign in after`
+- [x] Test it: `/test Upload first, sign in after`
 Spec [0023](../specs/0023-upload-first-sign-in-after.md)
 
 ## Slice 9: Billing & plans

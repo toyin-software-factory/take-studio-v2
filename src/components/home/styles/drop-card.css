@@ -96,6 +96,7 @@
   }
 }
 .h-drop-progress,
+.h-drop-result,
 .h-drop-email,
 .h-drop-sent,
 .h-drop-refused {
@@ -118,4 +119,17 @@
 }
 .h-drop-turnstile:empty {
   display: none;
+}
+.h-drop-result p {
+  margin: 0;
+}
+.h-drop-video {
+  width: 100%;
+  max-height: 24rem;
+  border-radius: var(--radius-md, 12px);
+  background: var(--color-ink);
+}
+.h-drop-video:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 3px;
 }

@@ -43,6 +43,12 @@ export const DROP_COPY = {
   resent: "Another email is on its way.",
   change: "Use a different email",
   waiting: "Still uploading. Keep this tab open.",
+  preparing: "We are working on your take. It will play here when it is ready.",
+  ready: "Your take is ready.",
+  keep: "Check your email to keep it. We delete it after 24 hours if you do not.",
+  videoLabel: "Your finished take",
+  resultGone: "This take is no longer available. Choose a file again to start a new one.",
+  resultFailed: "We couldn't finish your take. Sign in to try the upload again.",
 } as const;
 
 export const sentLine = (address: string): string =>

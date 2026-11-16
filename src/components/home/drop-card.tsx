@@ -5,6 +5,7 @@ import { useRef } from "react";
 import { DROP_COPY } from "@/lib/guest-drop";
 import { DropEmailForm, DropSent } from "./drop-email";
 import { DropProgress } from "./drop-progress";
+import { DropResult } from "./drop-result";
 import { DropZone } from "./drop-zone";
 import { dropBusy, useGuestDrop } from "./use-guest-drop";
 
@@ -61,6 +62,7 @@ export function DropCard({ siteKey }: { readonly siteKey: string | null }) {
           <DropEmailForm state={email} onSubmit={g.submitEmail} />
         )
       ) : null}
+      {drop.kind === "done" ? <DropResult /> : null}
       <div ref={mount} className="h-drop-turnstile" />
     </section>
   );
