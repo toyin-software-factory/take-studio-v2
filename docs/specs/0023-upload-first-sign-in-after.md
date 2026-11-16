@@ -198,6 +198,7 @@ Tracer Bullet: one thin thread first (drop, claim, see the take), then thicken.
 9. [x] Legal facts, cookie list, Privacy and Terms copy, `LEGAL_VERSION`, text hash line. Satisfies **AC-11**
 10. [x] Analytics events and funnel on `/insights`. Satisfies **AC-12**. Also records `guest_expired` after the sweep: `deleteExpiredGuestTakes` (`src/db/data/guest-expiry.ts`) already returns `{ takeId, hadEmail }` per deleted take, and `sweepExpiredGuests` (`src/trigger/guest-expiry.ts`) is where to call `recordEvent` with a null creator. Adding the name needs the CHECK migration and the legal facts line (agreed with Michael)
 11. Playwright end to end and `/check verify`. Satisfies **AC-1 to AC-13**
+12. [x] Result route `GET /api/guest/take` (`src/server/guest/take.ts`): `{ status, playUrl, expiresInSeconds }` for the guest cookie's own take (optional `takeId`, else the most recent), inline play link only when the take is ready, one 404 for every refusal. Added after Dwight found no step owned G30. Satisfies **AC-10**
 
 ## Consequences
 
