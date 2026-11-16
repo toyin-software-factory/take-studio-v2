@@ -1,3 +1,4 @@
+import { guestBudgetSpent, readGuestSettings } from "@/db/data/guest-budget";
 import { turnstileEnvSchema } from "@/lib/env";
 import { hashGuestIp } from "@/lib/guest-hash";
 import { uploadGuestCreateSchema } from "@/lib/api-schemas/requests";
@@ -31,6 +32,12 @@ const MESSAGES = {
   too_large: "This video is over 500 MB. Sign in to upload larger files.",
   bot_check_failed: "We couldn't confirm you're a person. Please try again.",
   guest_unavailable: "Uploading without an account isn't available right now. Sign in to upload.",
+  guest_paused: "Uploading without an account is paused for now. Sign in to upload.",
+  guest_busy: "You already have an upload in progress. Wait for it to finish, then try again.",
+  guest_address_limit:
+    "You've reached today's limit for uploads without an account. Sign in to upload more.",
+  guest_budget_spent:
+    "We've reached today's limit for uploads without an account. Try again tomorrow, or sign in to upload now.",
   storage_error: "Storage is having a problem right now. Please try again.",
 } as const;
 
@@ -40,6 +47,10 @@ const STATUS = {
   too_large: 422,
   bot_check_failed: 403,
   guest_unavailable: 503,
+  guest_paused: 503,
+  guest_busy: 429,
+  guest_address_limit: 429,
+  guest_budget_spent: 403,
   storage_error: 503,
 } as const;
 
@@ -53,6 +64,8 @@ const fromCreate: Readonly<Record<GuestCreateError, keyof typeof MESSAGES>> = {
   invalid: "invalid",
   too_large: "too_large",
   storage_error: "storage_error",
+  guest_busy: "guest_busy",
+  guest_address_limit: "guest_address_limit",
 };
 
 const fromBotCheck: Readonly<Record<TurnstileError, keyof typeof MESSAGES>> = {
@@ -66,6 +79,10 @@ export async function handleGuestCreate(request: Request, deps: GuestHttpDeps): 
   const parsed = uploadGuestCreateSchema.safeParse(body);
   if (!parsed.success) return refuse("invalid");
   if (parsed.data.sizeBytes > GUEST_MAX_BYTES) return refuse("too_large");
+
+  // The kill switch refuses new drops only, before any bot check or write (AC-6).
+  const uploadDeps = await deps.uploadDeps();
+  if (!(await readGuestSettings(uploadDeps.db)).enabled) return refuse("guest_paused");
 
   const keys = turnstileEnvSchema.safeParse(deps.env);
   const ip = clientIpOf(request.headers);
@@ -84,7 +101,11 @@ export async function handleGuestCreate(request: Request, deps: GuestHttpDeps): 
   } catch {
     return refuse("guest_unavailable");
   }
-  const result = await createGuestUpload(await deps.uploadDeps(), {
+  // Advisory look: a spent budget refuses early. The reservation at probe time is the real check.
+  if (await guestBudgetSpent(uploadDeps.db, uploadDeps.now?.() ?? new Date())) {
+    return refuse("guest_budget_spent");
+  }
+  const result = await createGuestUpload(uploadDeps, {
     body,
     cookie: guestCookieValue(request.headers.get("cookie")),
     ipHash,

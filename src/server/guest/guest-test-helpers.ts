@@ -14,6 +14,9 @@ export const body = {
   turnstileToken: "XXXX.DUMMY.TOKEN.XXXX",
 };
 
+/** A new address per request: the daily count per address would otherwise carry between runs. */
+export const randomIp = () => `192.0.2.${Math.floor(Math.random() * 1_000_000)}`;
+
 export function guestRequest(
   payload: unknown = body,
   extra: Readonly<Record<string, string>> = {},
@@ -23,7 +26,7 @@ export function guestRequest(
     headers: {
       "content-type": "application/json",
       origin: ORIGIN,
-      "cf-connecting-ip": "203.0.113.7",
+      "cf-connecting-ip": randomIp(),
       ...extra,
     },
     body: JSON.stringify(payload),

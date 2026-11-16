@@ -3,6 +3,8 @@ import type { TakeStatus } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
 import { type Probe, canTransition, checkUpload, videoExpiresAt } from "@/lib/take-rules";
 import { take } from "../schema";
+import { runTx } from "../tx";
+import { releaseGuestMinutes } from "./guest-budget";
 import type { Executor, Take } from "../types";
 
 /**
@@ -39,7 +41,27 @@ export async function transitionTake(
   changes: TransitionChanges = {},
 ): Promise<Result<Take, TransitionError>> {
   if (!canTransition(from, to)) return err("invalid_transition");
+  // A failed guest take gives its reserved minutes back (spec 0023 AC-6), in the same
+  // transaction as the status change: a failed release rolls the move back.
+  if (to === "failed") {
+    return runTx(db, async (tx) => {
+      const moved = await applyTransition(tx, takeId, from, to, changes);
+      if (moved.ok && moved.data.guestReservedMinutes !== null) {
+        await releaseGuestMinutes(tx, takeId);
+      }
+      return moved;
+    });
+  }
+  return applyTransition(db, takeId, from, to, changes);
+}
 
+async function applyTransition(
+  db: Executor,
+  takeId: string,
+  from: TakeStatus,
+  to: TakeStatus,
+  changes: TransitionChanges,
+): Promise<Result<Take, TransitionError>> {
   const [updated] = await db
     .update(take)
     .set({ ...changes, status: to })

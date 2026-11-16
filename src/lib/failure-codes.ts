@@ -25,6 +25,10 @@ export const FAILURE_CODES = {
   // Spec 0014: the first run would pass the monthly allowance. Nothing was charged, nothing
   // to refund; the take is kept and can be retried after the reset.
   limit_exceeded: { refundable: false },
+  // Spec 0023: a guest drop over 3 minutes, or one the day's guest budget has no room for.
+  // Nothing was charged; the original is queued for deletion.
+  guest_too_long: { refundable: false },
+  guest_budget_spent: { refundable: false },
   // Not refundable: the media was rejected, or the creator cancelled a running job.
   invalid_media: { refundable: false },
   too_long: { refundable: false },
@@ -70,6 +74,8 @@ export const MEDIA_FAILURE_CODES: ReadonlySet<string> = new Set([
   "resolution_exceeded",
   "corrupt_upload",
   "upload_abandoned",
+  "guest_too_long",
+  "guest_budget_spent",
 ]);
 
 export function isMediaFailure(code: string | null): boolean {
