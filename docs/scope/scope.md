@@ -46,6 +46,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 22 | Billing & plans | Slice 9 | planned |
 | 23 | Before and after on the homepage | Slice 10 | planned |
 | 24 | Edited with Take Studio credit | Slice 11 | in-progress |
+| 25 | Style toolkit | Slice 8 | planned |
 
 ## Foundations
 
@@ -399,6 +400,20 @@ A small "Edited with Take Studio" credit in the corner of rendered videos made o
 - [ ] Verify it: `/check verify Edited with Take Studio credit`
 - [ ] Test it: `/test Edited with Take Studio credit`
 Spec [0026](../specs/0026-edited-with-credit.md)
+
+### 25. Style toolkit · planned
+Ready made named styles for the finished video (zoom and push at cuts, sound fades, a light colour look). The creator picks one on the take page and presses Render; Natural, today's look, stays the default. Toyin's plan C-47, step 1; the later reference clip recipe fills the same format. Caption styles, a music bed and pace are follow ups.
+**Done when:** a creator can pick Natural, Calm, Punchy or Warm on the take page, render, and get that look, with Natural identical to today and no style adding a second render pass.
+- [x] Design it (spec): `/architect Style toolkit`
+- [ ] Build it: `/develop Style toolkit`
+   - [ ] Registry, storage and filter script thread, then Calm through the re render route and job (tasks 1 and 2)
+   - [ ] Style picker on the take page (task 3)
+   - [ ] Punchy, Warm and the colour look, render time check (task 4)
+   - [ ] Look preview and end to end check (task 5)
+   - [ ] API and MCP parity, legal drift check (task 6)
+- [ ] Verify it: `/check verify Style toolkit`
+- [ ] Test it: `/test Style toolkit`
+Spec [0022](../specs/0022-style-toolkit/index.md)
 
 ## Deferred
 Out of scope for this build pass, kept so the plan stays honest.
