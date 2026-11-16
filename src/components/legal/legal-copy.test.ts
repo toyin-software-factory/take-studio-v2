@@ -37,8 +37,9 @@ describe("the Privacy copy", () => {
     expect(text).toContain("never your video or your audio");
   });
 
-  it("names the one cookie and says there is no analytics or advertising cookie (AC-5)", () => {
+  it("names the two cookies and says there is no analytics or advertising cookie (AC-5)", () => {
     expect(text).toContain("better-auth.session_token");
+    expect(text).toContain("ts_guest");
     expect(text).toContain("no advertising cookie and no analytics cookie");
   });
 

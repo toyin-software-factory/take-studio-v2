@@ -102,6 +102,17 @@ export const PROCESSORS: readonly Processor[] = [
     packages: ["@sentry/core", "@sentry/nextjs", "@sentry/node"],
   },
   {
+    id: "turnstile",
+    name: "Cloudflare Turnstile",
+    role: "Checks that a visitor who drops a video before signing in is not a bot.",
+    receives: "A one time check token and the visitor's network address, when you drop a video.",
+    doesNotReceive: "Your videos, transcripts or email address.",
+    location: "Cloudflare global network.",
+    trainsOnContent: false,
+    envNames: ["TURNSTILE_SECRET_KEY", "TURNSTILE_SITE_KEY"],
+    packages: [],
+  },
+  {
     id: "google",
     name: "Google sign in",
     role: "Lets you sign in with your Google account.",

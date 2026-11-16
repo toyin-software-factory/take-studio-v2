@@ -7,6 +7,7 @@ import {
   emailEnvSchema,
   jobEnvSchema,
   realtimeEnvSchema,
+  turnstileEnvSchema,
   transcriptEnvSchema,
   usageEnvSchema,
   webEnvSchema,
@@ -36,6 +37,7 @@ const SECRET_SCHEMAS = [
   transcriptEnvSchema,
   aiEditEnvSchema,
   realtimeEnvSchema,
+  turnstileEnvSchema,
 ];
 const schemaNames = new Set(SECRET_SCHEMAS.flatMap((s) => Object.keys(s.shape)));
 const registryEnv = new Set(
@@ -70,7 +72,7 @@ describe("processor registry and env schemas", () => {
     expect(NON_PROCESSOR_ENV.filter((name) => !schemaNames.has(name))).toEqual([]);
   });
 
-  it("lists the eight services, once each, none training on content", () => {
+  it("lists the nine services, once each, none training on content", () => {
     expect(PROCESSORS.map((p) => p.id)).toEqual([
       "cloudflare",
       "neon",
@@ -79,6 +81,7 @@ describe("processor registry and env schemas", () => {
       "anthropic",
       "resend",
       "sentry",
+      "turnstile",
       "google",
     ]);
     expect(new Set(PROCESSORS.map((p) => p.id)).size).toBe(PROCESSORS.length);
@@ -138,7 +141,7 @@ describe("promises tied to settings", () => {
     expect(data.httpBodies).toEqual([]);
   });
 
-  it("sets no cookie besides the session cookie", () => {
+  it("sets no cookie besides the session and guest cookies", () => {
     const hits: string[] = [];
     const walk = (dir: string): void => {
       for (const entry of readdirSync(dir)) {
@@ -155,7 +158,7 @@ describe("promises tied to settings", () => {
     walk("src");
     // Sentry's own scrubbing mentions "cookie" as text only; nothing may set one.
     expect(hits.filter((p) => !p.includes("sentry-"))).toEqual([]);
-    expect(COOKIES.map((c) => c.name)).toEqual(["better-auth.session_token"]);
+    expect(COOKIES.map((c) => c.name)).toEqual(["better-auth.session_token", "ts_guest"]);
   });
 });
 describe("numbers come from the rule constants", () => {

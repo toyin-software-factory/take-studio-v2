@@ -53,8 +53,9 @@ export function CookiesSection() {
   return (
     <LegalSection id="cookies" title="Cookies and device storage">
       <p>
-        We set one cookie, and it is needed to keep you signed in. We use no advertising cookie and
-        no analytics cookie.
+        We set two cookies, and both are needed for the site to work: one keeps you signed in, the
+        other only exists if you drop a video before signing in. We use no advertising cookie and no
+        analytics cookie.
       </p>
       <LegalList
         items={COOKIES.map((c) => (

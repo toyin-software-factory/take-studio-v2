@@ -114,12 +114,21 @@ export type CookieFact = {
   readonly kept: string;
 };
 
-/** The only cookie (Better Auth session). No analytics or advertising cookie exists. */
+/**
+ * The session cookie, and the guest drop box cookie (spec 0023, set only when a visitor drops a
+ * video before signing in). No analytics or advertising cookie exists.
+ */
 export const COOKIES: readonly CookieFact[] = [
   {
     name: "better-auth.session_token",
     purpose: "Keeps you signed in. Needed for the site to work.",
     kept: "Until you sign out or the session expires.",
+  },
+  {
+    name: "ts_guest",
+    purpose:
+      "Only if you drop a video before signing in: remembers that video for a day so it can be added to your account when you sign in. Needed for that feature to work.",
+    kept: "24 hours.",
   },
 ];
 
