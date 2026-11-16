@@ -7,6 +7,7 @@ import {
   aiEditShare,
   creatorCount,
   eventCount,
+  eventCountWhere,
   failuresByCode,
   latestCutSnapshots,
   secondTakeCount,
@@ -25,6 +26,15 @@ export type Funnel = {
   readonly readyWithAiEdit: number;
   readonly changeRequests: number;
   readonly limitHits: number;
+  /** The Upload first funnel (spec 0023 AC-12): drops, then addresses, claims and expiries. */
+  readonly guest: {
+    readonly drops: number;
+    readonly emailsAdded: number;
+    readonly claimed: number;
+    readonly claimedParked: number;
+    readonly expired: number;
+    readonly expiredWithEmail: number;
+  };
   readonly failures: readonly { readonly code: string; readonly count: number }[];
 };
 
@@ -55,6 +65,7 @@ export async function funnel(
     changes,
     limits,
     failures,
+    guestCounts,
   ] = await Promise.all([
     eventCount(db, "signup", since),
     creatorCount(db, "take_uploaded", since),
@@ -66,7 +77,16 @@ export async function funnel(
     eventCount(db, "change_requested", since),
     eventCount(db, "limit_hit", since),
     failuresByCode(db, since),
+    Promise.all([
+      eventCount(db, "guest_drop", since),
+      eventCount(db, "guest_email_added", since),
+      eventCount(db, "guest_claimed", since),
+      eventCountWhere(db, "guest_claimed", since, "timing", "parked"),
+      eventCount(db, "guest_expired", since),
+      eventCountWhere(db, "guest_expired", since, "hadEmail", "true"),
+    ]),
   ]);
+  const [drops, emailsAdded, claimed, claimedParked, expired, expiredWithEmail] = guestCounts;
   return {
     window,
     signedUp,
@@ -79,6 +99,7 @@ export async function funnel(
     readyWithAiEdit: share.done,
     changeRequests: changes,
     limitHits: limits,
+    guest: { drops, emailsAdded, claimed, claimedParked, expired, expiredWithEmail },
     failures,
   };
 }

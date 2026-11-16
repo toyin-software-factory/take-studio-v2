@@ -1,4 +1,5 @@
 import { ANALYTICS_EVENT_NAMES, ANALYTICS_RETENTION_MONTHS } from "./analytics-events";
+import { GUEST_DROPS_PER_ADDRESS_PER_DAY, GUEST_TTL_HOURS } from "./guest-rules";
 import { MEDIA_LIMITS, VIDEO_RETENTION_DAYS } from "./take-rules";
 import type { UsageAccount } from "./usage-rules";
 
@@ -104,6 +105,19 @@ export const COLLECTED: readonly Collected[] = [
     what: "A hash of the network address of a request that sends a wrong API key or access token",
     why: "To slow down guessing and floods against the API.",
     kept: "About 75 minutes. The cleanup runs every 15 minutes and removes counts once their minute is an hour old. A large flood can keep them longer until a later run removes them.",
+    deletedWith: "It expires by itself.",
+  },
+  {
+    what: `A video dropped before you sign in (spec 0023): the video, a guest record with no name, and the email address you give so we can send the sign in link, if you give one. The guest cookie ts_guest links the browser to it`,
+    why: "To keep the video for you until you sign in and add it to your account.",
+    kept: `${GUEST_TTL_HOURS} hours from each drop. If you do not sign in by then, that video is deleted. When no video is left, the guest record and any address are deleted. If you sign in from the browser that dropped the video, the video moves to your account and follows the account rules. If you sign in with only a matching email address, you confirm the claim first, and then the video moves.`,
+    deletedWith:
+      "Expiry after 24 hours, or signing in and confirming the claim where one is needed (it becomes part of your account).",
+  },
+  {
+    what: `A hash of the network address of a visitor who drops a video before signing in, and a daily count of dropped minutes for the whole site`,
+    why: `To allow at most ${GUEST_DROPS_PER_ADDRESS_PER_DAY} drops a day for one address and to cap the daily cost of free drops. The site wide count holds no personal data.`,
+    kept: "2 days.",
     deletedWith: "It expires by itself.",
   },
 ];

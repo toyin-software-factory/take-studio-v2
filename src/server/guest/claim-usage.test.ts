@@ -3,7 +3,14 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { finish, startJob } from "@/db/data/jobs";
 import { getUsedSeconds } from "@/db/data/usage";
 import { MONTH, NOW, SECRET } from "@/db/data/usage-test-helpers";
-import { appSetting, guestClaim, processingJob, take, usageMonth } from "@/db/schema";
+import {
+  analyticsEvent,
+  appSetting,
+  guestClaim,
+  processingJob,
+  take,
+  usageMonth,
+} from "@/db/schema";
 import { type TestDb, openTestDb, seedTake } from "@/db/testing/test-db";
 import { usageAccountHash } from "@/lib/usage-hash";
 import { fakeR2 } from "../uploads/uploads-test-helpers";
@@ -127,6 +134,29 @@ describe("a claim after job start (AC-8)", () => {
       usageCounted: true,
       chargedMonth: MONTH,
     });
+  });
+
+  it("records guest_claimed with how the claim happened and when (AC-12)", async () => {
+    const eventsOf = async (userId: string) =>
+      db().select().from(analyticsEvent).where(eq(analyticsEvent.creatorId, userId));
+    const before = await guestWithTake(60);
+    const a = await seedAccount(db(), email());
+    await claim(before, a.id);
+    const after = await guestWithTake(60);
+    const b = await seedAccount(db(), email());
+    await start(after.guestId, after.takeId);
+    await claim(after, b.id);
+    const [e1] = await eventsOf(a.id);
+    const [e2] = await eventsOf(b.id);
+    expect(e1).toMatchObject({
+      name: "guest_claimed",
+      props: { via: "cookie", timing: "before_start" },
+    });
+    expect(e2).toMatchObject({
+      name: "guest_claimed",
+      props: { via: "cookie", timing: "after_start" },
+    });
+    expect(JSON.stringify([e1, e2])).not.toContain("example.com");
   });
 
   it("keeps the take whole even when the charge passes the allowance", async () => {

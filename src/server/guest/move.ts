@@ -62,6 +62,16 @@ export async function parkClaim(tx: Tx, claimId: string, userId: string): Promis
   await tx.update(guestClaim).set({ claimUserId: userId }).where(eq(guestClaim.id, claimId));
 }
 
+/** True when the take has any `initial` job row (charged, refunded or not): its job has started. */
+export async function hasInitialJob(tx: Tx, takeId: string): Promise<boolean> {
+  const [row] = await tx
+    .select({ id: processingJob.id })
+    .from(processingJob)
+    .where(and(eq(processingJob.takeId, takeId), eq(processingJob.kind, "initial")))
+    .limit(1);
+  return row !== undefined;
+}
+
 /**
  * Spec 0023 AC-8 (G19): a take claimed after its job started was never charged to an account
  * (job start skipped the guest). Each `initial` job of the take that kept a charge and was not

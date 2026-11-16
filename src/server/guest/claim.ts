@@ -7,7 +7,15 @@ import { hashGuestToken } from "@/lib/guest-hash";
 import { usageAccountHash } from "@/lib/usage-hash";
 import { type Result, err, ok } from "@/lib/result";
 import type { R2 } from "@/lib/r2";
-import { chargeClaimedJobs, closeGuestIfEmpty, lockGuestTakes, moveTake, parkClaim } from "./move";
+import { recordEvent } from "../analytics/record";
+import {
+  chargeClaimedJobs,
+  closeGuestIfEmpty,
+  hasInitialJob,
+  lockGuestTakes,
+  moveTake,
+  parkClaim,
+} from "./move";
 
 /**
  * The claim (spec 0023 step 5, AC-3, AC-4, AC-5). One transaction: lock the guest's takes, then
@@ -41,6 +49,8 @@ export type ClaimOutcome =
       readonly moved: readonly string[];
       readonly pending: readonly string[];
       readonly via: "cookie" | "email";
+      /** When in the job's life the claim happened (the `guest_claimed` event). */
+      readonly timing: "before_start" | "after_start" | "parked";
     }
   /** Only the email matched: ask first, nothing has moved. */
   | { readonly kind: "confirm" }
@@ -62,8 +72,11 @@ export async function claimGuest(
   if (!first) return ok(NONE);
   const cookieHash = input.cookie ? await hashGuestToken(input.cookie) : null;
 
+  // True only when this call is the first to tie the claim to the claimant (a repeat on a parked
+  // claim must not count `guest_claimed` again).
+  let firstAssociation = false;
   try {
-    return await runTx<ClaimOutcome, "storage_error">(deps.db, async (tx) => {
+    const result = await runTx<ClaimOutcome, "storage_error">(deps.db, async (tx) => {
       const takes = await lockGuestTakes(tx, first.guestUserId);
       const [claim] = await tx
         .select()
@@ -95,6 +108,7 @@ export async function claimGuest(
       const accountHash = await usageAccountHash(account.email, deps.usageSecret);
       const moved: string[] = [];
       const pending: string[] = [];
+      let jobStarted = false;
       for (const t of takes) {
         if (t.status === "uploading" && !(await uploadFinished(deps.r2, t.originalKey))) {
           pending.push(t.id);
@@ -102,12 +116,26 @@ export async function claimGuest(
         }
         await moveTake(tx, t.id, first.guestUserId, input.userId);
         await chargeClaimedJobs(tx, { takeId: t.id, accountHash, now });
+        // Timing follows the job row, not the charge: a refunded job still started before the claim.
+        jobStarted = (await hasInitialJob(tx, t.id)) || jobStarted;
         moved.push(t.id);
       }
       if (pending.length > 0) await parkClaim(tx, claim.id, input.userId);
       else await closeGuestIfEmpty(tx, first.guestUserId, input.userId);
-      return ok({ kind: "done", moved, pending, via } as const);
+      const timing = pending.length > 0 ? "parked" : jobStarted ? "after_start" : "before_start";
+      firstAssociation = claim.claimUserId === null;
+      return ok({ kind: "done", moved, pending, via, timing } as const);
     });
+    // Spec 0023 AC-12, after the commit: under the claimant, enums only.
+    if (result.ok && result.data.kind === "done" && firstAssociation) {
+      const { via, timing } = result.data;
+      await recordEvent(deps.db, {
+        name: "guest_claimed",
+        creatorId: input.userId,
+        props: { via, timing },
+      });
+    }
+    return result;
   } catch {
     return err("storage_error");
   }

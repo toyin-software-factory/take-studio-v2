@@ -195,8 +195,8 @@ Tracer Bullet: one thin thread first (drop, claim, see the take), then thicken.
 6. [x] Usage, the account side only: job start skips a guest, the claim charges the account, and the `guest_origin` ceiling rule. Satisfies **AC-8**
 7. [x] Cleanup sweep for expired guests through the existing delete path. Satisfies **AC-9**
 8. Homepage drop zone and email step UI, with Mobbin checked and `design-check`. Satisfies **AC-1, AC-2, AC-13**
-9. Legal facts, cookie list, Privacy and Terms copy, `LEGAL_VERSION`, text hash line. Satisfies **AC-11**
-10. Analytics events and funnel on `/insights`. Satisfies **AC-12**. Also records `guest_expired` after the sweep: `deleteExpiredGuestTakes` (`src/db/data/guest-expiry.ts`) already returns `{ takeId, hadEmail }` per deleted take, and `sweepExpiredGuests` (`src/trigger/guest-expiry.ts`) is where to call `recordEvent` with a null creator. Adding the name needs the CHECK migration and the legal facts line (agreed with Michael)
+9. [x] Legal facts, cookie list, Privacy and Terms copy, `LEGAL_VERSION`, text hash line. Satisfies **AC-11**
+10. [x] Analytics events and funnel on `/insights`. Satisfies **AC-12**. Also records `guest_expired` after the sweep: `deleteExpiredGuestTakes` (`src/db/data/guest-expiry.ts`) already returns `{ takeId, hadEmail }` per deleted take, and `sweepExpiredGuests` (`src/trigger/guest-expiry.ts`) is where to call `recordEvent` with a null creator. Adding the name needs the CHECK migration and the legal facts line (agreed with Michael)
 11. Playwright end to end and `/check verify`. Satisfies **AC-1 to AC-13**
 12. [x] Result route `GET /api/guest/take` (`src/server/guest/take.ts`): `{ status, playUrl, expiresInSeconds }` for the guest cookie's own take (optional `takeId`, else the most recent), inline play link only when the take is ready, one 404 for every refusal. Added after Dwight found no step owned G30. Satisfies **AC-10**
 
@@ -222,8 +222,8 @@ Tracer Bullet: one thin thread first (drop, claim, see the take), then thicken.
 - [ ] Toyin to confirm the numbers: 500 MB, 3 minutes, 24 hours, 600 guest minutes per day.
 - [ ] Toyin to answer the six choices C1 to C6 (listed under Feature design and in `docs/reviews/0023-spec-crosscheck.md`).
 - [ ] Confirm the published Turnstile behaviour on cookies when writing the legal copy.
-- [ ] Step 9 (B2-T175): decide whether the Terms need guest upload wording (agreed with Michael on #377; the Terms name no service or cookie today). The ts_guest cookie and Turnstile are already in the Privacy copy.
-- [ ] Add the guest drop zone to `docs/feature-map.md` when built.
+- [x] Step 9 (B2-T175): the Terms get a short "Dropping a video before you sign in" section (24 hours, then deleted; the Terms apply from the drop). Toyin to read it with the rest of the copy. The ts_guest cookie and Turnstile are already in the Privacy copy.
+- [x] Add the guest drop zone to `docs/feature-map.md` when built.
 
 ## References
 
