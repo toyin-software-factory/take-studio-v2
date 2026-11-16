@@ -14,9 +14,12 @@ Production is four things: the **Worker** (the web app, Cloudflare, name `take-s
    - **GitHub Actions, workflow Deploy:** the last run and which step it stopped at (the order is build and check, migrate, Trigger.dev, R2 lifecycle, ship the Worker).
    - `GET /api/health` on the live site says whether the Worker and its database connection answer.
 3. **Find out what changed.** Compare the time the errors began with the last Deploy run and the `release` tag in Sentry. If it began with a deploy, go to section 1. If a migration ran in it, read section 3 too.
-4. **Put the app in a safe state if it is hurting people** (a bad job is burning usage, charging, or corrupting takes). There is no maintenance page or kill switch in the app. The levers are:
+4. **Put the app in a safe state if it is hurting people** (a bad job is burning usage, charging, or corrupting takes). There is no maintenance page in the app. The levers are:
    - **Pause processing** in the Trigger.dev dashboard (Prod, Queues): pause the `process-take` queue (and `transcribe-take`, `preview-background` if they are the problem), or pause the whole environment. Uploads still work and the takes wait; nothing is lost, and resuming starts the waiting runs. Say so to Michael, because creators see their takes sit in processing.
    - **Roll back the Worker** (section 1) if the web app is the problem.
+   - **Turn off guest uploads** (spec 0023, the homepage drop box for people who are not signed in) if guest drops are the problem (abuse, bot traffic, cost). In the Neon console, production branch, SQL editor, run:
+     `INSERT INTO app_setting (key, value) VALUES ('guest_upload_enabled', 'false') ON CONFLICT (key) DO UPDATE SET value = 'false', updated_at = now();`
+     It takes effect on the next drop, no deploy. New drops are refused and the drop card asks people to sign in; drops already uploading finish. To turn them back on, run the same line with `'true'`. Signed in creators are not affected. Say so to Michael.
    - Anything beyond this (taking the site down) is Michael's decision with Toyin. If you think you need it, say so; do not improvise.
 5. **Fix forward through a PR.** The fix, or the revert, is a normal PR to main. CI deploys it. Nobody deploys by hand.
 6. **After it is calm:** write down what happened (time, cause, what was lost) in a short note to Michael, and add the lesson here if this page was wrong or missing a step.
