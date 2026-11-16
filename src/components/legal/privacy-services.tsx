@@ -34,7 +34,11 @@ export function ServicesSection() {
             {p.addendumUrl ? (
               <dd>
                 How {p.name} handles the check is also described in{" "}
-                <a href={p.addendumUrl} rel="noopener noreferrer" className="underline">
+                <a
+                  href={p.addendumUrl}
+                  rel="noopener noreferrer"
+                  className="underline pointer-coarse:inline-block pointer-coarse:min-h-11"
+                >
                   Cloudflare&apos;s Turnstile Privacy Addendum
                 </a>
                 .
