@@ -84,6 +84,17 @@ export function FunnelTable({
         />
         <Row label="Change requests" value={funnel.changeRequests} />
         <Row label="Limit hits" value={funnel.limitHits} />
+        <Row label="Guest drops (Upload first)" value={funnel.guest.drops} />
+        <Row label="Guest addresses added" value={funnel.guest.emailsAdded} />
+        <Row
+          label="Guest drops claimed"
+          value={`${funnel.guest.claimed} (${percent(funnel.guest.claimed, funnel.guest.drops)} of drops)`}
+        />
+        <Row label="Guest claims that waited for an upload" value={funnel.guest.claimedParked} />
+        <Row
+          label="Guest drops expired unclaimed"
+          value={`${funnel.guest.expired} (${funnel.guest.expiredWithEmail} had an address)`}
+        />
         <Row
           label="Founding members (all time)"
           value={`${founding} of ${FOUNDING_MEMBER_TARGET}`}

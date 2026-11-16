@@ -7,6 +7,7 @@ import { hashGuestToken } from "@/lib/guest-hash";
 import { usageAccountHash } from "@/lib/usage-hash";
 import { type Result, err, ok } from "@/lib/result";
 import type { R2 } from "@/lib/r2";
+import { recordEvent } from "../analytics/record";
 import { chargeClaimedJobs, closeGuestIfEmpty, lockGuestTakes, moveTake, parkClaim } from "./move";
 
 /**
@@ -41,6 +42,8 @@ export type ClaimOutcome =
       readonly moved: readonly string[];
       readonly pending: readonly string[];
       readonly via: "cookie" | "email";
+      /** When in the job's life the claim happened (the `guest_claimed` event). */
+      readonly timing: "before_start" | "after_start" | "parked";
     }
   /** Only the email matched: ask first, nothing has moved. */
   | { readonly kind: "confirm" }
@@ -63,7 +66,7 @@ export async function claimGuest(
   const cookieHash = input.cookie ? await hashGuestToken(input.cookie) : null;
 
   try {
-    return await runTx<ClaimOutcome, "storage_error">(deps.db, async (tx) => {
+    const result = await runTx<ClaimOutcome, "storage_error">(deps.db, async (tx) => {
       const takes = await lockGuestTakes(tx, first.guestUserId);
       const [claim] = await tx
         .select()
@@ -95,19 +98,32 @@ export async function claimGuest(
       const accountHash = await usageAccountHash(account.email, deps.usageSecret);
       const moved: string[] = [];
       const pending: string[] = [];
+      let chargedSeconds = 0;
       for (const t of takes) {
         if (t.status === "uploading" && !(await uploadFinished(deps.r2, t.originalKey))) {
           pending.push(t.id);
           continue;
         }
         await moveTake(tx, t.id, first.guestUserId, input.userId);
-        await chargeClaimedJobs(tx, { takeId: t.id, accountHash, now });
+        chargedSeconds += await chargeClaimedJobs(tx, { takeId: t.id, accountHash, now });
         moved.push(t.id);
       }
       if (pending.length > 0) await parkClaim(tx, claim.id, input.userId);
       else await closeGuestIfEmpty(tx, first.guestUserId, input.userId);
-      return ok({ kind: "done", moved, pending, via } as const);
+      const timing =
+        pending.length > 0 ? "parked" : chargedSeconds > 0 ? "after_start" : "before_start";
+      return ok({ kind: "done", moved, pending, via, timing } as const);
     });
+    // Spec 0023 AC-12, after the commit: under the claimant, enums only.
+    if (result.ok && result.data.kind === "done") {
+      const { via, timing } = result.data;
+      await recordEvent(deps.db, {
+        name: "guest_claimed",
+        creatorId: input.userId,
+        props: { via, timing },
+      });
+    }
+    return result;
   } catch {
     return err("storage_error");
   }

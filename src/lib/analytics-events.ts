@@ -12,6 +12,9 @@ const smallInt = z.number().int().min(0).max(1000);
 const AI_EDIT_OUTCOMES = ["done", "unavailable", "none"] as const;
 const DOWNLOAD_KINDS = ["video", "transcript_txt", "transcript_srt", "transcript_vtt"] as const;
 const LIMIT_PLACES = ["upload_start", "upload_complete"] as const;
+/** How a guest drop was claimed, and when in the job's life (spec 0023 G17): enums only. */
+const CLAIM_VIAS = ["email", "cookie"] as const;
+const CLAIM_TIMINGS = ["before_start", "after_start", "parked"] as const;
 
 /** Counts of one cut kind for one proposer (spec 0017 AC-1): integers only. */
 const cutCount = z.number().int().min(0).max(10_000);
@@ -87,11 +90,24 @@ export const ANALYTICS_EVENTS = {
     oncePer: null,
   },
   limit_hit: { props: z.object({ place: z.enum(LIMIT_PLACES) }).strict(), oncePer: null },
+  // Spec 0023 (AC-12): the Upload first funnel. The first, second and fourth have no creator
+  // (the guest user row goes away), the third is written under the account that claimed.
+  guest_drop: { props: empty, oncePer: null },
+  guest_email_added: { props: empty, oncePer: null },
+  guest_claimed: {
+    props: z.object({ via: z.enum(CLAIM_VIAS), timing: z.enum(CLAIM_TIMINGS) }).strict(),
+    oncePer: null,
+  },
+  guest_expired: { props: z.object({ hadEmail: z.boolean() }).strict(), oncePer: null },
 } as const;
 
 export type AnalyticsEventName = keyof typeof ANALYTICS_EVENTS;
 
 export const ANALYTICS_EVENT_NAMES = Object.keys(ANALYTICS_EVENTS) as readonly AnalyticsEventName[];
+
+/** The events written with no creator, so they outlive the guest user row (spec 0023 G17). */
+export const NO_CREATOR_EVENTS = ["guest_drop", "guest_email_added", "guest_expired"] as const;
+export type NoCreatorEventName = (typeof NO_CREATOR_EVENTS)[number];
 
 /** Names that are kept as long as the account exists (AC-9); the rest expire. */
 export const MILESTONE_EVENTS = ANALYTICS_EVENT_NAMES.filter(
@@ -126,7 +142,7 @@ type TakeIdField<N extends AnalyticsEventName> =
 export type AnalyticsEventInput = {
   readonly [N in AnalyticsEventName]: {
     readonly name: N;
-    readonly creatorId: string;
+    readonly creatorId: N extends NoCreatorEventName ? string | null : string;
     readonly props?: z.input<(typeof ANALYTICS_EVENTS)[N]["props"]>;
     readonly occurredAt?: Date;
   } & TakeIdField<N>;
