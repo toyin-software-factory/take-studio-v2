@@ -139,7 +139,11 @@ export function useGuestDrop(siteKey: string | null, mount: RefObject<HTMLDivEle
         return setDrop({ kind: "idle" });
       }
       const long = checkGuestDuration(seconds);
-      if (long) return setDrop({ kind: "rejected", message: long.message });
+      if (long) {
+        // A rejected file never uploads, so an address typed during the read is not sent.
+        discardQueued();
+        return setDrop({ kind: "rejected", message: long.message });
+      }
       chosen.current = file;
       void run(file, check.container, fileMeta(file.size, seconds));
     },
