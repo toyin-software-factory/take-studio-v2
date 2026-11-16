@@ -10,17 +10,17 @@ _Last updated 2026-11-16. The source of truth is the feature table in [`docs/sco
 
 **Live in production, getting ready for a small invited pilot.** Built from 10 to 16 November 2026: about 370 merged pull requests and 24 specs. Every change runs lint, typecheck, unit tests, the build, Playwright end to end tests and Lighthouse in CI, and production deploys run only from CI on merge to `main`.
 
-| Area | Status |
-| --- | --- |
-| Email sign in, upload, in app recording with a voice following teleprompter | Done |
-| Transcript, studio background swap, cut review timeline with undo and redo | Done |
-| AI cuts, smooth cuts and zooms | Live; final production checks owed |
-| Library, delete, 30 day retention, 60 free minutes a month | Done |
-| Landing page, product analytics, cut quality test set | Done |
-| Public API and MCP connector for AI assistants | Built; final production checks owed |
-| Privacy and Terms | Live as a draft; company details and legal review owed before public launch |
-| Upload first (try before signing in), billing and plans, before and after on the homepage | Specs written, not built yet |
-| Style toolkit | Spec on hold |
+| Area                                                                                      | Status                                                                      |
+| ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Email sign in, upload, in app recording with a voice following teleprompter               | Done                                                                        |
+| Transcript, studio background swap, cut review timeline with undo and redo                | Done                                                                        |
+| AI cuts, smooth cuts and zooms                                                            | Live; final production checks owed                                          |
+| Library, delete, 30 day retention, 60 free minutes a month                                | Done                                                                        |
+| Landing page, product analytics, cut quality test set                                     | Done                                                                        |
+| Public API and MCP connector for AI assistants                                            | Built; final production checks owed                                         |
+| Privacy and Terms                                                                         | Live as a draft; company details and legal review owed before public launch |
+| Upload first (try before signing in), billing and plans, before and after on the homepage | Specs written, not built yet                                                |
+| Style toolkit                                                                             | Spec on hold                                                                |
 
 Before a public launch: the company details and legal review for Privacy and Terms, the last production checks, a custom domain, and a human pass on real phones with a screen reader ([`docs/reviews/launch-device-pass.md`](docs/reviews/launch-device-pass.md)).
 
