@@ -31,6 +31,7 @@ export {
   NON_DATA_PACKAGES,
   NON_PROCESSOR_ENV,
   PROCESSORS,
+  TURNSTILE_ADDENDUM_URL,
   type Processor,
 } from "./legal-facts-processors";
 export {

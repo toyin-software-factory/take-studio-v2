@@ -20,6 +20,7 @@ import {
   NON_PROCESSOR_ENV,
   PROCESSORS,
   PUBLIC_VIEWER,
+  TURNSTILE_ADDENDUM_URL,
 } from "./legal-facts";
 import { minimalDataCollection, sentryOptions, workerSentryOptions } from "./sentry-options";
 import { MEDIA_LIMITS, VIDEO_RETENTION_DAYS } from "./take-rules";
@@ -90,6 +91,13 @@ describe("processor registry and env schemas", () => {
       expect(p.receives.length).toBeGreaterThan(0);
       expect(p.doesNotReceive.length).toBeGreaterThan(0);
     }
+  });
+
+  it("points Turnstile at Cloudflare's Privacy Addendum, and only Turnstile (B2-T185)", () => {
+    const withLink = PROCESSORS.filter((p) => p.addendumUrl !== undefined).map((p) => p.id);
+    expect(withLink).toEqual(["turnstile"]);
+    expect(TURNSTILE_ADDENDUM_URL).toBe("https://www.cloudflare.com/turnstile-privacy-policy/");
+    expect(new URL(TURNSTILE_ADDENDUM_URL).protocol).toBe("https:");
   });
 
   it("says Anthropic gets words and positions, never video or audio", () => {
