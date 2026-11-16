@@ -1,0 +1,121 @@
+/*
+ * The homepage drop card (spec 0023). Design v2 tokens only: no raw colour, size or space.
+ * Touch targets are 44 px or more; the drag state also changes the words, never only colour.
+ */
+.h-drop {
+  display: grid;
+  gap: var(--space-5);
+  width: 100%;
+  max-width: 560px;
+  margin: var(--space-7) auto 0;
+  padding: var(--space-5);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg);
+  text-align: center;
+}
+.h-drop-h {
+  margin: 0;
+  font-size: var(--fs-h4);
+  font-weight: var(--fw-regular);
+}
+.h-drop-zone {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-5);
+  border: 1.5px dashed var(--color-line-strong);
+  border-radius: var(--radius-md);
+}
+.h-drop-zone[data-dragging] {
+  border-color: var(--color-ink);
+  border-style: solid;
+}
+.h-drop-icon {
+  color: var(--color-ink);
+}
+.h-drop-title,
+.h-drop-file {
+  margin: 0;
+  font-size: var(--fs-body);
+  overflow-wrap: anywhere;
+}
+.h-drop-rules,
+.h-drop-muted {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--color-text-muted);
+}
+.h-drop-alert {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--color-ink);
+  font-weight: var(--fw-regular);
+}
+.h-drop-alert:empty {
+  display: none;
+}
+.h-drop-actions,
+.h-drop-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+}
+.h-drop-btn {
+  min-height: 48px;
+}
+.h-drop-link {
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 0;
+  background: none;
+  color: var(--color-ink);
+  font: inherit;
+  font-size: var(--fs-small);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.h-drop-bar {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-line);
+}
+.h-drop-bar span {
+  display: block;
+  height: 100%;
+  background: var(--color-ink);
+  transition: width 200ms linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .h-drop-bar span {
+    transition: none;
+  }
+}
+.h-drop-progress,
+.h-drop-email,
+.h-drop-sent,
+.h-drop-refused {
+  display: grid;
+  gap: var(--space-3);
+}
+.h-drop-email .h-field,
+.h-drop-sent {
+  text-align: left;
+}
+.h-drop-email .h-btn {
+  justify-self: start;
+}
+.h-drop-sent p {
+  margin: 0;
+}
+.h-drop-sent .h-drop-h:focus-visible {
+  outline: 2px solid var(--color-ink);
+  outline-offset: 3px;
+}
+.h-drop-turnstile:empty {
+  display: none;
+}

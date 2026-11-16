@@ -9,6 +9,7 @@ Signed-in pages need a session. In e2e tests, sign in with the test helper in `t
 | Feature | Route | How to get there | Spec |
 | --- | --- | --- | --- |
 | Homepage (landing page) | `/` | Open the site signed out. Signed in visits go to the library. | 0010 |
+| Drop a video without an account | `/` (homepage, under the headline) | Open the homepage signed out, drop or choose an MP4 or MOV, type an email while it uploads. | 0023 |
 | Sign in (email link) | `/sign-in` | "Sign in" on the homepage, or any signed in page while signed out. | 0006 |
 | Link expired | `/sign-in/link-expired` | Open an old or used sign in link. | 0006 |
 | Privacy | `/privacy` | Footer, or Account menu > Privacy. | 0015 |

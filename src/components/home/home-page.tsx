@@ -20,7 +20,13 @@ import "./home.css";
  * questions, the closing call to action, footer. The `noscript` style opens the answers for a
  * visitor without scripts.
  */
-export function HomePage({ origin }: { readonly origin: string | null }) {
+export function HomePage({
+  origin,
+  turnstileSiteKey,
+}: {
+  readonly origin: string | null;
+  readonly turnstileSiteKey: string | null;
+}) {
   return (
     <div className="home">
       <JsonLd origin={origin} />
@@ -36,7 +42,7 @@ export function HomePage({ origin }: { readonly origin: string | null }) {
       <SkipLink target="main" />
       <HomeNav />
       <main id="main" tabIndex={-1}>
-        <HomeHero />
+        <HomeHero turnstileSiteKey={turnstileSiteKey} />
         <HomeReel />
         <HomeProof />
         <HomeStudio />
