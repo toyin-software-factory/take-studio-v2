@@ -76,6 +76,8 @@ export function useGuestDrop(siteKey: string | null, mount: RefObject<HTMLDivEle
       const guest = guestUploadIo(token);
       const outcome = await uploadFile(file, container, guest.io, abort.signal, {
         onStarted: () => {
+          // The create request ignores the signal, so it can finish after a cancel.
+          if (abort.signal.aborted) return;
           setStarted(true);
           setDrop({ kind: "uploading", fileName: file.name, percent: 0 });
         },
