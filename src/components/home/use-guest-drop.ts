@@ -61,8 +61,13 @@ export function useGuestDrop(siteKey: string | null, mount: RefObject<HTMLDivEle
       controller.current = abort;
       setStarted(false);
       setDrop({ kind: "checking", fileName: file.name });
-      const token = await turnstileToken(siteKey, mount.current);
-      if (abort.signal.aborted) return;
+      const token = await turnstileToken(siteKey, mount.current, abort.signal);
+      if (abort.signal.aborted) {
+        // Only this attempt may clear itself: a newer one keeps its own controller.
+        if (controller.current === abort) controller.current = null;
+        setDrop((s) => (s.kind === "checking" ? { kind: "idle" } : s));
+        return;
+      }
       if (!token) {
         controller.current = null;
         setDrop({ kind: "failed", message: DROP_COPY.failed, canRetry: true });

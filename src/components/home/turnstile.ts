@@ -50,13 +50,18 @@ function load(): Promise<Widget> {
 }
 
 /** One fresh token, or null when the check could not run. Each token is used once. */
-export async function turnstileToken(siteKey: string, mount: HTMLElement): Promise<string | null> {
+export async function turnstileToken(
+  siteKey: string,
+  mount: HTMLElement,
+  signal?: AbortSignal,
+): Promise<string | null> {
   let widget: Widget;
   try {
     widget = await load();
   } catch {
     return null;
   }
+  if (signal?.aborted) return null;
   return new Promise<string | null>((resolve) => {
     const id = widget.render(mount, {
       sitekey: siteKey,
@@ -72,6 +77,15 @@ export async function turnstileToken(siteKey: string, mount: HTMLElement): Promi
       },
       "expired-callback": () => resolve(null),
     });
+    // Cancel during the check removes the widget at once and gives up.
+    signal?.addEventListener(
+      "abort",
+      () => {
+        widget.remove(id);
+        resolve(null);
+      },
+      { once: true },
+    );
     widget.execute(id);
   });
 }
