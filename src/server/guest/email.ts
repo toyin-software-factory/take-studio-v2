@@ -65,14 +65,8 @@ export function sendFailureOf(error: unknown): SendFailure {
   return "send_failed";
 }
 
-type Previous = { readonly email: string | null; readonly emailHash: string | null };
-
-/** Takes one of the 5 sends and stores the new address, in one lock. Null when the cap is used. */
-async function takeSend(
-  db: Db,
-  guestUserId: string,
-  next: Previous,
-): Promise<{ claimId: string; previous: Previous } | null> {
+/** Takes one of the 5 sends, in one lock. Null when the cap is used. */
+async function takeSend(db: Db, guestUserId: string): Promise<string | null> {
   const taken = await runTx(db, async (tx) => {
     const [row] = await tx
       .select()
@@ -82,20 +76,31 @@ async function takeSend(
     if (!row || row.emailSends >= GUEST_MAX_EMAIL_SENDS) return err("full" as const);
     await tx
       .update(guestClaim)
-      .set({ ...next, emailSends: row.emailSends + 1 })
+      .set({ emailSends: row.emailSends + 1 })
       .where(eq(guestClaim.id, row.id));
-    return ok({ claimId: row.id, previous: { email: row.email, emailHash: row.emailHash } });
+    return ok(row.id);
   });
   return taken.ok ? taken.data : null;
 }
 
-/** A send that did not go out gives its slot and the earlier address back. */
-async function giveBack(
+/**
+ * Stores the address once its link went out. A send that failed never touches the stored address,
+ * so overlapping requests cannot restore an address whose link was not sent.
+ */
+async function saveAddress(
   db: Db,
   claimId: string,
-  previous: Previous,
-  reserved: Previous,
-): Promise<void> {
+  next: { readonly email: string; readonly emailHash: string },
+): Promise<boolean> {
+  const saved = await runTx(db, async (tx) => {
+    await tx.update(guestClaim).set(next).where(eq(guestClaim.id, claimId));
+    return ok(true as const);
+  });
+  return saved.ok;
+}
+
+/** A send that did not go out gives its slot back. */
+async function giveBack(db: Db, claimId: string): Promise<void> {
   await runTx(db, async (tx) => {
     const [row] = await tx
       .select()
@@ -103,12 +108,9 @@ async function giveBack(
       .where(eq(guestClaim.id, claimId))
       .for("update");
     if (row) {
-      // Put the earlier address back only while this request's address is still the one stored:
-      // a newer send that went out keeps its address. The send slot is refunded either way.
-      const own = row.emailHash === reserved.emailHash;
       await tx
         .update(guestClaim)
-        .set({ ...(own ? previous : {}), emailSends: Math.max(0, row.emailSends - 1) })
+        .set({ emailSends: Math.max(0, row.emailSends - 1) })
         .where(eq(guestClaim.id, claimId));
     }
     return ok(true as const);
@@ -132,22 +134,26 @@ export async function handleGuestEmail(request: Request, deps: GuestEmailDeps): 
   } catch {
     return refuse("send_failed");
   }
-  const taken = await takeSend(db, guest.creatorId, { email, emailHash });
-  if (!taken) return refuse("too_many");
+  const claimId = await takeSend(db, guest.creatorId);
+  if (!claimId) return refuse("too_many");
 
   let sent: Result<true, SendFailure>;
   try {
     sent = await deps.sendLink({
       email,
-      callbackURL: claimPath(taken.claimId),
+      callbackURL: claimPath(claimId),
       headers: request.headers,
     });
   } catch (error) {
     sent = err(sendFailureOf(error));
   }
   if (!sent.ok) {
-    await giveBack(db, taken.claimId, taken.previous, { email, emailHash });
+    await giveBack(db, claimId);
     return refuse(sent.error === "invalid_email" ? "invalid" : sent.error);
+  }
+  if (!(await saveAddress(db, claimId, { email, emailHash }))) {
+    await giveBack(db, claimId);
+    return refuse("send_failed");
   }
   return Response.json({ ok: true }, { headers: { "cache-control": "private, no-store" } });
 }

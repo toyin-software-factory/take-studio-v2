@@ -115,6 +115,16 @@ describe("POST /api/guest/email (spec 0023, AC-2, C2)", () => {
     expect(await rowOf(g.claimId)).toMatchObject({ email: "b@example.com", emailSends: 1 });
   });
 
+  it("keeps the last address whose link went out when two later sends both fail", async () => {
+    const g = await seedGuest(testDb.db, { typedEmail: "original@example.com" });
+    const failing = setup("send_failed").deps;
+    await Promise.all([
+      handleGuestEmail(post({ email: "a@example.com" }, g.token), failing),
+      handleGuestEmail(post({ email: "b@example.com" }, g.token), failing),
+    ]);
+    expect(await rowOf(g.claimId)).toMatchObject({ email: "original@example.com", emailSends: 0 });
+  });
+
   it("refuses guest addresses, bad addresses, a missing cookie and a foreign origin", async () => {
     const g = await seedGuest(testDb.db);
     const { deps, sent } = setup();
