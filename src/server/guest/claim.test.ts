@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type TestDb, openTestDb } from "@/db/testing/test-db";
+import { SECRET } from "@/db/data/usage-test-helpers";
 import { fakeR2 } from "../uploads/uploads-test-helpers";
 import { claimGuest } from "./claim";
 import { guestExists, seedAccount, seedGuest, takesOf } from "./claim-test-helpers";
@@ -13,7 +14,7 @@ afterAll(() => testDb?.close());
 const run = (
   input: Omit<Parameters<typeof claimGuest>[1], "confirmed"> & { confirmed?: boolean },
   r2 = fakeR2().r2,
-) => claimGuest({ db: testDb.db, r2 }, { confirmed: false, ...input });
+) => claimGuest({ db: testDb.db, r2, usageSecret: SECRET }, { confirmed: false, ...input });
 
 describe("the claim (spec 0023, AC-3, AC-5)", () => {
   it("moves one take at once on a cookie match, whatever the email, and deletes the guest", async () => {

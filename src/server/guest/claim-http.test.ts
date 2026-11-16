@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { SECRET } from "@/db/data/usage-test-helpers";
 import { type TestDb, openTestDb } from "@/db/testing/test-db";
 import { GUEST_COOKIE } from "@/lib/guest-rules";
 import { ORIGIN, fakeR2 } from "../uploads/uploads-test-helpers";
@@ -26,7 +27,7 @@ const depsFor = (userId: string | null) => ({
   appOrigin: ORIGIN,
   secureCookie: true,
   signedInUserId: async () => userId,
-  claimDeps: async () => ({ db: testDb.db, r2: fakeR2().r2 }),
+  claimDeps: async () => ({ db: testDb.db, r2: fakeR2().r2, usageSecret: SECRET }),
 });
 
 describe("POST /api/guest/claim, the confirm click (spec 0023, C5)", () => {

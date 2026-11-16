@@ -39,7 +39,10 @@ export async function getUsedSeconds(
  * The insert side happens only when `c <= allowance`. Zero rows back means the charge does not
  * fit and nothing changed, so two starts for one account can never total more than the
  * allowance. With `enforce` false (the limit is switched off) the ceiling is the integer
- * maximum, so the charge is still recorded. Call it inside the caller's transaction.
+ * maximum, so the charge is still recorded. With `crossing` (spec 0023 AC-8, a take that came
+ * from a guest drop) the one charge that takes the account past the ceiling is allowed, but only
+ * while the account is under it before the charge, so nothing after it fits. Call it inside the
+ * caller's transaction.
  */
 export async function chargeUsage(
   tx: Tx,
@@ -49,17 +52,21 @@ export async function chargeUsage(
     readonly seconds: number;
     readonly allowance: number;
     readonly enforce: boolean;
+    readonly crossing?: boolean;
   },
 ): Promise<boolean> {
   const ceiling = input.enforce ? input.allowance : NO_CEILING;
+  const crossing = input.enforce && input.crossing === true;
   const rows = await tx.execute(sql`
     INSERT INTO usage_month (account_hash, month, seconds_used, hash_version)
     SELECT ${input.accountHash}::text, ${input.month}::date, ${input.seconds}::integer,
       ${USAGE_HASH_VERSION}::smallint
-    WHERE ${input.seconds}::integer <= ${ceiling}::integer
+    WHERE (${crossing}::boolean AND 0 < ${ceiling}::integer)
+      OR ${input.seconds}::integer <= ${ceiling}::integer
     ON CONFLICT (account_hash, month) DO UPDATE
       SET seconds_used = usage_month.seconds_used + EXCLUDED.seconds_used, updated_at = now()
-      WHERE usage_month.seconds_used + EXCLUDED.seconds_used <= ${ceiling}::integer
+      WHERE (${crossing}::boolean AND usage_month.seconds_used < ${ceiling}::integer)
+        OR usage_month.seconds_used + EXCLUDED.seconds_used <= ${ceiling}::integer
     RETURNING seconds_used`);
   return rows.length > 0;
 }
