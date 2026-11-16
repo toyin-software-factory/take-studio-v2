@@ -4,9 +4,10 @@ import { guestClaim, user } from "@/db/schema";
 import type { Db } from "@/db/types";
 import { runTx } from "@/db/tx";
 import { hashGuestToken } from "@/lib/guest-hash";
+import { usageAccountHash } from "@/lib/usage-hash";
 import { type Result, err, ok } from "@/lib/result";
 import type { R2 } from "@/lib/r2";
-import { closeGuestIfEmpty, lockGuestTakes, moveTake, parkClaim } from "./move";
+import { chargeClaimedJobs, closeGuestIfEmpty, lockGuestTakes, moveTake, parkClaim } from "./move";
 
 /**
  * The claim (spec 0023 step 5, AC-3, AC-4, AC-5). One transaction: lock the guest's takes, then
@@ -20,6 +21,8 @@ export type ClaimDeps = {
   readonly db: Db;
   /** Tells a finished multipart upload (the object exists) from one still being sent. */
   readonly r2: Pick<R2, "headObject">;
+  /** USAGE_HASH_SECRET: the claimant's usage hash for the account side of AC-8. */
+  readonly usageSecret: string;
   readonly now?: () => Date;
 };
 
@@ -89,6 +92,7 @@ export async function claimGuest(
         return ok({ kind: "confirm" } as const);
       }
 
+      const accountHash = await usageAccountHash(account.email, deps.usageSecret);
       const moved: string[] = [];
       const pending: string[] = [];
       for (const t of takes) {
@@ -97,6 +101,7 @@ export async function claimGuest(
           continue;
         }
         await moveTake(tx, t.id, first.guestUserId, input.userId);
+        await chargeClaimedJobs(tx, { takeId: t.id, accountHash, now });
         moved.push(t.id);
       }
       if (pending.length > 0) await parkClaim(tx, claim.id, input.userId);

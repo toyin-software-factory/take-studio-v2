@@ -76,7 +76,7 @@ export async function startJob(
   return runStart<StartedJob, StartError>(db, "job_in_progress", async (tx) => {
     if (peek?.backgroundId) await lockBackgroundShare(tx, peek.backgroundId);
     const [locked] = await tx
-      .select({ take, email: user.email })
+      .select({ take, email: user.email, guest: user.guest })
       .from(take)
       .innerJoin(user, eq(user.id, take.creatorId))
       .where(and(eq(take.id, input.takeId), eq(take.creatorId, input.creatorId)))
@@ -112,7 +112,10 @@ export async function startJob(
       kind === "initial" && !alreadyPaid ? chargeSeconds(current.durationMs) : 0;
     const charged = secondsCharged > 0;
 
-    const accountHash = charged ? await usageAccountHash(locked.email, input.usageSecret) : null;
+    // Spec 0023 AC-8 (G19): a guest is charged to no account. The job still records its seconds
+    // and month, and the claim charges the claimant later; the guest email hash is junk.
+    const accountHash =
+      charged && !locked.guest ? await usageAccountHash(locked.email, input.usageSecret) : null;
     if (charged && accountHash !== null) {
       const settings = await readUsageSettings(tx);
       const fits = await chargeUsage(tx, {
@@ -121,6 +124,8 @@ export async function startJob(
         seconds: secondsCharged,
         allowance: monthlyAllowanceSeconds(settings, { accountHash }),
         enforce: settings.limitEnabled,
+        // A take that came from a guest drop may be the one that crosses the ceiling.
+        crossing: current.guestOrigin,
       });
       if (!fits) return err("limit_exceeded");
     }
@@ -134,7 +139,7 @@ export async function startJob(
         secondsCharged,
         chargedMonth: charged ? chargedMonth(now) : null,
         chargedAccountHash: accountHash,
-        usageCounted: charged,
+        usageCounted: accountHash !== null,
       },
       stepNames: stepsFor(kind, { hasBackground: current.backgroundId !== null }),
     });

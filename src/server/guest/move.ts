@@ -1,6 +1,8 @@
-import { and, asc, count, eq } from "drizzle-orm";
-import { analyticsEvent, guestClaim, take, user } from "@/db/schema";
+import { and, asc, count, eq, gt, isNull } from "drizzle-orm";
+import { chargeUsage } from "@/db/data/usage";
+import { analyticsEvent, guestClaim, processingJob, take, user } from "@/db/schema";
 import type { Tx } from "@/db/types";
+import { chargedMonth } from "@/lib/billing";
 
 /**
  * Moving a guest's takes to the account that claimed them (spec 0023 steps 4 and 5). Both callers
@@ -58,4 +60,48 @@ export async function closeGuestIfEmpty(
 /** Parks the claim: the account is remembered, nothing else moves. */
 export async function parkClaim(tx: Tx, claimId: string, userId: string): Promise<void> {
   await tx.update(guestClaim).set({ claimUserId: userId }).where(eq(guestClaim.id, claimId));
+}
+
+/**
+ * Spec 0023 AC-8 (G19): a take claimed after its job started was never charged to an account
+ * (job start skipped the guest). Each `initial` job of the take that kept a charge and was not
+ * refunded now adds its stored seconds to the claimant's month, with no ceiling (the take is
+ * already processed, so it is kept whole), and remembers the hash and month so a later refund
+ * gives the seconds back. The caller holds the take row lock. Returns the seconds charged.
+ */
+export async function chargeClaimedJobs(
+  tx: Tx,
+  input: { readonly takeId: string; readonly accountHash: string; readonly now: Date },
+): Promise<number> {
+  const jobs = await tx
+    .select({ id: processingJob.id, seconds: processingJob.secondsCharged })
+    .from(processingJob)
+    .where(
+      and(
+        eq(processingJob.takeId, input.takeId),
+        eq(processingJob.kind, "initial"),
+        eq(processingJob.refunded, false),
+        isNull(processingJob.chargedAccountHash),
+        gt(processingJob.secondsCharged, 0),
+      ),
+    )
+    .orderBy(asc(processingJob.id))
+    .for("update");
+  const month = chargedMonth(input.now);
+  let total = 0;
+  for (const job of jobs) {
+    await chargeUsage(tx, {
+      accountHash: input.accountHash,
+      month,
+      seconds: job.seconds,
+      allowance: 0,
+      enforce: false,
+    });
+    await tx
+      .update(processingJob)
+      .set({ chargedAccountHash: input.accountHash, chargedMonth: month, usageCounted: true })
+      .where(eq(processingJob.id, job.id));
+    total += job.seconds;
+  }
+  return total;
 }

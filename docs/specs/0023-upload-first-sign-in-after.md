@@ -192,11 +192,11 @@ Tracer Bullet: one thin thread first (drop, claim, see the take), then thicken.
 3. Guest limits: size, count per cookie, per address per day, kill switch, probe duration check, and the daily budget reservation and its release (this step owns every limit that refuses a guest). Satisfies **AC-6**
 4. [x] Email step: `POST /api/guest/email` with the existing magic link and `/claim` callback. Satisfies **AC-2**
 5. [x] Claim transaction and `/claim` page. Satisfies **AC-3, AC-4, AC-5, AC-7**
-6. Usage, the account side only: job start skips a guest, the claim charges the account, and the `guest_origin` ceiling rule. Satisfies **AC-8**
-7. Cleanup sweep for expired guests through the existing delete path. Satisfies **AC-9**
+6. [x] Usage, the account side only: job start skips a guest, the claim charges the account, and the `guest_origin` ceiling rule. Satisfies **AC-8**
+7. [x] Cleanup sweep for expired guests through the existing delete path. Satisfies **AC-9**
 8. Homepage drop zone and email step UI, with Mobbin checked and `design-check`. Satisfies **AC-1, AC-2, AC-13**
 9. Legal facts, cookie list, Privacy and Terms copy, `LEGAL_VERSION`, text hash line. Satisfies **AC-11**
-10. Analytics events and funnel on `/insights`. Satisfies **AC-12**
+10. Analytics events and funnel on `/insights`. Satisfies **AC-12**. Also records `guest_expired` after the sweep: `deleteExpiredGuestTakes` (`src/db/data/guest-expiry.ts`) already returns `{ takeId, hadEmail }` per deleted take, and `sweepExpiredGuests` (`src/trigger/guest-expiry.ts`) is where to call `recordEvent` with a null creator. Adding the name needs the CHECK migration and the legal facts line (agreed with Michael)
 11. Playwright end to end and `/check verify`. Satisfies **AC-1 to AC-13**
 
 ## Consequences

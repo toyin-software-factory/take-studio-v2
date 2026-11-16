@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { SECRET } from "@/db/data/usage-test-helpers";
 import { take } from "@/db/schema";
 import { type TestDb, openTestDb } from "@/db/testing/test-db";
 import { completeUpload } from "../uploads/finish";
@@ -25,7 +26,7 @@ describe("a claim while the upload finishes (spec 0023, AC-4)", () => {
     const { r2, stored } = fakeR2();
     stored.set(g.takes[0]?.originalKey ?? "", 1);
     const res = await claimGuest(
-      { db: testDb.db, r2 },
+      { db: testDb.db, r2, usageSecret: SECRET },
       {
         claimId: g.claimId,
         userId: me.id,
@@ -49,7 +50,7 @@ describe("a claim while the upload finishes (spec 0023, AC-4)", () => {
       .where(eq(take.id, t.id));
     const { r2, stored } = fakeR2();
     const claim = await claimGuest(
-      { db: testDb.db, r2 },
+      { db: testDb.db, r2, usageSecret: SECRET },
       {
         claimId: g.claimId,
         userId: me.id,
@@ -65,6 +66,7 @@ describe("a claim while the upload finishes (spec 0023, AC-4)", () => {
       db: testDb.db,
       r2: { ...r2, headObject: async () => ({ size: 5 }) },
       dispatchProbe: async () => undefined,
+      usageSecret: SECRET,
     };
     const done = await completeUpload(deps, g.guestId, t.id, { parts: parts(1) });
     expect(done.ok).toBe(true);
@@ -76,7 +78,7 @@ describe("a claim while the upload finishes (spec 0023, AC-4)", () => {
     const g = await seedGuest(testDb.db, { statuses: ["uploading"] });
     const me = await seedAccount(testDb.db, `${crypto.randomUUID()}@example.com`);
     await claimGuest(
-      { db: testDb.db, r2: fakeR2().r2 },
+      { db: testDb.db, r2: fakeR2().r2, usageSecret: SECRET },
       {
         claimId: g.claimId,
         userId: me.id,

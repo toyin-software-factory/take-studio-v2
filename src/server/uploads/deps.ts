@@ -13,6 +13,11 @@ export function uploadHttpDeps(): HttpDeps {
   return {
     ...apiAuthDeps(),
     usageSecret: () => parseUsageEnv().USAGE_HASH_SECRET,
-    uploadDeps: (db) => ({ db, r2: createR2(env), dispatchProbe: triggerProbe }),
+    uploadDeps: (db) => ({
+      db,
+      r2: createR2(env),
+      dispatchProbe: triggerProbe,
+      usageSecret: parseUsageEnv().USAGE_HASH_SECRET,
+    }),
   };
 }

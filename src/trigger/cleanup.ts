@@ -17,6 +17,7 @@ import { cancelRuns, isRunAlive, isRunWaiting, triggerProbe } from "@/lib/trigge
 import { storageDeletionTask } from "./storage-deletion";
 import { queueTakeEmail } from "./email/queue";
 import { ensureBuiltInBackgrounds } from "./built-in-backgrounds";
+import { sweepExpiredGuests } from "./guest-expiry";
 
 /**
  * Scheduled cleanup every 15 minutes (spec 0002, AC-18):
@@ -28,6 +29,8 @@ import { ensureBuiltInBackgrounds } from "./built-in-backgrounds";
  *    run is still waiting in Trigger.dev's queue (a creator's concurrency limit) is not stale;
  * 3. expire takes past `video_expires_at`, queuing their video files;
  * 4. drain the file deletion queue;
+ * 3b. expired guest drops (spec 0023 AC-9): delete unclaimed guest takes 24 hours after the drop,
+ *    then the guest users and the 2 day old count rows, before the drain so their files go too;
  * 4b. product events (spec 0016): insert the milestone events a dropped insert missed (the real
  *    rows' own times) and purge repeatable events older than 13 months; a failure is logged and
  *    never stops the sweep;
@@ -82,6 +85,7 @@ export const cleanupTask = schedules.task({
       const cancelled = await cancelRuns(stale.flatMap(({ runId }) => (runId ? [runId] : [])));
 
       const expiry = await expireDueTakes(db, now);
+      const guests = await sweepExpiredGuests(db, r2, now);
       // Spec 0008: uploaded backgrounds that never finished (an hour) are failed, files queued.
       const stuckBackgrounds = await failStuckBackgrounds(db, now);
       // And the deleted ones kept hidden while their upload link could still be live.
@@ -144,6 +148,7 @@ export const cleanupTask = schedules.task({
         oauthClientsPurged,
         mintsPurged,
         studiosInstalled,
+        guests,
         probesRedispatched: recovery.redispatched.length,
         stuckUploadsFailed: recovery.failed.length,
         abandonedUploads: abandoned.length,
