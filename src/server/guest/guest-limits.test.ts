@@ -159,6 +159,16 @@ describe("probe length check and the daily budget (AC-6)", () => {
     expect((await takeRow(id))?.guestReservedMinutes).toBeNull();
   });
 
+  it("a take that failed before the reservation lock gets no minutes", async () => {
+    const id = await probedTake(60_000);
+    await testDb.db.update(take).set({ status: "failed" }).where(eq(take.id, id));
+    const before = await budgetOf(today());
+    const res = await reserveGuestMinutes(testDb.db, { takeId: id, durationMs: 60_000 });
+    expect(res.ok).toBe(false);
+    expect(await budgetOf(today())).toBe(before);
+    expect((await takeRow(id))?.guestReservedMinutes).toBeNull();
+  });
+
   it("a failed take releases once; a second release is a no-op", async () => {
     const id = await probedTake(60_000);
     const before = await budgetOf(today());

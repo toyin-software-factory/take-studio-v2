@@ -52,11 +52,15 @@ export async function reserveGuestMinutes(
   const result = await runTx(db, async (tx) => {
     // Take first, then the day (the order release uses): a repeat admission reserves nothing more.
     const [current] = await tx
-      .select({ reserved: take.guestReservedMinutes })
+      .select({ status: take.status, reserved: take.guestReservedMinutes })
       .from(take)
       .where(eq(take.id, input.takeId))
       .for("update");
-    if (current && current.reserved !== null) return ok(true);
+    // A take that failed or was deleted since admission read it must not take minutes.
+    if (!current || current.status !== "uploaded") {
+      return { ok: false as const, error: "ineligible" as const };
+    }
+    if (current.reserved !== null) return ok(true);
     await tx.insert(guestBudgetDay).values({ day }).onConflictDoNothing();
     const rows = await tx
       .update(guestBudgetDay)
