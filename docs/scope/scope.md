@@ -41,9 +41,12 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 17 | Product analytics | Launch | done |
 | 18 | Email sign in and take ready email | Slice 1 | done |
 | 19 | Cut quality measurement | Launch | done |
-| 20 | Record with script | Slice 8 | in-progress |
+| 20 | Record with script | Slice 8 | done |
+| 21 | Upload first, sign in after | Slice 9 | planned |
+| 22 | Billing & plans | Slice 9 | planned |
 | 23 | Before and after on the homepage | Slice 10 | planned |
-| 24 | Style toolkit | Slice 8 | planned |
+| 24 | Edited with Take Studio credit | Slice 11 | in-progress |
+| 25 | Style toolkit | Slice 8 | planned |
 
 ## Foundations
 
@@ -327,7 +330,7 @@ Spec [0017](../specs/0017-cut-quality-measurement.md)
 
 ## Slice 8: Record with a script
 
-### 20. Record with script · in-progress
+### 20. Record with script · done
 Record a take inside Take Studio (phone or laptop camera and mic) while a teleprompter shows the creator's script near the lens, then send it straight into the normal upload and processing. Toyin approved it from creator feedback (C-46); it replaces the "Record in the browser" growth idea.
 **Done when:** a creator can paste a script, record with a teleprompter they control (speed, pause, text size), stop, and watch the take go through the normal pipeline; the voice follows the script by itself; and the AI keeps the best attempt of a repeated or fluffed line.
 - [x] Design it (spec): `/architect Record with script`
@@ -339,7 +342,35 @@ Record a take inside Take Studio (phone or laptop camera and mic) while a telepr
    - [x] Script aware cuts, cut quality cases and legal copy (tasks 10 to 12)
 - [x] Verify it: `/check verify Record with script`
 - [x] Test it: `/test Record with script` (backend in B2-T138; UI in B2-T147: `src/components/record/recorder-media.test.ts`, `tests/record-lifecycle.spec.ts`, `tests/record-sheet.spec.ts`, `tests/record-review-upload.spec.ts`; the rest was already covered by `tests/record*.spec.ts`)
+- [x] Review it: `/check review Record with script` (`docs/reviews/0021-record-with-script-review.md`, B2-T159)
+- [x] Document it: `/document Record with script` (CHANGELOG.md entry, docs/releases/record-with-script.md, B2-T159)
 Spec [0021](../specs/0021-record-with-script/index.md)
+
+## Slice 9: Upload first, sign in after
+
+### 21. Upload first, sign in after · planned
+A visitor drops a video on the homepage and it uploads and processes with no account; the email for the magic link is asked for while it runs, and opening the link claims the take. Growth idea from Toyin, next in the recommended order (C-30 asks for the choices in the spec).
+**Done when:** a signed out visitor can drop a video, type an email while it processes, open the sign in link on any device and land on their finished take; anonymous uploads are capped and, while unclaimed, count only against a shared guest budget; once claimed by a verified account they count against that account's 60 free minutes; and unclaimed ones are deleted after 24 hours.
+- [x] Design it (spec): `/architect Upload first, sign in after`
+- [ ] Build it: `/develop Upload first, sign in after`
+   - [ ] Migration, guest upload thread and limits (tasks 1 to 3)
+   - [ ] Email step, claim and usage charge (tasks 4 to 6)
+   - [ ] Cleanup sweep and homepage drop zone (tasks 7 and 8)
+   - [ ] Legal copy and analytics events (tasks 9 and 10)
+- [ ] Verify it: `/check verify Upload first, sign in after`
+- [ ] Test it: `/test Upload first, sign in after`
+Spec [0023](../specs/0023-upload-first-sign-in-after.md)
+
+## Slice 9: Billing & plans
+
+### 22. Billing & plans · planned
+A paid Creator plan on top of the free 60 minutes a month, sold through a merchant of record (taxes and VAT handled for us), with a locked founding price for the first 50 founding members (C-26). The spec is written now; the build is in month 2. Prices and the provider are decisions for Toyin, with recommended defaults in the spec. Test mode only until she opens the provider account.
+**Done when:** a creator can pay for the plan, get the bigger monthly allowance at once, manage or cancel from a billing page, and fall back to free calmly when a payment fails; founding members get their locked price; the usage limit reads the plan in one place.
+- [x] Design it (spec): `/architect Billing & plans`
+- [ ] Build it: `/develop Billing & plans`
+- [ ] Verify it: `/check verify Billing & plans`
+- [ ] Test it: `/test Billing & plans`
+Spec [0024](../specs/0024-billing-and-plans.md)
 
 ## Slice 10: Before and after on the homepage
 
@@ -355,7 +386,22 @@ One take we record ourselves, shown raw next to the finished version from our ow
 - [ ] Test it: `/test Before and after on the homepage`
 Spec [0025](../specs/0025-before-and-after-homepage.md)
 
-### 24. Style toolkit · planned
+## Slice 11: Edited with Take Studio credit
+
+### 24. Edited with Take Studio credit · in-progress
+A small "Edited with Take Studio" credit in the corner of rendered videos made on a free account, drawn by the render, off by default and switchable per take on paid plans. Growth idea from Toyin (Slack, 2026-11-16).
+**Done when:** a free account's new render ends with the credit for its last four seconds (the last half for a video under eight seconds) without changing length, captions or charged seconds, takes made before launch are never changed, the take page says whether the credit is on, a paid creator can switch it per take, and the Terms say so.
+- [x] Design it (spec): `/architect Edited with Take Studio credit`
+- [ ] Build it: `/develop Edited with Take Studio credit`
+   - [ ] Rules, overlay PNG and filter, with the contrast pair (task 1)
+   - [ ] Migration and the render thread, with fallback and keyed gate (task 2)
+   - [ ] Take page line, Terms copy and legal version (tasks 3 and 4)
+   - [ ] Paid switch and change job, after the billing build, then go live (tasks 5 and 6)
+- [ ] Verify it: `/check verify Edited with Take Studio credit`
+- [ ] Test it: `/test Edited with Take Studio credit`
+Spec [0026](../specs/0026-edited-with-credit.md)
+
+### 25. Style toolkit · planned
 Ready made named styles for the finished video (zoom and push at cuts, sound fades, a light colour look). The creator picks one on the take page and presses Render; Natural, today's look, stays the default. Toyin's plan C-47, step 1; the later reference clip recipe fills the same format. Caption styles, a music bed and pace are follow ups.
 **Done when:** a creator can pick Natural, Calm, Punchy or Warm on the take page, render, and get that look, with Natural identical to today and no style adding a second render pass.
 - [x] Design it (spec): `/architect Style toolkit`
@@ -371,7 +417,6 @@ Spec [0022](../specs/0022-style-toolkit/index.md)
 
 ## Deferred
 Out of scope for this build pass, kept so the plan stays honest.
-- **Billing & plans**: paid plans beyond the free monthly allowance · needs a decision · GA
 - **Chat assistant in the app**: creators give edits in plain words instead of clicking · needs a decision
 - **Burned in captions**: captions rendered into the video · needs a decision
 - **More languages**: transcripts for languages other than English · needs a decision
@@ -383,7 +428,7 @@ Out of scope for this build pass, kept so the plan stays honest.
 ### Growth ideas (Toyin, 2026-11-13)
 Positioning, costs and competitor research: docs/scope/research/2026-11-13-positioning-and-studio-look.md
 Ways to make people want to use Take Studio quickly. Recommended order when Toyin picks: Product analytics (feature 17, so the rest can be measured), then Upload first, sign in after, then Before and after on the homepage.
-- **Upload first, sign in after**: drop a video on the homepage; the email for the magic link and the take ready email is asked for while it uploads and processes · needs a decision
+- **Upload first, sign in after**: drop a video on the homepage; the email for the magic link and the take ready email is asked for while it uploads and processes · enrolled as feature 21, Upload first, sign in after
 - **Before and after on the homepage**: one real take, raw against finished, with a slider and the time saved · enrolled as feature 23, Before and after on the homepage
 - **Vertical 9:16 export**: ready to post on TikTok, Reels and Shorts; goes together with Burned in captions above · needs a decision · with Burned in captions
 - **Share page for a finished take**: a public link with a small "Made with Take Studio" mark and a "Try it on yours" button · needs a decision

@@ -100,11 +100,11 @@ export function ConnectedApps() {
           const done = await disconnect(id);
           if (done) {
             setStatus(CONNECTED_COPY.disconnected);
-            requestAnimationFrame(() => heading.current?.focus());
           }
           return done;
         }}
         returnFocus={(id) => document.getElementById(`disconnect-${id}`)}
+        afterDisconnectFocus={() => heading.current?.focus()}
       />
     </section>
   );

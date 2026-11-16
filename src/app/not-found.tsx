@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { connection } from "next/server";
 import { Clapperboard, SearchX } from "lucide-react";
 import { SkipLink } from "@/components/shell/skip-link";
 import { Button } from "@/components/ui/button";
@@ -9,9 +10,12 @@ export const metadata: Metadata = { title: "Not found · Take Studio" };
 
 /**
  * The styled not found page (AC-11, design.md Screen states): the same page for a missing
- * take, another creator's take and a malformed ID, so none of them reveals anything.
+ * take, another creator's take and a malformed ID, so none of them reveals anything. It renders
+ * per request like every other page (`connection()`): the root layout reads a header in the
+ * gallery build (B2-T155), which a prerendered 404 would turn into a 500.
  */
-export default function NotFound() {
+export default async function NotFound() {
+  await connection();
   return (
     <>
       <SkipLink />

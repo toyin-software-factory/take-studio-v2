@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { usedUpMessage, type UsageView } from "@/components/takes/usage-meter";
 import { useUsage } from "@/components/takes/use-usage";
 import { UploadProgress } from "@/components/takes/upload-progress";
+import { useIdle } from "@/components/takes/use-idle";
 import { useLeaveGuard } from "@/components/takes/use-leave-guard";
 import { useUpload } from "@/components/takes/use-upload";
 import { holdCountdown } from "@/lib/follow-state";
@@ -11,9 +12,9 @@ import { wouldLoseWork } from "@/lib/recorder-state";
 import { clearDraft, deviceStore, loadDraft, saveDraft } from "@/lib/prompter-storage";
 import { usageDisplay } from "@/lib/usage-rules";
 import { isUsedUp, usageLimitSeconds, type RecordingContainer } from "@/lib/recorder-rules";
-import { RecordReview } from "./record-review";
 import { RecordSetup } from "./record-setup";
-import { RecordStage } from "./record-stage";
+import { RecordReview } from "./record-review";
+import { RecordStage, preloadSteps } from "./lazy-steps";
 import { RecordSteps } from "./steps";
 import { usePrompter } from "./use-prompter";
 import { useRecorder } from "./use-recorder";
@@ -48,6 +49,10 @@ export function RecordView({
   const recorder = useRecorder(usageLimitSeconds(usage), holdForVoice);
   const upload = useUpload();
   const [script, setScript] = useState("");
+  const idle = useIdle(1500);
+  useEffect(() => {
+    if (idle) preloadSteps();
+  }, [idle]);
   const { state, dispatch } = recorder;
   // Links and Back ask first too, not only closing the tab (the recorder warns for that).
   // A phone's own camera file uploading (upload.busy) is lost on leaving too.
@@ -142,10 +147,7 @@ export function RecordView({
           onCamera={recorder.chooseCamera}
           onMic={recorder.chooseMic}
           onFlip={recorder.flip}
-          onBack={() => {
-            recorder.stream?.getTracks().forEach((track) => track.stop());
-            recorder.dispatch({ type: "leave" });
-          }}
+          onBack={recorder.leave}
         />
       </WithSteps>
     );
@@ -184,7 +186,10 @@ export function RecordView({
           disclosureSeen: prompter.settings.followDisclosed,
           onDisclosureSeen: prompter.markFollowDisclosed,
         }}
-        onStart={() => void recorder.request()}
+        onStart={() => {
+          preloadSteps();
+          void recorder.request();
+        }}
         onNativeFile={(file) => void upload.start(file)}
       />
     </WithSteps>

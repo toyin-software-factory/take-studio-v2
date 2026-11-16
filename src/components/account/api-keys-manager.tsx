@@ -55,11 +55,8 @@ export function ApiKeysManager({ initial }: { readonly initial: readonly ApiKeyV
         target={revoking}
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        onConfirm={async (id) => {
-          const done = await state.revoke(id);
-          if (done) requestAnimationFrame(() => listHeading.current?.focus());
-          return done;
-        }}
+        onConfirm={(id) => state.revoke(id)}
+        onRevokedFocus={() => listHeading.current?.focus()}
         returnFocus={(id) => document.getElementById(`revoke-${id}`)}
       />
     </div>

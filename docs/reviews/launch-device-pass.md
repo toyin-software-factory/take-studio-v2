@@ -84,6 +84,24 @@ If you only have a Mac, run steps 4.1 to 4.5 without a screen reader and mark 4.
 | 4.5 | Open your test take, use the keyboard on the cut timeline and the cut list. The automatic accessibility scan of the take page crashes Playwright's Firefox, so also look for anything unreadable or out of order on this page. | Arrow keys move between cuts, focus is visible, Undo and Redo work. | |
 | 4.6 | NVDA on: repeat 4.5 and the `/record` flow. | Cuts, buttons, the countdown, the timer and errors are all announced in a way that makes sense. | |
 
+## 5. Record with script and the take page tools (added in B2-T164)
+
+Run on the iPhone (VoiceOver) and the Android phone (TalkBack), and on a desktop with the keyboard. Use the made up script from "Before you start".
+
+| # | Route and steps | Pass looks like | Result |
+|---|---|---|---|
+| 5.1 | On `/record`, type the script, press Turn on camera. | The script box is labelled Script (optional). The prompter shows the script in the top half of the picture with one current line marked. | |
+| 5.2 | Press Faster, Larger text, then Pause script. | Each press changes what you see, and the screen reader says the change in a short phrase, not again every second. | |
+| 5.3 | Turn on the Follow my voice switch. | A dialog explains in plain words that your voice goes to a speech service. Use a profile that has not accepted it before. With the dialog open, pressing P or the arrow keys changes nothing behind it. Focus stays inside it, Not now closes it and puts focus back on the switch. | |
+| 5.4 | If the script is still paused from 5.2, press Resume script. Turn Follow my voice on for real and start a recording. | If it connects, the marked line moves with your voice. If not, a plain sentence says following is not available and the script still scrolls on a timer. The screen reader says which. | |
+| 5.5 | Stop the recording from 5.4 and start a new one. Keyboard or switch control: press Record, then press it again during the countdown, and wait for the countdown to finish (B2-T160). | Focus stays on the Record button through the 3, 2, 1 and it becomes Stop, so you never have to hunt for Stop. Pressing it during the countdown does nothing. | |
+| 5.6 | While recording, pause and resume the script (on a computer also press the P key). | The script stops and starts, the timer keeps counting. | |
+| 5.7 | Stop, then press Use this take. | The screen reader says the recording stopped. The page says nothing has left your device yet. Progress is readable and Cancel works while Uploading. | |
+| 5.8 | On your test take open Background, pick a studio background and apply it. | The choices are named radio buttons, the chosen one is announced, and a message says when it is applied or if it failed. | |
+| 5.9 | Press Missed something? on the player. | A short confirmation is shown and announced. It asks for nothing personal. | |
+| 5.10 | Open the Export tab and save the edited and the original video. | A download starts, or on iPhone the video opens so you can use Share, Save Video. | |
+| 5.11 | Press More actions for this take, then delete your test take. | A dialog names the take and what will happen. Focus stays inside it, Keep it returns focus to where you were, Delete take returns you to the library. | |
+
 ## What only a real device can confirm
 
 These cannot be settled by Playwright, so each is on this pass:

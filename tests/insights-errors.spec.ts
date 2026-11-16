@@ -1,5 +1,6 @@
 import { devices, expect as baseExpect, test, type Page } from "@playwright/test";
 import { expectNoSeriousAxeIssues } from "./support/axe";
+import { expectNoMotion } from "./support/motion";
 import { builtWorkerSetting } from "./support/built-env";
 import { INSIGHTS_TEST_VIEWER_ID, signIn } from "./support/session";
 
@@ -24,6 +25,23 @@ test.describe("/insights", () => {
         !viewerConfigured,
         "the Worker was not built with the test viewer id (bash tests/support/build-worker.sh)",
       );
+  });
+
+  test("with reduced motion, nothing is still animating (B2-T162)", async ({ page, baseURL }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const { cleanup } = await signIn(
+      page.context(),
+      baseURL ?? "",
+      "Insights Viewer",
+      INSIGHTS_TEST_VIEWER_ID,
+    );
+    try {
+      await page.goto("/insights");
+      await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+      await expectNoMotion(page);
+    } finally {
+      await cleanup();
+    }
   });
 
   test("the viewer sees the page: title, one h1, phone width", async ({ page, baseURL }) => {

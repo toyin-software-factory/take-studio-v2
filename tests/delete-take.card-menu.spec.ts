@@ -70,6 +70,26 @@ test.describe("library card menu", () => {
     expect(calls).toHaveLength(1);
   });
 
+  test("focus still lands on the next card when the page runs slowly (B2-T165)", async ({
+    page,
+    baseURL,
+  }) => {
+    const user = await signedIn(page, baseURL!);
+    await seedTakes(user.id, seeds);
+    await stubDelete(page, [204]);
+    await page.goto("/library");
+    await page.getByRole("button", { name: "Actions for Beta take" }).click();
+    await page.getByRole("menuitem", { name: "Delete Beta take" }).click();
+    // A slow page is when the dialog finishes closing after the next frame: the focus move must
+    // wait for the close, not for one frame, or Radix's own restore overwrites it.
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 20 });
+    await page.getByRole("button", { name: "Delete take" }).click();
+    await expect(page.getByRole("dialog")).toBeHidden();
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+    await expect(page.getByRole("main").getByRole("link", { name: "Gamma take" })).toBeFocused();
+  });
+
   test("deleting the last take shows the empty state and focuses the upload area", async ({
     page,
     baseURL,
