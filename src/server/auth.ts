@@ -7,6 +7,7 @@ import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import * as schema from "@/db/schema";
 import type { WebEnv } from "@/lib/env";
 import { beforeDeleteUser } from "./account";
+import { GUEST_EMAIL_SUFFIX } from "@/lib/guest-rules";
 import { ACCOUNT_DELETE_FRESH_SECONDS } from "./account/policy";
 import type { EmailSender } from "@/lib/email/send";
 import { signInEmail } from "@/lib/email/templates";
@@ -133,6 +134,13 @@ export function createAuth(
         if (ctx.path !== "/sign-in/magic-link") return;
         const email = (ctx.body as { email?: unknown } | undefined)?.email;
         if (typeof email !== "string" || email.length === 0) return;
+        // Spec 0023: a guest placeholder address is never a real inbox, so no link goes to it.
+        if (email.trim().toLowerCase().endsWith(GUEST_EMAIL_SUFFIX)) {
+          throw new APIError("BAD_REQUEST", {
+            code: "INVALID_EMAIL",
+            message: "Enter a real email address.",
+          });
+        }
         if (!(await takeSignInEmailSlot(db, email))) {
           throw new APIError("TOO_MANY_REQUESTS", {
             code: "EMAIL_RATE_LIMITED",

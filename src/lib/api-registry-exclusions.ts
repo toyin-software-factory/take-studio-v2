@@ -55,6 +55,12 @@ export const API_EXCLUSIONS: readonly ApiExclusion[] = [
     "auth",
     "Same handler as GET: sign in and delete account.",
   ),
+  exclusion(
+    "POST",
+    "/api/guest/uploads",
+    "guest",
+    "The drop box for visitors without an account: a bot check and a cookie, never a key.",
+  ),
   exclusion("GET", "/api/health", "operations", "Liveness check for our own monitoring."),
   exclusion("GET", "/api/sentry-check", "operations", "Error reporting check for our own use."),
   exclusion(

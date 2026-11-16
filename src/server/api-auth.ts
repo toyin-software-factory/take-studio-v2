@@ -24,11 +24,17 @@ import { ok } from "@/lib/result";
  * `api_key_rejected` line with a reason code only.
  */
 
-export type Creator = { readonly db: Db; readonly creatorId: string };
+/** `guest` is only ever true on a route that opted in with `allowGuest` (spec 0023). */
+export type Creator = { readonly db: Db; readonly creatorId: string; readonly guest?: boolean };
 
 export type ApiAuthDeps = {
   /** The signed in creator from the cookie session, or null. Never called beside a header. */
   readonly getCreator: (request: Request) => Promise<Creator | null>;
+  /**
+   * The live guest for the `ts_guest` cookie who owns `takeId`, or null. Only called by a route
+   * that passes `allowGuest` (spec 0023); left out, a guest cookie is never read.
+   */
+  readonly getGuest?: (request: Request, takeId?: string) => Promise<Creator | null>;
   /** The only origin allowed to make a session request that changes something. */
   readonly allowedOrigin?: string;
   /** Left out, a request with an `Authorization` header is always `invalid_api_key`. */
@@ -171,7 +177,12 @@ function reply(
 export async function guard(
   request: Request,
   deps: ApiAuthDeps,
-  options: { readonly checkOrigin: boolean; readonly sessionOnly?: boolean },
+  options: {
+    readonly checkOrigin: boolean;
+    readonly sessionOnly?: boolean;
+    /** Spec 0023: this route also accepts the guest cookie, for the guest's own take only. */
+    readonly allowGuest?: { readonly takeId: string };
+  },
 ): Promise<Creator | Response> {
   const hasHeader = request.headers.has("authorization");
   if (options.sessionOnly) {
@@ -185,6 +196,10 @@ export async function guard(
     request.headers.get("origin") !== deps.allowedOrigin
   ) {
     return reply("forbidden");
+  }
+  if (options.allowGuest && !hasHeader && deps.getGuest) {
+    const guest = await deps.getGuest(request, options.allowGuest.takeId);
+    if (guest) return guest;
   }
   const resolved = await resolveCreator(request, deps);
   if (resolved.ok) return resolved.data;

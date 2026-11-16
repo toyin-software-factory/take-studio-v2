@@ -19,6 +19,12 @@ export const user = pgTable("user", {
   /** Spec 0006, AC-6: false once the creator turned "take ready" emails off. */
   takeEmails: boolean("take_emails").default(true).notNull(),
   /**
+   * Spec 0023: true for a guest (a visitor who dropped a video with no account). A plain Drizzle
+   * column, inserted with the database and never through Better Auth, so there is no `signup`
+   * event. Every query that counts or lists people filters `guest = false`.
+   */
+  guest: boolean("guest").default(false).notNull(),
+  /**
    * Spec 0008, AC-1: the creator's last background pick (null keeps the original). A plain
    * Drizzle column, not a Better Auth field: never written through Better Auth and always read
    * from the database, not the session cache.

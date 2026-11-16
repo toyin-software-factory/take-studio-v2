@@ -26,7 +26,7 @@ export type ApiRoute = {
 };
 
 /** Why a route is not in the public registry. */
-export type ExclusionReason = "auth" | "session-only" | "operations" | "documentation";
+export type ExclusionReason = "auth" | "session-only" | "operations" | "documentation" | "guest";
 
 export type ApiExclusion = {
   readonly method: ApiMethod;

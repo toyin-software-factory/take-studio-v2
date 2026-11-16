@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { type ApiAuthDeps, guard as authGuard } from "../api-auth";
+import { type ApiAuthDeps, type Creator, guard as authGuard } from "../api-auth";
 import type { Db } from "@/db/types";
 import { shortDate } from "@/lib/usage-rules";
 import { recordEvent } from "../analytics/record";
@@ -21,9 +21,9 @@ import {
 
 export type HttpDeps = {
   /** The signed in creator for this request, or null. */
-  readonly getCreator: (
-    request: Request,
-  ) => Promise<{ readonly db: Db; readonly creatorId: string } | null>;
+  readonly getCreator: (request: Request) => Promise<Creator | null>;
+  /** Spec 0023: the guest cookie's guest for one of its own takes (opt in routes only). */
+  readonly getGuest?: ApiAuthDeps["getGuest"];
   /** The only origin allowed to call these routes (the app's own). */
   readonly allowedOrigin: string;
   /** Lets a bearer key through the shared guard (spec 0018); tests leave it out. */
@@ -65,6 +65,8 @@ const MESSAGES: Readonly<Record<UploadError, string>> = {
     "That background isn't ready yet. Choose another, or keep the original and change it later.",
 };
 
+const GUEST_ROUTE_MESSAGE = "Guests upload through the drop box. Sign in to use this.";
+
 function json(body: unknown, status: number): Response {
   return Response.json(body, { status, headers: { "cache-control": "no-store" } });
 }
@@ -74,11 +76,12 @@ function errorResponse(code: UploadError): Response {
 }
 
 /** The shared identity guard, with the Origin check these write routes always had. */
-function guard(
-  request: Request,
-  deps: HttpDeps,
-): Promise<{ readonly db: Db; readonly creatorId: string } | Response> {
-  return authGuard(request, deps, { checkOrigin: true });
+function guard(request: Request, deps: HttpDeps, takeId?: string): Promise<Creator | Response> {
+  // Spec 0023: only the routes that work on one existing take accept the guest cookie.
+  return authGuard(request, deps, {
+    checkOrigin: true,
+    ...(takeId !== undefined ? { allowGuest: { takeId } } : {}),
+  });
 }
 
 /** The request's JSON body, or undefined when it isn't JSON (the schemas then reject it). */
@@ -140,6 +143,9 @@ async function earlyRefusal(
 export async function handleCreate(request: Request, deps: HttpDeps): Promise<Response> {
   const creator = await guard(request, deps);
   if (creator instanceof Response) return creator;
+  // Spec 0023: a guest uses the drop box route, never this one.
+  if (creator.guest)
+    return json({ error: "guest_use_guest_route", message: GUEST_ROUTE_MESSAGE }, 403);
   const input = await body(request);
   const refused = await earlyRefusal(creator, input, deps);
   if (refused) return refused;
@@ -153,7 +159,7 @@ export async function handleParts(
   takeId: string,
   deps: HttpDeps,
 ): Promise<Response> {
-  const creator = await guard(request, deps);
+  const creator = await guard(request, deps, takeId);
   if (creator instanceof Response) return creator;
   const result = await presignParts(
     deps.uploadDeps(creator.db),
@@ -170,7 +176,7 @@ export async function handleComplete(
   takeId: string,
   deps: HttpDeps,
 ): Promise<Response> {
-  const creator = await guard(request, deps);
+  const creator = await guard(request, deps, takeId);
   if (creator instanceof Response) return creator;
   const result = await completeUpload(
     deps.uploadDeps(creator.db),
@@ -187,7 +193,7 @@ export async function handleAbort(
   takeId: string,
   deps: HttpDeps,
 ): Promise<Response> {
-  const creator = await guard(request, deps);
+  const creator = await guard(request, deps, takeId);
   if (creator instanceof Response) return creator;
   const result = await abortUpload(deps.uploadDeps(creator.db), creator.creatorId, takeId);
   return result.ok ? json(result.data, 200) : errorResponse(result.error);

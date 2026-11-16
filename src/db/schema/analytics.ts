@@ -24,9 +24,8 @@ export const analyticsEvent = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     name: text("name").notNull(),
-    creatorId: text("creator_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+    /** Null for the guest events (spec 0023), so they outlive the guest user row. */
+    creatorId: text("creator_id").references(() => user.id, { onDelete: "cascade" }),
     takeId: uuid("take_id").references(() => take.id, { onDelete: "set null" }),
     props: jsonb("props").notNull().default({}),
     occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
