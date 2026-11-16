@@ -18,7 +18,9 @@ import { KEY_COPY } from "@/lib/api-keys-screen";
  * The confirm dialog for revoking a key (spec 0018 AC-12), the same pattern as the delete take
  * dialog: Radix traps focus and closes on Escape, a failed revoke keeps it open and moves focus
  * to the `role="alert"` line, and while the request runs it can't be closed. Closed without a
- * revoke, focus returns to that row's button; after a revoke the caller places focus.
+ * revoke, focus returns to that row's button; after a revoke `onRevokedFocus` places it, from the
+ * close callback (the trap has let go by then; a frame callback from the confirm click can run
+ * while the trap still holds focus, and under load it lost the race).
  */
 export function RevokeKeyDialog({
   target,
@@ -26,6 +28,7 @@ export function RevokeKeyDialog({
   onOpenChange,
   onConfirm,
   returnFocus,
+  onRevokedFocus,
 }: {
   /** The key being asked about; it stays set while the dialog closes, so the text doesn't blank. */
   readonly target: { readonly id: string; readonly name: string } | null;
@@ -33,6 +36,8 @@ export function RevokeKeyDialog({
   readonly onOpenChange: (open: boolean) => void;
   readonly onConfirm: (id: string) => Promise<boolean>;
   readonly returnFocus: (id: string) => HTMLElement | null;
+  /** Places focus once the dialog has closed after a successful revoke. */
+  readonly onRevokedFocus: () => void;
 }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +79,8 @@ export function RevokeKeyDialog({
         showCloseButton={false}
         onCloseAutoFocus={(event) => {
           event.preventDefault();
-          if (!revoked.current && target) returnFocus(target.id)?.focus();
+          if (revoked.current) onRevokedFocus();
+          else if (target) returnFocus(target.id)?.focus();
         }}
       >
         <DialogHeader>

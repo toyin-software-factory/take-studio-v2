@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
-import { expect as baseExpect, test, type Page } from "@playwright/test";
+import { expect as baseExpect, test } from "@playwright/test";
 import { signIn } from "./support/session";
+import { expectNoMotion } from "./support/motion";
 import { seedTakes } from "./support/takes";
 
 // B2-T99 (launch UI review item 4): with reduced motion on, nothing on the library, the take page
@@ -21,22 +22,7 @@ test.afterEach(async () => {
   cleanups = [];
 });
 
-/** Animations and transitions still running (an infinite one counts as running forever). */
-const running = (page: Page) =>
-  page.evaluate(() =>
-    document
-      .getAnimations()
-      .filter((a) => a.playState === "running")
-      .map((a) => {
-        const timing = a.effect?.getComputedTiming();
-        const target = (a.effect as KeyframeEffect | null)?.target as Element | null;
-        return `${target?.tagName.toLowerCase() ?? "?"} ${a.constructor.name} ${timing?.iterations}`;
-      }),
-  );
-
-async function noneRunning(page: Page) {
-  await expect.poll(() => running(page), { message: "running animations" }).toEqual([]);
-}
+const noneRunning = expectNoMotion;
 
 test("reduced motion: no running animation on the library, a take page and /record", async ({
   page,

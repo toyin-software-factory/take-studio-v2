@@ -122,6 +122,7 @@ describe("POST /api/realtime/token", () => {
     const d = deps(c.id);
     const res = await call(d);
     expect(res.status).toBe(429);
+    // All ten were minted at NOW, so the oldest leaves the hour window a full hour from now.
     expect(res.headers.get("retry-after")).toBe("3600");
     expect((await res.json()).error).toBe("rate_limited");
     expect(d.fetch).not.toHaveBeenCalled();
@@ -145,7 +146,8 @@ describe("POST /api/realtime/token", () => {
     await db.insert(realtimeTokenMint).values(rows);
     const res = await call(deps(c.id));
     expect(res.status).toBe(429);
-    expect(res.headers.get("retry-after")).toBe("86400");
+    // The oldest mint is 2 hours and 39 minutes old, so 21 hours and 21 minutes are left.
+    expect(res.headers.get("retry-after")).toBe(String(24 * 3600 - (2 * 3600 + 39 * 60)));
     // A day later the window has moved past them.
     const later = deps(c.id, { now: () => new Date(NOW.getTime() + 25 * 60 * 60 * 1000) });
     expect((await call(later)).status).toBe(200);

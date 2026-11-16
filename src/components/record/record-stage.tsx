@@ -16,6 +16,7 @@ import type { Prompter } from "./use-prompter";
 import { useLevel } from "./use-level";
 import { usePhoneSheet } from "./use-phone-sheet";
 import type { VoiceFollow } from "./use-voice-follow";
+import "./stage-dock.css";
 
 /**
  * The live preview (mirrored, display only: the file is never mirrored), the script over it,
@@ -75,6 +76,7 @@ export function RecordStage({
 
   const recording = state.kind === "recording";
   const countdown = state.kind === "countdown";
+  const blocked = !recording && (countdown || switching || limitMs <= 0);
   const leftMs = Math.max(0, limitMs - elapsedMs);
   const warn = recording && shouldWarn(elapsedMs, limitMs);
   const status = holding
@@ -122,7 +124,7 @@ export function RecordStage({
             </div>
           ) : null}
           {holding ? (
-            <div aria-hidden="true" className="rst-count" style={{ fontSize: "var(--fs-h3)" }}>
+            <div aria-hidden="true" className="rst-count rst-count-note">
               Connecting voice…
             </div>
           ) : null}
@@ -183,8 +185,10 @@ export function RecordStage({
             type="button"
             className="rst-rec"
             data-recording={recording}
-            disabled={!recording && (countdown || switching || limitMs <= 0)}
-            onClick={recording ? onStop : onRecord}
+            // aria-disabled, not disabled: a disabled button drops the keyboard focus to the page,
+            // and this same button becomes Stop once the countdown ends (B2-T160).
+            aria-disabled={blocked || undefined}
+            onClick={recording ? onStop : blocked ? undefined : onRecord}
           >
             <span className="rst-ring" aria-hidden="true">
               <span className="rst-core" />
