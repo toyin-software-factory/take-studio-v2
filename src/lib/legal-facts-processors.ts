@@ -9,6 +9,8 @@ export type Processor = {
   readonly receives: string;
   readonly doesNotReceive: string;
   readonly location: string;
+  /** A link to the service's own privacy addendum, when it asks us to point to it. */
+  readonly addendumUrl?: string;
   /** Always false: we never let a service train on creator content. The test pins it. */
   readonly trainsOnContent: false;
   /** Env variable names this service's secrets use (checked against the env schemas). */
@@ -16,6 +18,9 @@ export type Processor = {
   /** Runtime dependencies in package.json that talk to this service. */
   readonly packages: readonly string[];
 };
+
+/** Cloudflare's Turnstile Privacy Addendum; Cloudflare asks us to reference it (B2-T185). */
+export const TURNSTILE_ADDENDUM_URL = "https://www.cloudflare.com/turnstile-privacy-policy/";
 
 export const PROCESSORS: readonly Processor[] = [
   {
@@ -108,6 +113,7 @@ export const PROCESSORS: readonly Processor[] = [
     receives: "A one time check token and the visitor's network address, when you drop a video.",
     doesNotReceive: "Your videos, transcripts or email address.",
     location: "Cloudflare global network.",
+    addendumUrl: TURNSTILE_ADDENDUM_URL,
     trainsOnContent: false,
     envNames: ["TURNSTILE_SECRET_KEY", "TURNSTILE_SITE_KEY"],
     packages: [],

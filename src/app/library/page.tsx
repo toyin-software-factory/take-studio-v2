@@ -7,6 +7,7 @@ import { AppShell } from "@/components/shell/app-shell";
 import { LibraryHeading } from "@/components/takes/library-heading";
 import { LibrarySkeleton } from "@/components/takes/library-skeleton";
 import { TakeLibrary } from "@/components/takes/take-library";
+import { TermsUpdateNotice } from "@/components/legal/terms-update-notice";
 import { UploadArea } from "@/components/takes/upload-area";
 import { getDb, getSession } from "@/server/request";
 import { listForCreator } from "@/server/takes";
@@ -84,6 +85,7 @@ export default async function LibraryPage({
     <AppShell user={{ id: session.user.id, name: session.user.name, email: session.user.email }}>
       <div className="flex flex-col gap-8">
         <LibraryHeading deleted={deleted} />
+        <TermsUpdateNotice now={new Date()} />
         <UploadWithUsage usage={usage} />
         <section aria-labelledby="takes-heading" className="flex flex-col gap-4">
           <h2 id="takes-heading" className="sr-only">

@@ -14,6 +14,7 @@ export const TERMS_TOC = [
   { id: "account", title: "Your account" },
   { id: "guest", title: "Dropping a video before you sign in" },
   { id: "content", title: "Your videos, transcripts and scripts" },
+  { id: "credit", title: "The Take Studio credit" },
   { id: "rules", title: "What you may not upload" },
   { id: "storage", title: "Storage and deleting" },
   { id: "usage", title: "How we count use" },
@@ -54,7 +55,16 @@ export function TermsCopy({
       <LegalSection id="content" title="Your videos, transcripts and scripts">
         <p>
           You keep all rights in your videos, transcripts and scripts. You give us only the right to
-          process them and show them to you, so we can make your finished video.
+          process them, show them to you, and add our credit to your finished video, so we can make
+          your finished video.
+        </p>
+      </LegalSection>
+      <LegalSection id="credit" title="The Take Studio credit">
+        <p>
+          A finished video made on a free account ends with a short credit, &quot;Edited with Take
+          Studio&quot;, in the top left corner for the last few seconds. It does not change the
+          length of your video. A video we hand back as it is, and your original upload, carry no
+          credit. A video made before we started adding the credit is never given one.
         </p>
       </LegalSection>
       <LegalSection id="rules" title="What you may not upload">

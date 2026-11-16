@@ -43,7 +43,7 @@ export const FLOOR: Readonly<Record<"privacy" | "terms", { count: number; digest
     count: 21,
     digest: "ce74ae23420c1e82051fe88d678f8db699299ece088680506a8e5e00335a7b22",
   },
-  terms: { count: 8, digest: "2c9f2e110d86b1d659b48368dc0507dd6587b1d5d04ee31029042a9d4218e4c9" },
+  terms: { count: 9, digest: "ef00647f109e22c5acd0e9e8bb158d029221997783999eae71611ff56a11e7f7" },
 };
 
 export function floorProblems(
