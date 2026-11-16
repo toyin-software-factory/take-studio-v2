@@ -51,6 +51,17 @@ describe("termsNoticeEmail", () => {
   });
 });
 
+describe("termsNoticeEmail document", () => {
+  it("links a Privacy notice to the Privacy Policy", () => {
+    const e = termsNoticeEmail(
+      { ...NOTICES["2026-11-credit"]!, document: "privacy" },
+      "https://app.example.test",
+    );
+    expect(e.text).toContain("https://app.example.test/privacy");
+    expect(e.text).toContain("Read the Privacy Policy");
+  });
+});
+
 describe("sendAll", () => {
   it("sends one email each with the key, and logs no address", async () => {
     const sent: { to: string; key?: string }[] = [];

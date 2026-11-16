@@ -9,6 +9,8 @@ import { LEGAL_LINKS } from "@/lib/legal-links";
 import { type Email, render } from "./templates";
 
 export type Notice = {
+  /** Which page the email links to: a Privacy only change links to the Privacy Policy. */
+  readonly document: "terms" | "privacy";
   /** The date shown in the email (ISO, the `LEGAL_VERSION` date of the change). */
   readonly date: string;
   readonly subject: string;
@@ -19,6 +21,7 @@ export type Notice = {
 /** Every notice we have ever sent or may send, by id. A later change adds one entry. */
 export const NOTICES: Readonly<Record<string, Notice>> = {
   "2026-11-credit": {
+    document: "terms",
     date: "2026-11-16",
     subject: "We updated the Take Studio Terms",
     summary: [
@@ -57,11 +60,11 @@ function formatDate(iso: string): string {
 }
 
 export function termsNoticeEmail(notice: Notice, origin: string): Email {
-  const url = new URL(LEGAL_LINKS.terms.href, origin).toString();
+  const url = new URL(LEGAL_LINKS[notice.document].href, origin).toString();
   const { html, text } = render({
     heading: notice.subject,
     paragraphs: [...notice.summary, `This change is dated ${formatDate(notice.date)}.`],
-    button: { label: "Read the Terms", url },
+    button: { label: `Read the ${LEGAL_LINKS[notice.document].label}`, url },
     footer: ["You get this email because you have a Take Studio account."],
   });
   return { subject: notice.subject, html, text };
