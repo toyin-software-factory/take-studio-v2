@@ -49,6 +49,9 @@ describe("POST /api/guest/uploads (spec 0023, AC-1, AC-9)", () => {
   it("reuses the guest for a second drop with the same cookie", async () => {
     const first = await handleGuestCreate(guestRequest(), guestDeps(upload()));
     const token = cookieOf(first);
+    // One active upload per browser: the first must be finished before the second drop.
+    const firstId = ((await first.clone().json()) as { takeId: string }).takeId;
+    await testDb.db.update(take).set({ status: "uploaded" }).where(eq(take.id, firstId));
     const second = await handleGuestCreate(
       guestRequest(body, { cookie: `${GUEST_COOKIE}=${token}` }),
       guestDeps(upload()),

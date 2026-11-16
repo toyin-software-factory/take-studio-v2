@@ -1,17 +1,24 @@
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, lt, sql } from "drizzle-orm";
 import { transitionTake } from "@/db/data/takes";
-import { guestClaim, take, user } from "@/db/schema";
+import { guestClaim, guestIpDay, take, user } from "@/db/schema";
 import type { Executor } from "@/db/types";
 import { runTx } from "@/db/tx";
 import { uploadGuestCreateSchema } from "@/lib/api-schemas/requests";
 import { hashGuestToken, newGuestToken } from "@/lib/guest-hash";
-import { GUEST_MAX_BYTES, GUEST_TTL_HOURS, guestEmail } from "@/lib/guest-rules";
+import {
+  GUEST_DROPS_PER_ADDRESS_PER_DAY,
+  GUEST_MAX_BYTES,
+  GUEST_TTL_HOURS,
+  guestEmail,
+  utcDay,
+} from "@/lib/guest-rules";
 import { type Result, err, ok } from "@/lib/result";
 import { UPLOAD, containerContentType, partCount } from "@/lib/uploads";
 import { attachUpload, create } from "../takes";
 import type { CreatedUpload, UploadDeps } from "../uploads/base";
 
-export type GuestCreateError = "invalid" | "too_large" | "storage_error";
+export type GuestCreateError =
+  "invalid" | "too_large" | "storage_error" | "guest_busy" | "guest_address_limit";
 
 export type GuestCreated = CreatedUpload & {
   /** The cookie value to set: the guest's existing token, or a new one. */
@@ -22,7 +29,9 @@ export type GuestCreated = CreatedUpload & {
  * `POST /api/guest/uploads`, after the route's checks (Origin, body, Turnstile). One transaction
  * finds the guest the cookie points at (or makes a new guest user and claim), pushes its expiry to
  * 24 hours after this drop, and creates the take marked `guest_origin`; then the multipart upload
- * starts. The kill switch, the busy check, the address count and the daily minutes are step 3.
+ * starts. Limits inside the transaction (AC-6): one active upload per browser (`guest_busy`) and
+ * three drops per address per UTC day (`guest_address_limit`, counted here, never given back).
+ * The kill switch and the advisory budget look run in the route; the minutes are reserved at probe.
  */
 export async function createGuestUpload(
   deps: UploadDeps,
@@ -60,6 +69,24 @@ export async function createGuestUpload(
         expiresAt,
       });
     }
+    if (existing) {
+      const [active] = await tx
+        .select({ id: take.id })
+        .from(take)
+        .where(and(eq(take.creatorId, guestId), eq(take.status, "uploading")))
+        .limit(1);
+      if (active) return err("guest_busy" as const);
+    }
+    const counted = await tx
+      .insert(guestIpDay)
+      .values({ ipHash: input.ipHash, day: utcDay(now), drops: 1 })
+      .onConflictDoUpdate({
+        target: [guestIpDay.ipHash, guestIpDay.day],
+        set: { drops: sql`${guestIpDay.drops} + 1` },
+        setWhere: lt(guestIpDay.drops, GUEST_DROPS_PER_ADDRESS_PER_DAY),
+      })
+      .returning({ drops: guestIpDay.drops });
+    if (counted.length === 0) return err("guest_address_limit" as const);
     const t = await create(tx, { creatorId: guestId, fileName, container, bytes: sizeBytes });
     if (!t.ok) return err("invalid" as const);
     await tx.update(take).set({ guestOrigin: true }).where(eq(take.id, t.data.id));

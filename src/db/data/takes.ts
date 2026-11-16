@@ -3,6 +3,7 @@ import type { TakeStatus } from "@/lib/processing";
 import { type Result, err, ok } from "@/lib/result";
 import { type Probe, canTransition, checkUpload, videoExpiresAt } from "@/lib/take-rules";
 import { take } from "../schema";
+import { releaseGuestMinutes } from "./guest-budget";
 import type { Executor, Take } from "../types";
 
 /**
@@ -45,7 +46,13 @@ export async function transitionTake(
     .set({ ...changes, status: to })
     .where(and(eq(take.id, takeId), eq(take.status, from)))
     .returning();
-  if (updated) return ok(updated);
+  if (updated) {
+    // A failed guest take gives its reserved minutes back, once (spec 0023 AC-6).
+    if (to === "failed" && updated.guestReservedMinutes !== null) {
+      await releaseGuestMinutes(db, takeId);
+    }
+    return ok(updated);
+  }
 
   const [exists] = await db.select({ id: take.id }).from(take).where(eq(take.id, takeId));
   return err(exists ? "invalid_transition" : "not_found");

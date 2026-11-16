@@ -2,6 +2,7 @@ import { logger, task } from "@trigger.dev/sdk";
 import { eq } from "drizzle-orm";
 import { withJobDb } from "@/db/client/job";
 import { queueDeletions } from "@/db/data/jobs";
+import { admitGuestTake } from "@/db/data/guest-admit";
 import { markUploaded, transitionTake } from "@/db/data/takes";
 import { processingJob, take } from "@/db/schema";
 import { parseJobEnv, parseUsageEnv } from "@/lib/env";
@@ -120,6 +121,13 @@ export const probeTask = task({
         }
       }
 
+      // Spec 0023: a guest drop is length checked and reserved against the day's budget here,
+      // before any job exists. A refusal has already failed the take and queued the original.
+      const admission = await admitGuestTake(db, found.id);
+      if (admission !== "admitted") {
+        await recordTakeFailed(db, found, admission);
+        return { takeId: found.id, outcome: "rejected" as const, failureCode: admission };
+      }
       return startAndDispatch(db, found.id, found.creatorId, usageSecret);
     });
   },

@@ -32,6 +32,9 @@ const NOT_REFUNDABLE = [
   "render_mismatch",
   // Spec 0014: refused at the monthly limit; nothing was charged.
   "limit_exceeded",
+  // Spec 0023: a guest drop over 3 minutes, or the day's guest budget is spent.
+  "guest_too_long",
+  "guest_budget_spent",
 ];
 
 describe("failure code registry (AC-13)", () => {

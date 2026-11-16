@@ -34,6 +34,10 @@ export function uploadFailureMessage(take: FailedTake): string {
       return "This video couldn't be read. It may be damaged, or the upload didn't finish.";
     case "upload_abandoned":
       return "This upload didn't finish.";
+    case "guest_too_long":
+      return "Videos dropped without an account can be up to 3 minutes. Sign in to upload longer ones.";
+    case "guest_budget_spent":
+      return "We've reached today's limit for uploads without an account. Try again tomorrow, or sign in to upload now.";
     default:
       return "Something went wrong with this video.";
   }
