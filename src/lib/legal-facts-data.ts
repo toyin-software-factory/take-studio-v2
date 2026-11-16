@@ -127,7 +127,7 @@ export const COOKIES: readonly CookieFact[] = [
   {
     name: "ts_guest",
     purpose:
-      "Only if you drop a video before signing in: remembers that video for a day so it can be added to your account when you sign in. Needed for that feature to work.",
+      "Only if you drop a video before signing in: remembers the video you dropped for a day. Needed for that feature to work.",
     kept: "24 hours.",
   },
 ];
