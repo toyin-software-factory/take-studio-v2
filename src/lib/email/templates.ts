@@ -63,10 +63,16 @@ function render(block: Block): { readonly html: string; readonly text: string } 
 }
 
 /** Sign in link (always sent, no unsubscribe). Valid 15 minutes, works once. */
-export function signInEmail(input: { readonly url: string }): Email {
+export function signInEmail(input: { readonly url: string; readonly guest?: boolean }): Email {
   const { html, text } = render({
     heading: "Your sign in link",
-    paragraphs: [`Use this link to sign in to ${BRAND}. It works once and expires in 15 minutes.`],
+    paragraphs: [
+      `Use this link to sign in to ${BRAND}. It works once and expires in 15 minutes.`,
+      // Spec 0023 G32: a visitor who dropped a video first. Never a file name or a title.
+      ...(input.guest
+        ? [`You dropped a video on ${BRAND}. This link adds it to your account.`]
+        : []),
+    ],
     button: { label: "Sign in", url: input.url },
     footer: [
       "If you didn't ask for this, you can ignore this email. Nobody can sign in without the link.",

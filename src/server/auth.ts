@@ -27,6 +27,15 @@ export const MAGIC_LINK_EXPIRES_SECONDS = 15 * 60;
 /** AC-13: client registrations allowed per IP per hour. */
 export const OAUTH_REGISTER_PER_HOUR = 20;
 
+/** True when the link's `callbackURL` is the guest claim page (spec 0023, G32). */
+function isClaimLink(url: string): boolean {
+  try {
+    return (new URL(url).searchParams.get("callbackURL") ?? "").startsWith("/claim?c=");
+  } catch {
+    return false;
+  }
+}
+
 /** The protected resource the OAuth tokens are issued for (spec 0019 AC-13). */
 export const mcpResource = (env: Pick<WebEnv, "BETTER_AUTH_URL">): string =>
   `${env.BETTER_AUTH_URL.replace(/\/$/, "")}/mcp`;
@@ -174,7 +183,10 @@ export function createAuth(
         expiresIn: MAGIC_LINK_EXPIRES_SECONDS,
         // Always the same answer for any address (AC-1): unknown emails get a link too.
         sendMagicLink: async ({ email, url }) => {
-          const sent = await deps.sendEmail?.({ to: email, ...signInEmail({ url }) });
+          const sent = await deps.sendEmail?.({
+            to: email,
+            ...signInEmail({ url, guest: isClaimLink(url) }),
+          });
           if (!sent?.ok) {
             // AC-8: the form shows "We couldn't send the email, please try again or use Google".
             throw new APIError("SERVICE_UNAVAILABLE", {

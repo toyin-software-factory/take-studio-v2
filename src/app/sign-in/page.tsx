@@ -7,6 +7,7 @@ import { SignInForm } from "@/components/auth/sign-in-form";
 import { DELETE_ACCOUNT_REASON, DELETE_ACCOUNT_RETURN } from "@/components/shell/delete-account";
 import { SkipLink } from "@/components/shell/skip-link";
 import { Icon } from "@/components/ui/icon";
+import { claimReturnPath } from "@/lib/guest-rules";
 import { oauthResumePath, oauthWantsFreshLogin } from "@/lib/oauth-rules";
 import { getSession } from "@/server/request";
 
@@ -32,7 +33,7 @@ export default async function SignInPage({
   const deleting = query.reason === DELETE_ACCOUNT_REASON;
   // Spec 0019: an OAuth client sent the creator here; after sign in the flow resumes.
   const search = toSearchParams(query);
-  const resume = oauthResumePath(search);
+  const resume = oauthResumePath(search) ?? claimReturnPath(search);
   const landing = deleting ? DELETE_ACCOUNT_RETURN : (resume ?? "/library");
   // A client that asked for a fresh login (prompt=login, or a max_age the session no longer
   // meets) gets the form even when signed in.

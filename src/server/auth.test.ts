@@ -182,3 +182,25 @@ describe("email sign in link (spec 0006)", () => {
     expect(res.status).toBe(503);
   });
 });
+
+describe("guest claim link (spec 0023, AC-2)", () => {
+  it("sends the guest line and keeps the /claim callback in the link", async () => {
+    const { auth, sent } = setup();
+    const callbackURL = `/claim?c=${crypto.randomUUID()}`;
+    const res = await auth.handler(
+      new Request("http://localhost:3000/api/auth/sign-in/magic-link", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          origin: "http://localhost:3000",
+          "x-forwarded-for": "203.0.113.9",
+        },
+        body: JSON.stringify({ email: "guestlink@example.com", callbackURL }),
+      }),
+    );
+    expect(res.status).toBe(200);
+    const link = new URL(/https?:\/\/[^\s"<]+/.exec(sent[0]?.text ?? "")?.[0] ?? "");
+    expect(link.searchParams.get("callbackURL")).toBe(callbackURL);
+    expect(sent[0]?.text).toContain("You dropped a video");
+  });
+});
