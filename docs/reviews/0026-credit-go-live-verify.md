@@ -14,5 +14,5 @@ This task changes docs only (the runbook and spec 0026). No code, no migration. 
 
 ## Needs a deployed check
 
-- Everything that touches production: Toyin gives the go, Michael runs the SQL after B2-T186 (the Terms notice email) is sent. Nothing in this PR runs against production.
+- Everything that touches production: Toyin gives the go and runs the SQL after B2-T186 (the Terms notice email) is sent. Nothing in this PR runs against production.
 - A new synthetic free take showing the credit, made after the start time (the runbook's step 4).

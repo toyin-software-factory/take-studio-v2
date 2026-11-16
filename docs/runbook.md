@@ -29,7 +29,7 @@ Production is four things: the **Worker** (the web app, Cloudflare, name `take-s
 
 ## Go live: the credit (spec 0026, one time)
 
-Only when Michael says Toyin has given the go: the Terms update is deployed, the Terms notice email has been sent (B2-T186, Toyin approved the run) and the portrait check is recorded. The order is the email first, then this SQL. Nothing here is a deploy. In the Neon console, production branch, SQL editor, in this order, with `<DATE>` the agreed start as a UTC time, for example `2026-11-24T09:00:00Z` (it must not be in the past, or takes made earlier today count as new):
+Toyin runs this, only after she has given the go (Michael relays it): the Terms update is deployed, the Terms notice email has been sent (B2-T186, Toyin approved the run) and the portrait check is recorded. The order is the email first, then this SQL. Nothing here is a deploy. In the Neon console, production branch, SQL editor, in this order, with `<DATE>` the agreed start as a UTC time, for example `2026-11-24T09:00:00Z` (it must not be in the past, or takes made earlier today count as new):
 
 1. Set the start date once. This refuses to overwrite a date that is already set:
    `UPDATE app_setting SET value = to_jsonb('<DATE>'::text), updated_at = now() WHERE key = 'credit_starts_at' AND value = 'null'::jsonb;`
