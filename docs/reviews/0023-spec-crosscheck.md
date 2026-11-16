@@ -200,7 +200,7 @@ Recommendation: **B**, but only together with the C5 confirm step: a sign in tha
 Recommendation: a cap of **5 sends per guest** for its whole 24 hours, stored as a counter on the guest claim. This is a new number, so it is not folded.
 
 **C3. A minutes cap per network address.** AC-6 caps drops (3 a day) and the whole feature (600 minutes a day) but not minutes per address, so one address could reserve at most 9 minutes in a day of drops, and up to 18 minutes of one day's budget when three drops land before UTC midnight and three after it (G20 books each reservation to the day it was made). Draining the 600 minute budget therefore takes at least 34 addresses.
-Recommendation: none for now. The per address count already bounds it, and a drain by 34 or more addresses is a different attack that a minutes cap per address would not stop. Add one only if the budget is drained in practice, and then as its own number.
+Recommendation: none for now. The per address count bounds one address to 9 minutes a day, but the UTC midnight straddle lets one address reach 18 minutes, so 34 addresses can drain the budget. A cap of 9 minutes per reservation day would raise that to at least 67 addresses, which is a real but modest gain. Add one only if the budget is drained in practice, and then as its own number.
 
 **C4. A second take after the first finished.** "1 active guest upload per browser" lets a visitor drop again once the first is past `uploading`, up to 3 a day per address.
 Recommendation: allow it. It is simpler and the address cap already limits it. Choose "one take per guest" only if Toyin wants to push everyone to sign up after one try.
