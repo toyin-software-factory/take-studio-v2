@@ -17,7 +17,10 @@ export function DropResult() {
   const place = useRef({ time: 0, playing: false });
   const track = () => {
     const el = video.current;
-    if (el) place.current = { time: el.currentTime, playing: !el.paused };
+    // While a new link loads the player has no metadata (readyState 0) and reports a reset
+    // position and a pause. Those events must not replace the place that was kept.
+    if (el && el.readyState >= HTMLMediaElement.HAVE_METADATA)
+      place.current = { time: el.currentTime, playing: !el.paused };
   };
   const restore = () => {
     const el = video.current;
