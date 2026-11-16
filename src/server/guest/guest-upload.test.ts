@@ -6,6 +6,7 @@ import { GUEST_COOKIE } from "@/lib/guest-rules";
 import { fakeR2 } from "../uploads/uploads-test-helpers";
 import { body, guestDeps, guestRequest, MiB, TEST_SECRET_FAIL } from "./guest-test-helpers";
 import { handleGuestCreate } from "./http";
+import { turnstileEnvSchema } from "@/lib/env";
 import { verifyTurnstile } from "./turnstile";
 
 let testDb: TestDb;
@@ -88,6 +89,8 @@ describe("POST /api/guest/uploads (spec 0023, AC-1, AC-9)", () => {
   });
 
   it("fails closed: no Turnstile secret, no address header, or a failed or unreachable check", async () => {
+    const countTakes = async () => (await testDb.db.select({ id: take.id }).from(take)).length;
+    const before = await countTakes();
     expect((await handleGuestCreate(guestRequest(), guestDeps(upload(), { env: {} }))).status).toBe(
       503,
     );
@@ -108,9 +111,7 @@ describe("POST /api/guest/uploads (spec 0023, AC-1, AC-9)", () => {
       guestDeps(upload(), { verify: async () => ({ ok: false, error: "unavailable" }) }),
     );
     expect(down.status).toBe(503);
-    expect(
-      await testDb.db.select({ id: take.id }).from(take).where(eq(take.guestOrigin, false)),
-    ).toEqual([]);
+    expect(await countTakes()).toBe(before);
   });
 });
 
@@ -129,6 +130,14 @@ describe("verifyTurnstile", () => {
       ok: false,
       error: "failed",
     });
+    for (const code of ["internal-error", "invalid-input-secret"]) {
+      expect(
+        await verifyTurnstile(input, reply(200, { success: false, "error-codes": [code] })),
+      ).toEqual({ ok: false, error: "unavailable" });
+    }
+    expect(
+      turnstileEnvSchema.safeParse({ TURNSTILE_SECRET_KEY: "s", TURNSTILE_SITE_KEY: "" }).success,
+    ).toBe(true);
     expect(await verifyTurnstile(input, reply(500, {}))).toEqual({
       ok: false,
       error: "unavailable",

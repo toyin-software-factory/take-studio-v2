@@ -9,6 +9,12 @@ const verifySchema = z.object({
   "error-codes": z.array(z.string()).optional(),
 });
 
+const PROVIDER_CODES: ReadonlySet<string> = new Set([
+  "internal-error",
+  "invalid-input-secret",
+  "missing-input-secret",
+]);
+
 export type TurnstileError = "failed" | "unavailable";
 
 /**
@@ -34,7 +40,10 @@ export async function verifyTurnstile(
     if (!res.ok) return err("unavailable");
     const parsed = verifySchema.safeParse(await res.json());
     if (!parsed.success) return err("unavailable");
-    return parsed.data.success ? ok(true) : err("failed");
+    if (parsed.data.success) return ok(true);
+    // Provider and secret problems are not the visitor's fault: offer the sign in fallback.
+    const codes = parsed.data["error-codes"] ?? [];
+    return err(codes.some((c) => PROVIDER_CODES.has(c)) ? "unavailable" : "failed");
   } catch {
     return err("unavailable");
   }

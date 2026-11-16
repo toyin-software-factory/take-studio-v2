@@ -49,7 +49,10 @@ export const insightsEnvSchema = z.object({
  */
 export const turnstileEnvSchema = z.object({
   TURNSTILE_SECRET_KEY: z.string().min(1),
-  TURNSTILE_SITE_KEY: z.string().min(1).optional(),
+  TURNSTILE_SITE_KEY: z
+    .string()
+    .optional()
+    .transform((v) => (v === "" ? undefined : v)),
 });
 
 /**
