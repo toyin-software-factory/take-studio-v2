@@ -51,6 +51,13 @@ export function useGuestDrop(siteKey: string | null, mount: RefObject<HTMLDivEle
   }, [drop]);
   useEffect(() => () => controller.current?.abort(), []);
 
+  // A cancel drops an address that was waiting for the upload to start.
+  const discardQueued = useCallback(() => {
+    if (queued.current === null) return;
+    queued.current = null;
+    setEmail((e) => (e.kind === "sending" ? { kind: "idle" } : e));
+  }, []);
+
   const run = useCallback(
     async (file: File, container: "mp4" | "mov" | "webm") => {
       if (!siteKey || !mount.current) {
@@ -66,6 +73,7 @@ export function useGuestDrop(siteKey: string | null, mount: RefObject<HTMLDivEle
         // Only this attempt may clear itself: a newer one keeps its own controller.
         if (controller.current === abort) controller.current = null;
         setDrop((s) => (s.kind === "checking" ? { kind: "idle" } : s));
+        discardQueued();
         return;
       }
       if (!token) {
@@ -85,7 +93,10 @@ export function useGuestDrop(siteKey: string | null, mount: RefObject<HTMLDivEle
       });
       controller.current = null;
       if (outcome.ok) return setDrop({ kind: "done", fileName: file.name });
-      if (outcome.reason === "cancelled") return setDrop({ kind: "idle" });
+      if (outcome.reason === "cancelled") {
+        discardQueued();
+        return setDrop({ kind: "idle" });
+      }
       const code = guest.refusal();
       const refusal = refusalOf(code);
       // A refusal with a code shows its own screen; busy and bot check show the route's words.
@@ -95,7 +106,7 @@ export function useGuestDrop(siteKey: string | null, mount: RefObject<HTMLDivEle
           : { kind: "failed", message: outcome.message, canRetry: true },
       );
     },
-    [siteKey, mount],
+    [siteKey, mount, discardQueued],
   );
 
   const choose = useCallback(
