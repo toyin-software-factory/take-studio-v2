@@ -49,6 +49,16 @@ describe("parseCreditSettings", () => {
   });
   it("reads a bad or missing date as not set", () => {
     expect(parseCreditSettings({ credit_starts_at: "nope" }).startsAt).toBeNull();
+    // Date would roll these to another day, so they read as not set.
+    for (const bad of [
+      "2026-02-30T00:00:00Z",
+      "2026-13-01",
+      "2026-04-31",
+      "2026-12-01T25:00:00Z",
+    ]) {
+      expect(parseCreditSettings({ credit_starts_at: bad }).startsAt).toBeNull();
+    }
+    expect(parseCreditSettings({ credit_starts_at: "2028-02-29" }).startsAt).not.toBeNull();
     expect(parseCreditSettings({}).startsAt).toBeNull();
   });
 });

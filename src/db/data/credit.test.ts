@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { appSetting, render } from "../schema";
@@ -40,11 +42,14 @@ async function renderFor(createdAt?: Date) {
 
 describe("creating a render decides the credit", () => {
   it("is off by default: the seeded settings leave a render unchanged", async () => {
-    const [enabled] = await db
-      .select()
-      .from(appSetting)
-      .where(eq(appSetting.key, "credit_enabled"));
-    expect(enabled?.value).toBe(false);
+    // The test database outlives a run and the tests below change the setting, so the default
+    // is read from the migration itself, not from a row a fixture may have written.
+    const dir = join(process.cwd(), "drizzle");
+    const sql = readdirSync(dir)
+      .filter((f) => f.endsWith(".sql"))
+      .map((f) => readFileSync(join(dir, f), "utf8"))
+      .find((text) => text.includes("'credit_enabled'"));
+    expect(sql).toMatch(/\('credit_enabled', 'false'::jsonb\)/);
     expect((await renderFor()).render.creditApplied).toBe(false);
   });
 
@@ -77,7 +82,9 @@ describe("markUncredited", () => {
     const { render: made } = await renderFor();
     expect(made.creditApplied).toBe(true);
     const marked = await markUncredited(db, { renderId: made.id });
-    expect(marked.ok && marked.data.creditApplied).toBe(false);
+    expect(marked.ok).toBe(true);
+    if (!marked.ok) return;
+    expect(marked.data.creditApplied).toBe(false);
     await db.update(render).set({ status: "succeeded" }).where(eq(render.id, made.id));
     await db.update(render).set({ creditApplied: true }).where(eq(render.id, made.id));
     expect((await markUncredited(db, { renderId: made.id })).ok).toBe(false);

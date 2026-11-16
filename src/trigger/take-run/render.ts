@@ -12,7 +12,12 @@ import {
   renderWithFallback,
 } from "../render-fallback";
 import type { BackgroundFacts } from "./background";
-import { CREDIT_ENCODE_TIMEOUT_MS, creditedEncodeMayRetryClean, usableCreditImage } from "./credit";
+import {
+  CREDIT_ENCODE_TIMEOUT_MS,
+  cleanRetryTimeoutMs,
+  creditedEncodeMayRetryClean,
+  usableCreditImage,
+} from "./credit";
 import { type RunContext, setStep } from "./context";
 
 /** A finished encode: the render row, the file, and whether the shipped video is keyed. */
@@ -97,6 +102,7 @@ export async function encode(
   // Encoding is most of the render step; the upload takes the last few points.
   const onOutTimeMs = (ms: number) => void renderProgress.report((ms / expectedMs) * 95);
   let retriedClean = false;
+  const encodeStartedAt = Date.now();
   const run = async (asKeyed: boolean) => {
     if (credited) {
       try {
@@ -107,8 +113,10 @@ export async function encode(
         await dropCredit("encode");
       }
     }
-    // After a failed credited encode the clean one gets the other half of the 40 minutes.
-    const clean = retriedClean ? { ...plan, timeoutMs: CREDIT_ENCODE_TIMEOUT_MS } : plan;
+    // After a failed credited encode the clean one gets what is left of the 38 minutes.
+    const clean = retriedClean
+      ? { ...plan, timeoutMs: cleanRetryTimeoutMs(plan.timeoutMs, Date.now() - encodeStartedAt) }
+      : plan;
     return encodeRender(clean, asKeyed, { signal, onOutTimeMs, credit: false });
   };
   let shippedKeyed = keyed;

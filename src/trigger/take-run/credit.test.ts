@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { CREDIT_PNG_PATH, isUsableCreditPng } from "@/lib/credit-filter";
 import { MediaToolError } from "../media";
-import { creditedEncodeMayRetryClean } from "./credit";
+import { cleanRetryTimeoutMs, creditedEncodeMayRetryClean } from "./credit";
 
 // Spec 0026 AC-10.
 describe("creditedEncodeMayRetryClean", () => {
@@ -26,5 +26,16 @@ describe("isUsableCreditPng", () => {
     const wrong = png.slice();
     wrong[0] = 0;
     expect(isUsableCreditPng(wrong)).toBe(false);
+  });
+});
+
+describe("cleanRetryTimeoutMs", () => {
+  const MIN = 60_000;
+  it("gives the clean retry what is left of the render limit", () => {
+    // 38 minute limit, the credited attempt ran its 20 minutes and 90 s went to download and probe.
+    expect(cleanRetryTimeoutMs(38 * MIN, 21.5 * MIN)).toBe(16.5 * MIN);
+  });
+  it("never gives less than a minute", () => {
+    expect(cleanRetryTimeoutMs(38 * MIN, 40 * MIN)).toBe(MIN);
   });
 });

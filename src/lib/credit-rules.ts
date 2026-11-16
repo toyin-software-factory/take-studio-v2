@@ -25,6 +25,20 @@ export type CreditSettings = {
   readonly startsAt: Date | null;
 };
 
+const ISO =
+  /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2})?)?$/;
+
+/** An ISO date (with or without a time) whose day exists in its month: Date alone would roll 30 February to March. */
+function isCalendarIso(value: string): boolean {
+  const m = ISO.exec(value);
+  if (!m) return false;
+  const [year, month, day, hour = 0, minute = 0, second = 0] = m
+    .slice(1)
+    .map((v) => Number(v ?? 0));
+  if (month < 1 || month > 12 || day < 1 || hour > 23 || minute > 59 || second > 59) return false;
+  return day <= new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
 /**
  * Reads the two settings from raw `app_setting` values (jsonb). Anything that is not the boolean
  * true leaves the credit off, and a start that is not a valid ISO date reads as not set (which
@@ -35,7 +49,7 @@ export function parseCreditSettings(raw: {
   readonly [CREDIT_STARTS_AT_KEY]?: unknown;
 }): CreditSettings {
   const at = raw[CREDIT_STARTS_AT_KEY];
-  const parsed = typeof at === "string" && at !== "" ? new Date(at) : null;
+  const parsed = typeof at === "string" && isCalendarIso(at) ? new Date(at) : null;
   return {
     enabled: raw[CREDIT_ENABLED_KEY] === true,
     startsAt: parsed && !Number.isNaN(parsed.getTime()) ? parsed : null,

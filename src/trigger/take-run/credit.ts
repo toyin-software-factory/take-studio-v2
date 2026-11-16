@@ -3,8 +3,21 @@ import path from "node:path";
 import { CREDIT_PNG_PATH, isUsableCreditPng } from "@/lib/credit-filter";
 import { MediaToolError } from "../media";
 
-/** The credited encode's own cap, half of the render's 40 minutes (spec 0026 AC-10). */
+/** The credited encode's own cap, a little over half of the render's 38 minute limit (spec 0026 AC-10). */
 export const CREDIT_ENCODE_TIMEOUT_MS = 20 * 60_000;
+
+/** The least a clean retry is given, however little is left (it is shorter than any real encode). */
+const MIN_CLEAN_RETRY_MS = 60_000;
+
+/**
+ * The timeout of the clean retry after a failed credited encode (spec 0026 AC-10): what is left
+ * of the render's own limit (`planMs`, below the job deadline and its margin), not a fixed half,
+ * because download and probe time already came out of the budget. So the retry can never be cut
+ * short by the job deadline while it still has time on its own clock.
+ */
+export function cleanRetryTimeoutMs(planMs: number, elapsedMs: number): number {
+  return Math.max(MIN_CLEAN_RETRY_MS, planMs - elapsedMs);
+}
 
 /**
  * The path of the credit image when it is there and usable (spec 0026 AC-10), else null. The
