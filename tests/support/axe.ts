@@ -21,11 +21,15 @@ async function waitForAnimationsToSettle(page: Page): Promise<void> {
       { timeout: 10_000 },
     );
   } catch (error) {
-    // Name what is still running, so a slow machine can be told from a real endless animation.
+    // Name what is still running (never the endless ones, which the wait ignores), so a slow
+    // machine can be told from a real animation that does not stop. An empty list means the page
+    // itself stalled: the 10 s ran out with nothing left to wait for.
     const running = await page.evaluate(() =>
       document
         .getAnimations()
-        .filter((a) => a.playState === "running")
+        .filter(
+          (a) => a.playState === "running" && a.effect?.getComputedTiming().iterations !== Infinity,
+        )
         .map((a) => {
           const t = a.effect?.getComputedTiming();
           const target = a.effect instanceof KeyframeEffect ? a.effect.target : null;

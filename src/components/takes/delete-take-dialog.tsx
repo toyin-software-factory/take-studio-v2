@@ -19,7 +19,9 @@ import { useDeleteTake } from "./use-delete-take";
  * The confirm dialog for deleting a take (spec 0013 AC-4, AC-5, AC-12), used by the take page
  * and by the library cards. Radix traps focus and closes on Escape. Closed without a delete
  * (Keep it, Escape), focus goes back to `returnFocus()`; after a delete the caller decides
- * where focus lands (`onDeleted`). A failed delete keeps the dialog open and moves focus to the
+ * where focus lands (`onDeleted` updates the list, `afterDeleteFocus` places focus, and it runs
+ * once Radix has finished closing, because Radix restores focus then and a sooner call is
+ * overwritten on a slow machine). A failed delete keeps the dialog open and moves focus to the
  * `role="alert"` line, so the trap holds. While the request runs the buttons are disabled and
  * the dialog cannot be closed.
  */
@@ -29,6 +31,7 @@ export function DeleteTakeDialog({
   open,
   onOpenChange,
   onDeleted,
+  afterDeleteFocus,
   returnFocus,
 }: {
   readonly takeId: string;
@@ -36,6 +39,7 @@ export function DeleteTakeDialog({
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
   readonly onDeleted: () => void;
+  readonly afterDeleteFocus?: () => void;
   readonly returnFocus: () => HTMLElement | null;
 }) {
   const del = useDeleteTake(takeId);
@@ -69,7 +73,8 @@ export function DeleteTakeDialog({
         onCloseAutoFocus={(event) => {
           // After a delete the caller places focus; otherwise return it to the opener.
           event.preventDefault();
-          if (!deleted.current) returnFocus()?.focus();
+          if (deleted.current) afterDeleteFocus?.();
+          else returnFocus()?.focus();
         }}
       >
         <DialogHeader>

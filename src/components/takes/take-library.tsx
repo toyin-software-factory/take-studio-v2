@@ -49,6 +49,7 @@ export function TakeLibrary({
   const [dialogOpen, setDialogOpen] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const opener = useRef<HTMLElement | null>(null);
+  const focusAfterDelete = useRef<string | null>(null);
   const openDelete = useCallback((take: TakeCardData, from: HTMLElement | null) => {
     opener.current = from;
     // Clear the last message so the next success changes the text and is announced again.
@@ -64,13 +65,16 @@ export function TakeLibrary({
     const gone = deleting.id;
     setTakes((list) => list.filter((t) => t.id !== gone));
     setAnnouncement(DELETED_MESSAGE);
-    // After the dialog has closed (it runs its own focus handling first), move focus on.
-    requestAnimationFrame(() => {
-      const target = focusId
-        ? document.getElementById(takeLinkId(focusId))
-        : document.getElementById(UPLOAD_INPUT_ID)?.closest("section")?.querySelector("button");
-      (target as HTMLElement | null)?.focus();
-    });
+    focusAfterDelete.current = focusId;
+  };
+  // Runs from the dialog's onCloseAutoFocus, after Radix has restored (and we have prevented) its
+  // own focus move, so nothing overwrites it.
+  const placeFocusAfterDelete = () => {
+    const focusId = focusAfterDelete.current;
+    const target = focusId
+      ? document.getElementById(takeLinkId(focusId))
+      : document.getElementById(UPLOAD_INPUT_ID)?.closest("section")?.querySelector("button");
+    (target as HTMLElement | null)?.focus();
   };
 
   const inFlight = takes.filter((t) => isInFlight(t.status)).map((t) => t.id);
@@ -145,6 +149,7 @@ export function TakeLibrary({
       open={dialogOpen}
       onOpenChange={setDialogOpen}
       onDeleted={onDeleted}
+      afterDeleteFocus={placeFocusAfterDelete}
       returnFocus={() => opener.current}
     />
   ) : null;

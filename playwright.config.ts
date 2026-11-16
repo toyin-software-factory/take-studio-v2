@@ -32,7 +32,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  workers: process.env.CI ? undefined : 1,
+  workers: process.env.CI ? undefined : 2,
   reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
   use: {
     baseURL: `http://${host}:${port}`,
@@ -82,6 +82,11 @@ export default defineConfig({
     stdout: "pipe",
     stderr: "pipe",
     reuseExistingServer: !process.env.CI,
+    // The preview's esbuild (Go) kept 1.2 GB after bundling the Worker and the whole server passed
+    // 3.5 GB over a full run, which starved a 6 GB sandbox at two workers (B2-T165). A soft limit
+    // makes it collect and give memory back; nothing about the build changes. The same goes for
+    // wrangler's Node heap, which reached 1.3 GB.
+    env: { GOMEMLIMIT: "300MiB", NODE_OPTIONS: "--max-old-space-size=768" },
     timeout: 120_000,
   },
 });

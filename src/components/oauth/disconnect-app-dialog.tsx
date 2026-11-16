@@ -17,7 +17,9 @@ import { CONNECTED_COPY } from "@/lib/oauth-screen";
 /**
  * The confirm dialog for disconnecting an app (spec 0019 AC-14), the same pattern as the revoke
  * key dialog: focus is trapped, Escape closes, a failure keeps it open with a `role="alert"`
- * line, and a cancel returns focus to that row's button. After a disconnect the caller places focus.
+ * line, and a cancel returns focus to that row's button. After a disconnect the caller places focus
+ * through `afterDisconnectFocus`, run in `onCloseAutoFocus` (a move in requestAnimationFrame lost to
+ * Radix's focus restore under load, B2-T165).
  */
 export function DisconnectAppDialog({
   target,
@@ -25,12 +27,15 @@ export function DisconnectAppDialog({
   onOpenChange,
   onConfirm,
   returnFocus,
+  afterDisconnectFocus,
 }: {
   readonly target: { readonly id: string; readonly name: string } | null;
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
   readonly onConfirm: (id: string) => Promise<boolean>;
   readonly returnFocus: (id: string) => HTMLElement | null;
+  /** Called from `onCloseAutoFocus` after a disconnect, so Radix's own restore cannot overwrite it. */
+  readonly afterDisconnectFocus?: () => void;
 }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState(false);
@@ -70,7 +75,8 @@ export function DisconnectAppDialog({
         showCloseButton={false}
         onCloseAutoFocus={(event) => {
           event.preventDefault();
-          if (!done.current && target) returnFocus(target.id)?.focus();
+          if (done.current) afterDisconnectFocus?.();
+          else if (target) returnFocus(target.id)?.focus();
         }}
       >
         <DialogHeader>
