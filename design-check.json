@@ -112,8 +112,13 @@
       "build": "http://localhost:3000/takes/TAKE_ID"
     }
   ],
-  "viewports": ["desktop", "phone"],
-  "watch": ["src"],
+  "viewports": [
+    "desktop",
+    "phone"
+  ],
+  "watch": [
+    "src"
+  ],
   "judge": {
     "type": "jev",
     "model": "jev-1.14.0"
