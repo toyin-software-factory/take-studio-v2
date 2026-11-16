@@ -68,6 +68,12 @@ export const API_EXCLUSIONS: readonly ApiExclusion[] = [
     "Sends the one sign in link for a guest drop. Needs the guest cookie, never a key.",
   ),
   exclusion(
+    "GET",
+    "/api/guest/take",
+    "guest",
+    "View only result for a guest's own drop: status and a short lived play link. Needs the guest cookie, never a key.",
+  ),
+  exclusion(
     "POST",
     "/api/guest/claim",
     "guest",

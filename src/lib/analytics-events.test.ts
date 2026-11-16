@@ -24,7 +24,7 @@ function allowsFreeText(field: z.ZodType): boolean {
 }
 
 describe("analytics events (spec 0016, AC-2, AC-3)", () => {
-  it("is the closed list of eleven names", () => {
+  it("is the closed list of fifteen names", () => {
     expect([...ANALYTICS_EVENT_NAMES]).toEqual([
       "signup",
       "take_uploaded",
@@ -37,7 +37,25 @@ describe("analytics events (spec 0016, AC-2, AC-3)", () => {
       "cuts_reviewed",
       "cut_missed",
       "limit_hit",
+      "guest_drop",
+      "guest_email_added",
+      "guest_claimed",
+      "guest_expired",
     ]);
+  });
+
+  it("guest events carry only a flag, an enum pair or nothing (AC-12)", () => {
+    expect(ANALYTICS_EVENTS.guest_drop.props.safeParse({}).success).toBe(true);
+    expect(ANALYTICS_EVENTS.guest_email_added.props.safeParse({ email: "a@b.c" }).success).toBe(
+      false,
+    );
+    const claimed = ANALYTICS_EVENTS.guest_claimed.props;
+    expect(claimed.safeParse({ via: "email", timing: "parked" }).success).toBe(true);
+    expect(claimed.safeParse({ via: "link", timing: "parked" }).success).toBe(false);
+    expect(claimed.safeParse({ via: "cookie", timing: "later" }).success).toBe(false);
+    const expired = ANALYTICS_EVENTS.guest_expired.props;
+    expect(expired.safeParse({ hadEmail: true }).success).toBe(true);
+    expect(expired.safeParse({ hadEmail: "yes" }).success).toBe(false);
   });
 
   it("allows only enums, numbers and booleans, and no blocklisted key", () => {

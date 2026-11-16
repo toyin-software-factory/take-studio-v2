@@ -7,6 +7,7 @@ import {
 import type { Executor } from "@/db/types";
 import type { R2 } from "@/lib/r2";
 import { cancelRuns } from "@/lib/trigger-runs";
+import { recordJobEvent } from "./analytics/record";
 
 /**
  * Spec 0023 step 7 (AC-9): the expired guest part of the cleanup sweep. It runs before the file
@@ -41,6 +42,15 @@ export async function sweepExpiredGuests(
       abortFailures++;
       logger.warn("multipart abort failed", { takeId: t.takeId });
     }
+  }
+  // Spec 0023 AC-12: one event per deleted take, no creator, a flag and nothing else. The take is
+  // gone, so there is no take ID either.
+  for (const t of expired) {
+    await recordJobEvent(db, {
+      name: "guest_expired",
+      creatorId: null,
+      props: { hadEmail: t.hadEmail },
+    });
   }
   const guests = (await deleteExpiredGuests(db, now).catch(fail("guest sweep failed"))) ?? 0;
   const counts = (await purgeOldGuestCounts(db, now).catch(fail("guest count purge failed"))) ?? 0;

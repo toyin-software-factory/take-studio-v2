@@ -25,6 +25,27 @@ export async function eventCount(db: Executor, name: AnalyticsEventName, since: 
   return row?.n ?? 0;
 }
 
+/** Events of one name in the window whose `props.<key>` is this value (a flag or an enum). */
+export async function eventCountWhere(
+  db: Executor,
+  name: AnalyticsEventName,
+  since: Date | null,
+  key: "hadEmail" | "via" | "timing",
+  value: string,
+) {
+  const [row] = await db
+    .select({ n: count() })
+    .from(analyticsEvent)
+    .where(
+      and(
+        eq(analyticsEvent.name, name),
+        inWindow(since),
+        sql`${analyticsEvent.props}->>${key} = ${value}`,
+      ),
+    );
+  return row?.n ?? 0;
+}
+
 /** Distinct creators with an event of this name in the window, optionally on one `props.kind`. */
 export async function creatorCount(
   db: Executor,
