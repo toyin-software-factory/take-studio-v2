@@ -1,19 +1,32 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
-import { DROP_COPY, type DropRefusal, checkGuestFile, refusalOf } from "@/lib/guest-drop";
+import {
+  DROP_COPY,
+  type DropRefusal,
+  checkGuestDuration,
+  checkGuestFile,
+  fileMeta,
+  refusalOf,
+} from "@/lib/guest-drop";
 import { callApi } from "@/components/takes/browser-io";
 import { uploadFile } from "@/lib/upload-client";
 import { guestUploadIo } from "./guest-io";
+import { readDuration } from "./read-duration";
 import { turnstileToken } from "./turnstile";
 
 /** The drop box's upload side (spec 0023, AC-1): one file at a time, no account. */
 export type DropState =
   | { readonly kind: "idle" }
   | { readonly kind: "rejected"; readonly message: string }
-  | { readonly kind: "checking"; readonly fileName: string }
-  | { readonly kind: "uploading"; readonly fileName: string; readonly percent: number }
-  | { readonly kind: "done"; readonly fileName: string }
+  | { readonly kind: "checking"; readonly fileName: string; readonly meta: string }
+  | {
+      readonly kind: "uploading";
+      readonly fileName: string;
+      readonly meta: string;
+      readonly percent: number;
+    }
+  | { readonly kind: "done"; readonly fileName: string; readonly meta: string }
   | { readonly kind: "refused"; readonly refusal: DropRefusal; readonly message: string }
   | { readonly kind: "failed"; readonly message: string; readonly canRetry: boolean };
 
@@ -39,6 +52,7 @@ export function useGuestDrop(siteKey: string | null, mount: RefObject<HTMLDivEle
   const controller = useRef<AbortController | null>(null);
   const chosen = useRef<File | null>(null);
   const queued = useRef<string | null>(null);
+  const reading = useRef(false);
 
   useEffect(() => {
     if (!dropBusy(drop)) return;
@@ -59,7 +73,7 @@ export function useGuestDrop(siteKey: string | null, mount: RefObject<HTMLDivEle
   }, []);
 
   const run = useCallback(
-    async (file: File, container: "mp4" | "mov" | "webm") => {
+    async (file: File, container: "mp4" | "mov" | "webm", meta: string) => {
       if (!siteKey || !mount.current) {
         setDrop({ kind: "refused", refusal: "unavailable", message: DROP_COPY.unavailable });
         return;
@@ -67,7 +81,7 @@ export function useGuestDrop(siteKey: string | null, mount: RefObject<HTMLDivEle
       const abort = new AbortController();
       controller.current = abort;
       setStarted(false);
-      setDrop({ kind: "checking", fileName: file.name });
+      setDrop({ kind: "checking", fileName: file.name, meta });
       const token = await turnstileToken(siteKey, mount.current, abort.signal);
       if (abort.signal.aborted) {
         // Only this attempt may clear itself: a newer one keeps its own controller.
@@ -87,12 +101,12 @@ export function useGuestDrop(siteKey: string | null, mount: RefObject<HTMLDivEle
           // The create request ignores the signal, so it can finish after a cancel.
           if (abort.signal.aborted) return;
           setStarted(true);
-          setDrop({ kind: "uploading", fileName: file.name, percent: 0 });
+          setDrop({ kind: "uploading", fileName: file.name, meta, percent: 0 });
         },
         onProgress: (percent) => setDrop((s) => (s.kind === "uploading" ? { ...s, percent } : s)),
       });
       controller.current = null;
-      if (outcome.ok) return setDrop({ kind: "done", fileName: file.name });
+      if (outcome.ok) return setDrop({ kind: "done", fileName: file.name, meta });
       if (outcome.reason === "cancelled") {
         discardQueued();
         return setDrop({ kind: "idle" });
@@ -110,19 +124,26 @@ export function useGuestDrop(siteKey: string | null, mount: RefObject<HTMLDivEle
   );
 
   const choose = useCallback(
-    (file: File | undefined) => {
-      if (!file || controller.current) return;
+    async (file: File | undefined) => {
+      if (!file || controller.current || reading.current) return;
       const check = checkGuestFile({ name: file.name, size: file.size, type: file.type });
       if (!check.ok) return setDrop({ kind: "rejected", message: check.message });
+      // The length comes from the file's own metadata; unreadable within about 1.5 s goes ahead.
+      reading.current = true;
+      setDrop({ kind: "checking", fileName: file.name, meta: fileMeta(file.size, null) });
+      const seconds = await readDuration(file);
+      reading.current = false;
+      const long = checkGuestDuration(seconds);
+      if (long) return setDrop({ kind: "rejected", message: long.message });
       chosen.current = file;
-      void run(file, check.container);
+      void run(file, check.container, fileMeta(file.size, seconds));
     },
     [run],
   );
 
   const retry = useCallback(() => {
     const file = chosen.current;
-    if (file) choose(file);
+    if (file) void choose(file);
   }, [choose]);
 
   const cancel = useCallback(() => controller.current?.abort(), []);

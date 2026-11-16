@@ -79,11 +79,15 @@ test.describe("with a bot check key", () => {
     await page.locator("input[type=file]").setInputFiles("tests/fixtures/clip.mp4");
     await expect(page.getByRole("progressbar", { name: "Upload progress" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Cancel" })).toBeVisible();
+    await expect(page.locator(".h-drop-progress")).toContainText(/(KB|MB)( · \d+:\d\d)?/);
+    await expect(page.getByText("Step 2 of 3: Upload and email")).toBeAttached();
 
     const field = page.getByLabel("Where should we send it?");
     await field.fill("not an email");
     await page.getByRole("button", { name: "Send me the link" }).click();
-    await expect(page.locator("#drop-email-error")).toContainText("real email");
+    await expect(page.locator("#drop-email-error")).toHaveText(
+      "Enter a real email address, like name@example.com.",
+    );
 
     await field.fill("maker@example.com");
     await expectNoSeriousAxeIssuesWhenSettled(page);
@@ -91,7 +95,30 @@ test.describe("with a bot check key", () => {
     await expect(page.getByRole("heading", { name: "Check your email" })).toBeFocused();
     expect(sent).toEqual({ email: "maker@example.com" });
     await expect(page.getByText("maker@example.com")).toBeVisible();
+    await expect(page.getByText("Step 3 of 3: Check your email")).toBeAttached();
     release();
+    await expect(page.locator(".h-drop-tick")).toBeVisible();
+    await expect(page.getByRole("progressbar", { name: "Upload progress" })).toHaveCount(0);
+  });
+
+  test("a video over the free length is refused before it is sent, with the number (item 1, 2)", async ({
+    page,
+  }) => {
+    await stubGuest(page);
+    let created = 0;
+    await page.route("**/api/guest/uploads", (route) => {
+      created += 1;
+      return route.abort();
+    });
+    await page.addInitScript(() =>
+      Object.defineProperty(HTMLMediaElement.prototype, "duration", { get: () => 240 }),
+    );
+    await page.goto("/");
+    await page.locator("input[type=file]").setInputFiles("tests/fixtures/clip.mp4");
+    await expect(page.locator(".h-drop-alert")).toHaveText(
+      "That video is longer than we can take for a free try (3 minutes). Trim it or sign in to upload a longer one.",
+    );
+    expect(created).toBe(0);
   });
 
   test("the card works at phone width without sideways scrolling (AC-13)", async ({ page }) => {

@@ -22,17 +22,33 @@ export function DropProgress({
   return (
     <div className="h-drop-progress">
       <p className="h-drop-file">{state.fileName}</p>
-      <div
-        className="h-drop-bar"
-        role="progressbar"
-        aria-label="Upload progress"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={Math.round(percent)}
-        aria-valuetext={percentLabel(percent)}
-      >
-        <span style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} />
-      </div>
+      <p className="h-drop-muted">{state.meta}</p>
+      {state.kind === "done" ? (
+        <p className="h-drop-tick">
+          <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              d="m5 12.5 4.5 4.5L19 7.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </p>
+      ) : (
+        <div
+          className="h-drop-bar"
+          role="progressbar"
+          aria-label="Upload progress"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(percent)}
+          aria-valuetext={percentLabel(percent)}
+        >
+          <span style={{ width: `${Math.max(0, Math.min(100, percent))}%` }} />
+        </div>
+      )}
       <div className="h-drop-row">
         <p className="h-drop-muted">
           {label} {state.kind === "uploading" ? percentLabel(percent) : ""}
