@@ -63,7 +63,14 @@ describe("step registry (AC-7)", () => {
   });
 
   it("defines every job kind from the spec: transcribe live from slice 2, reanalyse from slice 5", () => {
-    expect(JOB_KINDS).toEqual(["initial", "rerender", "background", "transcribe", "reanalyse"]);
+    expect(JOB_KINDS).toEqual([
+      "initial",
+      "rerender",
+      "background",
+      "credit",
+      "transcribe",
+      "reanalyse",
+    ]);
     expect(JOB_KIND_SLICES.transcribe).toBe(2);
     expect(JOB_KIND_SLICES.reanalyse).toBe(5);
   });
@@ -75,10 +82,11 @@ describe("step registry (AC-7)", () => {
       initial: "video",
       rerender: "video",
       background: "background",
+      credit: "background",
       transcribe: "transcript",
       reanalyse: "video",
     });
-    expect(JOB_KINDS.filter(isBackgroundKind)).toEqual(["background"]);
+    expect(JOB_KINDS.filter(isBackgroundKind)).toEqual(["background", "credit"]);
     expect(isBackgroundKind("rerender")).toBe(false);
   });
 

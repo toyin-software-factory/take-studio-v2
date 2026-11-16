@@ -51,6 +51,12 @@ export const JOB_KIND_SLICES = {
    * take's cuts, never moves the take, charges nothing and sends no email.
    */
   background: 3,
+  /**
+   * Spec 0026: a re render that only adds or removes the "Edited with Take Studio" credit. It is
+   * in the `background` family: it works beside a Ready take, never moves it, charges nothing,
+   * sends no email and is not counted as a processed video.
+   */
+  credit: 3,
   /** Spec 0007: makes the transcript; never moves the take, charges nothing, sends no email. */
   transcribe: 2,
   reanalyse: 5,
@@ -80,7 +86,7 @@ export function isTranscribeKind(kind: string): boolean {
  * nothing. The kind is the only rule: nothing looks at the take's status or the step list.
  */
 export function isBackgroundKind(kind: string): boolean {
-  return kind === "background";
+  return kind === "background" || kind === "credit";
 }
 
 /** How a job relates to its take: owns it (`video`), changes only its look (`background`), or
@@ -98,6 +104,7 @@ export function jobFamily(kind: JobKind): JobFamily {
     case "reanalyse":
       return "video";
     case "background":
+    case "credit":
       return "background";
     case "transcribe":
       return "transcript";
@@ -153,6 +160,7 @@ export const STEPS_BY_KIND = {
   initial: ["trim", "transcript", "ai_edit", "background", "render"],
   rerender: ["trim", "transcript", "ai_edit", "background", "render"],
   background: ["background", "render"],
+  credit: ["background", "render"],
   transcribe: ["transcript"],
   reanalyse: ["ai_edit", "render"],
 } as const satisfies Readonly<Record<JobKind, readonly StepName[]>>;

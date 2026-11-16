@@ -89,7 +89,8 @@ export type BackgroundComposite = {
 /**
  * The filter lines that follow the colour step: key the take's video (chroma key, then green
  * spill removal), scale the background (input 1) to cover the take's frame and centre crop it,
- * and overlay. `[base]` is the concatenated, tone mapped take; the result is `[vout]`. The
+ * and overlay. `[base]` is the concatenated, tone mapped take; the result is `[vout]` (or the
+ * label `out`, when the credit overlay follows, spec 0026). The
  * keying runs on `yuva444p` so 10 bit and 4:2:0 sources key cleanly at the edges; the output
  * is `yuv420p`.
  *
@@ -99,13 +100,13 @@ export type BackgroundComposite = {
  * exactly on the seek point (23.976 or 29.97 fps, an edit list): `overlay` has no keyed frame at
  * the background's time and passes the background through, so the whole person is gone.
  */
-export function compositeFilters(composite: BackgroundComposite): string[] {
+export function compositeFilters(composite: BackgroundComposite, out = "vout"): string[] {
   const { keyColor, width, height } = composite;
   const key = `0x${keyColor.replace("#", "")}`;
   const { similarity, blend } = keySettings(fromHex(keyColor) ?? { r: 0, g: 177, b: 64 });
   return [
     `[base]setpts=PTS-STARTPTS,format=yuva444p,chromakey=${key}:${similarity}:${blend},despill=type=green[fg];`,
     `[1:v]scale=${width}:${height}:force_original_aspect_ratio=increase:out_range=tv,crop=${width}:${height},setsar=1,format=yuv420p[bg];`,
-    "[bg][fg]overlay=format=auto:shortest=1,format=yuv420p[vout]",
+    `[bg][fg]overlay=format=auto:shortest=1,format=yuv420p[${out}]`,
   ];
 }

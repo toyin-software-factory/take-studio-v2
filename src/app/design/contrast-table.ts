@@ -162,6 +162,13 @@ export const pairs: readonly Pair[] = [
     reason: "play and pause toggle over a video frame, even a white one",
   },
   {
+    fg: "color-on-dark",
+    on: "media-glass",
+    kind: "text",
+    reason:
+      "the Edited with Take Studio credit text over any video frame, even a white one (spec 0026 AC-1); the PNG is drawn from these two tokens",
+  },
+  {
     fg: "color-on-dark-75",
     on: "stage-glass",
     kind: "text",

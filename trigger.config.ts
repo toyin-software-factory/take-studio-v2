@@ -90,6 +90,8 @@ export default defineConfig({
       pinnedFfmpeg(),
       // The built in studio images (spec 0008): the cleanup task installs them from here.
       additionalFiles({ files: ["./assets/backgrounds/*"] }),
+      // The "Edited with Take Studio" credit image the render overlays (spec 0026).
+      additionalFiles({ files: ["./assets/credit/edited-with-take-studio.png"] }),
       syncEnvVars(
         ({ environment }) => [
           { name: "SENTRY_ENVIRONMENT", value: environment === "prod" ? "production" : "preview" },

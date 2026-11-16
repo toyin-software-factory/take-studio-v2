@@ -1,3 +1,4 @@
+import { type CreditPlacement, creditOverlayFilters } from "./credit-filter";
 import { type BackgroundComposite, compositeFilters } from "./keying";
 import type { HdrTransfer } from "./probe";
 import type { Range } from "./trim-cuts";
@@ -132,6 +133,11 @@ export type RenderGraphOptions = {
   readonly durationMs?: number;
   /** The source's frame rate (for the half frame end slack); unknown counts as 30. */
   readonly fps?: number | null;
+  /**
+   * Spec 0026: put the credit PNG over the last seconds. It is the last input (index 1, or 2 with
+   * a background) and the last stage, so `[vout]` is the credited picture.
+   */
+  readonly credit?: CreditPlacement;
 };
 
 /**
@@ -186,11 +192,17 @@ export function renderFilterScript(keep: readonly Range[], options: RenderGraphO
     `${inputs}concat=n=${keep.length}:v=1:a=${hasAudio ? 1 : 0}[vc]${hasAudio ? "[aout]" : ""};`,
   );
   const color = hdr ? toneMapFilter(hdr) : "format=yuv420p";
+  const { credit } = options;
+  const last = credit ? "vpre" : "vout";
   if (background) {
-    lines.push(`[vc]${color}[base];`, ...compositeFilters(background));
+    const composite = compositeFilters(background, last);
+    // The composite's last line has no `;`: it was the end of the graph. A credit follows it.
+    if (credit) composite[composite.length - 1] += ";";
+    lines.push(`[vc]${color}[base];`, ...composite);
   } else {
-    lines.push(`[vc]${color}[vout]`);
+    lines.push(`[vc]${color}[${last}]${credit ? ";" : ""}`);
   }
+  if (credit) lines.push(...creditOverlayFilters(background ? 2 : 1, "vpre", "vout", credit));
   return lines.join("\n");
 }
 

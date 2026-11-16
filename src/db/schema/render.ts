@@ -50,6 +50,8 @@ export const render = pgTable(
     keyed: boolean("keyed").notNull().default(false),
     /** The detected key colour as hex (null when not keyed). */
     keyColor: text("key_color"),
+    /** Spec 0026: true when this render carries the "Edited with Take Studio" credit. */
+    creditApplied: boolean("credit_applied").notNull().default(false),
     ...timestamps,
   },
   (t) => [
