@@ -221,6 +221,7 @@ Tracer Bullet: one thin thread first (drop, claim, see the take), then thicken.
 - [ ] Toyin to confirm the numbers: 500 MB, 3 minutes, 24 hours, 600 guest minutes per day.
 - [ ] Toyin to answer the six choices C1 to C6 (listed under Feature design and in `docs/reviews/0023-spec-crosscheck.md`).
 - [ ] Confirm the published Turnstile behaviour on cookies when writing the legal copy.
+- [ ] Step 9 (B2-T175): decide whether the Terms need guest upload wording (agreed with Michael on #377; the Terms name no service or cookie today). The ts_guest cookie and Turnstile are already in the Privacy copy.
 - [ ] Add the guest drop zone to `docs/feature-map.md` when built.
 
 ## References
