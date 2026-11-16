@@ -21,7 +21,7 @@ export function TakeResult({ detail }: { readonly detail: TakeDetail }) {
   const credit = creditNote(detail.credit, false);
 
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
       <p className="font-medium">{note ? TAKE_NOTES[note] : removedNote(removedMs)}</p>
       <div className="flex flex-wrap gap-2">
         <Button loading={pending === "download"} onClick={() => void download("download")}>
