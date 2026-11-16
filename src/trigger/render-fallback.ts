@@ -7,8 +7,15 @@ import {
   gateSize,
   isOnlyBackground,
 } from "@/lib/background-preview";
+import { creditPlacement } from "@/lib/credit-filter";
 import type { HdrTransfer } from "@/lib/probe";
-import { type Range, outputFps, renderFilterScript, renderLengthSeconds } from "@/lib/trim";
+import {
+  type Range,
+  outputFps,
+  renderFilterScript,
+  renderLengthSeconds,
+  totalMs,
+} from "@/lib/trim";
 import { MediaToolError, runFfmpeg, runFfmpegBytes } from "./media";
 
 /** What the one render ffmpeg run needs; the same plan is used keyed and plain. */
@@ -29,7 +36,18 @@ export type RenderPlan = {
   /** The background and its key colour, or null for a plain render of the original. */
   readonly background: { readonly imagePath: string; readonly keyColor: string } | null;
   readonly timeoutMs: number;
+  /** Spec 0026: the credit image, or null when this render carries no credit. */
+  readonly credit?: { readonly pngPath: string; readonly timeoutMs: number } | null;
 };
+
+/** Where the credit starts in a plan's output (spec 0026 AC-2), for the credit and the gate. */
+export function creditStartSeconds(plan: RenderPlan): number {
+  return creditPlacement({
+    width: plan.facts.width,
+    height: plan.facts.height,
+    durationSeconds: totalMs(plan.keep) / 1000,
+  }).startSeconds;
+}
 
 /**
  * Renders the plan with ffmpeg: keyed onto the background when `keyed` (and the plan has one),
@@ -38,9 +56,15 @@ export type RenderPlan = {
 export async function encodeRender(
   plan: RenderPlan,
   keyed: boolean,
-  options: { readonly signal?: AbortSignal; readonly onOutTimeMs?: (ms: number) => void },
+  options: {
+    readonly signal?: AbortSignal;
+    readonly onOutTimeMs?: (ms: number) => void;
+    /** False draws no credit even when the plan has one (the clean retry). Default true. */
+    readonly credit?: boolean;
+  },
 ): Promise<void> {
   const { facts } = plan;
+  const credit = options.credit === false ? null : plan.credit;
   const background = keyed ? plan.background : null;
   const script = join(plan.work, "graph.txt");
   await writeFile(
@@ -53,6 +77,13 @@ export async function encodeRender(
       fps: facts.fps,
       background: background
         ? { keyColor: background.keyColor, width: facts.width, height: facts.height }
+        : undefined,
+      credit: credit
+        ? creditPlacement({
+            width: facts.width,
+            height: facts.height,
+            durationSeconds: totalMs(plan.keep) / 1000,
+          })
         : undefined,
     }),
   );
@@ -74,6 +105,8 @@ export async function encodeRender(
             background.imagePath,
           ]
         : []),
+      // The credit image is the last input: 1 on a plain render, 2 on a keyed one.
+      ...(credit ? [...STORED_IMAGE_INPUT, "-i", credit.pngPath] : []),
       "-filter_complex_script",
       script,
       "-map",
@@ -102,7 +135,11 @@ export async function encodeRender(
       "+faststart",
       plan.output,
     ],
-    { timeoutMs: plan.timeoutMs, signal: options.signal, onOutTimeMs: options.onOutTimeMs },
+    {
+      timeoutMs: credit ? Math.min(credit.timeoutMs, plan.timeoutMs) : plan.timeoutMs,
+      signal: options.signal,
+      onOutTimeMs: options.onOutTimeMs,
+    },
   );
 }
 
@@ -119,11 +156,14 @@ export async function outputIsOnlyBackground(
     readonly width: number;
     readonly height: number;
     readonly durationMs: number;
+    /** Spec 0026 AC-11: where the credit starts; the frame is read before it, never on it. */
+    readonly creditStartSeconds?: number;
   },
   signal?: AbortSignal,
 ): Promise<boolean> {
   const gate = gateSize(input.width, input.height);
-  const seek = ["-ss", (input.durationMs / 2000).toFixed(3), ...ORIGINAL_INPUT];
+  const at = Math.min(input.durationMs / 2000, (input.creditStartSeconds ?? Infinity) / 2);
+  const seek = ["-ss", at.toFixed(3), ...ORIGINAL_INPUT];
   const read = async (args: string[]) => {
     const bytes = await runFfmpegBytes(args, { timeoutMs: 60_000, signal });
     if (bytes.length !== gate.width * gate.height * 3) {

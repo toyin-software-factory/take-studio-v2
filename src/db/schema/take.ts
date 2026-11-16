@@ -73,6 +73,8 @@ export const take = pgTable(
     suggestionReason: text("suggestion_reason"),
     /** Spec 0021: `file` (chosen) or `recording` (made in the app). Set at upload create. */
     source: text("source").notNull().default("file"),
+    /** Spec 0026: a paid creator's choice about the credit, `on` or `off`; null is no choice made. */
+    creditChoice: text("credit_choice"),
     /**
      * Spec 0021: the script the creator read from, trimmed, at most 20000 characters; null for
      * none. Personal data: never log it, send it to Sentry, analytics, a job payload or a URL.
@@ -100,6 +102,10 @@ export const take = pgTable(
     ),
     check("take_container_check", inList(t.container, CONTAINERS)),
     check("take_source_check", inList(t.source, TAKE_SOURCES)),
+    check(
+      "take_credit_choice_check",
+      sql`${t.creditChoice} IS NULL OR ${t.creditChoice} IN ('on', 'off')`,
+    ),
     check(
       "take_script_length_check",
       sql`${t.script} IS NULL OR char_length(${t.script}) <= ${sql.raw(String(SCRIPT_MAX_CHARS))}`,

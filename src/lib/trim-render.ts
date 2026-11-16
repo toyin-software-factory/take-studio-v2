@@ -195,7 +195,10 @@ export function renderFilterScript(keep: readonly Range[], options: RenderGraphO
   const { credit } = options;
   const last = credit ? "vpre" : "vout";
   if (background) {
-    lines.push(`[vc]${color}[base];`, ...compositeFilters(background, last));
+    const composite = compositeFilters(background, last);
+    // The composite's last line has no `;`: it was the end of the graph. A credit follows it.
+    if (credit) composite[composite.length - 1] += ";";
+    lines.push(`[vc]${color}[base];`, ...composite);
   } else {
     lines.push(`[vc]${color}[${last}]${credit ? ";" : ""}`);
   }

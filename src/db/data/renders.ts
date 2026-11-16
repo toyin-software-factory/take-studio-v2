@@ -2,6 +2,7 @@ import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { effectiveRemovedRanges, renderKey } from "@/lib/cut-rules";
 import { type Result, err, ok } from "@/lib/result";
+import { decideCredit } from "./credit";
 import { background, cut, processingJob, render } from "../schema";
 import { runTx } from "../tx";
 import type { Executor, Render } from "../types";
@@ -76,6 +77,8 @@ export async function create(
         backgroundName: input.background?.backgroundName ?? null,
         keyed: input.background?.keyed ?? false,
         keyColor: input.background?.keyColor ?? null,
+        // Spec 0026 AC-5: decided here, in the render's own transaction, from the job clock.
+        creditApplied: await decideCredit(tx, { takeId: input.takeId, now: new Date() }),
       })
       .returning();
     return created ? ok(created) : err("not_found");
@@ -124,6 +127,23 @@ export async function markUnkeyed(
   const [updated] = await db
     .update(render)
     .set({ keyed: false, keyColor: null })
+    .where(and(eq(render.id, input.renderId), eq(render.status, "pending")))
+    .returning();
+  return updated ? ok(updated) : err("not_found");
+}
+
+/**
+ * `renders.markUncredited` (spec 0026 AC-5, AC-10): a `pending` render that could not carry the
+ * credit (the image was unusable, or the credited encode failed) is redone without it, so the
+ * row now says so. Only a `pending` render changes.
+ */
+export async function markUncredited(
+  db: Executor,
+  input: { readonly renderId: string },
+): Promise<Result<Render, "not_found">> {
+  const [updated] = await db
+    .update(render)
+    .set({ creditApplied: false })
     .where(and(eq(render.id, input.renderId), eq(render.status, "pending")))
     .returning();
   return updated ? ok(updated) : err("not_found");

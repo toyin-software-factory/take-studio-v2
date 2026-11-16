@@ -44,4 +44,13 @@ describe("creditOverlayFilters and the render graph", () => {
     expect(credited).toContain("[1:v]scale=432:-1[credit];");
     expect(credited.trim().endsWith("[vout]")).toBe(true);
   });
+  it("a keyed render reads the credit as input 2, with the composite line closed", () => {
+    const script = renderFilterScript([{ startMs: 0, endMs: 1_000 }], {
+      hdr: null,
+      background: { keyColor: "#00b140", width: 640, height: 360 },
+      credit: placement,
+    });
+    expect(script).toContain("[vpre];\n[2:v]scale=432:-1[credit];");
+    expect(script).not.toContain("[1:v]scale=432");
+  });
 });

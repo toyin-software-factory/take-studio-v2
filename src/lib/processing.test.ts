@@ -75,10 +75,11 @@ describe("step registry (AC-7)", () => {
       initial: "video",
       rerender: "video",
       background: "background",
+      credit: "background",
       transcribe: "transcript",
       reanalyse: "video",
     });
-    expect(JOB_KINDS.filter(isBackgroundKind)).toEqual(["background"]);
+    expect(JOB_KINDS.filter(isBackgroundKind)).toEqual(["background", "credit"]);
     expect(isBackgroundKind("rerender")).toBe(false);
   });
 

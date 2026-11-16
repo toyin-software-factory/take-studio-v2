@@ -69,3 +69,17 @@ export function creditOverlayFilters(
     `[${from}][credit]overlay=${x}:${y}:enable='gte(t,${sec(startSeconds)})':eof_action=repeat:format=auto,format=yuv420p[${to}]`,
   ];
 }
+
+/**
+ * The cheap check run before a credited encode (spec 0026 AC-10): the file is a PNG, 8 bit RGBA,
+ * and exactly as wide as the committed image. A shipped build that lost or damaged the file is
+ * caught here, so the render goes on without the credit instead of failing.
+ */
+export function isUsableCreditPng(bytes: Uint8Array): boolean {
+  if (bytes.length < 33) return false;
+  const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  if (!signature.every((value, i) => bytes[i] === value)) return false;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const isHeader = view.getUint32(12) === 0x49484452; // "IHDR"
+  return isHeader && view.getUint32(16) === CREDIT_PNG_WIDTH && bytes[24] === 8 && bytes[25] === 6;
+}
