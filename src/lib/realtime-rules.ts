@@ -46,3 +46,16 @@ export function mintRefusal(counts: {
   if (counts.lastDay >= REALTIME_TOKEN.perDay) return "daily";
   return null;
 }
+
+/**
+ * Seconds until the oldest mint in a refused window leaves it, so the next try can succeed.
+ * Never below 1. Pure over the times.
+ */
+export function retryAfterSeconds(input: {
+  readonly oldestMintedAtMs: number;
+  readonly windowMs: number;
+  readonly nowMs: number;
+}): number {
+  const waitMs = input.oldestMintedAtMs + input.windowMs - input.nowMs;
+  return Math.max(1, Math.ceil(waitMs / 1000));
+}
