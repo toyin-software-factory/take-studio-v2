@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { callApi } from "@/components/takes/browser-io";
-import { claimTarget } from "@/lib/guest-rules";
+import { Button } from "@/components/ui/button";
+import { claimPath, claimTarget } from "@/lib/guest-rules";
 
 const POLL_MS = 5000;
 
@@ -13,16 +15,28 @@ const POLL_MS = 5000;
 export function ClaimWaiting({
   pendingId,
   takeIds,
+  claimId,
+  target,
 }: {
   readonly pendingId: string;
   readonly takeIds: readonly string[];
+  readonly claimId: string;
+  /** Where to go when done, when the server already chose it. */
+  readonly target?: string;
 }) {
+  const [signedOut, setSignedOut] = useState(false);
   useEffect(() => {
+    if (signedOut) return;
     let stopped = false;
     const check = async () => {
       try {
         const res = await callApi(`/api/takes/${pendingId}`, "GET");
-        if (res.status === 200 && !stopped) window.location.assign(claimTarget(takeIds));
+        if (stopped) return;
+        if (res.status === 401) {
+          setSignedOut(true);
+          return;
+        }
+        if (res.status === 200) window.location.assign(target ?? claimTarget(takeIds));
       } catch {
         // Try again at the next tick.
       }
@@ -32,7 +46,23 @@ export function ClaimWaiting({
       stopped = true;
       window.clearInterval(timer);
     };
-  }, [pendingId, takeIds]);
+  }, [pendingId, takeIds, target, signedOut]);
+
+  if (signedOut) {
+    return (
+      <>
+        <div className="flex flex-col gap-1">
+          <h1 className="text-h2">You were signed out</h1>
+          <p role="status" className="text-muted-foreground">
+            Sign in again and we will finish adding your video.
+          </p>
+        </div>
+        <Button asChild>
+          <Link href={`/sign-in?return=${encodeURIComponent(claimPath(claimId))}`}>Sign in</Link>
+        </Button>
+      </>
+    );
+  }
 
   return (
     <>

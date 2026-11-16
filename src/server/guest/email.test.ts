@@ -91,6 +91,30 @@ describe("POST /api/guest/email (spec 0023, AC-2, C2)", () => {
     expect(limited.status).toBe(429);
   });
 
+  it("keeps a newer address when an older send fails after it", async () => {
+    const g = await seedGuest(testDb.db);
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const slow: GuestEmailDeps = {
+      ...setup().deps,
+      sendLink: async () => {
+        await gate;
+        return { ok: false, error: "send_failed" };
+      },
+    };
+    const first = handleGuestEmail(post({ email: "a@example.com" }, g.token), slow);
+    // Wait until A has reserved its address, then let B send and finish.
+    for (let i = 0; i < 50 && (await rowOf(g.claimId))?.email !== "a@example.com"; i++) {
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    expect(
+      (await handleGuestEmail(post({ email: "b@example.com" }, g.token), setup().deps)).status,
+    ).toBe(200);
+    release();
+    expect((await first).status).toBe(503);
+    expect(await rowOf(g.claimId)).toMatchObject({ email: "b@example.com", emailSends: 1 });
+  });
+
   it("refuses guest addresses, bad addresses, a missing cookie and a foreign origin", async () => {
     const g = await seedGuest(testDb.db);
     const { deps, sent } = setup();

@@ -50,7 +50,11 @@ export default async function ClaimPage({
     if (waiting) {
       return (
         <ClaimShell>
-          <ClaimWaiting pendingId={waiting} takeIds={[...outcome.moved, ...outcome.pending]} />
+          <ClaimWaiting
+            pendingId={waiting}
+            takeIds={[...outcome.moved, ...outcome.pending]}
+            claimId={claimId}
+          />
         </ClaimShell>
       );
     }

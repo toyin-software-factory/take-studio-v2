@@ -2,14 +2,17 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { ClaimWaiting } from "@/components/claim/claim-waiting";
 import { callApi } from "@/components/takes/browser-io";
 import { Button } from "@/components/ui/button";
 
 type State = "idle" | "working" | "failed";
+type Pending = { readonly id: string; readonly target: string };
 
 /** Spec 0023 C5: only the email matched, so ask before adding the video to this account. */
 export function ClaimConfirm({ claimId }: { readonly claimId: string }) {
   const [state, setState] = useState<State>("idle");
+  const [pending, setPending] = useState<Pending | null>(null);
 
   async function confirm() {
     setState("working");
@@ -20,7 +23,17 @@ export function ClaimConfirm({ claimId }: { readonly claimId: string }) {
         res.status === 200 && typeof data === "object" && data !== null && "target" in data
           ? (data as { target: unknown }).target
           : null;
+      const waiting =
+        typeof data === "object" && data !== null && "waiting" in data
+          ? (data as { waiting: unknown }).waiting
+          : null;
       if (typeof target === "string" && target.startsWith("/")) {
+        // An upload that is still finishing is not ours yet: wait for it before opening the target.
+        const [first] = Array.isArray(waiting) ? waiting : [];
+        if (typeof first === "string") {
+          setPending({ id: first, target });
+          return;
+        }
         window.location.assign(target);
         return;
       }
@@ -28,6 +41,12 @@ export function ClaimConfirm({ claimId }: { readonly claimId: string }) {
     } catch {
       setState("failed");
     }
+  }
+
+  if (pending) {
+    return (
+      <ClaimWaiting pendingId={pending.id} takeIds={[]} claimId={claimId} target={pending.target} />
+    );
   }
 
   return (

@@ -90,7 +90,12 @@ async function takeSend(
 }
 
 /** A send that did not go out gives its slot and the earlier address back. */
-async function giveBack(db: Db, claimId: string, previous: Previous): Promise<void> {
+async function giveBack(
+  db: Db,
+  claimId: string,
+  previous: Previous,
+  reserved: Previous,
+): Promise<void> {
   await runTx(db, async (tx) => {
     const [row] = await tx
       .select()
@@ -98,9 +103,12 @@ async function giveBack(db: Db, claimId: string, previous: Previous): Promise<vo
       .where(eq(guestClaim.id, claimId))
       .for("update");
     if (row) {
+      // Put the earlier address back only while this request's address is still the one stored:
+      // a newer send that went out keeps its address. The send slot is refunded either way.
+      const own = row.emailHash === reserved.emailHash;
       await tx
         .update(guestClaim)
-        .set({ ...previous, emailSends: Math.max(0, row.emailSends - 1) })
+        .set({ ...(own ? previous : {}), emailSends: Math.max(0, row.emailSends - 1) })
         .where(eq(guestClaim.id, claimId));
     }
     return ok(true as const);
@@ -138,7 +146,7 @@ export async function handleGuestEmail(request: Request, deps: GuestEmailDeps): 
     sent = err(sendFailureOf(error));
   }
   if (!sent.ok) {
-    await giveBack(db, taken.claimId, taken.previous);
+    await giveBack(db, taken.claimId, taken.previous, { email, emailHash });
     return refuse(sent.error === "invalid_email" ? "invalid" : sent.error);
   }
   return Response.json({ ok: true }, { headers: { "cache-control": "private, no-store" } });
