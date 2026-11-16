@@ -81,6 +81,27 @@ export function renderView(render: Render) {
   };
 }
 
+/**
+ * Spec 0026 AC-8, AC-9: what the stored finished video has. `applied` is true only for a
+ * succeeded latest render that carries the credit (as is takes have no render, so false).
+ * `canChange` is false until the paid switch exists (every account is free, spec 0024 is not
+ * built); `choice` is the paid creator's saved answer, null when none.
+ */
+export function creditView(
+  take: Take,
+  latestRender: Render | null,
+): {
+  readonly applied: boolean;
+  readonly canChange: boolean;
+  readonly choice: "on" | "off" | null;
+} {
+  return {
+    applied: latestRender?.status === "succeeded" && latestRender.creditApplied,
+    canChange: false,
+    choice: take.creditChoice === "on" || take.creditChoice === "off" ? take.creditChoice : null,
+  };
+}
+
 /** A cut as the take page's timeline reads it (spec 0011); `applied` is the current video's state. */
 export function cutView(cut: Cut) {
   return {

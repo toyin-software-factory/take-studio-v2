@@ -137,7 +137,7 @@ Tracer Bullet: one real thread first (a free take rendered with the credit), the
 
 1. `src/lib/credit-rules.ts` (`creditFor`) and `src/lib/credit-filter.ts` (`creditPlacement`, the overlay filter text), the PNG asset and `additionalFiles` entry, with unit tests and the contrast pair in `contrast-table.ts`. Satisfies **AC-1**, **AC-2**, **AC-4**. Done (B2-T178).
 2. Migration (setting, `take.credit_choice`, `render.credit_applied`, job kind `credit`), `createRender` decides and stores the credit, the filter script takes the optional overlay input, `encode` retries clean on a credit failure, the keyed gate samples outside the window. A pipeline check proves duration, audio and transcript are unchanged. This is the tracer thread. Satisfies **AC-3**, **AC-5**, **AC-6**, **AC-10**, **AC-11**. Done (B2-T178).
-3. Take page: the free line near Download and `GET` field. Satisfies **AC-8**, **AC-9**, **AC-14**.
+3. Take page: the free line near Download and `GET` field. Satisfies **AC-8**, **AC-9**, **AC-14** (the parts that do not wait on billing). Done (B2-T179): `GET` returns `credit { applied, canChange, choice }`, and the line shows under Download and in the Export tab; the paid sentence stays off.
 4. Terms copy, `LEGAL_VERSION`, `pnpm legal:drift`, and the legal facts note. Satisfies **AC-13**.
 5a. Before go live (does not wait for billing, part of task 4): check a screenshot of the credit on a portrait video against TikTok's and Reels' top left areas (the 10% inset is an estimate). Go live (6) waits for this check.
 5. After the billing build (spec 0024 task 1 and the plan read): `PATCH /api/takes/{id}/credit`, the `credit` job kind through `changeRun`, the switch on the take page, browser tests. Satisfies **AC-7**, **AC-12**, **AC-14**.

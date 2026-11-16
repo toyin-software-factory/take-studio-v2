@@ -4,7 +4,7 @@ import { removedRanges } from "@/lib/cut-rules";
 import { isExpired, removedMs, takeNote } from "@/lib/take-media";
 import { deleteTake, getForCreator, listForCreator, rename } from ".";
 import { listForTake } from "../cuts";
-import { cardView, cutView, jobView, renderView, takeView } from "./views";
+import { cardView, creditView, cutView, jobView, renderView, takeView } from "./views";
 import { errorResponse, guard, json, readBody, type TakeHttpDeps } from "./http-base";
 
 const LIST_PAGE_SIZE = 24;
@@ -74,6 +74,8 @@ export async function handleGet(
     // Spec 0011: every cut in time order (`applied` is what the current video has), and whether
     // the original can still be played and rendered from.
     cuts: cuts.map(cutView),
+    // Spec 0026: whether the stored finished video carries the credit (the page's free line).
+    credit: creditView(take, latestRender),
     originalAvailable: !isExpired(take, now),
   });
 }

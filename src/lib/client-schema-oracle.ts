@@ -107,6 +107,13 @@ export const ORACLE = {
       .nullable()
       .default(null),
     noGreenScreen: z.boolean().default(false),
+    credit: z
+      .object({
+        applied: z.boolean(),
+        canChange: z.boolean().default(false),
+        choice: z.enum(["on", "off"]).nullable().default(null),
+      })
+      .default({ applied: false, canChange: false, choice: null }),
     sourceFps: z.number().nullable().default(null),
     backgroundJob: z
       .object({

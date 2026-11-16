@@ -4,6 +4,7 @@ import { Captions, Download, FileText, Film } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import type { TakeDetail } from "@/lib/take-api";
+import { creditNote } from "@/lib/credit-copy";
 import { expiryNote, formatClock } from "@/lib/take-display";
 import type { useTranscript } from "./use-transcript";
 import { useTakeDownloads } from "./use-take-downloads";
@@ -54,6 +55,8 @@ export function TakeExport({
   const words = view?.state === "ready" && (view.paragraphs?.length ?? 0) > 0;
   const query = view?.version ? `?v=${encodeURIComponent(view.version)}` : "";
   const gone = take.expired || take.status === "expired";
+  // No paid plan wording until billing and the paid switch exist (spec 0026 AC-8).
+  const credit = gone ? null : creditNote(detail.credit, false);
 
   return (
     <div className="flex flex-col gap-3">
@@ -137,6 +140,12 @@ export function TakeExport({
           </>
         ) : null}
       </ul>
+      {credit ? (
+        <p className="text-small text-muted-foreground" data-check="credit-note-export">
+          {credit.text}
+          {credit.paid ? ` ${credit.paid}` : ""}
+        </p>
+      ) : null}
       {gone ? (
         <p className="text-small text-muted-foreground">The video files have expired.</p>
       ) : null}

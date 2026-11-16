@@ -63,6 +63,7 @@ export const detail = {
   note: null,
   background: { id: "b1", name: "Studio", keyed: true },
   noGreenScreen: false,
+  credit: { applied: true, canChange: false, choice: null },
   backgroundJob: { status: "succeeded", failureCode: null, targetBackgroundId: "b1" },
 };
 /** Older bodies: every field with a default left out. */

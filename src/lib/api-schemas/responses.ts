@@ -120,6 +120,12 @@ export const RESPONSE_SCHEMAS = {
       .object({ id: z.uuid().nullable(), name: z.string(), keyed: z.boolean() })
       .nullable(),
     noGreenScreen: z.boolean(),
+    /** Spec 0026: whether the stored finished video ends with the "Edited with Take Studio" credit. */
+    credit: z.object({
+      applied: z.boolean(),
+      canChange: z.boolean(),
+      choice: z.enum(["on", "off"]).nullable(),
+    }),
     sourceFps: z.number().nullable(),
     backgroundJob: z
       .object({
