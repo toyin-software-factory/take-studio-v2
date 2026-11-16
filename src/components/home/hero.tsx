@@ -1,4 +1,5 @@
 import { FAN_CARDS, HERO } from "./content";
+import { DropCard } from "./drop-card";
 import { FanToggle } from "./fan-toggle";
 import { Picture } from "./picture";
 
@@ -7,7 +8,7 @@ const fanCheck = (i: number) =>
   i < 4 ? (i === 0 ? "s1-top-media" : `s1-top-media-${i + 1}`) : undefined;
 
 /** Hero: the two tone headline, the lead and the fan of product cards (no motion yet). */
-export function HomeHero() {
+export function HomeHero({ turnstileSiteKey }: { readonly turnstileSiteKey: string | null }) {
   return (
     <section className="h-hero" id="top" aria-labelledby="hero-title" data-check="s1-top">
       <div className="h-container">
@@ -21,6 +22,7 @@ export function HomeHero() {
         <p className="h-lead h-hero-lead" data-check="s1-top-text">
           {HERO.lead}
         </p>
+        <DropCard siteKey={turnstileSiteKey} />
         <div className="h-fan" role="group" aria-label="What Take Studio does">
           <ul className="h-fan-list" data-check="s1-top-list">
             {FAN_CARDS.map((card, i) => (

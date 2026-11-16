@@ -39,5 +39,10 @@ export async function generateMetadata(): Promise<Metadata> {
  */
 export default async function Home() {
   if (await getSession(await headers())) redirect("/library");
-  return <HomePage origin={siteOrigin(process.env.BETTER_AUTH_URL)} />;
+  return (
+    <HomePage
+      origin={siteOrigin(process.env.BETTER_AUTH_URL)}
+      turnstileSiteKey={process.env.TURNSTILE_SITE_KEY ?? null}
+    />
+  );
 }

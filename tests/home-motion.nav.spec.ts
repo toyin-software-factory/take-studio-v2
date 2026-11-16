@@ -187,6 +187,9 @@ test.describe("hero fan (AC-5)", () => {
   });
 
   test("pauses while the fan is out of view", async ({ page }) => {
+    // The drop card sits above the fan, so on a 720 px screen the fan starts below the fold (and
+    // rightly holds still). A tall window puts it in view first.
+    await page.setViewportSize({ width: 1280, height: 1400 });
     await motionReady(page);
     // Past the opening (900 ms plus 800 ms) and the loop's own 1.7 s delay: it is turning.
     await page.waitForTimeout(3500);
