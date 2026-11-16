@@ -2,7 +2,9 @@ import { sql } from "drizzle-orm";
 import {
   type AnyPgColumn,
   bigint,
+  boolean,
   check,
+  date,
   index,
   integer,
   jsonb,
@@ -76,6 +78,15 @@ export const take = pgTable(
      * none. Personal data: never log it, send it to Sentry, analytics, a job payload or a URL.
      */
     script: text("script"),
+    /**
+     * Spec 0023: set when a guest drop creates the take, never cleared. Job start reads it to
+     * let the one take that crosses the 60 minute ceiling through (AC-8).
+     */
+    guestOrigin: boolean("guest_origin").notNull().default(false),
+    /** Spec 0023: minutes reserved against the day's guest budget (step 3); null once released. */
+    guestReservedMinutes: integer("guest_reserved_minutes"),
+    /** Spec 0023: the UTC day of that reservation, written and cleared with the minutes. */
+    guestReservedDay: date("guest_reserved_day", { mode: "string" }),
     ...timestamps,
   },
   (t) => [

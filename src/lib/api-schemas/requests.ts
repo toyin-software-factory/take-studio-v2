@@ -23,6 +23,19 @@ export const uploadCreateSchema = z.object({
 });
 
 /**
+ * POST /api/guest/uploads (spec 0023): the upload body without the background, source and script,
+ * plus the Turnstile token. Unknown keys are refused.
+ */
+export const uploadGuestCreateSchema = z
+  .object({
+    fileName: uploadCreateSchema.shape.fileName,
+    sizeBytes: uploadCreateSchema.shape.sizeBytes,
+    container: uploadCreateSchema.shape.container,
+    turnstileToken: z.string().min(1).max(4096),
+  })
+  .strict();
+
+/**
  * POST /api/uploads as the docs show it: the body above plus the optional length hint the handler
  * reads on its own (`hintSchema` in `src/server/uploads/http.ts`) to refuse a too long video before
  * it uploads. The handler still ignores a malformed hint, so this schema is for the docs only.

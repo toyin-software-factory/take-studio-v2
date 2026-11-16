@@ -1,5 +1,5 @@
 import { and, count, countDistinct, desc, eq, gte, isNotNull, sql } from "drizzle-orm";
-import { analyticsEvent } from "@/db/schema";
+import { analyticsEvent, user } from "@/db/schema";
 import type { Executor } from "@/db/types";
 import {
   FOUNDING_MEMBER_MIN_TAKES,
@@ -12,6 +12,9 @@ import type { CutCounts } from "@/lib/cut-quality";
 
 const inWindow = (since: Date | null) =>
   since ? gte(analyticsEvent.occurredAt, since) : sql`true`;
+
+/** Spec 0023 G5: an event from a guest (unclaimed drop box) account never counts as a creator. */
+const notGuestCreator = sql`not exists (select 1 from ${user} where ${user.id} = ${analyticsEvent.creatorId} and ${user.guest})`;
 
 /** Events of one name in the window. */
 export async function eventCount(db: Executor, name: AnalyticsEventName, since: Date | null) {
@@ -36,6 +39,7 @@ export async function creatorCount(
       and(
         eq(analyticsEvent.name, name),
         inWindow(since),
+        notGuestCreator,
         kind ? sql`${analyticsEvent.props}->>'kind' = ${kind}` : sql`true`,
       ),
     );
@@ -52,7 +56,7 @@ export async function secondTakeCount(db: Executor, since: Date | null) {
         ),
     })
     .from(analyticsEvent)
-    .where(eq(analyticsEvent.name, "take_uploaded"))
+    .where(and(eq(analyticsEvent.name, "take_uploaded"), notGuestCreator))
     .groupBy(analyticsEvent.creatorId)
     .having(sql`count(*) >= ${FOUNDING_MEMBER_MIN_TAKES}`)
     .as("second");

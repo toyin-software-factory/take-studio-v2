@@ -39,6 +39,8 @@ describe("deploy preflight secret list", () => {
       "SENTRY_DSN",
       "INSIGHTS_VIEWER_USER_ID",
       "DEEPGRAM_REALTIME_API_KEY",
+      "TURNSTILE_SECRET_KEY",
+      "TURNSTILE_SITE_KEY",
     ]);
     expect(names("optional").filter((n) => names("required").includes(n))).toEqual([]);
     expect(workflow).toContain('skip "Missing Worker secrets on take-studio:$missing"');

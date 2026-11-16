@@ -43,6 +43,16 @@ export const insightsEnvSchema = z.object({
 });
 
 /**
+ * Turnstile (spec 0023): the secret verifies the drop box's bot check. Parsed with `safeParse`
+ * inside the guest route, so a missing key refuses guest uploads (fail closed) and never blocks
+ * the app or a deploy. The site key is for the browser widget (a later step).
+ */
+export const turnstileEnvSchema = z.object({
+  TURNSTILE_SECRET_KEY: z.string().min(1),
+  TURNSTILE_SITE_KEY: z.string().min(1).optional(),
+});
+
+/**
  * Email (spec 0006): app URL, Resend key, sender and the secret that signs unsubscribe links. Parsed
  * only where email is sent or a link is signed, so the app keeps running before they are set.
  */

@@ -1,7 +1,7 @@
 # 0023. Upload first, sign in after
 
 **Date**: 2026-11-15
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 
@@ -77,6 +77,21 @@ Recommendations for each C-30 point, in short:
 - **(e) Legal facts**: one new cookie, four new stored fields (typed email, email hash, address hash, cookie token hash), Turnstile listed, copy and version updated.
 - **(f) Analytics**: `guest_drop`, `guest_email_added`, `guest_claimed`, `guest_expired`.
 - **(g) Fit**: the existing multipart routes accept a guest as the creator. The magic link goes through the existing Better Auth plugin with a `/claim` callback.
+
+### Choices C1 to C6, taken as recommended (C-30, B2-T169)
+
+Toyin said all open questions take the recommended option (C-30). Each is recorded here so the build does not guess. The reasoning is in `docs/reviews/0023-spec-crosscheck.md`.
+
+- **C1**: yes. A sign in whose verified email matches the typed address can claim the take, only together with the C5 confirm step, and only by the email match (never the cookie). Built in step 5.
+- **C2**: a guest can send at most 5 sign in links in total (step 4).
+- **C3**: no minutes cap per network address. The 3 drops a day and the 600 minute daily budget stay the only limits.
+- **C4**: a second drop is allowed once the first is past `uploading`, and it counts against the 3 a day for the address.
+- **C5**: option B. When only the email matched, a confirm click ("A video was added with your email. Add it to your library?") comes before anything moves or is charged. The cookie match needs no confirm.
+- **C6**: the legal review is scheduled before the step 9 PR merges. `pnpm test:legal-launch` stays red for the new facts until Toyin's facts and the lawyer's review are recorded again.
+
+### Where steps 1 and 2 stop (B2-T169)
+
+Step 2 builds the thin thread: Origin check, body check, 500 MB cap, Turnstile, one transaction that makes the guest user, the claim and the `guest_origin` take, the multipart start, and the `ts_guest` cookie. Step 3 owns every other limit: the kill switch (`guest_upload_enabled`), the active upload check (`guest_busy`), the per address count, the daily minutes budget and the probe duration check. The Turnstile keys are `TURNSTILE_SECRET_KEY` (required to accept a drop) and `TURNSTILE_SITE_KEY` (the browser widget). With no secret, no address header or an unreachable check, the route refuses with 503 `guest_unavailable`, so it fails closed. Only `parts`, `complete` and `DELETE /api/uploads/{takeId}` accept the cookie, and only for the guest's own take.
 
 **Implementation skills**: `better-auth-best-practices` (`better-auth/skills`, `.claude/skills/better-auth-best-practices/`) · `better-auth-security-best-practices` (`better-auth/skills`, `.claude/skills/better-auth-security-best-practices/`) · `workers-best-practices` (`cloudflare/skills`, `.claude/skills/workers-best-practices/`)
 
@@ -170,8 +185,8 @@ Charging only the global guest budget while unclaimed, and the verified account 
 
 Tracer Bullet: one thin thread first (drop, claim, see the take), then thicken.
 
-1. Migration: `user.guest`, `guest_claim`, indexes, settings keys. Satisfies **AC-9, AC-10**
-2. Guest session helper, Turnstile verify, `POST /api/guest/uploads`, guest aware creator resolution on the existing upload routes. Satisfies **AC-1, AC-10**
+1. [x] Migration: `user.guest`, `guest_claim`, indexes, settings keys. Satisfies **AC-9, AC-10**
+2. [x] Guest session helper, Turnstile verify, `POST /api/guest/uploads`, guest aware creator resolution on the existing upload routes. Satisfies **AC-1, AC-10**
 3. Guest limits: size, count per cookie, per address per day, kill switch, probe duration check, and the daily budget reservation and its release (this step owns every limit that refuses a guest). Satisfies **AC-6**
 4. Email step: `POST /api/guest/email` with the existing magic link and `/claim` callback. Satisfies **AC-2**
 5. Claim transaction and `/claim` page. Satisfies **AC-3, AC-4, AC-5, AC-7**

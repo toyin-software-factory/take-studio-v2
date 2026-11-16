@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { logger, task } from "@trigger.dev/sdk";
-import { count } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { withJobDb } from "@/db/client/job";
 import { user } from "@/db/schema";
 import { parseJobEnv } from "@/lib/env";
@@ -23,7 +23,7 @@ export const helloTask = task({
     const ffmpegVersion = stdout.split("\n")[0] ?? "";
 
     const userCount = await withJobDb(env.DATABASE_URL, async (db) => {
-      const [row] = await db.select({ value: count() }).from(user);
+      const [row] = await db.select({ value: count() }).from(user).where(eq(user.guest, false));
       return row?.value ?? 0;
     });
 

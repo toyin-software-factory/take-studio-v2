@@ -36,7 +36,7 @@ export function canonicalEmail(email: string): string {
 const encoder = new TextEncoder();
 
 /** Lowercase hex of `HMAC_SHA256(message, secret)`. */
-async function hmacSha256Hex(message: string, secret: string): Promise<string> {
+export async function hmacSha256Hex(message: string, secret: string): Promise<string> {
   const key = await crypto.subtle.importKey(
     "raw",
     encoder.encode(secret),
