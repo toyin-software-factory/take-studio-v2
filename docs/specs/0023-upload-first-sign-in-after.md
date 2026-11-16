@@ -189,16 +189,17 @@ Tracer Bullet: one thin thread first (drop, claim, see the take), then thicken.
 
 1. [x] Migration: `user.guest`, `guest_claim`, indexes, settings keys. Satisfies **AC-9, AC-10**
 2. [x] Guest session helper, Turnstile verify, `POST /api/guest/uploads`, guest aware creator resolution on the existing upload routes. Satisfies **AC-1, AC-10**
-3. Guest limits: size, count per cookie, per address per day, kill switch, probe duration check, and the daily budget reservation and its release (this step owns every limit that refuses a guest). Satisfies **AC-6**
+3. [x] Guest limits: size, count per cookie, per address per day, kill switch, probe duration check, and the daily budget reservation and its release (this step owns every limit that refuses a guest). Satisfies **AC-6**
 4. [x] Email step: `POST /api/guest/email` with the existing magic link and `/claim` callback. Satisfies **AC-2**
 5. [x] Claim transaction and `/claim` page. Satisfies **AC-3, AC-4, AC-5, AC-7**
 6. [x] Usage, the account side only: job start skips a guest, the claim charges the account, and the `guest_origin` ceiling rule. Satisfies **AC-8**
 7. [x] Cleanup sweep for expired guests through the existing delete path. Satisfies **AC-9**
-8. Homepage drop zone and email step UI, with Mobbin checked and `design-check`. Satisfies **AC-1, AC-2, AC-13**
+8. [x] Homepage drop zone and email step UI, with Mobbin checked and `design-check`. Satisfies **AC-1, AC-2, AC-13**
 9. [x] Legal facts, cookie list, Privacy and Terms copy, `LEGAL_VERSION`, text hash line. Satisfies **AC-11**
 10. [x] Analytics events and funnel on `/insights`. Satisfies **AC-12**. Also records `guest_expired` after the sweep: `deleteExpiredGuestTakes` (`src/db/data/guest-expiry.ts`) already returns `{ takeId, hadEmail }` per deleted take, and `sweepExpiredGuests` (`src/trigger/guest-expiry.ts`) is where to call `recordEvent` with a null creator. Adding the name needs the CHECK migration and the legal facts line (agreed with Michael)
-11. Playwright end to end and `/check verify`. Satisfies **AC-1 to AC-13**
+11. [x] Playwright end to end and `/check verify` (B2-T176, PR #385; report `docs/reviews/0023-upload-first-verify.md`). Satisfies **AC-1 to AC-13**
 12. [x] Result route `GET /api/guest/take` (`src/server/guest/take.ts`): `{ status, playUrl, expiresInSeconds }` for the guest cookie's own take (optional `takeId`, else the most recent), inline play link only when the take is ready, one 404 for every refusal. Added after Dwight found no step owned G30. Satisfies **AC-10**
+13. [x] Result view in the drop card: the guest plays the finished take before claiming (view only, no download, "Check your email to keep it" always shown), polling `GET /api/guest/take`. Added after Dwight found no step owned the UI half of G30 (B2-T183, PR #386). Satisfies **AC-10**
 
 ## Consequences
 
