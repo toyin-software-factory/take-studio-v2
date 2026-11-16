@@ -222,7 +222,7 @@ jobs:
           node_dir="$(dirname "$(dirname "$(command -v node)")")"
           docker run --rm --network host --ipc=host --init \
             --user "$(id -u):$(id -g)" -e HOME=/tmp \
-            -e CI -e E2E_SPLIT=1 -e SHARD -e SHARDS -e PNPM_HOME -e NODE_DIR="$node_dir" -e DATABASE_URL -e DATABASE_URL_DIRECT \
+            -e CI -e TURNSTILE_SITE_KEY=1x00000000000000000000AA -e E2E_SPLIT=1 -e SHARD -e SHARDS -e PNPM_HOME -e NODE_DIR="$node_dir" -e DATABASE_URL -e DATABASE_URL_DIRECT \
             -e CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE -e NEXT_TELEMETRY_DISABLED \
             -v "$GITHUB_WORKSPACE":/work -v "$pnpm_dir":"$pnpm_dir":ro -v "$node_dir":"$node_dir":ro -w /work \
             "$PLAYWRIGHT_IMAGE" bash -c 'export PATH="$NODE_DIR/bin:$PNPM_HOME:$PATH" && node --version && if [ "$SHARD" = usage ]; then for p in usage record-a11y record-limits; do pnpm exec playwright test --project=$p || exit 1; done; elif [ "$SHARD" = browsers ]; then pnpm exec playwright test --project=webkit --project=firefox; else pnpm exec playwright test --project=chromium --shard=$SHARD/$SHARDS; fi'
