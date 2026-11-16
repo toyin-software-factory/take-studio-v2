@@ -107,4 +107,21 @@ test.describe("guest result view", () => {
     await expect(page.getByLabel("Your finished take")).toHaveCount(0);
     await expect(page.getByText("Check your email to keep it")).toBeVisible();
   });
+
+  test("a take that is gone stops the polling and says so (AC-10)", async ({ page }) => {
+    await stubUpload(page);
+    let polls = 0;
+    await page.route("**/api/guest/take", (route) => {
+      polls += 1;
+      return route.fulfill({ status: 404, json: { error: "not_found" } });
+    });
+    await sendEmail(page);
+    await expect(page.locator(".h-drop-result").getByRole("status")).toContainText(
+      "no longer available",
+      { timeout: 20_000 },
+    );
+    await page.waitForTimeout(6_000);
+    expect(polls).toBe(1);
+    await expect(page.getByText("Check your email to keep it")).toBeVisible();
+  });
 });

@@ -47,6 +47,7 @@ export const DROP_COPY = {
   ready: "Your take is ready.",
   keep: "Check your email to keep it. We delete it after 24 hours if you do not.",
   videoLabel: "Your finished take",
+  resultGone: "This take is no longer available. Choose a file again to start a new one.",
   resultFailed: "We couldn't finish your take. Sign in to try the upload again.",
 } as const;
 

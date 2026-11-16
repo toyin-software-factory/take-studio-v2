@@ -7,7 +7,8 @@ import { callApi } from "@/components/takes/browser-io";
 export type GuestResult =
   | { readonly kind: "waiting" }
   | { readonly kind: "ready"; readonly playUrl: string }
-  | { readonly kind: "failed" };
+  | { readonly kind: "failed" }
+  | { readonly kind: "unavailable" };
 
 const POLL_MS = 5000;
 /** Ask for a new link this long before the old one expires. */
@@ -15,7 +16,8 @@ const REFRESH_EARLY_SECONDS = 60;
 
 /**
  * Polls `GET /api/guest/take` while `active`: every few seconds until the take is ready, then
- * once more shortly before the play link expires. A failed take stops the polling. The link is
+ * once more shortly before the play link expires. A failed take, an expired one or a 404 (every refusal is the same
+ * 404) stops the polling and clears any player; network and storage errors are retried. The link is
  * kept in state only, never logged.
  */
 export function useGuestResult(active: boolean): GuestResult {
@@ -36,6 +38,8 @@ export function useGuestResult(active: boolean): GuestResult {
           playUrl?: unknown;
           expiresInSeconds?: unknown;
         } | null;
+        if (reply.status === 404 || (reply.status === 200 && data?.status === "expired"))
+          return setResult({ kind: "unavailable" });
         if (reply.status === 200 && data?.status === "failed") return setResult({ kind: "failed" });
         if (reply.status === 200 && typeof data?.playUrl === "string") {
           setResult({ kind: "ready", playUrl: data.playUrl });

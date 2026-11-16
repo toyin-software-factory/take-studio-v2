@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { DROP_COPY } from "@/lib/guest-drop";
 import { useGuestResult } from "./use-guest-result";
 
@@ -10,6 +11,21 @@ import { useGuestResult } from "./use-guest-result";
  */
 export function DropResult() {
   const result = useGuestResult(true);
+  const video = useRef<HTMLVideoElement>(null);
+  // Where the viewer is and whether it plays, kept from the player's own events. A new play link
+  // reloads the media and resets it, so the place is put back once the new metadata is in.
+  const place = useRef({ time: 0, playing: false });
+  const track = () => {
+    const el = video.current;
+    if (el) place.current = { time: el.currentTime, playing: !el.paused };
+  };
+  const restore = () => {
+    const el = video.current;
+    const { time, playing } = place.current;
+    if (!el || time <= 0) return;
+    el.currentTime = time;
+    if (playing) void el.play().catch(() => undefined);
+  };
   return (
     <div className="h-drop-result">
       <p className="h-drop-muted" role="status">
@@ -17,10 +33,17 @@ export function DropResult() {
           ? DROP_COPY.ready
           : result.kind === "failed"
             ? DROP_COPY.resultFailed
-            : DROP_COPY.preparing}
+            : result.kind === "unavailable"
+              ? DROP_COPY.resultGone
+              : DROP_COPY.preparing}
       </p>
       {result.kind === "ready" ? (
         <video
+          ref={video}
+          onLoadedMetadata={restore}
+          onTimeUpdate={track}
+          onPlay={track}
+          onPause={track}
           className="h-drop-video"
           src={result.playUrl}
           controls
