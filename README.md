@@ -31,7 +31,7 @@ One TypeScript repo, two deployables, one database, one bucket:
 - **Web app**: Next.js (App Router) on Cloudflare Workers via `@opennextjs/cloudflare`. Reaches Neon through Hyperdrive.
 - **Jobs**: Trigger.dev v4 tasks in `src/trigger/`, with ffmpeg 7. Reach Neon over the pooled URL.
 - **Database**: Neon Postgres, Drizzle ORM with postgres.js, migrations in `drizzle/`.
-- **Auth**: Better Auth (Google sign in for now).
+- **Auth**: Better Auth (Google, and email sign in links).
 - **Files**: Cloudflare R2 over the S3 API (`aws4fetch`).
 
 ## Layout
